@@ -146,6 +146,11 @@ function NewOrderPage() {
           ...(address.trim() !== '' ? { address: address.trim() } : {}),
         }
         customerId = await createCustomer(newCustomer)
+        // The customer document now exists. If createOrder below fails and the
+        // user retries, switch to the "existing" branch so we reuse this id
+        // instead of creating a duplicate customer on every retry.
+        setSelectedCustomerId(customerId)
+        setCustomerMode('existing')
       }
 
       const order: NewOrder = {
