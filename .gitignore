@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Yarn (Berry) generated install state — not meant to be committed
+.yarn/install-state.gz
+
 # Local env (Firebase keys etc.)
 .env
 .env.*
