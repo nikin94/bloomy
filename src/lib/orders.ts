@@ -7,6 +7,8 @@ const ORDERS_COLLECTION = 'orders'
 // Документ Firestore -> Order. Точная схема в Firestore ещё уточняется,
 // поэтому маппинг держим в одном месте, чтобы менять при изменении полей.
 function mapDoc(id: string, data: Record<string, unknown>): Order {
+  // TODO: unsafe cast — Firestore может вернуть данные, не соответствующие Order.
+  // Добавить runtime-валидацию (zod/valibot) отдельной задачей.
   return { id, ...(data as Omit<Order, 'id'>) }
 }
 

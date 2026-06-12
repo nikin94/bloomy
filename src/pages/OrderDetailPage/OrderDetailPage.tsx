@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { fetchOrder } from '../../lib/orders'
+import { formatMoney } from '../../lib/format'
 import type { Order } from '../../types/order'
 import styles from './OrderDetailPage.module.css'
 
@@ -45,7 +46,7 @@ function OrderDetailPage() {
             <Field label="Заказчик" value={order.customerName} />
             <Field label="Адрес" value={order.address} />
             <Field label="Растения" value={order.plants.map((p) => p.name).join(', ')} />
-            <Field label="Сумма" value={`${order.totalPrice} ₽`} />
+            <Field label="Сумма" value={formatMoney(order.totalPrice)} />
             {order.comment && <Field label="Комментарий" value={order.comment} />}
           </div>
         </>

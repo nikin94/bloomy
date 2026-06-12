@@ -36,7 +36,19 @@ function DataTable({ orders, columns, onRowClick }: DataTableProps) {
             </tr>
           ) : (
             orders.map((order) => (
-              <tr key={order.id} className={styles.row} onClick={() => onRowClick(order)}>
+              <tr
+                key={order.id}
+                className={styles.row}
+                role="link"
+                tabIndex={0}
+                onClick={() => onRowClick(order)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    onRowClick(order)
+                  }
+                }}
+              >
                 {columns.map((column) => (
                   <td key={column.key} className={styles.cell}>
                     {renderCell(order, column)}

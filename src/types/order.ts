@@ -1,3 +1,5 @@
+import { formatDate, formatMoney } from '../lib/format'
+
 // Статус оплаты заказа.
 // Используем union-типы вместо enum: в tsconfig включён erasableSyntaxOnly,
 // при котором enumّ запрещены (они не "стираются" из рантайма).
@@ -50,12 +52,6 @@ export interface OrderColumn {
   // Опциональное форматирование значения ячейки в строку для отображения.
   format?: (order: Order) => string
 }
-
-const formatMoney = (value: number) =>
-  new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(value)
-
-const formatDate = (ms: number) =>
-  new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short' }).format(new Date(ms))
 
 const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   pending: 'Ожидает',
