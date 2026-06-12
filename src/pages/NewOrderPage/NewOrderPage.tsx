@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import { createOrder } from '../../lib/orders'
@@ -14,12 +14,13 @@ import type { OrderItem, PaymentMethod, PaymentStatus, ShipmentStatus } from '..
 // Item row as entered in the form. Numeric fields are kept as strings while
 // editing (controlled inputs) and parsed into the stored model on submit.
 interface ItemInput {
+  id: number // stable React key, independent of array position
   name: string
   quantity: string
   price: string // rubles, e.g. "149,90"
 }
 
-const emptyItem = (): ItemInput => ({ name: '', quantity: '1', price: '' })
+const emptyItem = (id: number): ItemInput => ({ id, name: '', quantity: '1', price: '' })
 
 const fieldClass =
   'w-full rounded-md border border-border bg-bg px-3 py-2 text-heading ' +
@@ -30,7 +31,12 @@ function NewOrderPage() {
 
   const [customerName, setCustomerName] = useState('')
   const [address, setAddress] = useState('')
-  const [items, setItems] = useState<ItemInput[]>([emptyItem()])
+  // Monotonic id source for item rows, so React keys stay stable across
+  // add/remove instead of being tied to array position. The first row is
+  // seeded with id 0; the ref hands out 1, 2, … for rows added later.
+  const itemIdRef = useRef(0)
+  const nextItemId = () => (itemIdRef.current += 1)
+  const [items, setItems] = useState<ItemInput[]>(() => [emptyItem(0)])
   const [deliveryPrice, setDeliveryPrice] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('pending')
@@ -43,7 +49,7 @@ function NewOrderPage() {
   const updateItem = (index: number, patch: Partial<ItemInput>) => {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
   }
-  const addItem = () => setItems((prev) => [...prev, emptyItem()])
+  const addItem = () => setItems((prev) => [...prev, emptyItem(nextItemId())])
   const removeItem = (index: number) =>
     setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev))
 
@@ -56,6 +62,7 @@ function NewOrderPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (saving) return
     setError(null)
 
     const plants: OrderItem[] = items
@@ -128,7 +135,7 @@ function NewOrderPage() {
           <fieldset className="flex flex-col gap-2 border-0 p-0">
             <legend className="mb-1 p-0 text-sm text-text">Растения</legend>
             {items.map((item, index) => (
-              <div key={index} className="flex items-center gap-2">
+              <div key={item.id} className="flex items-center gap-2">
                 <input
                   className={fieldClass}
                   placeholder="Название"
@@ -243,7 +250,11 @@ function NewOrderPage() {
             <span className="text-lg font-semibold">{formatMoney(totalMinor)}</span>
           </div>
 
-          {error && <p className="m-0 text-danger">{error}</p>}
+          {error && (
+            <p role="alert" className="m-0 text-danger">
+              {error}
+            </p>
+          )}
 
           <div className="flex gap-2">
             <button
