@@ -1,8 +1,8 @@
 import { initializeApp } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
 
-// Конфиг читается из переменных окружения Vite (.env, см. .env.example).
-// Так ключи не попадают в репозиторий, и можно держать dev/prod проекты раздельно.
+// Config is read from Vite environment variables (.env, see .env.example).
+// This keeps keys out of the repository and lets us separate dev/prod projects.
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -14,5 +14,5 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 
-// Firestore — основное хранилище заказов.
+// Firestore — the main storage for orders.
 export const db = getFirestore(app)

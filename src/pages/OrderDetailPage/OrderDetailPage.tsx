@@ -3,7 +3,6 @@ import { Link, useParams } from 'react-router-dom'
 import { fetchOrder } from '../../lib/orders'
 import { formatMoney } from '../../lib/format'
 import type { Order } from '../../types/order'
-import styles from './OrderDetailPage.module.css'
 
 function OrderDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -30,18 +29,18 @@ function OrderDetailPage() {
   }, [id])
 
   return (
-    <div className={styles.page}>
-      <Link to="/" className={styles.back}>
+    <div className="overflow-auto p-6">
+      <Link to="/" className="mb-4 inline-block text-accent no-underline hover:underline">
         ← К списку заказов
       </Link>
 
-      {loading && <p>Загрузка…</p>}
-      {error && <p>{error}</p>}
-      {!loading && !error && !order && <p>Заказ не найден</p>}
+      {loading && <p className="text-text">Загрузка…</p>}
+      {error && <p className="text-danger">{error}</p>}
+      {!loading && !error && !order && <p className="text-text">Заказ не найден</p>}
 
       {order && (
         <>
-          <h1 className={styles.title}>Заказ №{order.id}</h1>
+          <h1 className="mt-0 mb-4 text-2xl font-semibold text-heading">Заказ №{order.id}</h1>
           <div>
             <Field label="Заказчик" value={order.customerName} />
             <Field label="Адрес" value={order.address} />
@@ -57,9 +56,9 @@ function OrderDetailPage() {
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div className={styles.field}>
-      <span className={styles.label}>{label}</span>
-      <span className={styles.value}>{value}</span>
+    <div className="flex gap-3 border-b border-border py-2">
+      <span className="shrink-0 basis-[200px] text-text">{label}</span>
+      <span className="text-heading">{value}</span>
     </div>
   )
 }

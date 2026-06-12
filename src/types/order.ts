@@ -1,26 +1,26 @@
 import { formatDate, formatMoney } from '../lib/format'
 
-// Статус оплаты заказа.
-// Используем union-типы вместо enum: в tsconfig включён erasableSyntaxOnly,
-// при котором enumّ запрещены (они не "стираются" из рантайма).
+// Order payment status.
+// Use union types instead of enum: tsconfig enables erasableSyntaxOnly,
+// which forbids enums (they are not "erased" from the runtime).
 export type PaymentStatus = 'pending' | 'paid' | 'refunded'
 
-// Статус отправки посылки.
+// Parcel shipment status.
 export type ShipmentStatus = 'new' | 'packing' | 'shipped' | 'delivered' | 'cancelled'
 
-// Способ оплаты.
+// Payment method.
 export type PaymentMethod = 'cash' | 'card' | 'bank'
 
-// Одна позиция в заказе — растение/цветок.
+// A single line item in an order — a plant/flower.
 export interface OrderItem {
   name: string
   quantity: number
   price: number
 }
 
-// Один заказ на горшочные растения и цветы = одна строка таблицы.
-// Поля взяты из order-list-thead.php (репозиторий nikin94/flowers).
-// Точная схема ещё уточняется, поэтому часть полей опциональна.
+// A single order for potted plants and flowers = one table row.
+// Fields are taken from order-list-thead.php (nikin94/flowers repository).
+// The exact schema is still being finalized, so some fields are optional.
 export interface Order {
   id: string
   dateCreated: number // timestamp (ms)
@@ -36,20 +36,20 @@ export interface Order {
   comment?: string
 }
 
-// --- Конфигурация колонок таблицы ---------------------------------------
+// --- Table column configuration -----------------------------------------
 //
-// Чтобы управлять отображаемыми полями в одном месте, описываем колонки
-// декларативно. В таблице рендерятся ТОЛЬКО колонки из ORDER_COLUMNS, а не
-// все поля Order. Хотим показать/скрыть поле — правим этот массив, интерфейс
-// Order при этом остаётся полным источником правды.
+// To control the visible fields in one place, columns are described
+// declaratively. The table renders ONLY the columns from ORDER_COLUMNS, not
+// every Order field. To show/hide a field, edit this array — the Order
+// interface stays the full source of truth.
 //
-// `key: keyof Order` гарантирует, что мы не сможем сослаться на несуществующее
-// поле — TypeScript проверит это на этапе компиляции.
+// `key: keyof Order` guarantees we cannot reference a non-existent field —
+// TypeScript checks it at compile time.
 
 export interface OrderColumn {
   key: keyof Order
   header: string
-  // Опциональное форматирование значения ячейки в строку для отображения.
+  // Optional formatting of the cell value into a display string.
   format?: (order: Order) => string
 }
 
@@ -67,7 +67,7 @@ const SHIPMENT_STATUS_LABELS: Record<ShipmentStatus, string> = {
   cancelled: 'Отменён',
 }
 
-// Подмножество полей Order, которые показываем в таблице-списке.
+// Subset of Order fields shown in the list table.
 export const ORDER_COLUMNS: OrderColumn[] = [
   { key: 'id', header: '№' },
   { key: 'dateCreated', header: 'Дата', format: (o) => formatDate(o.dateCreated) },
