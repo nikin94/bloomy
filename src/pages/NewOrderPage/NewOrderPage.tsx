@@ -22,8 +22,12 @@ interface ItemInput {
 
 const emptyItem = (id: number): ItemInput => ({ id, name: '', quantity: '1', price: '' })
 
+// Width is intentionally NOT baked in here: in the generated Tailwind CSS
+// `.w-full` is emitted after `.w-20`/`.w-28`, so baking `w-full` in would win
+// over per-field width overrides (equal specificity → later rule wins) and
+// blow out the plant row. Each usage sets its own width instead.
 const fieldClass =
-  'w-full rounded-md border border-border bg-bg px-3 py-2 text-heading ' +
+  'rounded-md border border-border bg-bg px-3 py-2 text-heading ' +
   'focus-visible:outline-2 focus-visible:outline-offset-[-1px] focus-visible:outline-accent'
 
 function NewOrderPage() {
@@ -116,7 +120,7 @@ function NewOrderPage() {
           <label className="flex flex-col gap-1">
             <span className="text-sm text-text">Заказчик</span>
             <input
-              className={fieldClass}
+              className={`${fieldClass} w-full`}
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
               autoFocus
@@ -126,7 +130,7 @@ function NewOrderPage() {
           <label className="flex flex-col gap-1">
             <span className="text-sm text-text">Адрес</span>
             <input
-              className={fieldClass}
+              className={`${fieldClass} w-full`}
               value={address}
               onChange={(e) => setAddress(e.target.value)}
             />
@@ -137,7 +141,7 @@ function NewOrderPage() {
             {items.map((item, index) => (
               <div key={item.id} className="flex items-center gap-2">
                 <input
-                  className={fieldClass}
+                  className={`${fieldClass} min-w-0 flex-1`}
                   placeholder="Название"
                   value={item.name}
                   onChange={(e) => updateItem(index, { name: e.target.value })}
@@ -181,7 +185,7 @@ function NewOrderPage() {
           <label className="flex flex-col gap-1">
             <span className="text-sm text-text">Стоимость доставки, ₽</span>
             <input
-              className={`${fieldClass} max-w-40`}
+              className={`${fieldClass} w-full max-w-40`}
               inputMode="decimal"
               placeholder="0"
               value={deliveryPrice}
@@ -193,7 +197,7 @@ function NewOrderPage() {
             <label className="flex flex-col gap-1">
               <span className="text-sm text-text">Оплата</span>
               <select
-                className={fieldClass}
+                className={`${fieldClass} w-full`}
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
               >
@@ -208,7 +212,7 @@ function NewOrderPage() {
             <label className="flex flex-col gap-1">
               <span className="text-sm text-text">Статус оплаты</span>
               <select
-                className={fieldClass}
+                className={`${fieldClass} w-full`}
                 value={paymentStatus}
                 onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}
               >
@@ -223,7 +227,7 @@ function NewOrderPage() {
             <label className="flex flex-col gap-1">
               <span className="text-sm text-text">Отправка</span>
               <select
-                className={fieldClass}
+                className={`${fieldClass} w-full`}
                 value={shipmentStatus}
                 onChange={(e) => setShipmentStatus(e.target.value as ShipmentStatus)}
               >
@@ -239,7 +243,7 @@ function NewOrderPage() {
           <label className="flex flex-col gap-1">
             <span className="text-sm text-text">Комментарий</span>
             <textarea
-              className={`${fieldClass} min-h-20 resize-y`}
+              className={`${fieldClass} w-full min-h-20 resize-y`}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
             />
