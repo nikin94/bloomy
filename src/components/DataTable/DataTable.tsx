@@ -42,7 +42,7 @@ function DataTable({ orders, columns, onRowClick }: DataTableProps) {
             orders.map((order) => (
               <tr
                 key={order.id}
-                className="cursor-pointer transition-colors hover:bg-accent-bg focus-visible:bg-accent-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+                className="cursor-pointer transition-colors hover:bg-accent-bg focus-visible:bg-accent-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
                 role="link"
                 tabIndex={0}
                 onClick={() => onRowClick(order)}
