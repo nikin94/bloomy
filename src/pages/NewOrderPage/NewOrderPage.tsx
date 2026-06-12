@@ -1,7 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import { createOrder } from '../../lib/orders'
+import { createCustomer, fetchCustomers } from '../../lib/customers'
+import { CURRENT_OWNER_ID } from '../../lib/owner'
 import { formatMoney, parseRublesToMinor } from '../../lib/format'
 import {
   PAYMENT_METHOD_OPTIONS,
@@ -10,6 +12,7 @@ import {
 } from '../../types/order'
 import type { NewOrder } from '../../lib/orders'
 import type { OrderItem, PaymentMethod, PaymentStatus, ShipmentStatus } from '../../types/order'
+import type { Customer, NewCustomer } from '../../types/customer'
 
 // Item row as entered in the form. Numeric fields are kept as strings while
 // editing (controlled inputs) and parsed into the stored model on submit.
@@ -22,6 +25,9 @@ interface ItemInput {
 
 const emptyItem = (id: number): ItemInput => ({ id, name: '', quantity: '1', price: '' })
 
+// Pick an existing customer from the address book, or enter a new one.
+type CustomerMode = 'existing' | 'new'
+
 // Width is intentionally NOT baked in here: in the generated Tailwind CSS
 // `.w-full` is emitted after `.w-20`/`.w-28`, so baking `w-full` in would win
 // over per-field width overrides (equal specificity → later rule wins) and
@@ -33,7 +39,16 @@ const fieldClass =
 function NewOrderPage() {
   const navigate = useNavigate()
 
-  const [customerName, setCustomerName] = useState('')
+  // Customer selection. Defaults to "new"; switches to "existing" once the
+  // address book turns out to be non-empty (returning users get the picker).
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [customerMode, setCustomerMode] = useState<CustomerMode>('new')
+  const [selectedCustomerId, setSelectedCustomerId] = useState('')
+  const [newName, setNewName] = useState('')
+  const [newPhone, setNewPhone] = useState('')
+  const [newEmail, setNewEmail] = useState('')
+  const [newNote, setNewNote] = useState('')
+
   const [address, setAddress] = useState('')
   // Monotonic id source for item rows, so React keys stay stable across
   // add/remove instead of being tied to array position. The first row is
@@ -50,12 +65,36 @@ function NewOrderPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    let active = true
+    fetchCustomers(CURRENT_OWNER_ID)
+      .then((data) => {
+        if (!active) return
+        setCustomers(data)
+        if (data.length > 0) setCustomerMode('existing')
+      })
+      .catch(() => {
+        // Non-fatal: the picker just stays empty and the user adds a new
+        // customer. Order-save errors are surfaced separately.
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
   const updateItem = (index: number, patch: Partial<ItemInput>) => {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
   }
   const addItem = () => setItems((prev) => [...prev, emptyItem(nextItemId())])
   const removeItem = (index: number) =>
     setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev))
+
+  const selectCustomer = (id: string) => {
+    setSelectedCustomerId(id)
+    // Prefill the delivery address from the customer's default, if any.
+    const customer = customers.find((c) => c.id === id)
+    if (customer?.address) setAddress(customer.address)
+  }
 
   // Live preview of the derived totals (same money model as the order itself).
   const subtotalMinor = items.reduce(
@@ -77,7 +116,11 @@ function NewOrderPage() {
         unitPriceMinor: parseRublesToMinor(item.price),
       }))
 
-    if (customerName.trim() === '') {
+    if (customerMode === 'existing' && selectedCustomerId === '') {
+      setError('Выберите заказчика')
+      return
+    }
+    if (customerMode === 'new' && newName.trim() === '') {
       setError('Укажите имя заказчика')
       return
     }
@@ -86,21 +129,39 @@ function NewOrderPage() {
       return
     }
 
-    const order: NewOrder = {
-      dateCreated: Date.now(),
-      customerName: customerName.trim(),
-      address: address.trim(),
-      plants,
-      paymentMethod,
-      deliveryPriceMinor: parseRublesToMinor(deliveryPrice),
-      currency: 'RUB',
-      paymentStatus,
-      shipmentStatus,
-      ...(comment.trim() !== '' ? { comment: comment.trim() } : {}),
-    }
-
     setSaving(true)
     try {
+      // Resolve the customer id: reuse the selected one, or create a new
+      // customer first. The delivery address also seeds the new customer's
+      // default address.
+      let customerId = selectedCustomerId
+      if (customerMode === 'new') {
+        const newCustomer: NewCustomer = {
+          ownerId: CURRENT_OWNER_ID,
+          name: newName.trim(),
+          createdAt: Date.now(),
+          ...(newPhone.trim() !== '' ? { phone: newPhone.trim() } : {}),
+          ...(newEmail.trim() !== '' ? { email: newEmail.trim() } : {}),
+          ...(newNote.trim() !== '' ? { note: newNote.trim() } : {}),
+          ...(address.trim() !== '' ? { address: address.trim() } : {}),
+        }
+        customerId = await createCustomer(newCustomer)
+      }
+
+      const order: NewOrder = {
+        dateCreated: Date.now(),
+        ownerId: CURRENT_OWNER_ID,
+        customerId,
+        address: address.trim(),
+        plants,
+        paymentMethod,
+        deliveryPriceMinor: parseRublesToMinor(deliveryPrice),
+        currency: 'RUB',
+        paymentStatus,
+        shipmentStatus,
+        ...(comment.trim() !== '' ? { comment: comment.trim() } : {}),
+      }
+
       const id = await createOrder(order)
       navigate(`/orders/${id}`)
     } catch (err: unknown) {
@@ -117,18 +178,88 @@ function NewOrderPage() {
         <form onSubmit={handleSubmit} className="mx-auto flex max-w-2xl flex-col gap-5">
           <h1 className="m-0 text-[22px] font-semibold text-heading">Новый заказ</h1>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-text">Заказчик</span>
-            <input
-              className={`${fieldClass} w-full`}
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              autoFocus
-            />
-          </label>
+          <fieldset className="flex flex-col gap-3 border-0 p-0">
+            <legend className="mb-1 p-0 text-sm text-text">Заказчик</legend>
+
+            <div className="flex gap-4 text-sm text-heading">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="customerMode"
+                  checked={customerMode === 'existing'}
+                  onChange={() => setCustomerMode('existing')}
+                  disabled={customers.length === 0}
+                />
+                Существующий
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="customerMode"
+                  checked={customerMode === 'new'}
+                  onChange={() => setCustomerMode('new')}
+                />
+                Новый
+              </label>
+            </div>
+
+            {customerMode === 'existing' ? (
+              customers.length === 0 ? (
+                <p className="m-0 text-sm text-text">
+                  Нет сохранённых заказчиков — добавьте нового.
+                </p>
+              ) : (
+                <select
+                  className={`${fieldClass} w-full`}
+                  aria-label="Существующий заказчик"
+                  value={selectedCustomerId}
+                  onChange={(e) => selectCustomer(e.target.value)}
+                >
+                  <option value="">— выберите заказчика —</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.phone ? `${c.name} (${c.phone})` : c.name}
+                    </option>
+                  ))}
+                </select>
+              )
+            ) : (
+              <div className="flex flex-col gap-3">
+                <input
+                  className={`${fieldClass} w-full`}
+                  aria-label="Имя заказчика"
+                  placeholder="Имя*"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                />
+                <input
+                  className={`${fieldClass} w-full`}
+                  aria-label="Телефон"
+                  placeholder="Телефон"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                />
+                <input
+                  className={`${fieldClass} w-full`}
+                  type="email"
+                  aria-label="Email"
+                  placeholder="Email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                />
+                <textarea
+                  className={`${fieldClass} min-h-16 w-full resize-y`}
+                  aria-label="Заметка о заказчике"
+                  placeholder="Заметка"
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                />
+              </div>
+            )}
+          </fieldset>
 
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-text">Адрес</span>
+            <span className="text-sm text-text">Адрес доставки</span>
             <input
               className={`${fieldClass} w-full`}
               value={address}
@@ -243,7 +374,7 @@ function NewOrderPage() {
           <label className="flex flex-col gap-1">
             <span className="text-sm text-text">Комментарий</span>
             <textarea
-              className={`${fieldClass} w-full min-h-20 resize-y`}
+              className={`${fieldClass} min-h-20 w-full resize-y`}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
             />
