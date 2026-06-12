@@ -12,6 +12,12 @@ on:
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
+    # Make least-privilege explicit so the deploy doesn't depend on the repo's
+    # default workflow-token permissions. No pull-requests: write — this
+    # workflow posts no PR comment.
+    permissions:
+      checks: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
