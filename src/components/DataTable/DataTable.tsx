@@ -6,11 +6,12 @@ interface DataTableProps {
   onRowClick: (order: Order) => void
 }
 
-// Cell value: use the column's format function when present,
-// otherwise stringify the raw field.
+// Cell value: use the column's format function when present, otherwise
+// stringify the raw field. Derived columns (no `field`) must provide `format`.
 function renderCell(order: Order, column: OrderColumn): string {
   if (column.format) return column.format(order)
-  return String(order[column.key])
+  if (column.field) return String(order[column.field])
+  return ''
 }
 
 // Scroll container with a fixed height — the basis for future virtualization
@@ -23,7 +24,7 @@ function DataTable({ orders, columns, onRowClick }: DataTableProps) {
           <tr>
             {columns.map((column) => (
               <th
-                key={column.key}
+                key={column.id}
                 className="sticky top-0 z-10 whitespace-nowrap border-b border-border bg-bg px-4 py-3 text-left font-semibold text-heading"
               >
                 {column.header}
@@ -55,7 +56,7 @@ function DataTable({ orders, columns, onRowClick }: DataTableProps) {
               >
                 {columns.map((column) => (
                   <td
-                    key={column.key}
+                    key={column.id}
                     className="max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-4 py-2.5 text-text"
                   >
                     {renderCell(order, column)}
