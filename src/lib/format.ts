@@ -9,3 +9,11 @@ export const formatMoney = (minor: number) =>
 
 export const formatDate = (ms: number) =>
   new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short' }).format(new Date(ms))
+
+// Parse a user-entered amount in the major unit (rubles, e.g. "149,90") into
+// integer minor units (kopecks). Accepts a comma or a dot as the decimal
+// separator. Returns 0 for empty or non-numeric input.
+export const parseRublesToMinor = (value: string): number => {
+  const rubles = Number(value.replace(',', '.').trim())
+  return Number.isFinite(rubles) ? Math.round(rubles * 100) : 0
+}
