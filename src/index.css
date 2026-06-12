@@ -50,20 +50,27 @@
   }
 }
 
+/* Полноэкранный layout: основной экран — таблица на весь вьюпорт.
+   Скролл живёт внутри таблицы, а не на body, поэтому фиксируем высоту. */
+html,
+body,
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
+  height: 100%;
+}
+
+#root {
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
 }
 
 body {
   margin: 0;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 h1,
