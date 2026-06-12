@@ -2,8 +2,10 @@
 // Kept in one place so the table and the detail page use the same
 // format (currency, date).
 
-export const formatMoney = (value: number) =>
-  new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(value)
+// Amounts are stored as integers in minor units (kopecks). Convert to the
+// major unit (rubles) only here, at display time.
+export const formatMoney = (minor: number) =>
+  new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(minor / 100)
 
 export const formatDate = (ms: number) =>
   new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short' }).format(new Date(ms))
