@@ -46,7 +46,6 @@ function NewOrderPage() {
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
   const [newName, setNewName] = useState('')
   const [newPhone, setNewPhone] = useState('')
-  const [newEmail, setNewEmail] = useState('')
   const [newNote, setNewNote] = useState('')
 
   const [address, setAddress] = useState('')
@@ -117,11 +116,11 @@ function NewOrderPage() {
       }))
 
     if (customerMode === 'existing' && selectedCustomerId === '') {
-      setError('Выберите заказчика')
+      setError('Выберите клиента')
       return
     }
     if (customerMode === 'new' && newName.trim() === '') {
-      setError('Укажите имя заказчика')
+      setError('Укажите имя клиента')
       return
     }
     if (plants.length === 0) {
@@ -141,7 +140,6 @@ function NewOrderPage() {
           name: newName.trim(),
           createdAt: Date.now(),
           ...(newPhone.trim() !== '' ? { phone: newPhone.trim() } : {}),
-          ...(newEmail.trim() !== '' ? { email: newEmail.trim() } : {}),
           ...(newNote.trim() !== '' ? { note: newNote.trim() } : {}),
           ...(address.trim() !== '' ? { address: address.trim() } : {}),
         }
@@ -184,7 +182,7 @@ function NewOrderPage() {
           <h1 className="m-0 text-[22px] font-semibold text-heading">Новый заказ</h1>
 
           <fieldset className="flex flex-col gap-3 border-0 p-0">
-            <legend className="mb-1 p-0 text-sm text-text">Заказчик</legend>
+            <legend className="mb-1 p-0 text-sm text-text">Клиент</legend>
 
             <div className="flex gap-4 text-sm text-heading">
               <label className="flex items-center gap-2">
@@ -211,16 +209,16 @@ function NewOrderPage() {
             {customerMode === 'existing' ? (
               customers.length === 0 ? (
                 <p className="m-0 text-sm text-text">
-                  Нет сохранённых заказчиков — добавьте нового.
+                  Нет сохранённых клиентов — добавьте нового.
                 </p>
               ) : (
                 <select
                   className={`${fieldClass} w-full`}
-                  aria-label="Существующий заказчик"
+                  aria-label="Существующий клиент"
                   value={selectedCustomerId}
                   onChange={(e) => selectCustomer(e.target.value)}
                 >
-                  <option value="">— выберите заказчика —</option>
+                  <option value="">— выберите клиента —</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.phone ? `${c.name} (${c.phone})` : c.name}
@@ -232,7 +230,7 @@ function NewOrderPage() {
               <div className="flex flex-col gap-3">
                 <input
                   className={`${fieldClass} w-full`}
-                  aria-label="Имя заказчика"
+                  aria-label="Имя клиента"
                   placeholder="Имя*"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
@@ -244,17 +242,9 @@ function NewOrderPage() {
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
                 />
-                <input
-                  className={`${fieldClass} w-full`}
-                  type="email"
-                  aria-label="Email"
-                  placeholder="Email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                />
                 <textarea
                   className={`${fieldClass} min-h-16 w-full resize-y`}
-                  aria-label="Заметка о заказчике"
+                  aria-label="Заметка о клиенте"
                   placeholder="Заметка"
                   value={newNote}
                   onChange={(e) => setNewNote(e.target.value)}

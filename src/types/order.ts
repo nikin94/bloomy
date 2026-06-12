@@ -116,7 +116,7 @@ export function buildOrderColumns(
   return [
     { id: 'id', header: '№', field: 'id' },
     { id: 'dateCreated', header: 'Дата', format: (o) => formatDate(o.dateCreated) },
-    { id: 'customer', header: 'Заказчик', format: (o) => getCustomerName(o.customerId) },
+    { id: 'customer', header: 'Клиент', format: (o) => getCustomerName(o.customerId) },
     { id: 'address', header: 'Адрес', field: 'address' },
     { id: 'plants', header: 'Растения', format: (o) => o.plants.map((p) => p.name).join(', ') },
     { id: 'total', header: 'Сумма', format: (o) => formatMoney(getTotalMinor(o)) },

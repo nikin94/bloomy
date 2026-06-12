@@ -11,7 +11,6 @@ export interface Customer {
   name: string // required — the only mandatory field
   phone?: string // delivery contact
   address?: string // default address, used to prefill an order's delivery address
-  email?: string
   note?: string // free-text notes (preferences, etc.)
   createdAt: number // timestamp (ms)
 }

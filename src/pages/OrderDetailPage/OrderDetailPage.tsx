@@ -52,7 +52,7 @@ function OrderDetailPage() {
         <>
           <h1 className="mt-0 mb-4 text-2xl font-semibold text-heading">Заказ №{order.id}</h1>
           <div>
-            <Field label="Заказчик" value={customerName} />
+            <Field label="Клиент" value={customerName} />
             <Field label="Адрес" value={order.address} />
             <Field label="Растения" value={order.plants.map((p) => p.name).join(', ')} />
             <Field label="Сумма" value={formatMoney(getTotalMinor(order))} />
