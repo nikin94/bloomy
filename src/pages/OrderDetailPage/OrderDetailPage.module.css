@@ -1,0 +1,36 @@
+.page {
+  padding: 24px;
+  overflow: auto;
+}
+
+.back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+.title {
+  font-size: 24px;
+  margin: 0 0 16px;
+}
+
+.field {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.label {
+  flex: 0 0 200px;
+  color: var(--text);
+}
+
+.value {
+  color: var(--text-h);
+}
