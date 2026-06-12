@@ -14,7 +14,7 @@ function AppHeader() {
   return (
     <header className="flex items-center gap-2 border-b border-border px-6 py-4">
       {/* `end` so "Заказы" is only active on the exact list route, not on /orders/new */}
-      <NavLink to="/" end className={navButtonClass}>
+      <NavLink to="/orders" end className={navButtonClass}>
         Заказы
       </NavLink>
       <NavLink to="/orders/new" className={navButtonClass}>

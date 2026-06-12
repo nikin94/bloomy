@@ -266,7 +266,7 @@ function NewOrderPage() {
             </button>
             <button
               type="button"
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/orders')}
               className="rounded-md border border-border px-5 py-2 text-heading transition-colors hover:bg-accent-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               Отмена
