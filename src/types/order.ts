@@ -72,19 +72,36 @@ export interface OrderColumn {
   format?: (order: Order) => string
 }
 
-const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   pending: 'Ожидает',
   paid: 'Оплачен',
   refunded: 'Возврат',
 }
 
-const SHIPMENT_STATUS_LABELS: Record<ShipmentStatus, string> = {
+export const SHIPMENT_STATUS_LABELS: Record<ShipmentStatus, string> = {
   new: 'Новый',
   packing: 'Сборка',
   shipped: 'Отправлен',
   delivered: 'Доставлен',
   cancelled: 'Отменён',
 }
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  cash: 'Наличные',
+  card: 'Карта',
+  bank: 'Перевод',
+}
+
+// Build typed { value, label } options from a label record for native <select>.
+// Keys originate from a Record<Union, string>, so casting them back to the
+// union is safe.
+function toOptions<K extends string>(labels: Record<K, string>): { value: K; label: string }[] {
+  return (Object.keys(labels) as K[]).map((value) => ({ value, label: labels[value] }))
+}
+
+export const PAYMENT_STATUS_OPTIONS = toOptions(PAYMENT_STATUS_LABELS)
+export const SHIPMENT_STATUS_OPTIONS = toOptions(SHIPMENT_STATUS_LABELS)
+export const PAYMENT_METHOD_OPTIONS = toOptions(PAYMENT_METHOD_LABELS)
 
 // Subset of Order data shown in the list table.
 export const ORDER_COLUMNS: OrderColumn[] = [

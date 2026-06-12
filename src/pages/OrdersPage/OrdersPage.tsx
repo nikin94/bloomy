@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import AppHeader from '../../components/AppHeader/AppHeader'
 import DataTable from '../../components/DataTable/DataTable'
 import { fetchOrders } from '../../lib/orders'
 import { ORDER_COLUMNS } from '../../types/order'
@@ -30,9 +31,7 @@ function OrdersPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="border-b border-border px-6 py-4">
-        <h1 className="m-0 text-[22px] font-semibold text-heading">Заказы</h1>
-      </header>
+      <AppHeader />
 
       {loading && <p className="px-6 py-8 text-text">Загрузка…</p>}
       {error && <p className="px-6 py-8 text-danger">{error}</p>}
