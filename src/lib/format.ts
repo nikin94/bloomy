@@ -1,6 +1,6 @@
-// Общие форматтеры для отображения значений в UI.
-// Держим в одном месте, чтобы таблица и детальная страница использовали
-// одинаковый формат (валюта, дата).
+// Shared formatters for displaying values in the UI.
+// Kept in one place so the table and the detail page use the same
+// format (currency, date).
 
 export const formatMoney = (value: number) =>
   new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(value)

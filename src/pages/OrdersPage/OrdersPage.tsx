@@ -4,7 +4,6 @@ import DataTable from '../../components/DataTable/DataTable'
 import { fetchOrders } from '../../lib/orders'
 import { ORDER_COLUMNS } from '../../types/order'
 import type { Order } from '../../types/order'
-import styles from './OrdersPage.module.css'
 
 function OrdersPage() {
   const navigate = useNavigate()
@@ -30,13 +29,13 @@ function OrdersPage() {
   }, [])
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>Заказы</h1>
+    <div className="flex h-full flex-col">
+      <header className="border-b border-border px-6 py-4">
+        <h1 className="m-0 text-[22px] font-semibold text-heading">Заказы</h1>
       </header>
 
-      {loading && <p className={styles.status}>Загрузка…</p>}
-      {error && <p className={`${styles.status} ${styles.error}`}>{error}</p>}
+      {loading && <p className="px-6 py-8 text-text">Загрузка…</p>}
+      {error && <p className="px-6 py-8 text-danger">{error}</p>}
 
       {!loading && !error && (
         <DataTable
