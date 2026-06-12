@@ -1,10 +1,14 @@
+import { Route, Routes } from 'react-router-dom'
+import OrdersPage from './pages/OrdersPage/OrdersPage'
+import OrderDetailPage from './pages/OrderDetailPage/OrderDetailPage'
 import './App.css'
 
 function App() {
   return (
-    <>
-      <h1>Vite + React</h1>
-    </>
+    <Routes>
+      <Route path="/" element={<OrdersPage />} />
+      <Route path="/orders/:id" element={<OrderDetailPage />} />
+    </Routes>
   )
 }
 
