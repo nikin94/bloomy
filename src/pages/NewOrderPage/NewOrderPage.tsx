@@ -10,6 +10,7 @@ import {
   PAYMENT_STATUS_OPTIONS,
   SHIPMENT_STATUS_OPTIONS,
 } from '../../types/order'
+import Spinner from '../../components/Spinner/Spinner'
 import type { NewOrder } from '../../lib/orders'
 import type { OrderItem, PaymentMethod, PaymentStatus, ShipmentStatus } from '../../types/order'
 import type { Customer, NewCustomer } from '../../types/customer'
@@ -46,6 +47,11 @@ function NewOrderPage() {
   // address book turns out to be non-empty (returning users get the picker).
   const [customers, setCustomers] = useState<Customer[]>([])
   const [customerMode, setCustomerMode] = useState<CustomerMode>('new')
+  // Gate the form on the customer fetch: the initial mode depends on whether the
+  // address book is empty, so rendering the form before it resolves would paint
+  // the slider at "new" and snap it to "existing" once the data arrives. Showing
+  // the spinner until then means the form first paints with the mode correct.
+  const [customersLoading, setCustomersLoading] = useState(true)
   // The slider pill only animates after the user interacts. The initial
   // fetch-driven switch to "existing" (for returning users) must not slide.
   const [animateModeSlider, setAnimateModeSlider] = useState(false)
@@ -82,6 +88,9 @@ function NewOrderPage() {
       .catch(() => {
         // Non-fatal: the picker just stays empty and the user adds a new
         // customer. Order-save errors are surfaced separately.
+      })
+      .finally(() => {
+        if (active) setCustomersLoading(false)
       })
     return () => {
       active = false
@@ -204,6 +213,10 @@ function NewOrderPage() {
       setSaving(false)
     }
   }
+
+  // Wait for the customer fetch before painting the form, so the slider starts
+  // in the correct position instead of snapping from "new" to "existing".
+  if (customersLoading) return <Spinner />
 
   return (
     <div className="flex h-full flex-col">

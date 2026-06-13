@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import DataTable from '../../components/DataTable/DataTable'
+import Spinner from '../../components/Spinner/Spinner'
 import { fetchOrders } from '../../lib/orders'
 import { fetchCustomers } from '../../lib/customers'
 import { useAuth } from '../../context/auth-context'
@@ -49,7 +50,7 @@ function OrdersPage() {
     <div className="flex h-full flex-col">
       <AppHeader />
 
-      {loading && <p className="px-6 py-8 text-text">Загрузка…</p>}
+      {loading && <Spinner />}
       {error && <p className="px-6 py-8 text-danger">{error}</p>}
 
       {!loading && !error && (
