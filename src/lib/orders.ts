@@ -1,5 +1,6 @@
 import { collection, doc, getDoc, getDocs, query, runTransaction, where } from 'firebase/firestore'
 import { db } from './firebase'
+import { STORED_ORDER_SCHEMA } from '../types/order'
 import type { Order } from '../types/order'
 
 const ORDERS_COLLECTION = 'orders'
@@ -12,13 +13,9 @@ const COUNTERS_COLLECTION = 'counters'
 // `number` is assigned by the create transaction, so the caller provides neither.
 export type NewOrder = Omit<Order, 'id' | 'number'>
 
-// Firestore document -> Order. The exact Firestore schema is still being
-// finalized, so we keep the mapping in one place to adjust as fields change.
-function mapDoc(id: string, data: Record<string, unknown>): Order {
-  // TODO: unsafe cast — Firestore may return data that does not match Order.
-  // Add runtime validation (zod/valibot) as a separate task.
-  return { id, ...(data as Omit<Order, 'id'>) }
-}
+// Firestore document -> validated Order. Throws on schema mismatch — surfacing
+// bad data loudly is fine while the app is in test mode.
+const parseOrder = (id: string, data: unknown): Order => ({ id, ...STORED_ORDER_SCHEMA.parse(data) })
 
 // Load the orders owned by the given app user (for the list table). We filter
 // by `ownerId` and sort newest-first in memory: a server-side `ownerId`
@@ -27,9 +24,7 @@ function mapDoc(id: string, data: Record<string, unknown>): Order {
 export async function fetchOrders(ownerId: string): Promise<Order[]> {
   const q = query(collection(db, ORDERS_COLLECTION), where('ownerId', '==', ownerId))
   const snapshot = await getDocs(q)
-  return snapshot.docs
-    .map((d) => mapDoc(d.id, d.data()))
-    .sort((a, b) => b.dateCreated - a.dateCreated)
+  return snapshot.docs.map((d) => parseOrder(d.id, d.data())).sort((a, b) => b.dateCreated - a.dateCreated)
 }
 
 // Load a single order by id (for the order page). We re-check `ownerId` on the
@@ -40,7 +35,7 @@ export async function fetchOrders(ownerId: string): Promise<Order[]> {
 export async function fetchOrder(id: string, ownerId: string): Promise<Order | null> {
   const snapshot = await getDoc(doc(db, ORDERS_COLLECTION, id))
   if (!snapshot.exists()) return null
-  const order = mapDoc(snapshot.id, snapshot.data())
+  const order = parseOrder(snapshot.id, snapshot.data())
   return order.ownerId === ownerId ? order : null
 }
 
