@@ -46,6 +46,9 @@ function NewOrderPage() {
   // address book turns out to be non-empty (returning users get the picker).
   const [customers, setCustomers] = useState<Customer[]>([])
   const [customerMode, setCustomerMode] = useState<CustomerMode>('new')
+  // The slider pill only animates after the user interacts. The initial
+  // fetch-driven switch to "existing" (for returning users) must not slide.
+  const [animateModeSlider, setAnimateModeSlider] = useState(false)
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
   const [newName, setNewName] = useState('')
   const [newPhone, setNewPhone] = useState('')
@@ -88,9 +91,21 @@ function NewOrderPage() {
   const updateItem = (index: number, patch: Partial<ItemInput>) => {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
   }
-  const addItem = () => setItems((prev) => [...prev, emptyItem(nextItemId())])
+  // Allow adding a new row only when the last one has a name — otherwise the
+  // user could pile up empty rows. Empty rows are also dropped on submit.
+  const lastItem = items[items.length - 1]
+  const canAddItem = lastItem !== undefined && lastItem.name.trim() !== ''
+  const addItem = () => {
+    if (!canAddItem) return
+    setItems((prev) => [...prev, emptyItem(nextItemId())])
+  }
   const removeItem = (index: number) =>
     setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev))
+
+  // A row that has a name but no price is incomplete — flag its price input.
+  // The trailing empty placeholder (no name yet) is intentionally not flagged.
+  const isPriceMissing = (item: ItemInput) =>
+    item.name.trim() !== '' && item.price.trim() === ''
 
   const selectCustomer = (id: string) => {
     setSelectedCustomerId(id)
@@ -100,6 +115,7 @@ function NewOrderPage() {
   }
 
   const selectMode = (mode: CustomerMode) => {
+    setAnimateModeSlider(true)
     setCustomerMode(mode)
     // Switching to "new" starts a fresh customer, so drop the delivery address
     // that may have been prefilled from a previously selected existing customer.
@@ -193,9 +209,11 @@ function NewOrderPage() {
     <div className="flex h-full flex-col">
       <AppHeader />
 
-      <div className="overflow-auto p-6">
-        <form onSubmit={handleSubmit} className="mx-auto flex max-w-2xl flex-col gap-5">
-          <h1 className="m-0 text-[22px] font-semibold text-heading">Новый заказ</h1>
+      <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+        {/* Scrollable body — the footer below stays pinned. */}
+        <div className="flex-1 overflow-auto p-6">
+          <div className="mx-auto flex max-w-2xl flex-col gap-5">
+            <h1 className="m-0 text-[22px] font-semibold text-heading">Новый заказ</h1>
 
           <fieldset className="flex flex-col gap-3 border-0 p-0">
             <legend className="mb-1 p-0 text-sm text-text">Клиент</legend>
@@ -211,9 +229,9 @@ function NewOrderPage() {
               {/* Sliding pill behind the active segment. */}
               <span
                 aria-hidden="true"
-                className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-accent shadow-sm transition-transform duration-200 ease-out ${
-                  customerMode === 'new' ? 'translate-x-full' : 'translate-x-0'
-                }`}
+                className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-accent shadow-sm ${
+                  animateModeSlider ? 'transition-transform duration-200 ease-out' : ''
+                } ${customerMode === 'new' ? 'translate-x-full' : 'translate-x-0'}`}
               />
               <label
                 className={`relative z-10 flex cursor-pointer items-center justify-center rounded-full py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
@@ -322,9 +340,17 @@ function NewOrderPage() {
                   onChange={(e) => updateItem(index, { quantity: e.target.value })}
                 />
                 <input
-                  className={`${fieldClass} w-28 shrink-0`}
+                  // Border colour is set explicitly (danger vs normal) instead
+                  // of overriding the shared field class, so only one border-*
+                  // colour utility is ever present (avoids order-dependent wins).
+                  className={`w-28 shrink-0 rounded-md border bg-bg px-3 py-2 text-heading focus-visible:outline-2 focus-visible:outline-offset-[-1px] ${
+                    isPriceMissing(item)
+                      ? 'border-danger focus-visible:outline-danger'
+                      : 'border-border focus-visible:outline-accent'
+                  }`}
                   inputMode="decimal"
                   placeholder="Цена, ₽"
+                  aria-invalid={isPriceMissing(item)}
                   value={item.price}
                   onChange={(e) => updateItem(index, { price: e.target.value })}
                 />
@@ -342,7 +368,8 @@ function NewOrderPage() {
             <button
               type="button"
               onClick={addItem}
-              className="self-start rounded-md border border-border px-3 py-2 text-sm text-heading transition-colors hover:bg-accent-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              disabled={!canAddItem}
+              className="self-start rounded-md border border-border px-3 py-2 text-sm text-heading transition-colors hover:bg-accent-bg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               + Добавить растение
             </button>
@@ -415,35 +442,45 @@ function NewOrderPage() {
             />
           </label>
 
-          <div className="flex items-center justify-between border-t border-border pt-4 text-heading">
-            <span className="text-sm text-text">Итого</span>
-            <span className="text-lg font-semibold">{formatMoney(totalMinor)}</span>
           </div>
+        </div>
 
-          {error && (
-            <p role="alert" className="m-0 text-danger">
-              {error}
-            </p>
-          )}
-
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-md bg-accent px-5 py-2 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            >
-              {saving ? 'Сохранение…' : 'Сохранить заказ'}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/orders')}
-              className="rounded-md border border-border px-5 py-2 text-heading transition-colors hover:bg-accent-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-            >
-              Отмена
-            </button>
+        {/* Pinned footer: the running total and actions stay visible while the
+            plant list grows, so the user never has to scroll to see the total. */}
+        <div className="border-t border-border bg-bg px-6 py-4">
+          <div className="mx-auto flex max-w-2xl flex-col gap-3">
+            {error && (
+              <p role="alert" className="m-0 text-danger">
+                {error}
+              </p>
+            )}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-baseline gap-2">
+                <span className="text-sm text-text">Итого</span>
+                <span className="text-lg font-semibold text-heading">
+                  {formatMoney(totalMinor)}
+                </span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-md bg-accent px-5 py-2 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  {saving ? 'Сохранение…' : 'Сохранить заказ'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/orders')}
+                  className="rounded-md border border-border px-5 py-2 text-heading transition-colors hover:bg-accent-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  Отмена
+                </button>
+              </div>
+            </div>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   )
 }
