@@ -4,10 +4,13 @@ import { fetchOrder } from '../../lib/orders'
 import { fetchCustomer } from '../../lib/customers'
 import { formatMoney } from '../../lib/format'
 import { getTotalMinor } from '../../types/order'
+import { useAuth } from '../../context/auth-context'
 import type { Order } from '../../types/order'
 
 function OrderDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const { user } = useAuth()
+  const ownerId = user?.uid
   const [order, setOrder] = useState<Order | null>(null)
   // Resolved live from the customers collection. Falls back to "—" when the
   // customer was deleted (a dangling customerId must not crash the page).
@@ -16,9 +19,9 @@ function OrderDetailPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!id) return
+    if (!id || !ownerId) return
     let active = true
-    fetchOrder(id)
+    fetchOrder(id, ownerId)
       .then(async (data) => {
         if (!active) return
         setOrder(data)
@@ -36,7 +39,7 @@ function OrderDetailPage() {
     return () => {
       active = false
     }
-  }, [id])
+  }, [id, ownerId])
 
   return (
     <div className="overflow-auto p-6">

@@ -35,7 +35,11 @@ function AppHeader() {
         )}
         <button
           type="button"
-          onClick={() => void signOutUser()}
+          onClick={() => {
+            // signOut is a local operation (clears persisted session, no network
+            // request), so failure is unlikely — but don't swallow it silently.
+            signOutUser().catch((err: unknown) => console.error('Sign-out failed', err))
+          }}
           className="rounded-md border border-border px-3 py-2 text-sm text-heading transition-colors hover:bg-accent-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           Выйти
