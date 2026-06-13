@@ -1,5 +1,6 @@
 import { collection, doc, getDoc, getDocs, query, runTransaction, where } from 'firebase/firestore'
 import { db } from './firebase'
+import { STORED_ORDER_SCHEMA } from '../types/order'
 import type { Order } from '../types/order'
 
 const ORDERS_COLLECTION = 'orders'
@@ -12,12 +13,16 @@ const COUNTERS_COLLECTION = 'counters'
 // `number` is assigned by the create transaction, so the caller provides neither.
 export type NewOrder = Omit<Order, 'id' | 'number'>
 
-// Firestore document -> Order. The exact Firestore schema is still being
-// finalized, so we keep the mapping in one place to adjust as fields change.
-function mapDoc(id: string, data: Record<string, unknown>): Order {
-  // TODO: unsafe cast — Firestore may return data that does not match Order.
-  // Add runtime validation (zod/valibot) as a separate task.
-  return { id, ...(data as Omit<Order, 'id'>) }
+// Validate a Firestore document against the stored Order schema, returning a
+// typed Order or null on mismatch. We log and skip (rather than throw) so a
+// single corrupt or legacy document can't break the whole list.
+function parseOrder(id: string, data: unknown): Order | null {
+  const parsed = STORED_ORDER_SCHEMA.safeParse(data)
+  if (!parsed.success) {
+    console.warn(`Skipping order ${id}: does not match schema`, parsed.error.issues)
+    return null
+  }
+  return { id, ...parsed.data }
 }
 
 // Load the orders owned by the given app user (for the list table). We filter
@@ -28,7 +33,8 @@ export async function fetchOrders(ownerId: string): Promise<Order[]> {
   const q = query(collection(db, ORDERS_COLLECTION), where('ownerId', '==', ownerId))
   const snapshot = await getDocs(q)
   return snapshot.docs
-    .map((d) => mapDoc(d.id, d.data()))
+    .map((d) => parseOrder(d.id, d.data()))
+    .filter((order): order is Order => order !== null)
     .sort((a, b) => b.dateCreated - a.dateCreated)
 }
 
@@ -40,8 +46,9 @@ export async function fetchOrders(ownerId: string): Promise<Order[]> {
 export async function fetchOrder(id: string, ownerId: string): Promise<Order | null> {
   const snapshot = await getDoc(doc(db, ORDERS_COLLECTION, id))
   if (!snapshot.exists()) return null
-  const order = mapDoc(snapshot.id, snapshot.data())
-  return order.ownerId === ownerId ? order : null
+  const order = parseOrder(snapshot.id, snapshot.data())
+  if (!order || order.ownerId !== ownerId) return null
+  return order
 }
 
 // Create a new order and return its generated document id.

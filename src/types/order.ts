@@ -1,49 +1,62 @@
+import { z } from 'zod'
 import { formatDate, formatMoney } from '../lib/format'
 
-// Order payment status.
-// Use union types instead of enum: tsconfig enables erasableSyntaxOnly,
-// which forbids enums (they are not "erased" from the runtime).
-export type PaymentStatus = 'pending' | 'paid' | 'refunded'
+// Status/method unions are defined as Zod enums so the runtime validator (used
+// when reading Firestore documents) and the TypeScript types share a single
+// source of truth. We still avoid `enum` — tsconfig enables erasableSyntaxOnly,
+// which forbids it; the inferred string-literal unions are erasable.
+export const PAYMENT_STATUS_SCHEMA = z.enum(['pending', 'paid', 'refunded'])
+export type PaymentStatus = z.infer<typeof PAYMENT_STATUS_SCHEMA>
 
-// Parcel shipment status.
-export type ShipmentStatus = 'new' | 'packing' | 'shipped' | 'delivered' | 'cancelled'
+export const SHIPMENT_STATUS_SCHEMA = z.enum([
+  'new',
+  'packing',
+  'shipped',
+  'delivered',
+  'cancelled',
+])
+export type ShipmentStatus = z.infer<typeof SHIPMENT_STATUS_SCHEMA>
 
-// Payment method.
-export type PaymentMethod = 'cash' | 'card' | 'bank'
+export const PAYMENT_METHOD_SCHEMA = z.enum(['cash', 'card', 'bank'])
+export type PaymentMethod = z.infer<typeof PAYMENT_METHOD_SCHEMA>
 
 // A single line item in an order — a plant/flower.
 // Starts as plain text (the plant name); saved together with quantity and a
 // unit price. Amounts are integers in minor units (kopecks) to avoid float
 // rounding errors; the unit price is a snapshot taken at order time.
-export interface OrderItem {
-  name: string
-  quantity: number
-  unitPriceMinor: number
-}
+export const ORDER_ITEM_SCHEMA = z.object({
+  name: z.string().min(1),
+  quantity: z.number().int().positive(),
+  unitPriceMinor: z.number().int().nonnegative(),
+})
+export type OrderItem = z.infer<typeof ORDER_ITEM_SCHEMA>
 
-// A single order for potted plants and flowers = one table row.
-// Fields are taken from order-list-thead.php (nikin94/flowers repository).
-// The exact schema is still being finalized, so some fields are optional.
+// The stored order document — every field Firestore holds for an order. The
+// document id is the technical key (used in URLs/links) and is added on top as
+// `Order`, not stored in the body, so it lives outside this schema.
 //
 // Money model: items are the source of truth. Subtotal and total are NOT
 // stored — they are derived from the items (see getSubtotalMinor/getTotalMinor).
 // Only delivery is an independent input and is stored. This keeps the order a
 // live "notebook": editing items recomputes the totals, no stale snapshot.
-export interface Order {
-  id: string // Firestore document id — the technical key used in URLs/links
-  number: number // human-readable, per-owner sequential number (1, 2, 3…), assigned on create
-  dateCreated: number // timestamp (ms)
-  ownerId: string // app user UID that owns this order (multi-tenancy)
-  customerId: string // link to Customer — the live source of the customer name
-  address: string // delivery address for this order (may differ from the customer default)
-  plants: OrderItem[]
-  paymentMethod: PaymentMethod
-  deliveryPriceMinor: number // minor units (kopecks)
-  currency: 'RUB'
-  paymentStatus: PaymentStatus
-  shipmentStatus: ShipmentStatus
-  comment?: string
-}
+export const STORED_ORDER_SCHEMA = z.object({
+  number: z.number().int().positive(), // per-owner sequential number, assigned on create
+  dateCreated: z.number(), // timestamp (ms)
+  ownerId: z.string().min(1), // app user UID that owns this order (multi-tenancy)
+  customerId: z.string().min(1), // link to Customer — the live source of the customer name
+  address: z.string(), // delivery address (may differ from the customer default)
+  plants: z.array(ORDER_ITEM_SCHEMA).min(1), // at least one plant, enforced by the form
+  paymentMethod: PAYMENT_METHOD_SCHEMA,
+  deliveryPriceMinor: z.number().int().nonnegative(), // minor units (kopecks)
+  currency: z.literal('RUB'),
+  paymentStatus: PAYMENT_STATUS_SCHEMA,
+  shipmentStatus: SHIPMENT_STATUS_SCHEMA,
+  comment: z.string().optional(),
+})
+
+// A single order for potted plants and flowers = one table row. The doc id is
+// added to the stored shape.
+export type Order = z.infer<typeof STORED_ORDER_SCHEMA> & { id: string }
 
 // Derived money selectors. All amounts are integers in minor units (kopecks).
 // Subtotal = sum of item line totals; total = subtotal + delivery.
