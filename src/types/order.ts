@@ -32,8 +32,9 @@ export interface OrderItem {
 export interface Order {
   id: string
   dateCreated: number // timestamp (ms)
-  customerName: string
-  address: string
+  ownerId: string // app user UID that owns this order (multi-tenancy)
+  customerId: string // link to Customer — the live source of the customer name
+  address: string // delivery address for this order (may differ from the customer default)
   plants: OrderItem[]
   paymentMethod: PaymentMethod
   deliveryPriceMinor: number // minor units (kopecks)
@@ -103,18 +104,27 @@ export const PAYMENT_STATUS_OPTIONS = toOptions(PAYMENT_STATUS_LABELS)
 export const SHIPMENT_STATUS_OPTIONS = toOptions(SHIPMENT_STATUS_LABELS)
 export const PAYMENT_METHOD_OPTIONS = toOptions(PAYMENT_METHOD_LABELS)
 
-// Subset of Order data shown in the list table.
-export const ORDER_COLUMNS: OrderColumn[] = [
-  { id: 'id', header: '№', field: 'id' },
-  { id: 'dateCreated', header: 'Дата', format: (o) => formatDate(o.dateCreated) },
-  { id: 'customerName', header: 'Заказчик', field: 'customerName' },
-  { id: 'address', header: 'Адрес', field: 'address' },
-  { id: 'plants', header: 'Растения', format: (o) => o.plants.map((p) => p.name).join(', ') },
-  { id: 'total', header: 'Сумма', format: (o) => formatMoney(getTotalMinor(o)) },
-  { id: 'paymentStatus', header: 'Оплата', format: (o) => PAYMENT_STATUS_LABELS[o.paymentStatus] },
-  {
-    id: 'shipmentStatus',
-    header: 'Отправка',
-    format: (o) => SHIPMENT_STATUS_LABELS[o.shipmentStatus],
-  },
-]
+// Columns shown in the list table. This is a factory rather than a constant
+// because the customer name is NOT stored on the order — it is resolved live
+// from the customers collection via `getCustomerName(customerId)`. The caller
+// (OrdersPage) loads customers once and passes a lookup, so the table renders
+// with two queries instead of N+1 reads. Unknown/deleted customers fall back to
+// whatever the lookup returns (e.g. "—"), so a dangling customerId never crashes.
+export function buildOrderColumns(
+  getCustomerName: (customerId: string) => string,
+): OrderColumn[] {
+  return [
+    { id: 'id', header: '№', field: 'id' },
+    { id: 'dateCreated', header: 'Дата', format: (o) => formatDate(o.dateCreated) },
+    { id: 'customer', header: 'Клиент', format: (o) => getCustomerName(o.customerId) },
+    { id: 'address', header: 'Адрес', field: 'address' },
+    { id: 'plants', header: 'Растения', format: (o) => o.plants.map((p) => p.name).join(', ') },
+    { id: 'total', header: 'Сумма', format: (o) => formatMoney(getTotalMinor(o)) },
+    { id: 'paymentStatus', header: 'Оплата', format: (o) => PAYMENT_STATUS_LABELS[o.paymentStatus] },
+    {
+      id: 'shipmentStatus',
+      header: 'Отправка',
+      format: (o) => SHIPMENT_STATUS_LABELS[o.shipmentStatus],
+    },
+  ]
+}

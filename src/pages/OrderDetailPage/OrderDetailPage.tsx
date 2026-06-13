@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { fetchOrder } from '../../lib/orders'
+import { fetchCustomer } from '../../lib/customers'
 import { formatMoney } from '../../lib/format'
 import { getTotalMinor } from '../../types/order'
 import type { Order } from '../../types/order'
@@ -8,6 +9,9 @@ import type { Order } from '../../types/order'
 function OrderDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [order, setOrder] = useState<Order | null>(null)
+  // Resolved live from the customers collection. Falls back to "—" when the
+  // customer was deleted (a dangling customerId must not crash the page).
+  const [customerName, setCustomerName] = useState('—')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -15,8 +19,13 @@ function OrderDetailPage() {
     if (!id) return
     let active = true
     fetchOrder(id)
-      .then((data) => {
-        if (active) setOrder(data)
+      .then(async (data) => {
+        if (!active) return
+        setOrder(data)
+        if (data) {
+          const customer = await fetchCustomer(data.customerId)
+          if (active) setCustomerName(customer?.name ?? '—')
+        }
       })
       .catch((err: unknown) => {
         if (active) setError(err instanceof Error ? err.message : 'Не удалось загрузить заказ')
@@ -43,7 +52,7 @@ function OrderDetailPage() {
         <>
           <h1 className="mt-0 mb-4 text-2xl font-semibold text-heading">Заказ №{order.id}</h1>
           <div>
-            <Field label="Заказчик" value={order.customerName} />
+            <Field label="Клиент" value={customerName} />
             <Field label="Адрес" value={order.address} />
             <Field label="Растения" value={order.plants.map((p) => p.name).join(', ')} />
             <Field label="Сумма" value={formatMoney(getTotalMinor(order))} />
