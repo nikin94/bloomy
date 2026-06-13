@@ -184,21 +184,45 @@ function NewOrderPage() {
           <fieldset className="flex flex-col gap-3 border-0 p-0">
             <legend className="mb-1 p-0 text-sm text-text">Клиент</legend>
 
-            <div className="flex gap-4 text-sm text-heading">
-              <label className="flex items-center gap-2">
+            {/* Segmented slider toggle. Native radios stay as the source of
+                truth (keyboard + form semantics) but are visually hidden; the
+                sliding pill is positioned from `customerMode`. */}
+            <div
+              role="radiogroup"
+              aria-label="Тип клиента"
+              className="relative grid w-full max-w-xs grid-cols-2 rounded-full border border-border bg-accent-bg p-1 text-sm font-medium"
+            >
+              {/* Sliding pill behind the active segment. */}
+              <span
+                aria-hidden="true"
+                className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-accent shadow-sm transition-transform duration-200 ease-out ${
+                  customerMode === 'new' ? 'translate-x-full' : 'translate-x-0'
+                }`}
+              />
+              <label
+                className={`relative z-10 flex cursor-pointer items-center justify-center rounded-full py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
+                  customerMode === 'existing' ? 'text-white' : 'text-text hover:text-heading'
+                } ${customers.length === 0 ? 'cursor-not-allowed opacity-50' : ''}`}
+              >
                 <input
                   type="radio"
                   name="customerMode"
+                  className="sr-only"
                   checked={customerMode === 'existing'}
                   onChange={() => setCustomerMode('existing')}
                   disabled={customers.length === 0}
                 />
                 Существующий
               </label>
-              <label className="flex items-center gap-2">
+              <label
+                className={`relative z-10 flex cursor-pointer items-center justify-center rounded-full py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
+                  customerMode === 'new' ? 'text-white' : 'text-text hover:text-heading'
+                }`}
+              >
                 <input
                   type="radio"
                   name="customerMode"
+                  className="sr-only"
                   checked={customerMode === 'new'}
                   onChange={() => setCustomerMode('new')}
                 />
