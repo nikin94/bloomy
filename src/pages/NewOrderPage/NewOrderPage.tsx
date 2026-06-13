@@ -46,6 +46,9 @@ function NewOrderPage() {
   // address book turns out to be non-empty (returning users get the picker).
   const [customers, setCustomers] = useState<Customer[]>([])
   const [customerMode, setCustomerMode] = useState<CustomerMode>('new')
+  // The slider pill only animates after the user interacts. The initial
+  // fetch-driven switch to "existing" (for returning users) must not slide.
+  const [animateModeSlider, setAnimateModeSlider] = useState(false)
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
   const [newName, setNewName] = useState('')
   const [newPhone, setNewPhone] = useState('')
@@ -112,6 +115,7 @@ function NewOrderPage() {
   }
 
   const selectMode = (mode: CustomerMode) => {
+    setAnimateModeSlider(true)
     setCustomerMode(mode)
     // Switching to "new" starts a fresh customer, so drop the delivery address
     // that may have been prefilled from a previously selected existing customer.
@@ -225,9 +229,9 @@ function NewOrderPage() {
               {/* Sliding pill behind the active segment. */}
               <span
                 aria-hidden="true"
-                className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-accent shadow-sm transition-transform duration-200 ease-out ${
-                  customerMode === 'new' ? 'translate-x-full' : 'translate-x-0'
-                }`}
+                className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-accent shadow-sm ${
+                  animateModeSlider ? 'transition-transform duration-200 ease-out' : ''
+                } ${customerMode === 'new' ? 'translate-x-full' : 'translate-x-0'}`}
               />
               <label
                 className={`relative z-10 flex cursor-pointer items-center justify-center rounded-full py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
