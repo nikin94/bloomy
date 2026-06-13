@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import { createOrder } from '../../lib/orders'
 import { createCustomer, fetchCustomers } from '../../lib/customers'
-import { CURRENT_OWNER_ID } from '../../lib/owner'
+import { useAuth } from '../../context/auth-context'
 import { formatMoney, parseRublesToMinor } from '../../lib/format'
 import {
   PAYMENT_METHOD_OPTIONS,
@@ -38,6 +38,9 @@ const fieldClass =
 
 function NewOrderPage() {
   const navigate = useNavigate()
+  // Owner of every record created here. Guaranteed non-null under ProtectedRoute.
+  const { user } = useAuth()
+  const ownerId = user?.uid
 
   // Customer selection. Defaults to "new"; switches to "existing" once the
   // address book turns out to be non-empty (returning users get the picker).
@@ -65,8 +68,9 @@ function NewOrderPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!ownerId) return
     let active = true
-    fetchCustomers(CURRENT_OWNER_ID)
+    fetchCustomers(ownerId)
       .then((data) => {
         if (!active) return
         setCustomers(data)
@@ -79,7 +83,7 @@ function NewOrderPage() {
     return () => {
       active = false
     }
-  }, [])
+  }, [ownerId])
 
   const updateItem = (index: number, patch: Partial<ItemInput>) => {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
@@ -114,6 +118,11 @@ function NewOrderPage() {
     if (saving) return
     setError(null)
 
+    if (!ownerId) {
+      setError('Сессия истекла — войдите снова')
+      return
+    }
+
     const plants: OrderItem[] = items
       .filter((item) => item.name.trim() !== '')
       .map((item) => ({
@@ -143,7 +152,7 @@ function NewOrderPage() {
       let customerId = selectedCustomerId
       if (customerMode === 'new') {
         const newCustomer: NewCustomer = {
-          ownerId: CURRENT_OWNER_ID,
+          ownerId,
           name: newName.trim(),
           createdAt: Date.now(),
           ...(newPhone.trim() !== '' ? { phone: newPhone.trim() } : {}),
@@ -160,7 +169,7 @@ function NewOrderPage() {
 
       const order: NewOrder = {
         dateCreated: Date.now(),
-        ownerId: CURRENT_OWNER_ID,
+        ownerId,
         customerId,
         address: address.trim(),
         plants,

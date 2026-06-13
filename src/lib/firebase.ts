@@ -1,4 +1,5 @@
 import { initializeApp } from 'firebase/app'
+import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
 // Config is read from Vite environment variables (.env, see .env.example).
@@ -13,6 +14,9 @@ const firebaseConfig = {
 }
 
 const app = initializeApp(firebaseConfig)
+
+// Firebase Authentication — Google sign-in scopes data to the signed-in user.
+export const auth = getAuth(app)
 
 // Firestore — the main storage for orders.
 export const db = getFirestore(app)
