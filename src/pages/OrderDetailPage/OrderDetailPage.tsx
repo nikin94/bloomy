@@ -51,7 +51,7 @@ function OrderDetailPage() {
       {order && (
         <>
           <h1 className="mt-0 mb-4 text-2xl font-semibold text-heading">
-            Заказ {order.number != null ? `№${order.number}` : '№—'}
+            Заказ {order.number !== undefined ? `№${order.number}` : '№—'}
           </h1>
           <div>
             <Field label="Клиент" value={customerName} />

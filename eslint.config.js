@@ -18,5 +18,9 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // Always use strict equality (=== / !==), never == / !=.
+      eqeqeq: ['error', 'always'],
+    },
   },
 ])

@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, orderBy, query, runTransaction } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, query, runTransaction, where } from 'firebase/firestore'
 import { db } from './firebase'
 import type { Order } from '../types/order'
 
@@ -20,11 +20,16 @@ function mapDoc(id: string, data: Record<string, unknown>): Order {
   return { id, ...(data as Omit<Order, 'id'>) }
 }
 
-// Load the list of orders (for the list table).
-export async function fetchOrders(): Promise<Order[]> {
-  const q = query(collection(db, ORDERS_COLLECTION), orderBy('dateCreated', 'desc'))
+// Load the orders owned by the given app user (for the list table). We filter
+// by `ownerId` and sort newest-first in memory: a server-side `ownerId`
+// equality + `dateCreated` order would need a composite index, and the dataset
+// per owner is small enough to sort on the client.
+export async function fetchOrders(ownerId: string): Promise<Order[]> {
+  const q = query(collection(db, ORDERS_COLLECTION), where('ownerId', '==', ownerId))
   const snapshot = await getDocs(q)
-  return snapshot.docs.map((d) => mapDoc(d.id, d.data()))
+  return snapshot.docs
+    .map((d) => mapDoc(d.id, d.data()))
+    .sort((a, b) => b.dateCreated - a.dateCreated)
 }
 
 // Load a single order by id (for the order page).
