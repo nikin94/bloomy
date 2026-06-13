@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../context/auth-context'
 import { signInWithGoogle } from '../../lib/auth'
+import Spinner from '../../components/Spinner/Spinner'
 
 function LoginPage() {
   const { user, loading } = useAuth()
   const [signingIn, setSigningIn] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (loading) return <p className="p-6 text-text">Загрузка…</p>
+  if (loading) return <Spinner />
   // Already signed in (or just signed in) → go straight to the orders list.
   if (user) return <Navigate to="/orders" replace />
 

@@ -11,6 +11,7 @@ import {
   SHIPMENT_STATUS_LABELS,
 } from '../../types/order'
 import { useAuth } from '../../context/auth-context'
+import Spinner from '../../components/Spinner/Spinner'
 import type { Order } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
@@ -54,7 +55,7 @@ function OrderDetailPage() {
         ← К списку заказов
       </Link>
 
-      {loading && <p className="text-text">Загрузка…</p>}
+      {loading && <Spinner />}
       {error && <p className="text-danger">{error}</p>}
       {!loading && !error && !order && <p className="text-text">Заказ не найден</p>}
 
