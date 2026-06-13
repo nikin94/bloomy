@@ -13,17 +13,9 @@ const COUNTERS_COLLECTION = 'counters'
 // `number` is assigned by the create transaction, so the caller provides neither.
 export type NewOrder = Omit<Order, 'id' | 'number'>
 
-// Validate a Firestore document against the stored Order schema, returning a
-// typed Order or null on mismatch. We log and skip (rather than throw) so a
-// single corrupt or legacy document can't break the whole list.
-function parseOrder(id: string, data: unknown): Order | null {
-  const parsed = STORED_ORDER_SCHEMA.safeParse(data)
-  if (!parsed.success) {
-    console.warn(`Skipping order ${id}: does not match schema`, parsed.error.issues)
-    return null
-  }
-  return { id, ...parsed.data }
-}
+// Firestore document -> validated Order. Throws on schema mismatch — surfacing
+// bad data loudly is fine while the app is in test mode.
+const parseOrder = (id: string, data: unknown): Order => ({ id, ...STORED_ORDER_SCHEMA.parse(data) })
 
 // Load the orders owned by the given app user (for the list table). We filter
 // by `ownerId` and sort newest-first in memory: a server-side `ownerId`
@@ -32,10 +24,7 @@ function parseOrder(id: string, data: unknown): Order | null {
 export async function fetchOrders(ownerId: string): Promise<Order[]> {
   const q = query(collection(db, ORDERS_COLLECTION), where('ownerId', '==', ownerId))
   const snapshot = await getDocs(q)
-  return snapshot.docs
-    .map((d) => parseOrder(d.id, d.data()))
-    .filter((order): order is Order => order !== null)
-    .sort((a, b) => b.dateCreated - a.dateCreated)
+  return snapshot.docs.map((d) => parseOrder(d.id, d.data())).sort((a, b) => b.dateCreated - a.dateCreated)
 }
 
 // Load a single order by id (for the order page). We re-check `ownerId` on the
@@ -47,8 +36,7 @@ export async function fetchOrder(id: string, ownerId: string): Promise<Order | n
   const snapshot = await getDoc(doc(db, ORDERS_COLLECTION, id))
   if (!snapshot.exists()) return null
   const order = parseOrder(snapshot.id, snapshot.data())
-  if (!order || order.ownerId !== ownerId) return null
-  return order
+  return order.ownerId === ownerId ? order : null
 }
 
 // Create a new order and return its generated document id.
