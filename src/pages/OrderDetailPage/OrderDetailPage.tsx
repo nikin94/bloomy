@@ -2,19 +2,26 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { fetchOrder } from '../../lib/orders'
 import { fetchCustomer } from '../../lib/customers'
-import { formatMoney } from '../../lib/format'
-import { getTotalMinor } from '../../types/order'
+import { formatDate, formatMoney } from '../../lib/format'
+import {
+  getSubtotalMinor,
+  getTotalMinor,
+  PAYMENT_METHOD_LABELS,
+  PAYMENT_STATUS_LABELS,
+  SHIPMENT_STATUS_LABELS,
+} from '../../types/order'
 import { useAuth } from '../../context/auth-context'
 import type { Order } from '../../types/order'
+import type { Customer } from '../../types/customer'
 
 function OrderDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const ownerId = user?.uid
   const [order, setOrder] = useState<Order | null>(null)
-  // Resolved live from the customers collection. Falls back to "—" when the
-  // customer was deleted (a dangling customerId must not crash the page).
-  const [customerName, setCustomerName] = useState('—')
+  // Resolved live from the customers collection. Stays null when the customer
+  // was deleted (a dangling customerId must not crash the page).
+  const [customer, setCustomer] = useState<Customer | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -26,8 +33,8 @@ function OrderDetailPage() {
         if (!active) return
         setOrder(data)
         if (data) {
-          const customer = await fetchCustomer(data.customerId)
-          if (active) setCustomerName(customer?.name ?? '—')
+          const c = await fetchCustomer(data.customerId)
+          if (active) setCustomer(c)
         }
       })
       .catch((err: unknown) => {
@@ -52,18 +59,64 @@ function OrderDetailPage() {
       {!loading && !error && !order && <p className="text-text">Заказ не найден</p>}
 
       {order && (
-        <>
-          <h1 className="mt-0 mb-4 text-2xl font-semibold text-heading">
-            Заказ {order.number !== undefined ? `№${order.number}` : '№—'}
-          </h1>
-          <div>
-            <Field label="Клиент" value={customerName} />
-            <Field label="Адрес" value={order.address} />
-            <Field label="Растения" value={order.plants.map((p) => p.name).join(', ')} />
-            <Field label="Сумма" value={formatMoney(getTotalMinor(order))} />
+        <div className="mx-auto flex max-w-2xl flex-col gap-6">
+          <header className="flex items-baseline justify-between gap-3">
+            <h1 className="m-0 text-2xl font-semibold text-heading">
+              Заказ {order.number !== undefined ? `№${order.number}` : '№—'}
+            </h1>
+            <span className="text-sm text-text">{formatDate(order.dateCreated)}</span>
+          </header>
+
+          {/* General info */}
+          <section className="flex flex-col">
+            <Field label="Клиент" value={customer?.name ?? '—'} />
+            {customer?.phone && <Field label="Телефон" value={customer.phone} />}
+            <Field label="Адрес доставки" value={order.address || '—'} />
+            <Field label="Способ оплаты" value={PAYMENT_METHOD_LABELS[order.paymentMethod]} />
+            <Field label="Статус оплаты" value={PAYMENT_STATUS_LABELS[order.paymentStatus]} />
+            <Field label="Статус отправки" value={SHIPMENT_STATUS_LABELS[order.shipmentStatus]} />
             {order.comment && <Field label="Комментарий" value={order.comment} />}
-          </div>
-        </>
+          </section>
+
+          {/* Itemized plant list */}
+          <section className="flex flex-col gap-2">
+            <h2 className="m-0 text-lg font-semibold text-heading">Растения</h2>
+            <table className="w-full border-collapse text-[15px]">
+              <thead>
+                <tr className="border-b border-border text-left text-sm text-text">
+                  <th className="py-2 pr-3 font-medium">Название</th>
+                  <th className="py-2 px-3 text-right font-medium">Кол-во</th>
+                  <th className="py-2 px-3 text-right font-medium">Цена</th>
+                  <th className="py-2 pl-3 text-right font-medium">Сумма</th>
+                </tr>
+              </thead>
+              <tbody>
+                {order.plants.map((item, index) => (
+                  <tr key={index} className="border-b border-border">
+                    <td className="py-2 pr-3 text-heading">{item.name}</td>
+                    <td className="py-2 px-3 text-right text-text">{item.quantity}</td>
+                    <td className="py-2 px-3 text-right text-text">
+                      {formatMoney(item.unitPriceMinor)}
+                    </td>
+                    <td className="py-2 pl-3 text-right text-heading">
+                      {formatMoney(item.unitPriceMinor * item.quantity)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+
+          {/* Money breakdown */}
+          <section className="flex flex-col gap-1 self-end text-[15px]">
+            <Total label="Сумма растений" value={getSubtotalMinor(order)} />
+            <Total label="Доставка" value={order.deliveryPriceMinor} />
+            <div className="mt-1 flex justify-between gap-8 border-t border-border pt-2 font-semibold text-heading">
+              <span>Итого</span>
+              <span>{formatMoney(getTotalMinor(order))}</span>
+            </div>
+          </section>
+        </div>
       )}
     </div>
   )
@@ -74,6 +127,15 @@ function Field({ label, value }: { label: string; value: string }) {
     <div className="flex gap-3 border-b border-border py-2">
       <span className="shrink-0 basis-[200px] text-text">{label}</span>
       <span className="text-heading">{value}</span>
+    </div>
+  )
+}
+
+function Total({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex justify-between gap-8 text-text">
+      <span>{label}</span>
+      <span className="text-heading">{formatMoney(value)}</span>
     </div>
   )
 }
