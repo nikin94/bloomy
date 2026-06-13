@@ -30,7 +30,8 @@ export interface OrderItem {
 // Only delivery is an independent input and is stored. This keeps the order a
 // live "notebook": editing items recomputes the totals, no stale snapshot.
 export interface Order {
-  id: string
+  id: string // Firestore document id — the technical key used in URLs/links
+  number: number // human-readable, per-owner sequential number (1, 2, 3…), assigned on create
   dateCreated: number // timestamp (ms)
   ownerId: string // app user UID that owns this order (multi-tenancy)
   customerId: string // link to Customer — the live source of the customer name
@@ -114,7 +115,7 @@ export function buildOrderColumns(
   getCustomerName: (customerId: string) => string,
 ): OrderColumn[] {
   return [
-    { id: 'id', header: '№', field: 'id' },
+    { id: 'number', header: '№', format: (o) => (o.number != null ? String(o.number) : '—') },
     { id: 'dateCreated', header: 'Дата', format: (o) => formatDate(o.dateCreated) },
     { id: 'customer', header: 'Клиент', format: (o) => getCustomerName(o.customerId) },
     { id: 'address', header: 'Адрес', field: 'address' },
