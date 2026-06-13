@@ -95,6 +95,13 @@ function NewOrderPage() {
     if (customer?.address) setAddress(customer.address)
   }
 
+  const selectMode = (mode: CustomerMode) => {
+    setCustomerMode(mode)
+    // Switching to "new" starts a fresh customer, so drop the delivery address
+    // that may have been prefilled from a previously selected existing customer.
+    if (mode === 'new') setAddress('')
+  }
+
   // Live preview of the derived totals (same money model as the order itself).
   const subtotalMinor = items.reduce(
     (sum, item) => sum + parseRublesToMinor(item.price) * (Number(item.quantity) || 0),
@@ -209,7 +216,7 @@ function NewOrderPage() {
                   name="customerMode"
                   className="sr-only"
                   checked={customerMode === 'existing'}
-                  onChange={() => setCustomerMode('existing')}
+                  onChange={() => selectMode('existing')}
                   disabled={customers.length === 0}
                 />
                 Существующий
@@ -224,7 +231,7 @@ function NewOrderPage() {
                   name="customerMode"
                   className="sr-only"
                   checked={customerMode === 'new'}
-                  onChange={() => setCustomerMode('new')}
+                  onChange={() => selectMode('new')}
                 />
                 Новый
               </label>
