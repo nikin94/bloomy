@@ -143,9 +143,17 @@ function NewOrderPage() {
   const selectMode = (mode: CustomerMode) => {
     setAnimateModeSlider(true)
     setCustomerMode(mode)
-    // Switching to "new" starts a fresh customer, so drop the delivery address
-    // that may have been prefilled from a previously selected existing customer.
-    if (mode === 'new') setAddress('')
+    if (mode === 'new') {
+      // Starting a fresh customer, so drop the delivery address that may have
+      // been prefilled from a previously selected existing customer.
+      setAddress('')
+    } else {
+      // Switching back to "existing" while a customer is still selected: the
+      // select keeps showing it, so re-apply its address (the "new" branch
+      // cleared it) to keep field state in sync with the selection.
+      const customer = customers.find((c) => c.id === selectedCustomerId)
+      setAddress(customer?.address ?? '')
+    }
   }
 
   // Live preview of the derived totals (same money model as the order itself).
