@@ -6,6 +6,7 @@ import { formatDate, formatMoney } from '../../lib/format'
 import {
   getSubtotalMinor,
   getTotalMinor,
+  DELIVERY_METHOD_LABELS,
   PAYMENT_METHOD_LABELS,
   PAYMENT_STATUS_LABELS,
   SHIPMENT_STATUS_LABELS,
@@ -78,6 +79,7 @@ function OrderDetailPage() {
             <Field label="Клиент" value={customer?.name ?? '—'} />
             {customer?.phone && <Field label="Телефон" value={customer.phone} />}
             <Field label="Адрес доставки" value={order.address || '—'} />
+            <Field label="Способ доставки" value={DELIVERY_METHOD_LABELS[order.deliveryMethod]} />
             <Field label="Способ оплаты" value={PAYMENT_METHOD_LABELS[order.paymentMethod]} />
             <Field label="Статус оплаты" value={PAYMENT_STATUS_LABELS[order.paymentStatus]} />
             <Field label="Статус отправки" value={SHIPMENT_STATUS_LABELS[order.shipmentStatus]} />

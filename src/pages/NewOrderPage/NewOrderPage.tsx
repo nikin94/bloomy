@@ -6,13 +6,21 @@ import { createCustomer, fetchCustomers } from '../../lib/customers'
 import { useAuth } from '../../context/auth-context'
 import { formatMoney, parseRublesToMinor } from '../../lib/format'
 import {
+  DELIVERY_METHOD_OPTIONS,
   PAYMENT_METHOD_OPTIONS,
   PAYMENT_STATUS_OPTIONS,
   SHIPMENT_STATUS_OPTIONS,
 } from '../../types/order'
 import Spinner from '../../components/Spinner/Spinner'
+import Select from '../../components/Select/Select'
 import type { NewOrder } from '../../lib/orders'
-import type { OrderItem, PaymentMethod, PaymentStatus, ShipmentStatus } from '../../types/order'
+import type {
+  DeliveryMethod,
+  OrderItem,
+  PaymentMethod,
+  PaymentStatus,
+  ShipmentStatus,
+} from '../../types/order'
 import type { Customer, NewCustomer } from '../../types/customer'
 
 // Item row as entered in the form. Numeric fields are kept as strings while
@@ -28,6 +36,10 @@ const emptyItem = (id: number): ItemInput => ({ id, name: '', quantity: '1', pri
 
 // Pick an existing customer from the address book, or enter a new one.
 type CustomerMode = 'existing' | 'new'
+
+// Validation message shown when no existing customer is picked. Kept as a
+// constant so selecting a customer can clear exactly this error and nothing else.
+const SELECT_CUSTOMER_ERROR = 'Выберите клиента'
 
 // Width is intentionally NOT baked in here: in the generated Tailwind CSS
 // `.w-full` is emitted after `.w-20`/`.w-28`, so baking `w-full` in would win
@@ -67,6 +79,7 @@ function NewOrderPage() {
   const itemIdRef = useRef(0)
   const nextItemId = () => (itemIdRef.current += 1)
   const [items, setItems] = useState<ItemInput[]>(() => [emptyItem(0)])
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('post')
   const [deliveryPrice, setDeliveryPrice] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('pending')
@@ -118,9 +131,13 @@ function NewOrderPage() {
 
   const selectCustomer = (id: string) => {
     setSelectedCustomerId(id)
-    // Prefill the delivery address from the customer's default, if any.
+    // Reset prefilled fields, then fill from the newly picked customer. Always
+    // resetting first means a previous customer's data can't linger when the new
+    // pick (or the "— выберите клиента —" placeholder, id === '') lacks it.
     const customer = customers.find((c) => c.id === id)
-    if (customer?.address) setAddress(customer.address)
+    setAddress(customer?.address ?? '')
+    // Picking a real customer clears the "select a customer" validation error.
+    if (id !== '') setError((prev) => (prev === SELECT_CUSTOMER_ERROR ? null : prev))
   }
 
   const selectMode = (mode: CustomerMode) => {
@@ -157,7 +174,7 @@ function NewOrderPage() {
       }))
 
     if (customerMode === 'existing' && selectedCustomerId === '') {
-      setError('Выберите клиента')
+      setError(SELECT_CUSTOMER_ERROR)
       return
     }
     if (customerMode === 'new' && newName.trim() === '') {
@@ -199,6 +216,7 @@ function NewOrderPage() {
         address: address.trim(),
         plants,
         paymentMethod,
+        deliveryMethod,
         deliveryPriceMinor: parseRublesToMinor(deliveryPrice),
         currency: 'RUB',
         paymentStatus,
@@ -283,8 +301,7 @@ function NewOrderPage() {
                   Нет сохранённых клиентов — добавьте нового.
                 </p>
               ) : (
-                <select
-                  className={`${fieldClass} w-full`}
+                <Select
                   aria-label="Существующий клиент"
                   value={selectedCustomerId}
                   onChange={(e) => selectCustomer(e.target.value)}
@@ -295,7 +312,7 @@ function NewOrderPage() {
                       {c.phone ? `${c.name} (${c.phone})` : c.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               )
             ) : (
               <div className="flex flex-col gap-3">
@@ -388,22 +405,37 @@ function NewOrderPage() {
             </button>
           </fieldset>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-text">Стоимость доставки, ₽</span>
-            <input
-              className={`${fieldClass} w-full max-w-40`}
-              inputMode="decimal"
-              placeholder="0"
-              value={deliveryPrice}
-              onChange={(e) => setDeliveryPrice(e.target.value)}
-            />
-          </label>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-text">Способ доставки</span>
+              <Select
+                value={deliveryMethod}
+                onChange={(e) => setDeliveryMethod(e.target.value as DeliveryMethod)}
+              >
+                {DELIVERY_METHOD_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-text">Стоимость доставки, ₽</span>
+              <input
+                className={`${fieldClass} w-full`}
+                inputMode="decimal"
+                placeholder="0"
+                value={deliveryPrice}
+                onChange={(e) => setDeliveryPrice(e.target.value)}
+              />
+            </label>
+          </div>
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <label className="flex flex-col gap-1">
               <span className="text-sm text-text">Оплата</span>
-              <select
-                className={`${fieldClass} w-full`}
+              <Select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
               >
@@ -412,13 +444,12 @@ function NewOrderPage() {
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
 
             <label className="flex flex-col gap-1">
               <span className="text-sm text-text">Статус оплаты</span>
-              <select
-                className={`${fieldClass} w-full`}
+              <Select
                 value={paymentStatus}
                 onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}
               >
@@ -427,13 +458,12 @@ function NewOrderPage() {
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
 
             <label className="flex flex-col gap-1">
               <span className="text-sm text-text">Отправка</span>
-              <select
-                className={`${fieldClass} w-full`}
+              <Select
                 value={shipmentStatus}
                 onChange={(e) => setShipmentStatus(e.target.value as ShipmentStatus)}
               >
@@ -442,7 +472,7 @@ function NewOrderPage() {
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           </div>
 

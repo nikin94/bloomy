@@ -20,6 +20,12 @@ export type ShipmentStatus = z.infer<typeof SHIPMENT_STATUS_SCHEMA>
 export const PAYMENT_METHOD_SCHEMA = z.enum(['cash', 'card', 'bank'])
 export type PaymentMethod = z.infer<typeof PAYMENT_METHOD_SCHEMA>
 
+// How the order is delivered. Keys are latin (stable storage values); the
+// Russian labels live in DELIVERY_METHOD_LABELS and the display order is set in
+// DELIVERY_METHOD_OPTIONS (alphabetical, with the "other" catch-all pinned last).
+export const DELIVERY_METHOD_SCHEMA = z.enum(['bus', 'post', 'pickup', 'cdek', 'taxi', 'other'])
+export type DeliveryMethod = z.infer<typeof DELIVERY_METHOD_SCHEMA>
+
 // A single line item in an order — a plant/flower.
 // Starts as plain text (the plant name); saved together with quantity and a
 // unit price. Amounts are integers in minor units (kopecks) to avoid float
@@ -47,6 +53,9 @@ export const STORED_ORDER_SCHEMA = z.object({
   address: z.string(), // delivery address (may differ from the customer default)
   plants: z.array(ORDER_ITEM_SCHEMA).min(1), // at least one plant, enforced by the form
   paymentMethod: PAYMENT_METHOD_SCHEMA,
+  // Added after orders already existed; default keeps pre-existing documents
+  // (which have no deliveryMethod) valid. New orders always set it from the form.
+  deliveryMethod: DELIVERY_METHOD_SCHEMA.default('post'),
   deliveryPriceMinor: z.number().int().nonnegative(), // minor units (kopecks)
   currency: z.literal('RUB'),
   paymentStatus: PAYMENT_STATUS_SCHEMA,
@@ -107,6 +116,15 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   bank: 'Перевод',
 }
 
+export const DELIVERY_METHOD_LABELS: Record<DeliveryMethod, string> = {
+  bus: 'Автобус',
+  post: 'Почта',
+  pickup: 'Самовывоз',
+  cdek: 'СДЭК',
+  taxi: 'Такси',
+  other: 'Другое',
+}
+
 // Build typed { value, label } options from a label record for native <select>.
 // Keys originate from a Record<Union, string>, so casting them back to the
 // union is safe.
@@ -117,6 +135,16 @@ function toOptions<K extends string>(labels: Record<K, string>): { value: K; lab
 export const PAYMENT_STATUS_OPTIONS = toOptions(PAYMENT_STATUS_LABELS)
 export const SHIPMENT_STATUS_OPTIONS = toOptions(SHIPMENT_STATUS_LABELS)
 export const PAYMENT_METHOD_OPTIONS = toOptions(PAYMENT_METHOD_LABELS)
+// Status/method selects above keep their workflow order (e.g. new → packing →
+// shipped), so toOptions preserves insertion order by design. Delivery methods
+// have no natural order, so sort them alphabetically in code rather than relying
+// on the order of keys in the label literal. The "other" catch-all is pinned
+// last, after the alphabetical names, regardless of its label.
+export const DELIVERY_METHOD_OPTIONS = toOptions(DELIVERY_METHOD_LABELS).sort((a, b) => {
+  if (a.value === 'other') return 1
+  if (b.value === 'other') return -1
+  return a.label.localeCompare(b.label, 'ru')
+})
 
 // Columns shown in the list table. This is a factory rather than a constant
 // because the customer name is NOT stored on the order — it is resolved live
