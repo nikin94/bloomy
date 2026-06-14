@@ -52,7 +52,9 @@ export const STORED_ORDER_SCHEMA = z.object({
   address: z.string(), // delivery address (may differ from the customer default)
   plants: z.array(ORDER_ITEM_SCHEMA).min(1), // at least one plant, enforced by the form
   paymentMethod: PAYMENT_METHOD_SCHEMA,
-  deliveryMethod: DELIVERY_METHOD_SCHEMA,
+  // Added after orders already existed; default keeps pre-existing documents
+  // (which have no deliveryMethod) valid. New orders always set it from the form.
+  deliveryMethod: DELIVERY_METHOD_SCHEMA.default('post'),
   deliveryPriceMinor: z.number().int().nonnegative(), // minor units (kopecks)
   currency: z.literal('RUB'),
   paymentStatus: PAYMENT_STATUS_SCHEMA,
