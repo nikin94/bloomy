@@ -12,6 +12,7 @@ import {
   SHIPMENT_STATUS_OPTIONS,
 } from '../../types/order'
 import Spinner from '../../components/Spinner/Spinner'
+import Select from '../../components/Select/Select'
 import type { NewOrder } from '../../lib/orders'
 import type {
   DeliveryMethod,
@@ -300,8 +301,7 @@ function NewOrderPage() {
                   Нет сохранённых клиентов — добавьте нового.
                 </p>
               ) : (
-                <select
-                  className={`${fieldClass} w-full`}
+                <Select
                   aria-label="Существующий клиент"
                   value={selectedCustomerId}
                   onChange={(e) => selectCustomer(e.target.value)}
@@ -312,7 +312,7 @@ function NewOrderPage() {
                       {c.phone ? `${c.name} (${c.phone})` : c.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               )
             ) : (
               <div className="flex flex-col gap-3">
@@ -408,8 +408,7 @@ function NewOrderPage() {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <label className="flex flex-col gap-1">
               <span className="text-sm text-text">Способ доставки</span>
-              <select
-                className={`${fieldClass} w-full`}
+              <Select
                 value={deliveryMethod}
                 onChange={(e) => setDeliveryMethod(e.target.value as DeliveryMethod)}
               >
@@ -418,7 +417,7 @@ function NewOrderPage() {
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
 
             <label className="flex flex-col gap-1">
@@ -436,8 +435,7 @@ function NewOrderPage() {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <label className="flex flex-col gap-1">
               <span className="text-sm text-text">Оплата</span>
-              <select
-                className={`${fieldClass} w-full`}
+              <Select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
               >
@@ -446,13 +444,12 @@ function NewOrderPage() {
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
 
             <label className="flex flex-col gap-1">
               <span className="text-sm text-text">Статус оплаты</span>
-              <select
-                className={`${fieldClass} w-full`}
+              <Select
                 value={paymentStatus}
                 onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}
               >
@@ -461,13 +458,12 @@ function NewOrderPage() {
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
 
             <label className="flex flex-col gap-1">
               <span className="text-sm text-text">Отправка</span>
-              <select
-                className={`${fieldClass} w-full`}
+              <Select
                 value={shipmentStatus}
                 onChange={(e) => setShipmentStatus(e.target.value as ShipmentStatus)}
               >
@@ -476,7 +472,7 @@ function NewOrderPage() {
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           </div>
 
