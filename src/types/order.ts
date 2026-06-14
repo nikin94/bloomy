@@ -113,8 +113,6 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   bank: 'Перевод',
 }
 
-// Listed in Russian alphabetical order, so toOptions yields an alphabetical
-// <select>.
 export const DELIVERY_METHOD_LABELS: Record<DeliveryMethod, string> = {
   bus: 'Автобус',
   minibus: 'Маршрутка',
@@ -133,7 +131,13 @@ function toOptions<K extends string>(labels: Record<K, string>): { value: K; lab
 export const PAYMENT_STATUS_OPTIONS = toOptions(PAYMENT_STATUS_LABELS)
 export const SHIPMENT_STATUS_OPTIONS = toOptions(SHIPMENT_STATUS_LABELS)
 export const PAYMENT_METHOD_OPTIONS = toOptions(PAYMENT_METHOD_LABELS)
-export const DELIVERY_METHOD_OPTIONS = toOptions(DELIVERY_METHOD_LABELS)
+// Status/method selects above keep their workflow order (e.g. new → packing →
+// shipped), so toOptions preserves insertion order by design. Delivery methods
+// have no natural order, so sort them alphabetically in code rather than relying
+// on the order of keys in the label literal.
+export const DELIVERY_METHOD_OPTIONS = toOptions(DELIVERY_METHOD_LABELS).sort((a, b) =>
+  a.label.localeCompare(b.label, 'ru'),
+)
 
 // Columns shown in the list table. This is a factory rather than a constant
 // because the customer name is NOT stored on the order — it is resolved live
