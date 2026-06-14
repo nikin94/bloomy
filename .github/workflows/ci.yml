@@ -13,11 +13,16 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
+          # setup-node@v5 enables package-manager caching by default, which probes
+          # `yarn cache dir` before the Corepack step below runs — at that point the
+          # runner's global yarn is still 1.x and errors on the packageManager field.
+          # Disable it; the immutable install is fast enough without the cache.
+          package-manager-cache: false
 
       # Repo uses Yarn 4 (Berry) — Corepack activates the version pinned in
       # package.json's "packageManager" field.
