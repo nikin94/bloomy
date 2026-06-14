@@ -1,0 +1,37 @@
+# Pull-request checks: type-check, lint, and run the test suite on every PR.
+# Runs no build and needs no secrets (so it works for fork PRs too); the
+# production build is exercised separately by the deploy workflow on push to main.
+name: CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Repo uses Yarn 4 (Berry) — Corepack activates the version pinned in
+      # package.json's "packageManager" field.
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Type-check
+        run: yarn tsc -b
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Test
+        run: yarn test
