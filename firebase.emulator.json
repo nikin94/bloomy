@@ -1,0 +1,8 @@
+{
+  "_comment": "Test-only Firebase config. Runs the Firestore emulator WITHOUT a rules file (open access) so the multi-tenant, unauthenticated data-layer transaction tests (vitest.emulator.config.ts) and the rules tests (which upload firestore.rules themselves via @firebase/rules-unit-testing) share one open emulator. Production rules live in firebase.json and are exercised by the rules tests, not enforced here.",
+  "emulators": {
+    "firestore": { "port": 8080 },
+    "ui": { "enabled": false },
+    "singleProjectMode": true
+  }
+}

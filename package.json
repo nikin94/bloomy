@@ -10,10 +10,12 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:emulator": "firebase emulators:exec --only firestore --project demo-bloomy \"vitest run --config vitest.emulator.config.ts\"",
+    "test:emulator": "firebase emulators:exec --only firestore --project demo-bloomy --config firebase.emulator.json \"vitest run --config vitest.emulator.config.ts\"",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-bloomy --config firebase.emulator.json \"vitest run --config vitest.rules.config.ts\"",
     "coverage": "vitest run --coverage",
     "preview": "vite preview",
-    "deploy": "yarn build && firebase deploy --only hosting"
+    "deploy": "yarn build && firebase deploy --only hosting",
+    "deploy:rules": "firebase deploy --only firestore:rules"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
@@ -26,6 +28,7 @@
   "devDependencies": {
     "@babel/core": "^7.29.0",
     "@eslint/js": "^10.0.1",
+    "@firebase/rules-unit-testing": "^5.0.1",
     "@rolldown/plugin-babel": "^0.2.3",
     "@tailwindcss/vite": "^4.3.0",
     "@testing-library/dom": "^10.4.1",
