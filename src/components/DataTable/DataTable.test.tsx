@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import DataTable from './DataTable'
 import { buildOrderColumns } from '../../types/order'
@@ -26,36 +26,36 @@ const order = (over: Partial<Order> = {}): Order => ({
   ...over,
 })
 
-describe('DataTable', () => {
+// Both the desktop table and the mobile cards render in jsdom (CSS visibility is
+// not applied), so scope queries to one layout to avoid duplicate-match errors.
+const table = () => within(screen.getByTestId('orders-table'))
+const cards = () => within(screen.getByTestId('orders-cards'))
+
+describe('DataTable (table layout)', () => {
   it('renders the configured column headers', () => {
     render(<DataTable orders={[order()]} columns={columns} onRowClick={vi.fn()} />)
-    expect(screen.getByText('№')).toBeInTheDocument()
-    expect(screen.getByText('Клиент')).toBeInTheDocument()
-    expect(screen.getByText('Сумма')).toBeInTheDocument()
+    expect(table().getByText('№')).toBeInTheDocument()
+    expect(table().getByText('Клиент')).toBeInTheDocument()
+    expect(table().getByText('Сумма')).toBeInTheDocument()
   })
 
   it('renders a row with resolved and formatted cell values', () => {
     render(<DataTable orders={[order()]} columns={columns} onRowClick={vi.fn()} />)
-    expect(screen.getByText('Анна')).toBeInTheDocument() // customer resolved via the lookup
-    expect(screen.getByText('Роза')).toBeInTheDocument() // plant name from the format fn
-  })
-
-  it('shows an empty state when there are no orders', () => {
-    render(<DataTable orders={[]} columns={columns} onRowClick={vi.fn()} />)
-    expect(screen.getByText('Заказов пока нет')).toBeInTheDocument()
+    expect(table().getByText('Анна')).toBeInTheDocument() // customer resolved via the lookup
+    expect(table().getByText('Роза')).toBeInTheDocument() // plant name from the format fn
   })
 
   it('calls onRowClick with the row order when a row is clicked', async () => {
     const onRowClick = vi.fn()
     render(<DataTable orders={[order()]} columns={columns} onRowClick={onRowClick} />)
-    await userEvent.click(screen.getByText('Анна'))
+    await userEvent.click(table().getByText('Анна'))
     expect(onRowClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'o1' }))
   })
 
   it('triggers onRowClick on Enter for keyboard users', async () => {
     const onRowClick = vi.fn()
     render(<DataTable orders={[order()]} columns={columns} onRowClick={onRowClick} />)
-    const row = screen.getByRole('link')
+    const row = table().getByRole('link')
     row.focus()
     await userEvent.keyboard('{Enter}')
     expect(onRowClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'o1' }))
@@ -64,7 +64,7 @@ describe('DataTable', () => {
   it('triggers onRowClick on Space for keyboard users', async () => {
     const onRowClick = vi.fn()
     render(<DataTable orders={[order()]} columns={columns} onRowClick={onRowClick} />)
-    const row = screen.getByRole('link')
+    const row = table().getByRole('link')
     row.focus()
     await userEvent.keyboard(' ')
     expect(onRowClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'o1' }))
@@ -79,13 +79,57 @@ describe('DataTable', () => {
         highlightOrderId="o2"
       />,
     )
-    const [first, second] = screen.getAllByRole('link')
+    const [first, second] = table().getAllByRole('link')
     expect(first).not.toHaveClass('row-highlight')
     expect(second).toHaveClass('row-highlight')
   })
 
   it('marks no row when there is nothing to highlight', () => {
     render(<DataTable orders={[order()]} columns={columns} onRowClick={vi.fn()} />)
-    expect(screen.getByRole('link')).not.toHaveClass('row-highlight')
+    expect(table().getByRole('link')).not.toHaveClass('row-highlight')
+  })
+})
+
+describe('DataTable (mobile card layout)', () => {
+  it('renders one clickable card per order with label/value pairs', () => {
+    render(<DataTable orders={[order()]} columns={columns} onRowClick={vi.fn()} />)
+    const card = cards().getByRole('link')
+    // Each column shows up as a "label → value" pair inside the card.
+    expect(within(card).getByText('Клиент')).toBeInTheDocument()
+    expect(within(card).getByText('Анна')).toBeInTheDocument()
+    expect(within(card).getByText('Роза')).toBeInTheDocument()
+  })
+
+  it('activates a card with a click and with the keyboard', async () => {
+    const onRowClick = vi.fn()
+    render(<DataTable orders={[order()]} columns={columns} onRowClick={onRowClick} />)
+    const card = cards().getByRole('link')
+
+    await userEvent.click(card)
+    card.focus()
+    await userEvent.keyboard('{Enter}')
+    expect(onRowClick).toHaveBeenCalledTimes(2)
+    expect(onRowClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'o1' }))
+  })
+
+  it('highlights only the matching card for the new-order animation', () => {
+    render(
+      <DataTable
+        orders={[order({ id: 'o1' }), order({ id: 'o2', number: 2, customerId: 'c2' })]}
+        columns={columns}
+        onRowClick={vi.fn()}
+        highlightOrderId="o2"
+      />,
+    )
+    const [first, second] = cards().getAllByRole('link')
+    expect(first).not.toHaveClass('row-highlight')
+    expect(second).toHaveClass('row-highlight')
+  })
+})
+
+describe('DataTable (shared)', () => {
+  it('shows a single empty state when there are no orders', () => {
+    render(<DataTable orders={[]} columns={columns} onRowClick={vi.fn()} />)
+    expect(screen.getByText('Заказов пока нет')).toBeInTheDocument()
   })
 })
