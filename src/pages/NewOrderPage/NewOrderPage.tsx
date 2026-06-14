@@ -6,13 +6,20 @@ import { createCustomer, fetchCustomers } from '../../lib/customers'
 import { useAuth } from '../../context/auth-context'
 import { formatMoney, parseRublesToMinor } from '../../lib/format'
 import {
+  DELIVERY_METHOD_OPTIONS,
   PAYMENT_METHOD_OPTIONS,
   PAYMENT_STATUS_OPTIONS,
   SHIPMENT_STATUS_OPTIONS,
 } from '../../types/order'
 import Spinner from '../../components/Spinner/Spinner'
 import type { NewOrder } from '../../lib/orders'
-import type { OrderItem, PaymentMethod, PaymentStatus, ShipmentStatus } from '../../types/order'
+import type {
+  DeliveryMethod,
+  OrderItem,
+  PaymentMethod,
+  PaymentStatus,
+  ShipmentStatus,
+} from '../../types/order'
 import type { Customer, NewCustomer } from '../../types/customer'
 
 // Item row as entered in the form. Numeric fields are kept as strings while
@@ -67,6 +74,7 @@ function NewOrderPage() {
   const itemIdRef = useRef(0)
   const nextItemId = () => (itemIdRef.current += 1)
   const [items, setItems] = useState<ItemInput[]>(() => [emptyItem(0)])
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('post')
   const [deliveryPrice, setDeliveryPrice] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('pending')
@@ -199,6 +207,7 @@ function NewOrderPage() {
         address: address.trim(),
         plants,
         paymentMethod,
+        deliveryMethod,
         deliveryPriceMinor: parseRublesToMinor(deliveryPrice),
         currency: 'RUB',
         paymentStatus,
@@ -388,16 +397,33 @@ function NewOrderPage() {
             </button>
           </fieldset>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-text">Стоимость доставки, ₽</span>
-            <input
-              className={`${fieldClass} w-full max-w-40`}
-              inputMode="decimal"
-              placeholder="0"
-              value={deliveryPrice}
-              onChange={(e) => setDeliveryPrice(e.target.value)}
-            />
-          </label>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-text">Способ доставки</span>
+              <select
+                className={`${fieldClass} w-full`}
+                value={deliveryMethod}
+                onChange={(e) => setDeliveryMethod(e.target.value as DeliveryMethod)}
+              >
+                {DELIVERY_METHOD_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-text">Стоимость доставки, ₽</span>
+              <input
+                className={`${fieldClass} w-full`}
+                inputMode="decimal"
+                placeholder="0"
+                value={deliveryPrice}
+                onChange={(e) => setDeliveryPrice(e.target.value)}
+              />
+            </label>
+          </div>
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <label className="flex flex-col gap-1">
