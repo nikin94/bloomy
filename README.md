@@ -17,7 +17,7 @@ itemized plant list, delivery method, and live order totals.
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 24 (the version pinned in `.nvmrc` and used by CI; 20+ works)
 - Yarn 4 (via Corepack: `corepack enable`)
 - A Firebase project with Firestore and Google authentication enabled
 
