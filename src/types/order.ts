@@ -21,8 +21,9 @@ export const PAYMENT_METHOD_SCHEMA = z.enum(['cash', 'card', 'bank'])
 export type PaymentMethod = z.infer<typeof PAYMENT_METHOD_SCHEMA>
 
 // How the order is delivered. Keys are latin (stable storage values); the
-// Russian labels and their alphabetical order live in DELIVERY_METHOD_LABELS.
-export const DELIVERY_METHOD_SCHEMA = z.enum(['bus', 'minibus', 'post', 'cdek', 'taxi'])
+// Russian labels live in DELIVERY_METHOD_LABELS and the display order is set in
+// DELIVERY_METHOD_OPTIONS (alphabetical, with the "other" catch-all pinned last).
+export const DELIVERY_METHOD_SCHEMA = z.enum(['bus', 'post', 'pickup', 'cdek', 'taxi', 'other'])
 export type DeliveryMethod = z.infer<typeof DELIVERY_METHOD_SCHEMA>
 
 // A single line item in an order — a plant/flower.
@@ -117,10 +118,11 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 
 export const DELIVERY_METHOD_LABELS: Record<DeliveryMethod, string> = {
   bus: 'Автобус',
-  minibus: 'Маршрутка',
   post: 'Почта',
+  pickup: 'Самовывоз',
   cdek: 'СДЭК',
   taxi: 'Такси',
+  other: 'Другое',
 }
 
 // Build typed { value, label } options from a label record for native <select>.
@@ -136,10 +138,13 @@ export const PAYMENT_METHOD_OPTIONS = toOptions(PAYMENT_METHOD_LABELS)
 // Status/method selects above keep their workflow order (e.g. new → packing →
 // shipped), so toOptions preserves insertion order by design. Delivery methods
 // have no natural order, so sort them alphabetically in code rather than relying
-// on the order of keys in the label literal.
-export const DELIVERY_METHOD_OPTIONS = toOptions(DELIVERY_METHOD_LABELS).sort((a, b) =>
-  a.label.localeCompare(b.label, 'ru'),
-)
+// on the order of keys in the label literal. The "other" catch-all is pinned
+// last, after the alphabetical names, regardless of its label.
+export const DELIVERY_METHOD_OPTIONS = toOptions(DELIVERY_METHOD_LABELS).sort((a, b) => {
+  if (a.value === 'other') return 1
+  if (b.value === 'other') return -1
+  return a.label.localeCompare(b.label, 'ru')
+})
 
 // Columns shown in the list table. This is a factory rather than a constant
 // because the customer name is NOT stored on the order — it is resolved live
