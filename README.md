@@ -1,75 +1,92 @@
-# React + TypeScript + Vite
+# Bloomy
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A single-page web app for managing orders of potted plants and flowers. Sign in
+with Google, keep an address book of customers, and create orders with an
+itemized plant list, delivery method, and live order totals.
 
-Currently, two official plugins are available:
+## Tech stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **React 19** + **TypeScript** + **Vite** (with the React Compiler enabled)
+- **Tailwind CSS v4** for styling
+- **React Router v7** for routing
+- **Firebase** — Firestore (data) and Authentication (Google sign-in)
+- **Zod** for runtime validation of stored documents
+- **Yarn 4** (Berry) as the package manager
 
-## React Compiler
+## Getting started
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+### Prerequisites
 
-Note: This will impact Vite dev & build performances.
+- Node.js 20+
+- Yarn 4 (via Corepack: `corepack enable`)
+- A Firebase project with Firestore and Google authentication enabled
 
-## Expanding the ESLint configuration
+### Setup
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1. Install dependencies:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+   ```bash
+   yarn install
+   ```
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+2. Create a `.env` file from the example and fill in your Firebase web config
+   (Firebase Console → Project settings → Your apps → SDK setup and configuration):
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+   ```bash
+   cp .env.example .env
+   ```
+
+   ```
+   VITE_FIREBASE_API_KEY=
+   VITE_FIREBASE_AUTH_DOMAIN=
+   VITE_FIREBASE_PROJECT_ID=
+   VITE_FIREBASE_STORAGE_BUCKET=
+   VITE_FIREBASE_MESSAGING_SENDER_ID=
+   VITE_FIREBASE_APP_ID=
+   ```
+
+3. Start the dev server:
+
+   ```bash
+   yarn dev
+   ```
+
+### Scripts
+
+| Command        | Description                                    |
+| -------------- | ---------------------------------------------- |
+| `yarn dev`     | Start the Vite dev server with HMR             |
+| `yarn build`   | Type-check (`tsc -b`) and build for production |
+| `yarn lint`    | Run ESLint                                     |
+| `yarn preview` | Preview the production build locally           |
+| `yarn deploy`  | Build and deploy to Firebase Hosting           |
+
+## Deployment
+
+Pushes to `main` deploy automatically to Firebase Hosting via GitHub Actions
+(`.github/workflows/firebase-hosting-merge.yml`). The build's `VITE_FIREBASE_*`
+values and the Firebase service account are provided as repository secrets.
+
+## Project structure
+
+```
+src/
+  components/   Reusable UI (AppHeader, DataTable, Select, Spinner, ProtectedRoute)
+  context/      Auth context and provider
+  lib/          Firebase setup and data access (auth, orders, customers, firebase, format)
+  pages/        Route screens (Login, Orders, OrderDetail, NewOrder)
+  types/        Zod schemas and inferred types (order, customer)
+  App.tsx       Routes
+  main.tsx      App entry point
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Data model
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- **Orders** and **customers** are stored in Firestore, each scoped to its owner
+  (`ownerId`) for multi-tenancy.
+- An order references a customer by `customerId`; the customer name is always
+  read live from the customers collection (no stored snapshot).
+- Money is stored as integer minor units (kopecks) to avoid floating-point
+  rounding; subtotal and total are derived from the order's items, not stored.
+- Each order also has a human-readable per-owner sequential number, assigned
+  atomically on create via a Firestore transaction.
