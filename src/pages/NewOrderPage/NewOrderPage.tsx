@@ -129,13 +129,21 @@ function NewOrderPage() {
   const isPriceMissing = (item: ItemInput) =>
     item.name.trim() !== '' && item.price.trim() === ''
 
+  // Single source of truth for prefilling order fields from an existing
+  // customer. Pass the customer to fill, or undefined to clear. Every field that
+  // is derived from the customer must be set here (and only here) so that adding
+  // a new prefilled field stays a one-line change covered by all entry points:
+  // picking a customer, clearing the picker, and toggling the mode slider.
+  const applyCustomerToForm = (customer: Customer | undefined) => {
+    setAddress(customer?.address ?? '')
+  }
+
   const selectCustomer = (id: string) => {
     setSelectedCustomerId(id)
     // Reset prefilled fields, then fill from the newly picked customer. Always
     // resetting first means a previous customer's data can't linger when the new
     // pick (or the "— выберите клиента —" placeholder, id === '') lacks it.
-    const customer = customers.find((c) => c.id === id)
-    setAddress(customer?.address ?? '')
+    applyCustomerToForm(customers.find((c) => c.id === id))
     // Picking a real customer clears the "select a customer" validation error.
     if (id !== '') setError((prev) => (prev === SELECT_CUSTOMER_ERROR ? null : prev))
   }
@@ -143,17 +151,11 @@ function NewOrderPage() {
   const selectMode = (mode: CustomerMode) => {
     setAnimateModeSlider(true)
     setCustomerMode(mode)
-    if (mode === 'new') {
-      // Starting a fresh customer, so drop the delivery address that may have
-      // been prefilled from a previously selected existing customer.
-      setAddress('')
-    } else {
-      // Switching back to "existing" while a customer is still selected: the
-      // select keeps showing it, so re-apply its address (the "new" branch
-      // cleared it) to keep field state in sync with the selection.
-      const customer = customers.find((c) => c.id === selectedCustomerId)
-      setAddress(customer?.address ?? '')
-    }
+    // "new" starts a fresh customer → clear prefilled fields. "existing" re-syncs
+    // the form with the still-selected customer (the "new" branch cleared it).
+    applyCustomerToForm(
+      mode === 'new' ? undefined : customers.find((c) => c.id === selectedCustomerId),
+    )
   }
 
   // Live preview of the derived totals (same money model as the order itself).
