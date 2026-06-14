@@ -36,6 +36,10 @@ const emptyItem = (id: number): ItemInput => ({ id, name: '', quantity: '1', pri
 // Pick an existing customer from the address book, or enter a new one.
 type CustomerMode = 'existing' | 'new'
 
+// Validation message shown when no existing customer is picked. Kept as a
+// constant so selecting a customer can clear exactly this error and nothing else.
+const SELECT_CUSTOMER_ERROR = 'Выберите клиента'
+
 // Width is intentionally NOT baked in here: in the generated Tailwind CSS
 // `.w-full` is emitted after `.w-20`/`.w-28`, so baking `w-full` in would win
 // over per-field width overrides (equal specificity → later rule wins) and
@@ -126,9 +130,13 @@ function NewOrderPage() {
 
   const selectCustomer = (id: string) => {
     setSelectedCustomerId(id)
-    // Prefill the delivery address from the customer's default, if any.
+    // Reset prefilled fields, then fill from the newly picked customer. Always
+    // resetting first means a previous customer's data can't linger when the new
+    // pick (or the "— выберите клиента —" placeholder, id === '') lacks it.
     const customer = customers.find((c) => c.id === id)
-    if (customer?.address) setAddress(customer.address)
+    setAddress(customer?.address ?? '')
+    // Picking a real customer clears the "select a customer" validation error.
+    if (id !== '') setError((prev) => (prev === SELECT_CUSTOMER_ERROR ? null : prev))
   }
 
   const selectMode = (mode: CustomerMode) => {
@@ -165,7 +173,7 @@ function NewOrderPage() {
       }))
 
     if (customerMode === 'existing' && selectedCustomerId === '') {
-      setError('Выберите клиента')
+      setError(SELECT_CUSTOMER_ERROR)
       return
     }
     if (customerMode === 'new' && newName.trim() === '') {
