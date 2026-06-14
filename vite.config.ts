@@ -19,7 +19,7 @@ export default defineConfig({
     globals: false,
     setupFiles: ['./src/test/setup.ts'],
     // Emulator-backed tests need a running Firestore emulator, so they are run
-    // separately via `yarn test:emulator` (vitest.emulator.config.ts), not here.
-    exclude: [...configDefaults.exclude, '**/*.emulator.test.ts'],
+    // separately (`yarn test:emulator`, `yarn test:rules`), not in the default run.
+    exclude: [...configDefaults.exclude, '**/*.emulator.test.ts', '**/*.rules.test.ts'],
   },
 })

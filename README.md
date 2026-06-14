@@ -61,8 +61,11 @@ itemized plant list, delivery method, and live order totals.
 | `yarn test`       | Run the test suite once                        |
 | `yarn test:watch` | Run tests in watch mode                        |
 | `yarn coverage`   | Run tests and report coverage                  |
+| `yarn test:emulator` | Run emulator-backed data-layer tests        |
+| `yarn test:rules` | Run Firestore security-rules tests             |
 | `yarn preview`    | Preview the production build locally           |
 | `yarn deploy`     | Build and deploy to Firebase Hosting           |
+| `yarn deploy:rules` | Deploy Firestore security rules              |
 
 ## Testing
 
@@ -80,6 +83,15 @@ Data-layer tests come in two flavours:
   transaction stays atomic under concurrent creates. These need Java and the
   Firebase CLI; run them with `yarn test:emulator` (starts and stops the
   emulator automatically). They are excluded from the default `yarn test`.
+- **Security-rules tests** (`src/test/firestore.rules.test.ts`) — run the
+  production `firestore.rules` against the emulator via
+  `@firebase/rules-unit-testing` to prove the multi-tenant boundary (a user can
+  only touch their own documents). Run with `yarn test:rules`.
+
+The emulator runs from `firebase.emulator.json` (no rules — open access) so the
+multi-tenant data-layer tests work; the rules tests load `firestore.rules`
+themselves. Production rules live in `firestore.rules` and deploy via
+`yarn deploy:rules`.
 
 ## Deployment
 
