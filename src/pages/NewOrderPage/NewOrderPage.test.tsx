@@ -123,14 +123,23 @@ describe('NewOrderPage', () => {
     expect(addBtn).toBeEnabled()
   })
 
-  it('flags a plant row that has a name but no price', async () => {
+  it('flags a named plant row without a price only after a submit attempt', async () => {
     const user = userEvent.setup()
     renderForm()
-    await screen.findByLabelText('Имя клиента')
+    await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
     const priceInput = screen.getByPlaceholderText('Цена, ₽')
-    expect(priceInput).toHaveAttribute('aria-invalid', 'false')
+
+    // Typing a name but no price must NOT flag the field while editing.
     await user.type(screen.getByPlaceholderText('Название'), 'Роза')
+    expect(priceInput).toHaveAttribute('aria-invalid', 'false')
+
+    // The flag appears only once the user tries to save without a price.
+    await user.click(screen.getByRole('button', { name: 'Сохранить заказ' }))
     expect(priceInput).toHaveAttribute('aria-invalid', 'true')
+
+    // Filling the price clears the flag again.
+    await user.type(priceInput, '149,90')
+    expect(priceInput).toHaveAttribute('aria-invalid', 'false')
   })
 
   it('submits a new-customer order with amounts in kopecks and navigates to it', async () => {
