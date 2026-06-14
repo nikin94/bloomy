@@ -60,4 +60,13 @@ describe('DataTable', () => {
     await userEvent.keyboard('{Enter}')
     expect(onRowClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'o1' }))
   })
+
+  it('triggers onRowClick on Space for keyboard users', async () => {
+    const onRowClick = vi.fn()
+    render(<DataTable orders={[order()]} columns={columns} onRowClick={onRowClick} />)
+    const row = screen.getByRole('link')
+    row.focus()
+    await userEvent.keyboard(' ')
+    expect(onRowClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'o1' }))
+  })
 })

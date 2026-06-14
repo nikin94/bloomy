@@ -69,7 +69,7 @@ function DataTable({ orders, columns, onRowClick }: DataTableProps) {
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td className="px-4 py-8 text-center text-text" colSpan={columns.length}>
+              <td className="px-4 py-8 text-center text-text" colSpan={columnDefs.length}>
                 Заказов пока нет
               </td>
             </tr>
