@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
@@ -10,4 +11,12 @@ export default defineConfig({
     tailwindcss(),
     babel({ presets: [reactCompilerPreset()] })
   ],
+  // Vitest config. `globals: false` keeps the test API explicit (imported from
+  // 'vitest'), matching the codebase's explicit-imports style; the setup file
+  // wires jest-dom matchers and React Testing Library cleanup in their place.
+  test: {
+    environment: 'jsdom',
+    globals: false,
+    setupFiles: ['./src/test/setup.ts'],
+  },
 })
