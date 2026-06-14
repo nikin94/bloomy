@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:emulator": "firebase emulators:exec --only firestore --project demo-bloomy \"vitest run --config vitest.emulator.config.ts\"",
     "coverage": "vitest run --coverage",
     "preview": "vite preview",
     "deploy": "yarn build && firebase deploy --only hosting"
