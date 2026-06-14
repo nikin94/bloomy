@@ -142,7 +142,7 @@ describe('NewOrderPage', () => {
     expect(priceInput).toHaveAttribute('aria-invalid', 'false')
   })
 
-  it('submits a new-customer order with amounts in kopecks and navigates to it', async () => {
+  it('submits a new-customer order in kopecks and navigates to the list to highlight it', async () => {
     const user = userEvent.setup()
     renderForm()
     await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
@@ -164,7 +164,9 @@ describe('NewOrderPage', () => {
         plants: [{ name: 'Роза', quantity: 1, unitPriceMinor: 14990 }],
       }),
     )
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/orders/new-order-id'))
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith('/orders', { state: { highlightId: 'new-order-id' } }),
+    )
   })
 
   it('shows the live total from items plus delivery', async () => {
@@ -232,7 +234,9 @@ describe('NewOrderPage', () => {
     // Retry: the form has flipped to the "existing" branch, so no new customer
     // is created — the order reuses the id from the first createCustomer.
     await user.click(screen.getByRole('button', { name: 'Сохранить заказ' }))
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/orders/order-id'))
+    await waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith('/orders', { state: { highlightId: 'order-id' } }),
+    )
     expect(createCustomer).toHaveBeenCalledTimes(1)
     expect(createOrder).toHaveBeenCalledTimes(2)
     expect(createOrder).toHaveBeenLastCalledWith(

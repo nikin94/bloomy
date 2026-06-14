@@ -241,7 +241,9 @@ function NewOrderPage() {
       }
 
       const id = await createOrder(order)
-      navigate(`/orders/${id}`)
+      // Go to the list (not the order page) and pass the new id so the list can
+      // briefly highlight the freshly created order at the top.
+      navigate('/orders', { state: { highlightId: id } })
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Не удалось сохранить заказ')
       setSaving(false)

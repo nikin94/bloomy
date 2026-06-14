@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import DataTable from '../../components/DataTable/DataTable'
 import Spinner from '../../components/Spinner/Spinner'
@@ -12,6 +12,7 @@ import type { Customer } from '../../types/customer'
 
 function OrdersPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   // Guaranteed non-null here (rendered under ProtectedRoute), but typed as
   // optional, so we read the uid defensively and gate the fetch on it.
   const { user } = useAuth()
@@ -20,6 +21,21 @@ function OrdersPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Set by NewOrderPage after a successful create, to highlight the new order.
+  // Read once into state, then strip it from history so a refresh or back-nav
+  // doesn't replay the highlight.
+  const highlightState = (location.state as { highlightId?: string } | null) ?? null
+  // Captured once on mount so it survives the history cleanup below (which sets
+  // location.state to null); the row keeps highlighting through its animation.
+  const [highlightOrderId] = useState(highlightState?.highlightId)
+  useEffect(() => {
+    if (highlightState?.highlightId) {
+      navigate('.', { replace: true, state: null })
+    }
+    // Only on first mount: consume the navigation state exactly once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (!ownerId) return
@@ -58,6 +74,7 @@ function OrdersPage() {
           orders={orders}
           columns={columns}
           onRowClick={(order) => navigate(`/orders/${order.id}`)}
+          highlightOrderId={highlightOrderId}
         />
       )}
     </div>

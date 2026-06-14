@@ -69,4 +69,23 @@ describe('DataTable', () => {
     await userEvent.keyboard(' ')
     expect(onRowClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'o1' }))
   })
+
+  it('marks only the highlighted order row for the new-order animation', () => {
+    render(
+      <DataTable
+        orders={[order({ id: 'o1' }), order({ id: 'o2', number: 2, customerId: 'c2' })]}
+        columns={columns}
+        onRowClick={vi.fn()}
+        highlightOrderId="o2"
+      />,
+    )
+    const [first, second] = screen.getAllByRole('link')
+    expect(first).not.toHaveClass('row-highlight')
+    expect(second).toHaveClass('row-highlight')
+  })
+
+  it('marks no row when there is nothing to highlight', () => {
+    render(<DataTable orders={[order()]} columns={columns} onRowClick={vi.fn()} />)
+    expect(screen.getByRole('link')).not.toHaveClass('row-highlight')
+  })
 })

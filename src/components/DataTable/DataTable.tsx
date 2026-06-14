@@ -7,6 +7,9 @@ interface DataTableProps {
   orders: Order[]
   columns: OrderColumn[]
   onRowClick: (order: Order) => void
+  // Order id to briefly highlight (e.g. the one just created). The matching row
+  // plays a one-shot fade animation; see `.row-highlight` in App.css.
+  highlightOrderId?: string
 }
 
 // Cell value: use the column's format function when present, otherwise
@@ -31,7 +34,7 @@ function toColumnDef(column: OrderColumn): ColumnDef<Order> {
 
 // Scroll container with a fixed height — the basis for future virtualization
 // (the sticky header stays in place while rows scroll).
-function DataTable({ orders, columns, onRowClick }: DataTableProps) {
+function DataTable({ orders, columns, onRowClick, highlightOrderId }: DataTableProps) {
   // Memoize the column defs so the table instance keeps a stable reference
   // (TanStack recomputes its models when columns/data identity changes).
   const columnDefs = useMemo(() => columns.map(toColumnDef), [columns])
@@ -77,7 +80,9 @@ function DataTable({ orders, columns, onRowClick }: DataTableProps) {
             rows.map((row) => (
               <tr
                 key={row.id}
-                className="cursor-pointer transition-colors hover:bg-accent-bg focus-visible:bg-accent-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent"
+                className={`cursor-pointer transition-colors hover:bg-accent-bg focus-visible:bg-accent-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent${
+                  row.original.id === highlightOrderId ? ' row-highlight' : ''
+                }`}
                 role="link"
                 tabIndex={0}
                 onClick={() => onRowClick(row.original)}

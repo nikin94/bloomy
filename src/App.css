@@ -1,0 +1,23 @@
+/* App-specific styles (the design-system tokens live in index.css). */
+
+/* One-shot highlight for a freshly created order row: the row starts on the
+   accent background and fades to transparent. Plays once on mount — the orders
+   list passes `highlightOrderId` only for the order just created. */
+@keyframes row-highlight-fade {
+  from {
+    background-color: var(--color-accent-bg);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.row-highlight {
+  animation: row-highlight-fade 2s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-highlight {
+    animation: none;
+  }
+}
