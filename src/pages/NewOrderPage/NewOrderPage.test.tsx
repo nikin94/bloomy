@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
@@ -38,6 +38,16 @@ const customer = (over: Partial<Customer> = {}): Customer => ({
   createdAt: 0,
   ...over,
 })
+
+// A promise whose resolution is controlled by the test, so we can hold an
+// async submit "in flight" while we probe the double-submit guard.
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
 
 function renderForm() {
   return render(
@@ -172,5 +182,83 @@ describe('NewOrderPage', () => {
     expect(addressInput).toHaveValue('')
     await user.click(screen.getByRole('radio', { name: 'Существующий' }))
     expect(addressInput).toHaveValue('ул. Ленина, 1')
+  })
+
+  it('ignores a second submit while the first is still saving', async () => {
+    const user = userEvent.setup()
+    // Hold the new-customer creation in flight so `saving` stays true.
+    const pending = deferred<string>()
+    createCustomer.mockReturnValue(pending.promise)
+    renderForm()
+    await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
+    await user.type(screen.getByPlaceholderText('Название'), 'Роза')
+    await user.type(screen.getByPlaceholderText('Цена, ₽'), '100')
+
+    const form = screen.getByRole('button', { name: 'Сохранить заказ' }).closest('form')!
+    // First submit kicks off createCustomer and flips `saving` true.
+    fireEvent.submit(form)
+    await waitFor(() => expect(createCustomer).toHaveBeenCalledTimes(1))
+    // Second submit while still saving must early-return (the `if (saving)` guard),
+    // not start another createCustomer.
+    fireEvent.submit(form)
+    expect(createCustomer).toHaveBeenCalledTimes(1)
+
+    pending.resolve('new-customer-id')
+    await waitFor(() => expect(createOrder).toHaveBeenCalledTimes(1))
+  })
+
+  it('reuses the created customer instead of duplicating it when the order retry succeeds', async () => {
+    const user = userEvent.setup()
+    // createCustomer succeeds; the first createOrder fails, the retry succeeds.
+    createOrder.mockRejectedValueOnce(new Error('network')).mockResolvedValue('order-id')
+    renderForm()
+    await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
+    await user.type(screen.getByPlaceholderText('Название'), 'Роза')
+    await user.type(screen.getByPlaceholderText('Цена, ₽'), '100')
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить заказ' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('network')
+    expect(createCustomer).toHaveBeenCalledTimes(1)
+
+    // Retry: the form has flipped to the "existing" branch, so no new customer
+    // is created — the order reuses the id from the first createCustomer.
+    await user.click(screen.getByRole('button', { name: 'Сохранить заказ' }))
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/orders/order-id'))
+    expect(createCustomer).toHaveBeenCalledTimes(1)
+    expect(createOrder).toHaveBeenCalledTimes(2)
+    expect(createOrder).toHaveBeenLastCalledWith(
+      expect.objectContaining({ customerId: 'new-customer-id' }),
+    )
+  })
+
+  it('surfaces a createOrder failure as an error and does not navigate', async () => {
+    const user = userEvent.setup()
+    createOrder.mockRejectedValue(new Error('Не удалось сохранить'))
+    renderForm()
+    await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
+    await user.type(screen.getByPlaceholderText('Название'), 'Роза')
+    await user.type(screen.getByPlaceholderText('Цена, ₽'), '100')
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить заказ' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось сохранить')
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('removes a plant row and keeps the last row undeletable', async () => {
+    const user = userEvent.setup()
+    renderForm()
+    await screen.findByLabelText('Имя клиента')
+    // With a single row the form must keep it — its remove button is disabled.
+    expect(screen.getByRole('button', { name: 'Удалить растение' })).toBeDisabled()
+
+    // Add a second row, then remove it.
+    await user.type(screen.getByPlaceholderText('Название'), 'Роза')
+    await user.click(screen.getByRole('button', { name: '+ Добавить растение' }))
+    expect(screen.getAllByPlaceholderText('Название')).toHaveLength(2)
+
+    await user.click(screen.getAllByRole('button', { name: 'Удалить растение' })[1])
+    expect(screen.getAllByPlaceholderText('Название')).toHaveLength(1)
+    // The surviving first row kept its value — removal didn't reindex state.
+    expect(screen.getByPlaceholderText('Название')).toHaveValue('Роза')
   })
 })
