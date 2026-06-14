@@ -69,7 +69,7 @@ function OrderDetailPage() {
         <div className="mx-auto flex max-w-2xl flex-col gap-6">
           <header className="flex items-baseline justify-between gap-3">
             <h1 className="m-0 text-2xl font-semibold text-heading">
-              Заказ {order.number !== undefined ? `№${order.number}` : '№—'}
+              Заказ №{order.number}
             </h1>
             <span className="text-sm text-text">{formatDate(order.dateCreated)}</span>
           </header>

@@ -55,11 +55,20 @@ itemized plant list, delivery method, and live order totals.
 
 | Command        | Description                                    |
 | -------------- | ---------------------------------------------- |
-| `yarn dev`     | Start the Vite dev server with HMR             |
-| `yarn build`   | Type-check (`tsc -b`) and build for production |
-| `yarn lint`    | Run ESLint                                     |
-| `yarn preview` | Preview the production build locally           |
-| `yarn deploy`  | Build and deploy to Firebase Hosting           |
+| `yarn dev`        | Start the Vite dev server with HMR             |
+| `yarn build`      | Type-check (`tsc -b`) and build for production |
+| `yarn lint`       | Run ESLint                                     |
+| `yarn test`       | Run the test suite once                        |
+| `yarn test:watch` | Run tests in watch mode                        |
+| `yarn coverage`   | Run tests and report coverage                  |
+| `yarn preview`    | Preview the production build locally           |
+| `yarn deploy`     | Build and deploy to Firebase Hosting           |
+
+## Testing
+
+Tests run on [Vitest](https://vitest.dev) with [React Testing Library](https://testing-library.com/react)
+(jsdom environment). Test files live next to the code they cover as
+`*.test.ts(x)`. Run `yarn test` once or `yarn test:watch` while developing.
 
 ## Deployment
 
