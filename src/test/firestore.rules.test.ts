@@ -121,6 +121,12 @@ describe('customers rules', () => {
     await assertSucceeds(getDoc(doc(alice(), 'customers/c1')))
     await assertFails(getDoc(doc(bob(), 'customers/c1')))
   })
+
+  it('forbids reassigning a customer to another owner on update', async () => {
+    await seed('customers/c1', customer('alice'))
+    await assertSucceeds(updateDoc(doc(alice(), 'customers/c1'), { name: 'Пётр' }))
+    await assertFails(updateDoc(doc(alice(), 'customers/c1'), { ownerId: 'bob' }))
+  })
 })
 
 describe('counters rules', () => {
