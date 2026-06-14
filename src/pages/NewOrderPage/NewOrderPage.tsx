@@ -87,6 +87,10 @@ function NewOrderPage() {
   const [comment, setComment] = useState('')
 
   const [saving, setSaving] = useState(false)
+  // Becomes true on the first submit attempt; until then, incomplete-row hints
+  // (e.g. a named plant without a price) stay hidden so the form doesn't nag
+  // while the user is still filling it in.
+  const [submitAttempted, setSubmitAttempted] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -124,10 +128,11 @@ function NewOrderPage() {
   const removeItem = (index: number) =>
     setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev))
 
-  // A row that has a name but no price is incomplete — flag its price input.
-  // The trailing empty placeholder (no name yet) is intentionally not flagged.
+  // A row that has a name but no price is incomplete — flag its price input, but
+  // only after a submit attempt so the field doesn't turn red while the user is
+  // still typing. The trailing empty placeholder (no name yet) is never flagged.
   const isPriceMissing = (item: ItemInput) =>
-    item.name.trim() !== '' && item.price.trim() === ''
+    submitAttempted && item.name.trim() !== '' && item.price.trim() === ''
 
   // Single source of truth for prefilling order fields from an existing
   // customer. Pass the customer to fill, or undefined to clear. Every field that
@@ -168,6 +173,7 @@ function NewOrderPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (saving) return
+    setSubmitAttempted(true)
     setError(null)
 
     if (!ownerId) {
