@@ -156,7 +156,7 @@ export function buildOrderColumns(
   getCustomerName: (customerId: string) => string,
 ): OrderColumn[] {
   return [
-    { id: 'number', header: '№', format: (o) => (o.number !== undefined ? String(o.number) : '—') },
+    { id: 'number', header: '№', format: (o) => String(o.number) },
     { id: 'dateCreated', header: 'Дата', format: (o) => formatDate(o.dateCreated) },
     { id: 'customer', header: 'Клиент', format: (o) => getCustomerName(o.customerId) },
     { id: 'address', header: 'Адрес', field: 'address' },
