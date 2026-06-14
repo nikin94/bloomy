@@ -70,6 +70,17 @@ Tests run on [Vitest](https://vitest.dev) with [React Testing Library](https://t
 (jsdom environment). Test files live next to the code they cover as
 `*.test.ts(x)`. Run `yarn test` once or `yarn test:watch` while developing.
 
+Data-layer tests come in two flavours:
+
+- **Mock-based** (`src/lib/*.test.ts`) — the Firebase SDK is stubbed, so they
+  verify our code (counter math, owner re-check, query shape) fast and offline.
+  Part of the default `yarn test` run.
+- **Emulator-based** (`src/lib/*.emulator.test.ts`) — run against a real
+  Firestore emulator to verify what mocks cannot, e.g. the order-number
+  transaction stays atomic under concurrent creates. These need Java and the
+  Firebase CLI; run them with `yarn test:emulator` (starts and stops the
+  emulator automatically). They are excluded from the default `yarn test`.
+
 ## Deployment
 
 Pushes to `main` deploy automatically to Firebase Hosting via GitHub Actions
