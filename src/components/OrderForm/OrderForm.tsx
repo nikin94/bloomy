@@ -80,6 +80,7 @@ const PlantItemRow = ({
   item,
   priceMissing,
   canRemove,
+  autoFocus,
   onChange,
   onRemove,
 }: {
@@ -87,6 +88,9 @@ const PlantItemRow = ({
   item: ItemInput
   priceMissing: boolean
   canRemove: boolean
+  // Focus the name input on mount — set only for a row just added via the
+  // "+ Добавить растение" button, so the user can type the name right away.
+  autoFocus: boolean
   onChange: (patch: Partial<ItemInput>) => void
   onRemove: () => void
 }) => (
@@ -98,6 +102,7 @@ const PlantItemRow = ({
       <Input
         className="min-w-0 flex-1"
         placeholder="Название"
+        autoFocus={autoFocus}
         value={item.name}
         onChange={(e) => onChange({ name: e.target.value })}
       />
@@ -186,6 +191,10 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
   const itemIdRef = useRef(initialOrder ? initialOrder.plants.length - 1 : 0)
   const nextItemId = () => (itemIdRef.current += 1)
   const [items, setItems] = useState<ItemInput[]>(() => initialItems(initialOrder))
+  // Id of the row whose name input should grab focus on mount — set when a row
+  // is added so the user can type immediately. Null at first render (and after
+  // a prefill) so no row steals focus on load.
+  const [focusItemId, setFocusItemId] = useState<number | null>(null)
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>(
     initialOrder?.deliveryMethod ?? 'post',
   )
@@ -251,7 +260,9 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
   const canAddItem = lastItem !== undefined && lastItem.name.trim() !== ''
   const addItem = () => {
     if (!canAddItem) return
-    setItems((prev) => [...prev, emptyItem(nextItemId())])
+    const id = nextItemId()
+    setItems((prev) => [...prev, emptyItem(id)])
+    setFocusItemId(id) // focus the new row's name input once it mounts
   }
   const removeItem = (index: number) =>
     setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev))
@@ -517,6 +528,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                 item={item}
                 priceMissing={isPriceMissing(item)}
                 canRemove={items.length > 1}
+                autoFocus={item.id === focusItemId}
                 onChange={(patch) => updateItem(index, patch)}
                 onRemove={() => removeItem(index)}
               />
