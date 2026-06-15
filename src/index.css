@@ -15,6 +15,17 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Interactive elements get a pointer cursor by default. The `:not(:disabled)`
+   guard keeps disabled buttons on their default/not-allowed cursor, and putting
+   this in @layer base means any explicit cursor utility (e.g. the
+   `disabled:cursor-not-allowed` set on some buttons) still wins. */
+@layer base {
+  button:not(:disabled),
+  a {
+    cursor: pointer;
+  }
+}
+
 /* Fullscreen layout: the main screen is a table filling the viewport.
    Scrolling lives inside the table, not on the body, so we fix the height. */
 html,
