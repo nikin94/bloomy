@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -104,5 +105,51 @@ describe('SettingsModal', () => {
     renderModal()
     await user.click(screen.getByRole('button', { name: 'Выйти' }))
     expect(signOutUser).toHaveBeenCalledTimes(1)
+  })
+
+  it('moves focus into the dialog when it opens', () => {
+    renderModal()
+    // The first focusable control (the close button) receives focus on open.
+    expect(screen.getByRole('button', { name: 'Закрыть' })).toHaveFocus()
+  })
+
+  it('traps Tab within the dialog, wrapping at both ends', async () => {
+    const user = userEvent.setup()
+    renderModal()
+    const first = screen.getByRole('button', { name: 'Закрыть' })
+    const last = screen.getByRole('button', { name: 'Выйти' })
+
+    // Tab from the last focusable wraps back to the first.
+    last.focus()
+    await user.tab()
+    expect(first).toHaveFocus()
+
+    // Shift+Tab from the first wraps to the last.
+    await user.tab({ shift: true })
+    expect(last).toHaveFocus()
+  })
+
+  it('restores focus to the opener when the dialog closes', async () => {
+    const user = userEvent.setup()
+    const Harness = () => {
+      const [open, setOpen] = useState(false)
+      return (
+        <AuthContext.Provider value={{ user: USER, loading: false }}>
+          <SettingsContext.Provider value={settings()}>
+            <button onClick={() => setOpen(true)}>Открыть</button>
+            <SettingsModal open={open} onClose={() => setOpen(false)} />
+          </SettingsContext.Provider>
+        </AuthContext.Provider>
+      )
+    }
+    render(<Harness />)
+
+    const opener = screen.getByRole('button', { name: 'Открыть' })
+    opener.focus()
+    await user.click(opener)
+    // Dialog opened and grabbed focus; closing returns it to the opener.
+    expect(screen.getByRole('button', { name: 'Закрыть' })).toHaveFocus()
+    await user.click(screen.getByRole('button', { name: 'Отмена' }))
+    expect(opener).toHaveFocus()
   })
 })

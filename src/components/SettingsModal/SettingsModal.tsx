@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../context/authContext'
 import { useSettings } from '../../context/settingsContext'
 import { signOutUser } from '../../firebase/auth'
@@ -79,6 +79,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
   const [draft, setDraft] = useState(fontScale)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   // Esc closes and reverts the live preview to the saved size.
   useEffect(() => {
@@ -91,6 +92,46 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [fontScale, previewFontScale, onClose])
+
+  // Focus trap: move focus into the dialog on open, keep Tab/Shift+Tab cycling
+  // inside it (aria-modal hides the rest from screen readers but doesn't stop
+  // sighted keyboard users tabbing out), and restore focus to whatever opened
+  // the dialog (the gear button) when it closes.
+  useEffect(() => {
+    const panel = panelRef.current
+    if (!panel) return
+    const opener = document.activeElement as HTMLElement | null
+
+    const focusables = () =>
+      Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      )
+
+    focusables()[0]?.focus()
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return
+      const items = focusables()
+      if (items.length === 0) return
+      const first = items[0]
+      const last = items[items.length - 1]
+      if (e.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    panel.addEventListener('keydown', onKey)
+    return () => {
+      panel.removeEventListener('keydown', onKey)
+      opener?.focus?.()
+    }
+  }, [])
 
   // Close without saving: drop the preview back to the persisted size.
   const handleClose = () => {
@@ -139,7 +180,10 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
         className="absolute inset-0 cursor-default bg-black/40"
       />
 
-      <div className="relative z-10 flex w-full max-w-md flex-col gap-6 rounded-lg border border-border bg-bg p-6 shadow-xl">
+      <div
+        ref={panelRef}
+        className="relative z-10 flex w-full max-w-md flex-col gap-6 rounded-lg border border-border bg-bg p-6 shadow-xl"
+      >
         <header className="flex items-center justify-between gap-3">
           <h2 id="settings-title" className="m-0 text-lg font-semibold text-heading">
             Настройки
