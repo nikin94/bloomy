@@ -1,5 +1,5 @@
 import type { SelectHTMLAttributes } from 'react'
-import { FIELD_BASE, FIELD_NORMAL } from '../field/fieldStyles'
+import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
 
 // A native <select> styled to match the app's inputs (it shares FIELD_BASE /
 // FIELD_NORMAL with Input/Textarea). We set `appearance-none` so the browser

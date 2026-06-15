@@ -1,5 +1,5 @@
 import type { TextareaHTMLAttributes } from 'react'
-import { FIELD_BASE, FIELD_NORMAL } from '../field/fieldStyles'
+import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
 
 // The app's standard multi-line text field. Shares the same visual base as Input
 // (border, focus ring, padding) and is vertically resizable; pass `className` for

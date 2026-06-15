@@ -1,5 +1,5 @@
 import type { InputHTMLAttributes } from 'react'
-import { FIELD_BASE, FIELD_INVALID, FIELD_NORMAL } from '../field/fieldStyles'
+import { FIELD_BASE, FIELD_INVALID, FIELD_NORMAL } from '../../styles/fieldStyles'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   // Marks the field as failing validation: red border + focus ring, and the

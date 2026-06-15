@@ -103,10 +103,11 @@ values and the Firebase service account are provided as repository secrets.
 
 ```
 src/
-  components/   Reusable UI (AppHeader, DataTable, Select, Spinner, ProtectedRoute)
+  components/   Reusable UI (AppHeader, Button, Input, Textarea, Select, DataTable, Spinner, ProtectedRoute)
   context/      Auth context and provider
   lib/          Firebase setup and data access (auth, orders, customers, firebase, format)
   pages/        Route screens (Login, Orders, OrderDetail, NewOrder)
+  styles/       Shared style constants (e.g. fieldStyles — form-control class strings)
   types/        Zod schemas and inferred types (order, customer)
   theme.css     Design tokens (colours, typography, light/dark variants)
   index.css     Tailwind import, base styling, layout
