@@ -15,8 +15,9 @@ const SCALE_STEPS = Math.round((FONT_SCALE_MAX - FONT_SCALE_MIN) / FONT_SCALE_ST
 // step ticks; `-mt-2.5` re-centres the 24px thumb on the 4px track. Stays a real
 // <input type="range">, so its slider role / keyboard control are unchanged.
 const sliderClass =
-  'relative h-6 w-full cursor-pointer appearance-none bg-transparent ' +
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ' +
+  // `block` removes the inline-block descender gap below the input, so the
+  // wrapper's height matches the track and the step ticks centre on it exactly.
+  'relative block h-6 w-full cursor-pointer appearance-none bg-transparent focus-visible:outline-none ' +
   '[&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-border ' +
   '[&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-border ' +
   '[&::-webkit-slider-thumb]:relative [&::-webkit-slider-thumb]:z-10 [&::-webkit-slider-thumb]:-mt-2.5 [&::-webkit-slider-thumb]:size-6 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-bg [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow ' +
