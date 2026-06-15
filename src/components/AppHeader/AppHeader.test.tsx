@@ -79,17 +79,20 @@ describe('AppHeader (mobile menu)', () => {
     )
   })
 
-  it('pairs the orders row with the create-order action', async () => {
+  it('reveals the create-order action on the open-menu header line', async () => {
     const user = userEvent.setup()
     renderHeader()
+    // The action is hidden until the menu opens.
+    expect(screen.queryByRole('link', { name: 'Добавить заказ' })).not.toBeInTheDocument()
+
     await user.click(screen.getByRole('button', { name: 'Открыть меню' }))
-    // "Заказы" stays a destination link; the "+" beside it is an icon-only link
-    // to the new-order form, kept accessible by name via aria-label.
-    expect(mobileMenu().getByRole('link', { name: 'Заказы' })).toHaveAttribute('href', '/orders')
-    expect(mobileMenu().getByRole('link', { name: 'Новый заказ' })).toHaveAttribute(
+    // "Добавить заказ" appears in the bar row (alongside the close toggle), not
+    // inside the nav list; "Заказы" stays a plain destination link in the menu.
+    expect(screen.getByRole('link', { name: 'Добавить заказ' })).toHaveAttribute(
       'href',
       '/orders/new',
     )
+    expect(mobileMenu().getByRole('link', { name: 'Заказы' })).toHaveAttribute('href', '/orders')
   })
 
   it('closes after a menu destination is chosen', async () => {

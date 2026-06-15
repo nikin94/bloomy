@@ -101,14 +101,6 @@ const mobileNavLinkClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg',
   ].join(' ')
 
-// The create-order "+" sits on the same row as the "Заказы" link (new order
-// belongs to orders), as a square primary icon button. Height matches the nav
-// row (p-2 + size-5 = same as the "Заказы" px-3 py-2 text-sm row) so they align.
-const mobileActionIconClass =
-  'flex shrink-0 items-center justify-center rounded-md bg-primary p-2 text-white ' +
-  'no-underline transition-opacity hover:opacity-90 ' +
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
-
 const MenuDivider = () => <span aria-hidden="true" className="my-1 h-px w-full bg-border" />
 
 // App-wide navigation header. On wide screens (md+) everything sits inline; on
@@ -163,9 +155,17 @@ const AppHeader = () => {
         </div>
       </div>
 
-      {/* Mobile bar (below md): just the burger toggle, aligned right. `relative
-          z-40` keeps it above the backdrop and panel so it stays clickable. */}
-      <div className="relative z-40 flex items-center justify-end px-4 py-3 md:hidden">
+      {/* Mobile bar / open-menu header (below md): the burger toggle sits at the
+          top-right; when the menu is open it also holds the create-order action
+          on the left, in line with the close (X) toggle. `relative z-40` keeps
+          this row above the backdrop and panel so it stays clickable. */}
+      <div className="relative z-40 flex items-center gap-2 px-4 py-3 md:hidden">
+        {menuOpen && (
+          <NavLink to="/orders/new" className={actionButtonClass} onClick={closeMenu}>
+            <PlusIcon />
+            Добавить заказ
+          </NavLink>
+        )}
         <Button
           variant="secondary"
           size="icon"
@@ -173,6 +173,7 @@ const AppHeader = () => {
           aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
           aria-expanded={menuOpen}
           aria-controls="mobile-menu"
+          className="ml-auto"
         >
           <BurgerIcon open={menuOpen} />
         </Button>
@@ -202,42 +203,21 @@ const AppHeader = () => {
         }`}
       >
         <div className="flex flex-col gap-1 p-4">
-          {/* 1. Navigation destinations. The "Заказы" row carries the create-order
-              "+" on the same line (new order belongs to orders); other links are
-              plain full-width rows. */}
-          {NAV_LINKS.map((link) =>
-            link.to === '/orders' ? (
-              <div key={link.to} className="flex items-center gap-2">
-                <NavLink
-                  to={link.to}
-                  end={link.end}
-                  className={(state) => `${mobileNavLinkClass(state)} flex-1`}
-                  onClick={closeMenu}
-                >
-                  {link.label}
-                </NavLink>
-                <NavLink
-                  to="/orders/new"
-                  className={mobileActionIconClass}
-                  aria-label="Новый заказ"
-                  title="Новый заказ"
-                  onClick={closeMenu}
-                >
-                  <PlusIcon className="size-5" />
-                </NavLink>
-              </div>
-            ) : (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                end={link.end}
-                className={mobileNavLinkClass}
-                onClick={closeMenu}
-              >
-                {link.label}
-              </NavLink>
-            ),
-          )}
+          {/* Divider under the action/close row that sits in the bar above. */}
+          <MenuDivider />
+
+          {/* 1. Navigation destinations. */}
+          {NAV_LINKS.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              end={link.end}
+              className={mobileNavLinkClass}
+              onClick={closeMenu}
+            >
+              {link.label}
+            </NavLink>
+          ))}
 
           <MenuDivider />
 
