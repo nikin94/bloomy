@@ -6,6 +6,7 @@ import { formatDate, formatMoney } from '../../utils/format'
 import {
   getSubtotalMinor,
   getTotalMinor,
+  plantsByValueDesc,
   DELIVERY_METHOD_LABELS,
   PAYMENT_METHOD_LABELS,
   PAYMENT_STATUS_OPTIONS,
@@ -157,14 +158,16 @@ const OrderDetailPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {order.plants.map((item, index) => (
+                {plantsByValueDesc(order.plants).map((item, index) => (
                   <tr key={index} className="border-b border-border">
                     <td className="py-2 pr-3 text-heading">{item.name}</td>
-                    <td className="py-2 px-3 text-right text-text">{item.quantity}</td>
-                    <td className="py-2 px-3 text-right text-text">
+                    <td className="py-2 px-3 text-right text-text tabular-nums">
+                      {item.quantity === 1 ? '' : `×${item.quantity}`}
+                    </td>
+                    <td className="py-2 px-3 text-right text-text tabular-nums">
                       {formatMoney(item.unitPriceMinor)}
                     </td>
-                    <td className="py-2 pl-3 text-right text-heading">
+                    <td className="py-2 pl-3 text-right text-heading tabular-nums">
                       {formatMoney(item.unitPriceMinor * item.quantity)}
                     </td>
                   </tr>
@@ -179,7 +182,7 @@ const OrderDetailPage = () => {
             <Total label="Доставка" value={order.deliveryPriceMinor} />
             <div className="mt-1 flex justify-between gap-8 border-t border-border pt-2 font-semibold text-heading">
               <span>Итого</span>
-              <span>{formatMoney(getTotalMinor(order))}</span>
+              <span className="tabular-nums">{formatMoney(getTotalMinor(order))}</span>
             </div>
           </section>
         </div>
@@ -233,7 +236,7 @@ const InlineStatusField = ({
 const Total = ({ label, value }: { label: string; value: number }) => (
   <div className="flex justify-between gap-8 text-text">
     <span>{label}</span>
-    <span className="text-heading">{formatMoney(value)}</span>
+    <span className="text-heading tabular-nums">{formatMoney(value)}</span>
   </div>
 )
 

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import type { ReactNode } from 'react'
 import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table'
 import type { ColumnDef, Row } from '@tanstack/react-table'
 import type { Order, OrderColumn } from '../../types/order'
@@ -14,10 +15,12 @@ interface DataTableProps {
 
 // Cell value: use the column's format function when present, otherwise
 // stringify the raw field. Derived columns (no `field`) must provide `format`.
-const renderCell = (order: Order, column: OrderColumn): string => {
-  if (column.format) return column.format(order)
-  if (column.field) return String(order[column.field])
-  return ''
+// A formatted value may contain newlines (e.g. the stacked plant list); render
+// each line on its own row so it reads as a column, not one long string.
+const renderCell = (order: Order, column: OrderColumn): ReactNode => {
+  const value = column.format ? column.format(order) : column.field ? String(order[column.field]) : ''
+  if (!value.includes('\n')) return value
+  return value.split('\n').map((line, i) => <div key={i}>{line}</div>)
 }
 
 // Adapt our declarative OrderColumn config to TanStack column definitions.

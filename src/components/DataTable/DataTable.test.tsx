@@ -42,7 +42,24 @@ describe('DataTable (table layout)', () => {
   it('renders a row with resolved and formatted cell values', () => {
     render(<DataTable orders={[order()]} columns={columns} onRowClick={vi.fn()} />)
     expect(table().getByText('Анна')).toBeInTheDocument() // customer resolved via the lookup
-    expect(table().getByText('Роза')).toBeInTheDocument() // plant name from the format fn
+    // Plant lines are stacked "name ×qty"; one row per plant.
+    expect(table().getByText('Роза ×2')).toBeInTheDocument()
+  })
+
+  it('stacks plants priciest-first, hiding the quantity when it is 1', () => {
+    const multi = order({
+      plants: [
+        { name: 'Роза', quantity: 2, unitPriceMinor: 15000 }, // line value 30000
+        { name: 'Фикус', quantity: 1, unitPriceMinor: 50000 }, // line value 50000 — pricier
+      ],
+    })
+    render(<DataTable orders={[multi]} columns={columns} onRowClick={vi.fn()} />)
+    // Stacked, not "Роза, Фикус". Quantity shows only above 1: "Роза ×2",
+    // but a single Фикус is just its name.
+    const rose = table().getByText('Роза ×2')
+    const ficus = table().getByText('Фикус')
+    // The most valuable line (Фикус, 50000) is listed before the cheaper Роза.
+    expect(ficus.compareDocumentPosition(rose) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('calls onRowClick with the row order when a row is clicked', async () => {
@@ -97,7 +114,7 @@ describe('DataTable (mobile card layout)', () => {
     // Each column shows up as a "label → value" pair inside the card.
     expect(within(card).getByText('Клиент')).toBeInTheDocument()
     expect(within(card).getByText('Анна')).toBeInTheDocument()
-    expect(within(card).getByText('Роза')).toBeInTheDocument()
+    expect(within(card).getByText('Роза ×2')).toBeInTheDocument()
   })
 
   it('activates a card with a click and with the keyboard', async () => {
