@@ -13,7 +13,7 @@ import type { SelectHTMLAttributes } from 'react'
 // the control shrinks to its assigned width and clips the shown value (`truncate`).
 const selectClass =
   'w-full min-w-0 truncate appearance-none rounded-md border border-border bg-bg py-2 pl-3 pr-9 text-heading ' +
-  'focus-visible:outline-2 focus-visible:outline-offset-[-1px] focus-visible:outline-accent'
+  'focus-visible:outline-2 focus-visible:outline-offset-[-1px] focus-visible:outline-primary'
 
 function Select({ className = '', children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (

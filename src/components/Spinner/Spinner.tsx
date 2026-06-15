@@ -4,8 +4,8 @@
 // from an inline "Загрузка…" text node appearing and disappearing.
 //
 // The ring is built from Tailwind's built-in `animate-spin` utility (no extra
-// library): a thick circle whose track uses the translucent accent colour and
-// whose top edge uses the solid accent, producing the classic spinner arc.
+// library): a thick circle whose track uses the translucent primary colour and
+// whose top edge uses the solid primary, producing the classic spinner arc.
 function Spinner() {
   return (
     <div
@@ -13,7 +13,7 @@ function Spinner() {
       role="status"
       aria-label="Загрузка"
     >
-      <span className="h-16 w-16 animate-spin rounded-full border-4 border-accent-bg border-t-accent" />
+      <span className="h-16 w-16 animate-spin rounded-full border-4 border-primary-bg border-t-primary" />
     </div>
   )
 }

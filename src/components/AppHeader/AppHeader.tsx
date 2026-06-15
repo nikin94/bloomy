@@ -8,8 +8,8 @@ import { signOutUser } from '../../lib/auth'
 const navButtonClass = ({ isActive }: { isActive: boolean }) =>
   [
     'inline-flex items-center rounded-md px-4 py-2 text-sm font-medium no-underline transition-colors',
-    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
-    isActive ? 'bg-accent text-white' : 'border border-border text-heading hover:bg-accent-bg',
+    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+    isActive ? 'bg-primary text-white' : 'border border-border text-heading hover:bg-primary-bg',
   ].join(' ')
 
 function AppHeader() {
@@ -40,7 +40,7 @@ function AppHeader() {
             // request), so failure is unlikely — but don't swallow it silently.
             signOutUser().catch((err: unknown) => console.error('Sign-out failed', err))
           }}
-          className="rounded-md border border-border px-3 py-2 text-sm text-heading transition-colors hover:bg-accent-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="rounded-md border border-border px-3 py-2 text-sm text-heading transition-colors hover:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           Выйти
         </button>

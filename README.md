@@ -108,9 +108,21 @@ src/
   lib/          Firebase setup and data access (auth, orders, customers, firebase, format)
   pages/        Route screens (Login, Orders, OrderDetail, NewOrder)
   types/        Zod schemas and inferred types (order, customer)
+  theme.css     Design tokens (colours, typography, light/dark variants)
+  index.css     Tailwind import, base styling, layout
   App.tsx       Routes
   main.tsx      App entry point
 ```
+
+## Theming
+
+Colours and typography are defined as design tokens in `src/theme.css` — the
+single source of truth for the project's palette. Tokens are plain CSS variables
+(e.g. `--primary`, the main brand colour) mapped to Tailwind's `--color-*`
+namespace via `@theme inline`, so components use semantic utilities (`bg-primary`,
+`text-heading`, `border-border`) and never hardcode a colour. A dark variant is
+swapped in under `prefers-color-scheme: dark`. To retheme, edit the values in
+`theme.css`.
 
 ## Data model
 

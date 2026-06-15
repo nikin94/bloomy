@@ -1,34 +1,9 @@
 @import 'tailwindcss';
+/* Design tokens (colours, typography, light/dark variants) live in one place. */
+@import './theme.css';
 
-/* Expose the design tokens to Tailwind as semantic color utilities
-   (bg-bg, text-text, text-heading, border-border, text-accent, ...).
-   `inline` keeps the var() reference in the generated utilities, so the
-   dark-theme override below swaps the value without rebuilding classes. */
-@theme inline {
-  --color-bg: var(--bg);
-  --color-text: var(--text);
-  --color-heading: var(--text-h);
-  --color-border: var(--border);
-  --color-accent: var(--accent);
-  --color-accent-bg: var(--accent-bg);
-  --color-danger: #e5484d;
-
-  --font-sans: var(--sans);
-  --font-mono: var(--mono);
-}
-
-/* Design tokens — palette and typography. Dark variant is swapped below. */
+/* Base document styling, applied via the design tokens defined in theme.css. */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
   color-scheme: light dark;
@@ -38,17 +13,6 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-  }
 }
 
 /* Fullscreen layout: the main screen is a table filling the viewport.
