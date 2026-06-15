@@ -2,49 +2,29 @@ import { useEffect, useState } from 'react'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
+import Modal from '../../components/Modal/Modal'
 import CustomerForm from '../../components/CustomerForm/CustomerForm'
 import { fetchCustomers, softDeleteCustomer, updateCustomer } from '../../firebase/customers'
 import type { CustomerEdits } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
 import type { Customer } from '../../types/customer'
 
-// One customer row: name/phone with edit and delete actions. Editing swaps the
-// row for an inline CustomerForm (no separate page); the trash button reveals an
-// in-place confirm/cancel pair (no modal dependency). Confirming calls the
-// parent's onDelete, which soft-deletes the record and drops the row.
+// One customer row: name/phone with edit and delete actions. The edit button
+// asks the parent to open the edit dialog (so only one customer is edited at a
+// time); the trash button reveals an in-place confirm/cancel pair. Confirming
+// calls the parent's onDelete, which soft-deletes the record and drops the row.
 // Extracted from the map so the loop body is its own component.
 const CustomerRow = ({
   customer,
-  onSave,
+  onEdit,
   onDelete,
 }: {
   customer: Customer
-  onSave: (id: string, edits: CustomerEdits) => Promise<void>
+  onEdit: (customer: Customer) => void
   onDelete: (id: string) => Promise<void>
 }) => {
-  const [editing, setEditing] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
-
-  if (editing) {
-    return (
-      <li className="border-b border-border py-3">
-        <CustomerForm
-          initial={{
-            name: customer.name,
-            phone: customer.phone,
-            address: customer.address,
-            note: customer.note,
-          }}
-          onCancel={() => setEditing(false)}
-          onSubmit={async (edits) => {
-            await onSave(customer.id, edits)
-            setEditing(false)
-          }}
-        />
-      </li>
-    )
-  }
 
   // On success the parent removes this row from the list, unmounting us; on
   // failure (surfaced page-level) we reset so the user can retry or cancel.
@@ -85,7 +65,7 @@ const CustomerRow = ({
           <Button
             variant="secondary"
             size="icon"
-            onClick={() => setEditing(true)}
+            onClick={() => onEdit(customer)}
             aria-label={`Редактировать клиента ${customer.name}`}
             title="Редактировать"
           >
@@ -133,12 +113,15 @@ const CustomerRow = ({
 }
 
 // Address-book screen: lists the signed-in user's active customers and lets each
-// be edited (inline) or removed (soft delete — see softDeleteCustomer).
+// be edited (in a modal, one at a time) or removed (soft delete — see softDeleteCustomer).
 const CustomersPage = () => {
   // Guaranteed non-null under ProtectedRoute, but read defensively and gate on it.
   const { user } = useAuth()
   const ownerId = user?.uid
   const [customers, setCustomers] = useState<Customer[]>([])
+  // The customer currently being edited, or null. Holding it on the page (not
+  // per row) means only ONE edit dialog is ever open at a time.
+  const [editing, setEditing] = useState<Customer | null>(null)
   const [loading, setLoading] = useState(true)
   // Two separate errors: a load failure means there is no list to show, so it
   // replaces the content; a delete failure happens with the list already on
@@ -170,7 +153,7 @@ const CustomersPage = () => {
   // Persist an edit, then update the in-memory list. Optional fields that came
   // in empty are dropped (mirroring updateCustomer) so a cleared field also
   // clears in the UI; the list is re-sorted because the name may have changed.
-  // Errors propagate to the inline CustomerForm, which keeps itself open.
+  // Errors propagate to the CustomerForm in the dialog, which keeps itself open.
   const handleSave = async (id: string, edits: CustomerEdits) => {
     await updateCustomer(id, edits)
     const trimmed = (value: string | undefined) =>
@@ -234,7 +217,7 @@ const CustomersPage = () => {
                   <CustomerRow
                     key={customer.id}
                     customer={customer}
-                    onSave={handleSave}
+                    onEdit={setEditing}
                     onDelete={handleDelete}
                   />
                 ))}
@@ -242,6 +225,28 @@ const CustomersPage = () => {
             )}
           </div>
         </div>
+      )}
+
+      {/* Edit dialog — one customer at a time. Mounted only while editing, so
+          the form seeds fresh from the chosen customer each time. */}
+      {editing && (
+        <Modal key={editing.id} title="Редактирование клиента" onClose={() => setEditing(null)}>
+          <CustomerForm
+            initial={{
+              name: editing.name,
+              phone: editing.phone,
+              address: editing.address,
+              note: editing.note,
+            }}
+            onCancel={() => setEditing(null)}
+            onSubmit={async (edits) => {
+              // handleSave throws on failure, which CustomerForm catches and
+              // shows inline — so the dialog stays open until the save succeeds.
+              await handleSave(editing.id, edits)
+              setEditing(null)
+            }}
+          />
+        </Modal>
       )}
     </div>
   )

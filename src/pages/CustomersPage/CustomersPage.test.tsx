@@ -82,20 +82,21 @@ describe('CustomersPage', () => {
     await waitFor(() => expect(screen.queryByText('Анна')).not.toBeInTheDocument())
   })
 
-  it('edits a customer inline and reflects the new name in the list', async () => {
+  it('edits a customer in a modal and reflects the new name in the list', async () => {
     const user = userEvent.setup()
     fetchCustomers.mockResolvedValue([customer({ name: 'Анна', phone: '+700' })])
     renderPage()
 
     await user.click(await screen.findByRole('button', { name: 'Редактировать клиента Анна' }))
-    // The inline form is prefilled with the current values.
-    const nameField = screen.getByLabelText('Имя клиента')
+    // Editing opens a dialog prefilled with the current values.
+    const dialog = within(screen.getByRole('dialog', { name: 'Редактирование клиента' }))
+    const nameField = dialog.getByLabelText('Имя клиента')
     expect(nameField).toHaveValue('Анна')
-    expect(screen.getByLabelText('Телефон')).toHaveValue('+700')
+    expect(dialog.getByLabelText('Телефон')).toHaveValue('+700')
 
     await user.clear(nameField)
     await user.type(nameField, 'Анна Петрова')
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await user.click(dialog.getByRole('button', { name: 'Сохранить' }))
 
     await waitFor(() =>
       expect(updateCustomer).toHaveBeenCalledWith(
@@ -103,9 +104,27 @@ describe('CustomersPage', () => {
         expect.objectContaining({ name: 'Анна Петрова', phone: '+700' }),
       ),
     )
-    // The list updates and the inline form closes.
+    // The list updates and the dialog closes.
     expect(await screen.findByText('Анна Петрова')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Имя клиента')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('opens only one edit dialog at a time', async () => {
+    const user = userEvent.setup()
+    fetchCustomers.mockResolvedValue([
+      customer({ id: 'c1', name: 'Анна' }),
+      customer({ id: 'c2', name: 'Борис' }),
+    ])
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Редактировать клиента Анна' }))
+    // Switching to another customer replaces the dialog rather than stacking a
+    // second one — the page holds a single editing target.
+    await user.click(screen.getByRole('button', { name: 'Редактировать клиента Борис' }))
+
+    const dialogs = screen.getAllByRole('dialog')
+    expect(dialogs).toHaveLength(1)
+    expect(within(dialogs[0]).getByLabelText('Имя клиента')).toHaveValue('Борис')
   })
 
   it('does not save an edit with an empty name', async () => {
@@ -114,12 +133,13 @@ describe('CustomersPage', () => {
     renderPage()
 
     await user.click(await screen.findByRole('button', { name: 'Редактировать клиента Анна' }))
-    await user.clear(screen.getByLabelText('Имя клиента'))
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    const dialog = within(screen.getByRole('dialog', { name: 'Редактирование клиента' }))
+    await user.clear(dialog.getByLabelText('Имя клиента'))
+    await user.click(dialog.getByRole('button', { name: 'Сохранить' }))
 
     expect(updateCustomer).not.toHaveBeenCalled()
-    // The form stays open (name field still present).
-    expect(screen.getByLabelText('Имя клиента')).toBeInTheDocument()
+    // The dialog stays open (name field still present).
+    expect(dialog.getByLabelText('Имя клиента')).toBeInTheDocument()
   })
 
   it('keeps the customer when the delete is cancelled', async () => {
