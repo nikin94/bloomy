@@ -92,7 +92,7 @@ const PlantItemRow = ({
     </div>
     <div className="flex min-w-0 items-center gap-2 sm:flex-[3]">
       <Input
-        className="min-w-0 flex-1"
+        className="min-w-0 flex-[2]"
         type="number"
         min={1}
         step={1}
@@ -101,7 +101,7 @@ const PlantItemRow = ({
         onChange={(e) => onChange({ quantity: e.target.value })}
       />
       <Input
-        className="min-w-0 flex-[2]"
+        className="min-w-0 flex-[3]"
         inputMode="decimal"
         placeholder="Цена, ₽"
         invalid={priceMissing}
@@ -344,7 +344,7 @@ function NewOrderPage() {
           <div className="mx-auto flex max-w-2xl flex-col gap-5">
             <h1 className="m-0 text-[22px] font-semibold text-heading">Новый заказ</h1>
 
-          <fieldset className="flex flex-col gap-3 border-0 p-0">
+          <fieldset className="flex min-w-0 flex-col gap-3 border-0 p-0">
             <legend className="mb-1 p-0 text-sm text-text">Клиент</legend>
 
             {/* Segmented slider toggle. Native radios stay as the source of
@@ -448,7 +448,10 @@ function NewOrderPage() {
             />
           </label>
 
-          <fieldset className="flex flex-col gap-2 border-0 p-0">
+          {/* min-w-0 defeats the fieldset UA `min-inline-size: min-content`,
+              which otherwise stops the element from shrinking to its flex parent
+              and lets a tight row (numbered plant line) overflow to the right. */}
+          <fieldset className="flex min-w-0 flex-col gap-2 border-0 p-0">
             <legend className="mb-1 p-0 text-sm text-text">Растения</legend>
             {items.map((item, index) => (
               <PlantItemRow
