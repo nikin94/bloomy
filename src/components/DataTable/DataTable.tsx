@@ -113,9 +113,10 @@ function OrderCard({
   )
 }
 
-// Renders the orders as a sticky-header table on wider screens and as a stack of
-// cards on narrow ones (the columns don't fit a phone width). Both layouts come
-// from the same TanStack row model, so the data and formatting stay in sync.
+// Renders the orders as a sticky-header table on wider screens (lg+) and as a
+// stack of cards below that (the eight columns don't fit a tablet/phone width).
+// Both layouts come from the same TanStack row model, so the data and formatting
+// stay in sync.
 function DataTable({ orders, columns, onRowClick, highlightOrderId }: DataTableProps) {
   // Memoize the column defs so the table instance keeps a stable reference
   // (TanStack recomputes its models when columns/data identity changes).
@@ -147,7 +148,7 @@ function DataTable({ orders, columns, onRowClick, highlightOrderId }: DataTableP
       {/* Desktop: full table. */}
       <table
         data-testid="orders-table"
-        className="hidden w-full border-collapse text-[15px] md:table"
+        className="hidden w-full border-collapse text-[15px] lg:table"
       >
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -176,7 +177,7 @@ function DataTable({ orders, columns, onRowClick, highlightOrderId }: DataTableP
       </table>
 
       {/* Mobile: one card per order. */}
-      <div data-testid="orders-cards" className="flex flex-col gap-3 p-4 md:hidden">
+      <div data-testid="orders-cards" className="flex flex-col gap-3 p-4 lg:hidden">
         {rows.map((row) => (
           <OrderCard
             key={row.id}
