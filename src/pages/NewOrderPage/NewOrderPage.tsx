@@ -72,7 +72,7 @@ const PlantItemRow = ({
   onRemove: () => void
 }) => (
   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-    <div className="flex min-w-0 items-center gap-2 sm:flex-[2]">
+    <div className="flex min-w-0 items-center gap-2 sm:flex-[4]">
       <span aria-hidden="true" className="w-5 shrink-0 text-right text-sm text-text">
         {position}.
       </span>
@@ -83,9 +83,9 @@ const PlantItemRow = ({
         onChange={(e) => onChange({ name: e.target.value })}
       />
     </div>
-    <div className="flex min-w-0 items-center gap-2 sm:flex-1">
+    <div className="flex min-w-0 items-center gap-2 sm:flex-[3]">
       <input
-        className={`${fieldClass} min-w-0 flex-[2]`}
+        className={`${fieldClass} min-w-0 flex-1`}
         type="number"
         min={1}
         step={1}
@@ -97,7 +97,7 @@ const PlantItemRow = ({
         // Border colour is set explicitly (danger vs normal) instead of
         // overriding the shared field class, so only one border-* colour utility
         // is ever present (avoids order-dependent wins).
-        className={`min-w-0 flex-[3] rounded-md border bg-bg px-3 py-2 text-heading focus-visible:outline-2 focus-visible:outline-offset-[-1px] ${
+        className={`min-w-0 flex-[2] rounded-md border bg-bg px-3 py-2 text-heading focus-visible:outline-2 focus-visible:outline-offset-[-1px] ${
           priceMissing
             ? 'border-danger focus-visible:outline-danger'
             : 'border-border focus-visible:outline-accent'
