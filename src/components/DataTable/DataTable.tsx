@@ -56,7 +56,7 @@ const OrderTableRow = ({
   onActivate: (order: Order) => void
 }) => (
   <tr
-    className={`cursor-pointer transition-colors hover:bg-accent-bg focus-visible:bg-accent-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent${
+    className={`cursor-pointer transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary${
       highlighted ? ' row-highlight' : ''
     }`}
     {...activationProps(row.original, onActivate)}
@@ -85,7 +85,7 @@ const OrderCard = ({
   onActivate: (order: Order) => void
 }) => (
   <div
-    className={`cursor-pointer rounded-lg border border-border p-4 transition-colors hover:bg-accent-bg focus-visible:bg-accent-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent${
+    className={`cursor-pointer rounded-lg border border-border p-4 transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary${
       highlighted ? ' row-highlight' : ''
     }`}
     {...activationProps(row.original, onActivate)}

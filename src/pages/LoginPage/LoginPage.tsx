@@ -34,7 +34,7 @@ function LoginPage() {
         type="button"
         onClick={handleSignIn}
         disabled={signingIn}
-        className="rounded-md bg-accent px-6 py-2.5 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="rounded-md bg-primary px-6 py-2.5 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         {signingIn ? 'Вход…' : 'Войти через Google'}
       </button>

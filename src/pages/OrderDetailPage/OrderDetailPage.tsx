@@ -52,7 +52,7 @@ function OrderDetailPage() {
 
   return (
     <div className="overflow-auto p-6">
-      <Link to="/orders" className="mb-4 inline-block text-accent no-underline hover:underline">
+      <Link to="/orders" className="mb-4 inline-block text-primary no-underline hover:underline">
         ← К списку заказов
       </Link>
 

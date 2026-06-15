@@ -1,0 +1,74 @@
+/* ---------------------------------------------------------------------------
+   Theme — the single source of truth for the project's design tokens.
+   ---------------------------------------------------------------------------
+   Colours, typography and their light/dark variants live here and nowhere else.
+   Components never hardcode colours: they use the semantic Tailwind utilities
+   (bg-primary, text-heading, border-border, …) that this file generates.
+
+   How it fits together (Tailwind CSS v4, CSS-first theming):
+   1. `:root` defines the raw palette as plain CSS variables (the values).
+   2. The dark `@media` block swaps those values — no class rebuild needed.
+   3. `@theme inline` maps each token to a `--color-*` entry so Tailwind emits
+      the matching utilities; `inline` keeps the `var()` reference in the output,
+      so a token change (or the dark swap above) updates every utility live.
+
+   To retheme the app, change the values in `:root` (and the dark block). To add
+   a colour, add it in `:root` and expose it in `@theme inline`. */
+
+/* Palette — light (default). */
+:root {
+  /* Brand. `primary` is the main brand colour (buttons, links, focus, active
+     nav). Darkened from the original #aa3bff so white text on a primary button
+     clears the WCAG AA 4.5:1 contrast ratio (#aa3bff was 4.39:1). `primary-bg`
+     is the same hue at low alpha for subtle tints (hover backgrounds, the
+     customer-type slider track, the new-order highlight fade). */
+  --primary: #9d34f0;
+  --primary-bg: rgba(157, 52, 240, 0.1);
+
+  /* Neutrals. */
+  --bg: #fff;
+  --text: #6b6375;
+  --text-h: #08060d;
+  --border: #e5e4e7;
+
+  /* Feedback. */
+  --danger: #e5484d;
+
+  /* Typography. */
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+}
+
+/* Palette — dark. Only the values that differ from light are overridden. The
+   brand colour is rebalanced (not just lightened): the primary button is
+   `bg-primary` + white text in both themes, so the dark primary still has to
+   pass white-text contrast (#9d4edd = 4.60:1) while staying visible on the dark
+   background. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: #9d4edd;
+    --primary-bg: rgba(157, 78, 221, 0.15);
+
+    --bg: #16171d;
+    --text: #9ca3af;
+    --text-h: #f3f4f6;
+    --border: #2e303a;
+  }
+}
+
+/* Expose the tokens to Tailwind as semantic colour utilities
+   (bg-primary, text-text, text-heading, border-border, text-primary, …).
+   `inline` keeps the var() reference so the dark override above swaps the
+   value without rebuilding the generated classes. */
+@theme inline {
+  --color-primary: var(--primary);
+  --color-primary-bg: var(--primary-bg);
+  --color-bg: var(--bg);
+  --color-text: var(--text);
+  --color-heading: var(--text-h);
+  --color-border: var(--border);
+  --color-danger: var(--danger);
+
+  --font-sans: var(--sans);
+  --font-mono: var(--mono);
+}

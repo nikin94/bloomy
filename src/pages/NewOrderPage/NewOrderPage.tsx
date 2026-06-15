@@ -59,7 +59,7 @@ const SELECT_CUSTOMER_ERROR = 'Выберите клиента'
 // blow out the plant row. Each usage sets its own width instead.
 const fieldClass =
   'rounded-md border border-border bg-bg px-3 py-2 text-heading ' +
-  'focus-visible:outline-2 focus-visible:outline-offset-[-1px] focus-visible:outline-accent'
+  'focus-visible:outline-2 focus-visible:outline-offset-[-1px] focus-visible:outline-primary'
 
 // One editable plant line, prefixed with its 1-based position. Four controls
 // (name, quantity, price, delete) don't fit a phone width in a single row, so on
@@ -112,7 +112,7 @@ const PlantItemRow = ({
         className={`min-w-0 flex-[2] rounded-md border bg-bg px-3 py-2 text-heading focus-visible:outline-2 focus-visible:outline-offset-[-1px] ${
           priceMissing
             ? 'border-danger focus-visible:outline-danger'
-            : 'border-border focus-visible:outline-accent'
+            : 'border-border focus-visible:outline-primary'
         }`}
         inputMode="decimal"
         placeholder="Цена, ₽"
@@ -125,7 +125,7 @@ const PlantItemRow = ({
         onClick={onRemove}
         disabled={!canRemove}
         aria-label="Удалить растение"
-        className="shrink-0 rounded-md border border-border px-3 py-2 text-text transition-colors hover:bg-accent-bg disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="shrink-0 rounded-md border border-border px-3 py-2 text-text transition-colors hover:bg-primary-bg disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         ✕
       </button>
@@ -364,17 +364,17 @@ function NewOrderPage() {
             <div
               role="radiogroup"
               aria-label="Тип клиента"
-              className="relative grid w-full max-w-xs grid-cols-2 rounded-full border border-border bg-accent-bg p-1 text-sm font-medium"
+              className="relative grid w-full max-w-xs grid-cols-2 rounded-full border border-border bg-primary-bg p-1 text-sm font-medium"
             >
               {/* Sliding pill behind the active segment. */}
               <span
                 aria-hidden="true"
-                className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-accent shadow-sm ${
+                className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-primary shadow-sm ${
                   animateModeSlider ? 'transition-transform duration-200 ease-out' : ''
                 } ${customerMode === 'new' ? 'translate-x-full' : 'translate-x-0'}`}
               />
               <label
-                className={`relative z-10 flex cursor-pointer items-center justify-center rounded-full py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
+                className={`relative z-10 flex cursor-pointer items-center justify-center rounded-full py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary ${
                   customerMode === 'existing' ? 'text-white' : 'text-text hover:text-heading'
                 } ${customers.length === 0 ? 'cursor-not-allowed opacity-50' : ''}`}
               >
@@ -389,7 +389,7 @@ function NewOrderPage() {
                 Существующий
               </label>
               <label
-                className={`relative z-10 flex cursor-pointer items-center justify-center rounded-full py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${
+                className={`relative z-10 flex cursor-pointer items-center justify-center rounded-full py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary ${
                   customerMode === 'new' ? 'text-white' : 'text-text hover:text-heading'
                 }`}
               >
@@ -476,7 +476,7 @@ function NewOrderPage() {
               type="button"
               onClick={addItem}
               disabled={!canAddItem}
-              className="self-start rounded-md border border-border px-3 py-2 text-sm text-heading transition-colors hover:bg-accent-bg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              className="self-start rounded-md border border-border px-3 py-2 text-sm text-heading transition-colors hover:bg-primary-bg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               + Добавить растение
             </button>
@@ -585,14 +585,14 @@ function NewOrderPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-md bg-accent px-5 py-2 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="rounded-md bg-primary px-5 py-2 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                   {saving ? 'Сохранение…' : 'Сохранить'}
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate('/orders')}
-                  className="rounded-md border border-border px-5 py-2 text-heading transition-colors hover:bg-accent-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="rounded-md border border-border px-5 py-2 text-heading transition-colors hover:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                   Отмена
                 </button>
