@@ -5,7 +5,29 @@ import { signInWithGoogle } from '../../firebase/auth'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
 
-function LoginPage() {
+// Map a sign-in failure to a message the user can act on. Firebase throws a
+// FirebaseError carrying a string `code`; the raw code/message (e.g.
+// "auth/network-request-failed") is meaningless to a user, so the common cases
+// get a plain-Russian explanation. A network failure almost always means the
+// auth servers are unreachable from this machine — an ad blocker, VPN, firewall
+// or antivirus HTTPS inspection — not a problem with the app, so the message
+// points there. Anything unrecognized falls back to a generic line.
+const signInErrorMessage = (err: unknown): string => {
+  const code = typeof err === 'object' && err !== null && 'code' in err ? err.code : undefined
+  switch (code) {
+    case 'auth/network-request-failed':
+      return 'Не удалось связаться с сервером входа. Проверьте интернет, VPN, блокировщик рекламы или антивирус и попробуйте снова.'
+    case 'auth/popup-blocked':
+      return 'Браузер заблокировал окно входа. Разрешите всплывающие окна для этого сайта и попробуйте снова.'
+    case 'auth/popup-closed-by-user':
+    case 'auth/cancelled-popup-request':
+      return 'Окно входа закрылось до завершения. Попробуйте войти ещё раз.'
+    default:
+      return 'Не удалось войти. Попробуйте снова.'
+  }
+}
+
+const LoginPage = () => {
   const { user, loading } = useAuth()
   const [signingIn, setSigningIn] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -22,7 +44,7 @@ function LoginPage() {
       await signInWithGoogle()
       // onAuthStateChanged flips `user`, which triggers the redirect above.
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Не удалось войти')
+      setError(signInErrorMessage(err))
       setSigningIn(false)
     }
   }
