@@ -88,6 +88,17 @@ describe('SettingsModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('surfaces a save error and re-enables the button without closing', async () => {
+    const user = userEvent.setup()
+    saveFontScale.mockRejectedValueOnce(new Error('Сбой сети'))
+    renderModal()
+    fireEvent.change(slider(), { target: { value: '1.25' } })
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Сбой сети')
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Сохранить' })).toBeEnabled()
+  })
+
   it('signs out from the dialog', async () => {
     const user = userEvent.setup()
     renderModal()

@@ -10,6 +10,14 @@ import Button from '../Button/Button'
 // page — reflects the chosen size too.
 const SAMPLE_TEXT = 'Пример текста — так будет выглядеть интерфейс приложения.'
 
+// Human-readable description of the current scale for screen readers, so the
+// slider announces "уменьшен"/"по умолчанию"/"увеличен" rather than a raw number.
+const fontScaleLabel = (scale: number) => {
+  if (scale < 1) return 'уменьшен'
+  if (scale > 1) return 'увеличен'
+  return 'по умолчанию'
+}
+
 const LogoutIcon = () => (
   <svg
     aria-hidden="true"
@@ -129,7 +137,6 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
             onClick={handleClose}
             aria-label="Закрыть"
             title="Закрыть"
-            className="focus-visible:outline-none"
           >
             <CloseIcon />
           </Button>
@@ -151,6 +158,9 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
               value={draft}
               onChange={handleSlider}
               aria-label="Размер шрифта"
+              // Screen readers announce a human-readable label (e.g. "увеличен")
+              // instead of the raw scale number (0.875, 1.25).
+              aria-valuetext={fontScaleLabel(draft)}
               className="h-2 flex-1 cursor-pointer accent-primary"
             />
             <span aria-hidden="true" className="shrink-0 text-2xl text-text">
