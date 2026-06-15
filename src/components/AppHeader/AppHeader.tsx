@@ -101,7 +101,9 @@ const mobileNavLinkClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg',
   ].join(' ')
 
-const MenuDivider = () => <span aria-hidden="true" className="my-1 h-px w-full bg-border" />
+// Full-bleed separator. Spacing around it comes from the adjacent sections'
+// equal padding, not its own margin, so the gap above and below stays symmetric.
+const MenuDivider = () => <span aria-hidden="true" className="block h-px w-full bg-border" />
 
 // App-wide navigation header. On wide screens (md+) everything sits inline; on
 // narrow screens it collapses to a burger that reveals a top-to-bottom dropdown
@@ -173,7 +175,7 @@ const AppHeader = () => {
           aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
           aria-expanded={menuOpen}
           aria-controls="mobile-menu"
-          className="ml-auto"
+          className="ml-auto focus-visible:outline-none"
         >
           <BurgerIcon open={menuOpen} />
         </Button>
@@ -202,11 +204,13 @@ const AppHeader = () => {
           menuOpen ? 'max-h-96' : 'max-h-0'
         }`}
       >
-        <div className="flex flex-col gap-1 p-4">
-          {/* Divider under the action/close row that sits in the bar above. */}
-          <MenuDivider />
+        {/* Divider under the action/close row that sits in the bar above. The
+            bar's py-3 and the nav section's py-3 below give it equal spacing. */}
+        <MenuDivider />
 
-          {/* 1. Navigation destinations. */}
+        {/* 1. Navigation destinations. Equal py-3 top and bottom so the items sit
+            the same distance from the divider above and the one below. */}
+        <div className="flex flex-col gap-1 px-4 py-3">
           {NAV_LINKS.map((link) => (
             <NavLink
               key={link.to}
@@ -218,30 +222,30 @@ const AppHeader = () => {
               {link.label}
             </NavLink>
           ))}
+        </div>
 
-          <MenuDivider />
+        <MenuDivider />
 
-          {/* 2. Account: name + sign out. */}
-          <div className="flex items-center justify-between gap-3 px-1 py-1">
-            {user && (
-              <span className="min-w-0 truncate text-sm text-text">
-                {user.displayName ?? user.email}
-              </span>
-            )}
-            <Button
-              variant="secondary"
-              size="icon"
-              onClick={() => {
-                closeMenu()
-                handleSignOut()
-              }}
-              aria-label="Выйти"
-              title="Выйти"
-              className="shrink-0"
-            >
-              <LogoutIcon />
-            </Button>
-          </div>
+        {/* 2. Account: name + sign out. */}
+        <div className="flex items-center justify-between gap-3 px-4 py-3">
+          {user && (
+            <span className="min-w-0 truncate text-sm text-text">
+              {user.displayName ?? user.email}
+            </span>
+          )}
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={() => {
+              closeMenu()
+              handleSignOut()
+            }}
+            aria-label="Выйти"
+            title="Выйти"
+            className="shrink-0"
+          >
+            <LogoutIcon />
+          </Button>
         </div>
       </nav>
     </header>
