@@ -92,7 +92,11 @@ const CustomersPage = () => {
   const ownerId = user?.uid
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // Two separate errors: a load failure means there is no list to show, so it
+  // replaces the content; a delete failure happens with the list already on
+  // screen, so it surfaces above the list without unmounting it.
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!ownerId) return
@@ -104,7 +108,8 @@ const CustomersPage = () => {
         setCustomers([...data].sort((a, b) => a.name.localeCompare(b.name, 'ru')))
       })
       .catch((err: unknown) => {
-        if (active) setError(err instanceof Error ? err.message : 'Не удалось загрузить клиентов')
+        if (active)
+          setLoadError(err instanceof Error ? err.message : 'Не удалось загрузить клиентов')
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -115,11 +120,12 @@ const CustomersPage = () => {
   }, [ownerId])
 
   const handleDelete = async (id: string) => {
+    setDeleteError(null)
     try {
       await softDeleteCustomer(id)
       setCustomers((prev) => prev.filter((c) => c.id !== id))
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Не удалось удалить клиента')
+      setDeleteError(err instanceof Error ? err.message : 'Не удалось удалить клиента')
       // Re-throw so the row resets its confirm state instead of hanging.
       throw err
     }
@@ -130,12 +136,22 @@ const CustomersPage = () => {
       <AppHeader />
 
       {loading && <Spinner />}
-      {error && <p className="px-6 py-8 text-danger">{error}</p>}
+      {loadError && (
+        <p role="alert" className="px-6 py-8 text-danger">
+          {loadError}
+        </p>
+      )}
 
-      {!loading && !error && (
+      {!loading && !loadError && (
         <div className="min-h-0 flex-1 overflow-auto p-6">
           <div className="mx-auto flex max-w-2xl flex-col gap-3">
             <h1 className="m-0 text-[22px] font-semibold text-heading">Клиенты</h1>
+
+            {deleteError && (
+              <p role="alert" className="m-0 text-danger">
+                {deleteError}
+              </p>
+            )}
 
             {customers.length === 0 ? (
               <p className="m-0 text-text">Клиентов пока нет</p>
