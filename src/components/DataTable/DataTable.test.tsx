@@ -46,17 +46,20 @@ describe('DataTable (table layout)', () => {
     expect(table().getByText('Роза — 2 шт.')).toBeInTheDocument()
   })
 
-  it('stacks each plant on its own line instead of a comma-separated string', () => {
+  it('stacks plants priciest-first, hiding the quantity when it is 1', () => {
     const multi = order({
       plants: [
-        { name: 'Роза', quantity: 2, unitPriceMinor: 15000 },
-        { name: 'Фикус', quantity: 1, unitPriceMinor: 30000 },
+        { name: 'Роза', quantity: 2, unitPriceMinor: 15000 }, // line value 30000
+        { name: 'Фикус', quantity: 1, unitPriceMinor: 50000 }, // line value 50000 — pricier
       ],
     })
     render(<DataTable orders={[multi]} columns={columns} onRowClick={vi.fn()} />)
-    // Two separate lines, each with its quantity — not one "Роза, Фикус" cell.
-    expect(table().getByText('Роза — 2 шт.')).toBeInTheDocument()
-    expect(table().getByText('Фикус — 1 шт.')).toBeInTheDocument()
+    // Stacked, not "Роза, Фикус". Quantity shows only above 1: "Роза — 2 шт.",
+    // but a single Фикус is just its name.
+    const rose = table().getByText('Роза — 2 шт.')
+    const ficus = table().getByText('Фикус')
+    // The most valuable line (Фикус, 50000) is listed before the cheaper Роза.
+    expect(ficus.compareDocumentPosition(rose) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('calls onRowClick with the row order when a row is clicked', async () => {

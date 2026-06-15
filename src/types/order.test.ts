@@ -3,6 +3,7 @@ import {
   getSubtotalMinor,
   getTotalMinor,
   buildOrderColumns,
+  plantsByValueDesc,
   DELIVERY_METHOD_OPTIONS,
   STORED_ORDER_SCHEMA,
 } from './order'
@@ -71,6 +72,34 @@ describe('buildOrderColumns', () => {
       deliveryPriceMinor: 0,
     })
     expect(totalColumn?.format?.(order)).toContain('99,00')
+  })
+})
+
+describe('plantsByValueDesc', () => {
+  it('orders plants by line value (unit price × quantity) descending, without mutating', () => {
+    const plants = [
+      { name: 'Роза', quantity: 2, unitPriceMinor: 15000 }, // 30000
+      { name: 'Фикус', quantity: 1, unitPriceMinor: 50000 }, // 50000
+      { name: 'Кактус', quantity: 5, unitPriceMinor: 2000 }, // 10000
+    ]
+    expect(plantsByValueDesc(plants).map((p) => p.name)).toEqual(['Фикус', 'Роза', 'Кактус'])
+    // The input array is left untouched (a copy is sorted).
+    expect(plants.map((p) => p.name)).toEqual(['Роза', 'Фикус', 'Кактус'])
+  })
+})
+
+describe('the plants column', () => {
+  const plantsColumn = buildOrderColumns(() => 'Анна').find((c) => c.id === 'plants')
+
+  it('stacks plants priciest-first and omits the quantity when it is 1', () => {
+    const order = makeOrder({
+      plants: [
+        { name: 'Роза', quantity: 2, unitPriceMinor: 15000 }, // 30000
+        { name: 'Фикус', quantity: 1, unitPriceMinor: 50000 }, // 50000 — pricier, no qty
+      ],
+    })
+    // Newline-joined, most valuable first; the single Фикус shows no "шт.".
+    expect(plantsColumn?.format?.(order)).toBe('Фикус\nРоза — 2 шт.')
   })
 })
 

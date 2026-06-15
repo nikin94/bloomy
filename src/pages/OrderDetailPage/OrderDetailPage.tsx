@@ -6,6 +6,7 @@ import { formatDate, formatMoney } from '../../utils/format'
 import {
   getSubtotalMinor,
   getTotalMinor,
+  plantsByValueDesc,
   DELIVERY_METHOD_LABELS,
   PAYMENT_METHOD_LABELS,
   PAYMENT_STATUS_OPTIONS,
@@ -157,11 +158,11 @@ const OrderDetailPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {order.plants.map((item, index) => (
+                {plantsByValueDesc(order.plants).map((item, index) => (
                   <tr key={index} className="border-b border-border">
                     <td className="py-2 pr-3 text-heading">{item.name}</td>
                     <td className="py-2 px-3 text-right text-text tabular-nums">
-                      {item.quantity} шт.
+                      {item.quantity === 1 ? '' : `${item.quantity} шт.`}
                     </td>
                     <td className="py-2 px-3 text-right text-text tabular-nums">
                       {formatMoney(item.unitPriceMinor)}
