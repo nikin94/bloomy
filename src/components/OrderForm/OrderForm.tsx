@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import AppHeader from '../AppHeader/AppHeader'
-import { createCustomer, fetchCustomers } from '../../firebase/customers'
+import { createCustomer, fetchCustomer, fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
 import { formatMinorToInput, formatMoney, parseRublesToMinor } from '../../utils/format'
 import {
@@ -214,10 +214,21 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
     if (!ownerId) return
     let active = true
     fetchCustomers(ownerId)
-      .then((data) => {
+      .then(async (data) => {
         if (!active) return
-        setCustomers(data)
-        if (data.length > 0) setCustomerMode('existing')
+        // When editing an order whose customer was soft-deleted, that customer
+        // is absent from the active list — so the picker would drop the current
+        // selection. Fetch it directly and keep it in the options (labelled
+        // "(удалён)") so the order stays linked to it unless the user changes it.
+        const editedId = initialOrder?.customerId
+        let list = data
+        if (editedId && !data.some((c) => c.id === editedId)) {
+          const deleted = await fetchCustomer(editedId)
+          if (!active) return
+          if (deleted) list = [...data, deleted]
+        }
+        setCustomers(list)
+        if (list.length > 0) setCustomerMode('existing')
       })
       .catch(() => {
         // Non-fatal: the picker just stays empty and the user adds a new
@@ -229,7 +240,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
     return () => {
       active = false
     }
-  }, [ownerId])
+  }, [ownerId, initialOrder])
 
   const updateItem = (index: number, patch: Partial<ItemInput>) => {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
@@ -451,6 +462,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.phone ? `${c.name} (${c.phone})` : c.name}
+                      {c.isDeleted ? ' (удалён)' : ''}
                     </option>
                   ))}
                 </Select>

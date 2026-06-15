@@ -8,6 +8,7 @@ import {
   fetchCustomer,
   fetchCustomers,
   softDeleteCustomer,
+  updateCustomer,
 } from './customers'
 import type { NewCustomer } from '../types/customer'
 
@@ -15,6 +16,9 @@ vi.mock('./client', () => ({ db: {} }))
 vi.mock('firebase/firestore', () => ({
   addDoc: vi.fn(),
   collection: vi.fn(() => ({})),
+  // A distinct sentinel so tests can assert a field is removed (deleteField)
+  // rather than written.
+  deleteField: vi.fn(() => '<<deleted>>'),
   doc: vi.fn(() => ({ ref: 'customer-ref' })),
   getDoc: vi.fn(),
   getDocs: vi.fn(),
@@ -79,6 +83,23 @@ describe('fetchCustomers', () => {
     const customers = await fetchCustomers('owner-1', { includeDeleted: true })
 
     expect(customers.map((c) => c.id)).toEqual(['c1', 'c2'])
+  })
+})
+
+describe('updateCustomer', () => {
+  it('writes the trimmed name and present optionals, and removes cleared ones', async () => {
+    await updateCustomer('c1', { name: '  Anna  ', phone: ' +700 ', address: '', note: undefined })
+
+    expect(doc).toHaveBeenCalledWith(expect.anything(), 'customers', 'c1')
+    expect(updateDoc).toHaveBeenCalledWith(
+      { ref: 'customer-ref' },
+      {
+        name: 'Anna',
+        phone: '+700', // present → trimmed value
+        address: '<<deleted>>', // empty string → removed
+        note: '<<deleted>>', // undefined → removed
+      },
+    )
   })
 })
 

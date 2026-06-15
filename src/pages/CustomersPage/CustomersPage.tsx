@@ -2,23 +2,49 @@ import { useEffect, useState } from 'react'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
-import { fetchCustomers, softDeleteCustomer } from '../../firebase/customers'
+import CustomerForm from '../../components/CustomerForm/CustomerForm'
+import { fetchCustomers, softDeleteCustomer, updateCustomer } from '../../firebase/customers'
+import type { CustomerEdits } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
 import type { Customer } from '../../types/customer'
 
-// One customer row with an inline delete confirmation. The trash button reveals
-// a confirm/cancel pair in place (no modal/dialog dependency); confirming calls
-// the parent's onDelete, which soft-deletes the record and drops the row.
+// One customer row: name/phone with edit and delete actions. Editing swaps the
+// row for an inline CustomerForm (no separate page); the trash button reveals an
+// in-place confirm/cancel pair (no modal dependency). Confirming calls the
+// parent's onDelete, which soft-deletes the record and drops the row.
 // Extracted from the map so the loop body is its own component.
 const CustomerRow = ({
   customer,
+  onSave,
   onDelete,
 }: {
   customer: Customer
+  onSave: (id: string, edits: CustomerEdits) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }) => {
+  const [editing, setEditing] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  if (editing) {
+    return (
+      <li className="border-b border-border py-3">
+        <CustomerForm
+          initial={{
+            name: customer.name,
+            phone: customer.phone,
+            address: customer.address,
+            note: customer.note,
+          }}
+          onCancel={() => setEditing(false)}
+          onSubmit={async (edits) => {
+            await onSave(customer.id, edits)
+            setEditing(false)
+          }}
+        />
+      </li>
+    )
+  }
 
   // On success the parent removes this row from the list, unmounting us; on
   // failure (surfaced page-level) we reset so the user can retry or cancel.
@@ -55,37 +81,59 @@ const CustomerRow = ({
           </Button>
         </div>
       ) : (
-        <Button
-          variant="secondary"
-          size="icon"
-          onClick={() => setConfirming(true)}
-          aria-label={`Удалить клиента ${customer.name}`}
-          title="Удалить"
-          className="shrink-0"
-        >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="size-5"
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={() => setEditing(true)}
+            aria-label={`Редактировать клиента ${customer.name}`}
+            title="Редактировать"
           >
-            <polyline points="3 6 5 6 21 6" />
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-            <line x1="10" y1="11" x2="10" y2="17" />
-            <line x1="14" y1="11" x2="14" y2="17" />
-          </svg>
-        </Button>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="size-5"
+            >
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+          </Button>
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={() => setConfirming(true)}
+            aria-label={`Удалить клиента ${customer.name}`}
+            title="Удалить"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="size-5"
+            >
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <line x1="10" y1="11" x2="10" y2="17" />
+              <line x1="14" y1="11" x2="14" y2="17" />
+            </svg>
+          </Button>
+        </div>
       )}
     </li>
   )
 }
 
-// Address-book screen: lists the signed-in user's active customers and lets them
-// be removed (soft delete — see softDeleteCustomer). Editing is a separate page.
+// Address-book screen: lists the signed-in user's active customers and lets each
+// be edited (inline) or removed (soft delete — see softDeleteCustomer).
 const CustomersPage = () => {
   // Guaranteed non-null under ProtectedRoute, but read defensively and gate on it.
   const { user } = useAuth()
@@ -118,6 +166,31 @@ const CustomersPage = () => {
       active = false
     }
   }, [ownerId])
+
+  // Persist an edit, then update the in-memory list. Optional fields that came
+  // in empty are dropped (mirroring updateCustomer) so a cleared field also
+  // clears in the UI; the list is re-sorted because the name may have changed.
+  // Errors propagate to the inline CustomerForm, which keeps itself open.
+  const handleSave = async (id: string, edits: CustomerEdits) => {
+    await updateCustomer(id, edits)
+    const trimmed = (value: string | undefined) =>
+      value && value.trim() !== '' ? value.trim() : undefined
+    setCustomers((prev) =>
+      prev
+        .map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                name: edits.name.trim(),
+                phone: trimmed(edits.phone),
+                address: trimmed(edits.address),
+                note: trimmed(edits.note),
+              }
+            : c,
+        )
+        .sort((a, b) => a.name.localeCompare(b.name, 'ru')),
+    )
+  }
 
   const handleDelete = async (id: string) => {
     setDeleteError(null)
@@ -158,7 +231,12 @@ const CustomersPage = () => {
             ) : (
               <ul className="m-0 flex list-none flex-col p-0">
                 {customers.map((customer) => (
-                  <CustomerRow key={customer.id} customer={customer} onDelete={handleDelete} />
+                  <CustomerRow
+                    key={customer.id}
+                    customer={customer}
+                    onSave={handleSave}
+                    onDelete={handleDelete}
+                  />
                 ))}
               </ul>
             )}

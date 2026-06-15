@@ -10,10 +10,12 @@ import type { Customer } from '../../types/customer'
 // SDK. We test the list rendering and the inline delete flow, not Firestore.
 const fetchCustomers = vi.fn()
 const softDeleteCustomer = vi.fn()
+const updateCustomer = vi.fn()
 
 vi.mock('../../firebase/customers', () => ({
   fetchCustomers: (...args: unknown[]) => fetchCustomers(...args),
   softDeleteCustomer: (...args: unknown[]) => softDeleteCustomer(...args),
+  updateCustomer: (...args: unknown[]) => updateCustomer(...args),
 }))
 // AppHeader imports signOutUser from here; stub it so firebase stays untouched.
 vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
@@ -44,6 +46,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   fetchCustomers.mockResolvedValue([])
   softDeleteCustomer.mockResolvedValue(undefined)
+  updateCustomer.mockResolvedValue(undefined)
 })
 
 describe('CustomersPage', () => {
@@ -77,6 +80,46 @@ describe('CustomersPage', () => {
 
     await waitFor(() => expect(softDeleteCustomer).toHaveBeenCalledWith('c1'))
     await waitFor(() => expect(screen.queryByText('Анна')).not.toBeInTheDocument())
+  })
+
+  it('edits a customer inline and reflects the new name in the list', async () => {
+    const user = userEvent.setup()
+    fetchCustomers.mockResolvedValue([customer({ name: 'Анна', phone: '+700' })])
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Редактировать клиента Анна' }))
+    // The inline form is prefilled with the current values.
+    const nameField = screen.getByLabelText('Имя клиента')
+    expect(nameField).toHaveValue('Анна')
+    expect(screen.getByLabelText('Телефон')).toHaveValue('+700')
+
+    await user.clear(nameField)
+    await user.type(nameField, 'Анна Петрова')
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+
+    await waitFor(() =>
+      expect(updateCustomer).toHaveBeenCalledWith(
+        'c1',
+        expect.objectContaining({ name: 'Анна Петрова', phone: '+700' }),
+      ),
+    )
+    // The list updates and the inline form closes.
+    expect(await screen.findByText('Анна Петрова')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Имя клиента')).not.toBeInTheDocument()
+  })
+
+  it('does not save an edit with an empty name', async () => {
+    const user = userEvent.setup()
+    fetchCustomers.mockResolvedValue([customer({ name: 'Анна' })])
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Редактировать клиента Анна' }))
+    await user.clear(screen.getByLabelText('Имя клиента'))
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+
+    expect(updateCustomer).not.toHaveBeenCalled()
+    // The form stays open (name field still present).
+    expect(screen.getByLabelText('Имя клиента')).toBeInTheDocument()
   })
 
   it('keeps the customer when the delete is cancelled', async () => {

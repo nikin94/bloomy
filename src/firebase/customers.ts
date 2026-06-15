@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -11,6 +12,11 @@ import {
 import { db } from './client'
 import { STORED_CUSTOMER_SCHEMA } from '../types/customer'
 import type { Customer, NewCustomer } from '../types/customer'
+
+// The user-editable fields of a customer. `ownerId`, `createdAt` and `isDeleted`
+// are managed by the app, not edited through the form.
+export type CustomerEdits = Pick<Customer, 'name'> &
+  Partial<Pick<Customer, 'phone' | 'address' | 'note'>>
 
 const CUSTOMERS_COLLECTION = 'customers'
 
@@ -48,6 +54,22 @@ export async function fetchCustomer(id: string): Promise<Customer | null> {
 export async function createCustomer(customer: NewCustomer): Promise<string> {
   const ref = await addDoc(collection(db, CUSTOMERS_COLLECTION), customer)
   return ref.id
+}
+
+// Update a customer's editable fields. Optional fields (phone/address/note) that
+// come in empty are removed from the document via `deleteField()` rather than
+// stored as "" — so clearing a field in the edit form actually clears it, and
+// the stored shape stays clean (matching createCustomer, which omits them too).
+// `ownerId`/`createdAt`/`isDeleted` are left untouched.
+export async function updateCustomer(id: string, edits: CustomerEdits): Promise<void> {
+  const optional = (value: string | undefined) =>
+    value && value.trim() !== '' ? value.trim() : deleteField()
+  await updateDoc(doc(db, CUSTOMERS_COLLECTION, id), {
+    name: edits.name.trim(),
+    phone: optional(edits.phone),
+    address: optional(edits.address),
+    note: optional(edits.note),
+  })
 }
 
 // Soft-delete a customer: flip `isDeleted` so it drops out of the address book
