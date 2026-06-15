@@ -103,7 +103,7 @@ values and the Firebase service account are provided as repository secrets.
 
 ```
 src/
-  components/   Reusable UI (AppHeader, Button, Input, Textarea, Select, DataTable, OrderForm, Spinner, ProtectedRoute)
+  components/   Reusable UI (AppHeader, Button, Input, Textarea, Select, DataTable, OrderForm, CustomerForm, Spinner, ProtectedRoute)
   context/      Auth context and provider
   firebase/     Firebase integration: setup and data access (client, auth, orders, customers)
   utils/        Pure helpers, no Firebase (format — money/date formatting, rubles parsing)

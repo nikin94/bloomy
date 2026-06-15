@@ -13,6 +13,7 @@ import type { Customer } from '../../types/customer'
 const fetchOrder = vi.fn()
 const updateOrder = vi.fn()
 const fetchCustomers = vi.fn()
+const fetchCustomer = vi.fn()
 const createCustomer = vi.fn()
 const navigate = vi.fn()
 
@@ -22,6 +23,7 @@ vi.mock('../../firebase/orders', () => ({
 }))
 vi.mock('../../firebase/customers', () => ({
   fetchCustomers: (...args: unknown[]) => fetchCustomers(...args),
+  fetchCustomer: (...args: unknown[]) => fetchCustomer(...args),
   createCustomer: (...args: unknown[]) => createCustomer(...args),
 }))
 // AppHeader (rendered inside OrderForm) imports signOutUser from here.
@@ -77,6 +79,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   fetchOrder.mockResolvedValue(order())
   fetchCustomers.mockResolvedValue([customer()])
+  fetchCustomer.mockResolvedValue(null)
   updateOrder.mockResolvedValue(undefined)
 })
 
@@ -120,6 +123,20 @@ describe('EditOrderPage', () => {
     )
     // Returns to the order's detail page after saving.
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/orders/o1'))
+  })
+
+  it('keeps a soft-deleted customer selectable when editing its order', async () => {
+    // The order's customer was soft-deleted, so it is absent from the active
+    // list; the form fetches it directly and keeps it as the selected option.
+    fetchCustomers.mockResolvedValue([])
+    fetchCustomer.mockResolvedValue(customer({ id: 'c1', name: 'Анна', isDeleted: true }))
+    renderPage()
+
+    const picker = await screen.findByRole('combobox', { name: 'Существующий клиент' })
+    expect(picker).toHaveValue('c1')
+    expect(fetchCustomer).toHaveBeenCalledWith('c1')
+    // The option is marked as deleted so the user knows.
+    expect(screen.getByRole('option', { name: /Анна.*удалён/ })).toBeInTheDocument()
   })
 
   it('shows a not-found message when the order is missing', async () => {
