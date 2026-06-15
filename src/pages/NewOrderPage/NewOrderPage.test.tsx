@@ -142,6 +142,22 @@ describe('NewOrderPage', () => {
     expect(priceInput).toHaveAttribute('aria-invalid', 'false')
   })
 
+  it('keeps the price field numeric, dropping letters and extra separators', async () => {
+    const user = userEvent.setup()
+    renderForm()
+    await screen.findByLabelText('Имя клиента')
+    const priceInput = screen.getByPlaceholderText('Цена, ₽')
+
+    // Letters are dropped, a single decimal separator is kept.
+    await user.type(priceInput, '1a2b,3c')
+    expect(priceInput).toHaveValue('12,3')
+
+    // The fractional part is capped at two digits.
+    await user.clear(priceInput)
+    await user.type(priceInput, '12,999')
+    expect(priceInput).toHaveValue('12,99')
+  })
+
   it('blocks saving when a named plant has no price', async () => {
     const user = userEvent.setup()
     renderForm()

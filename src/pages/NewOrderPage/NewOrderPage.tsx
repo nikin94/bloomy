@@ -36,6 +36,16 @@ interface ItemInput {
 // is treated as 1 both in the live total below and when the order is saved.
 const emptyItem = (id: number): ItemInput => ({ id, name: '', quantity: '', price: '' })
 
+// Constrain the price field to a valid ruble amount as the user types: digits
+// and a single decimal separator (comma or dot), at most two fractional digits.
+// Any other character (letters, a second separator) is dropped, so the field can
+// never hold a non-numeric value — gentler than rejecting the keystroke outright.
+const sanitizePrice = (value: string): string => {
+  const [intPart = '', sep = '', fracPart = ''] =
+    value.replace(/[^\d.,]/g, '').match(/^(\d*)([.,]?)(\d*)/)?.slice(1) ?? []
+  return sep ? `${intPart}${sep}${fracPart.slice(0, 2)}` : intPart
+}
+
 // Pick an existing customer from the address book, or enter a new one.
 type CustomerMode = 'existing' | 'new'
 
@@ -108,7 +118,7 @@ const PlantItemRow = ({
         placeholder="Цена, ₽"
         aria-invalid={priceMissing}
         value={item.price}
-        onChange={(e) => onChange({ price: e.target.value })}
+        onChange={(e) => onChange({ price: sanitizePrice(e.target.value) })}
       />
       <button
         type="button"
