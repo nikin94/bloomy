@@ -5,11 +5,6 @@ import { signOutUser } from '../../firebase/auth'
 import { FONT_SCALE_MAX, FONT_SCALE_MIN, FONT_SCALE_STEP } from '../../types/settings'
 import Button from '../Button/Button'
 
-// Sample sentence so the user can watch the size change. The whole app scales
-// live with the slider (see SettingsProvider), so this paragraph — being on the
-// page — reflects the chosen size too.
-const SAMPLE_TEXT = 'Пример текста — так будет выглядеть интерфейс приложения.'
-
 // Number of discrete positions on the slider (one notch each), so the iOS-style
 // ticks below the track always match the actual snap points.
 const SCALE_STEPS = Math.round((FONT_SCALE_MAX - FONT_SCALE_MIN) / FONT_SCALE_STEP) + 1
@@ -159,8 +154,9 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
           </Button>
         </header>
 
-        {/* Font size: an iOS-style size slider flanked by small/large "А", with a
-            live sample below. */}
+        {/* Font size: an iOS-style size slider flanked by small/large "А". The
+            whole app scales live with the slider, so the dialog itself previews
+            the chosen size — no separate sample text needed. */}
         <section className="flex flex-col gap-3">
           <span className="text-sm font-medium text-heading">Размер шрифта</span>
           <div className="flex items-center gap-3">
@@ -198,9 +194,6 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
               А
             </span>
           </div>
-          <p className="m-0 rounded-md border border-border bg-primary-bg px-3 py-2 text-text">
-            {SAMPLE_TEXT}
-          </p>
         </section>
 
         {error && (
