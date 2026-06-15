@@ -4,9 +4,10 @@
 // dependency-free. The real transaction semantics (atomicity under concurrency)
 // are exercised separately against the Firestore emulator (orders.emulator.test.ts).
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getDoc, getDocs, runTransaction, where } from 'firebase/firestore'
-import { createOrder, fetchOrder, fetchOrders } from './orders'
+import { getDoc, getDocs, runTransaction, setDoc, where } from 'firebase/firestore'
+import { createOrder, fetchOrder, fetchOrders, updateOrder } from './orders'
 import type { NewOrder } from './orders'
+import type { Order } from '../types/order'
 
 vi.mock('./client', () => ({ db: {} }))
 vi.mock('firebase/firestore', () => ({
@@ -16,6 +17,7 @@ vi.mock('firebase/firestore', () => ({
   getDocs: vi.fn(),
   query: vi.fn(() => ({})),
   runTransaction: vi.fn(),
+  setDoc: vi.fn(),
   where: vi.fn(() => ({})),
 }))
 
@@ -88,6 +90,21 @@ describe('createOrder', () => {
 
     expect(tx.set).toHaveBeenCalledWith(expect.anything(), { lastOrderNumber: 1 }, { merge: true })
     expect(tx.set).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ number: 1 }))
+  })
+})
+
+describe('updateOrder', () => {
+  it('overwrites the document wholesale with the supplied body', async () => {
+    const body = storedOrder({ number: 7, paymentStatus: 'paid' }) as Omit<Order, 'id'>
+
+    await updateOrder('o1', body)
+
+    // A single full-document write (no merge) — the caller-supplied number is
+    // preserved and cleared fields disappear.
+    expect(setDoc).toHaveBeenCalledTimes(1)
+    expect(setDoc).toHaveBeenCalledWith(expect.anything(), body)
+    // No numbering transaction on edit.
+    expect(runTransaction).not.toHaveBeenCalled()
   })
 })
 

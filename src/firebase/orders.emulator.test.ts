@@ -4,7 +4,7 @@
 // including atomicity when many orders are created concurrently. Run with
 // `yarn test:emulator` (starts the emulator via `firebase emulators:exec`).
 import { describe, expect, it } from 'vitest'
-import { createOrder, fetchOrder, fetchOrders } from './orders'
+import { createOrder, fetchOrder, fetchOrders, updateOrder } from './orders'
 import type { NewOrder } from './orders'
 
 // Each test uses a fresh ownerId so its per-owner counter starts at 1 and tests
@@ -59,5 +59,44 @@ describe('createOrder (emulator)', () => {
     const id = await createOrder(makeOrder('owner-real'))
     expect(await fetchOrder(id, 'owner-real')).not.toBeNull()
     expect(await fetchOrder(id, 'owner-intruder')).toBeNull()
+  })
+})
+
+describe('updateOrder (emulator)', () => {
+  it('preserves the id and per-owner number while saving edited fields', async () => {
+    const owner = 'owner-edit'
+    // Two creates so the edited order has a non-trivial number (2), proving the
+    // update keeps it rather than re-deriving from the counter.
+    await createOrder(makeOrder(owner))
+    const id = await createOrder(makeOrder(owner))
+    const original = await fetchOrder(id, owner)
+    expect(original?.number).toBe(2)
+
+    await updateOrder(id, {
+      ...original!,
+      paymentStatus: 'paid',
+      comment: 'edited',
+    })
+
+    const updated = await fetchOrder(id, owner)
+    // Same document (id) and same number — the numbering counter was untouched.
+    expect(updated?.id).toBe(id)
+    expect(updated?.number).toBe(2)
+    // Edited fields persisted.
+    expect(updated?.paymentStatus).toBe('paid')
+    expect(updated?.comment).toBe('edited')
+  })
+
+  it('does not bump the owner counter (a later create still increments by one)', async () => {
+    const owner = 'owner-edit-counter'
+    const id = await createOrder(makeOrder(owner)) // number 1
+    const original = await fetchOrder(id, owner)
+
+    await updateOrder(id, { ...original!, address: 'New St 2' })
+
+    // If the edit had touched the counter, the next create would skip a number.
+    const nextId = await createOrder(makeOrder(owner))
+    const next = await fetchOrder(nextId, owner)
+    expect(next?.number).toBe(2)
   })
 })

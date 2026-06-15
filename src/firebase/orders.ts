@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, query, runTransaction, where } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, query, runTransaction, setDoc, where } from 'firebase/firestore'
 import { db } from './client'
 import { STORED_ORDER_SCHEMA } from '../types/order'
 import type { Order } from '../types/order'
@@ -58,4 +58,14 @@ export async function createOrder(order: NewOrder): Promise<string> {
   })
 
   return orderRef.id
+}
+
+// Overwrite an existing order in place (used by the edit screen). Unlike
+// createOrder, this does NOT run the numbering transaction: editing must keep
+// the order's id and human-readable `number`, so the caller passes the full
+// document — including the original `number` and `dateCreated` — and we replace
+// it wholesale. A wholesale replace (not a merge) means fields the user cleared,
+// e.g. the comment, are actually removed rather than lingering.
+export async function updateOrder(id: string, order: Omit<Order, 'id'>): Promise<void> {
+  await setDoc(doc(db, ORDERS_COLLECTION, id), order)
 }

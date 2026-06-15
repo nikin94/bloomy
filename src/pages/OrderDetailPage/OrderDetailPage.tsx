@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { fetchOrder } from '../../firebase/orders'
 import { fetchCustomer } from '../../firebase/customers'
 import { formatDate, formatMoney } from '../../utils/format'
@@ -13,11 +13,13 @@ import {
 } from '../../types/order'
 import { useAuth } from '../../context/authContext'
 import Spinner from '../../components/Spinner/Spinner'
+import Button from '../../components/Button/Button'
 import type { Order } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
-function OrderDetailPage() {
+const OrderDetailPage = () => {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { user } = useAuth()
   const ownerId = user?.uid
   const [order, setOrder] = useState<Order | null>(null)
@@ -67,11 +69,20 @@ function OrderDetailPage() {
           loading is done makes the whole block appear at once, no jump. */}
       {!loading && order && (
         <div className="mx-auto flex max-w-2xl flex-col gap-6">
-          <header className="flex items-baseline justify-between gap-3">
+          <header className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="m-0 text-2xl font-semibold text-heading">
               Заказ №{order.number}
             </h1>
-            <span className="text-sm text-text">{formatDate(order.dateCreated)}</span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-text">{formatDate(order.dateCreated)}</span>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => navigate(`/orders/${order.id}/edit`)}
+              >
+                Редактировать
+              </Button>
+            </div>
           </header>
 
           {/* General info */}
@@ -130,22 +141,18 @@ function OrderDetailPage() {
   )
 }
 
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex gap-3 border-b border-border py-2">
-      <span className="shrink-0 basis-[200px] text-text">{label}</span>
-      <span className="text-heading">{value}</span>
-    </div>
-  )
-}
+const Field = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex gap-3 border-b border-border py-2">
+    <span className="shrink-0 basis-[200px] text-text">{label}</span>
+    <span className="text-heading">{value}</span>
+  </div>
+)
 
-function Total({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="flex justify-between gap-8 text-text">
-      <span>{label}</span>
-      <span className="text-heading">{formatMoney(value)}</span>
-    </div>
-  )
-}
+const Total = ({ label, value }: { label: string; value: number }) => (
+  <div className="flex justify-between gap-8 text-text">
+    <span>{label}</span>
+    <span className="text-heading">{formatMoney(value)}</span>
+  </div>
+)
 
 export default OrderDetailPage
