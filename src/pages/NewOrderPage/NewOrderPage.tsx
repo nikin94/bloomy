@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppHeader from '../../components/AppHeader/AppHeader'
-import { createOrder } from '../../lib/orders'
-import { createCustomer, fetchCustomers } from '../../lib/customers'
-import { useAuth } from '../../context/auth-context'
+import { createOrder } from '../../firebase/orders'
+import { createCustomer, fetchCustomers } from '../../firebase/customers'
+import { useAuth } from '../../context/authContext'
 import { formatMoney, parseRublesToMinor } from '../../utils/format'
 import {
   DELIVERY_METHOD_OPTIONS,
@@ -16,7 +16,7 @@ import Select from '../../components/Select/Select'
 import Button from '../../components/Button/Button'
 import Input from '../../components/Input/Input'
 import Textarea from '../../components/Textarea/Textarea'
-import type { NewOrder } from '../../lib/orders'
+import type { NewOrder } from '../../firebase/orders'
 import type {
   DeliveryMethod,
   OrderItem,

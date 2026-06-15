@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { fetchOrder } from '../../lib/orders'
-import { fetchCustomer } from '../../lib/customers'
+import { fetchOrder } from '../../firebase/orders'
+import { fetchCustomer } from '../../firebase/customers'
 import { formatDate, formatMoney } from '../../utils/format'
 import {
   getSubtotalMinor,
@@ -11,7 +11,7 @@ import {
   PAYMENT_STATUS_LABELS,
   SHIPMENT_STATUS_LABELS,
 } from '../../types/order'
-import { useAuth } from '../../context/auth-context'
+import { useAuth } from '../../context/authContext'
 import Spinner from '../../components/Spinner/Spinner'
 import type { Order } from '../../types/order'
 import type { Customer } from '../../types/customer'

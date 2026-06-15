@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom'
-import { useAuth } from '../../context/auth-context'
+import { useAuth } from '../../context/authContext'
 import Spinner from '../Spinner/Spinner'
 
 // Route guard for owner-scoped pages. Waits for the session to resolve, then

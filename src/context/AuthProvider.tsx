@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import type { ReactNode } from 'react'
 import type { User } from 'firebase/auth'
-import { auth } from '../lib/firebase'
-import { AuthContext } from './auth-context'
+import { auth } from '../firebase/config'
+import { AuthContext } from './authContext'
 
 // Subscribes to the Firebase auth session for the whole app. onAuthStateChanged
 // is the recommended observer: it fires once auth has finished initializing

@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
-import { useAuth } from '../../context/auth-context'
-import { signOutUser } from '../../lib/auth'
+import { useAuth } from '../../context/authContext'
+import { signOutUser } from '../../firebase/auth'
 import Button from '../Button/Button'
 
 // App-wide navigation header. The buttons are NavLinks (they change the URL),
