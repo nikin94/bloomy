@@ -4,7 +4,10 @@
 
 /* Base document styling, applied via the design tokens defined in theme.css. */
 :root {
-  font: 18px/145% var(--sans);
+  font-family: var(--sans);
+  /* Base size × the per-user scale (see theme.css). rem-based text follows it. */
+  font-size: calc(var(--font-base) * var(--font-scale));
+  line-height: 145%;
   letter-spacing: 0.18px;
   color-scheme: light dark;
   color: var(--text);

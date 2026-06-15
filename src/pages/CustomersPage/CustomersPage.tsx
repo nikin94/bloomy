@@ -218,7 +218,7 @@ const CustomersPage = () => {
       {!loading && !loadError && (
         <div className="min-h-0 flex-1 overflow-auto p-6">
           <div className="mx-auto flex max-w-2xl flex-col gap-3">
-            <h1 className="m-0 text-[22px] font-semibold text-heading">Клиенты</h1>
+            <h1 className="m-0 text-[1.2222rem] font-semibold text-heading">Клиенты</h1>
 
             {deleteError && (
               <p role="alert" className="m-0 text-danger">

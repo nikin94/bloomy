@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { useAuth } from '../../context/authContext'
-import { signOutUser } from '../../firebase/auth'
 import Button from '../Button/Button'
+import SettingsModal from '../SettingsModal/SettingsModal'
 
 // Navigation destinations, defined once so a new section is added in ONE place
 // and appears in both the desktop bar and the mobile menu. `end` keeps "Заказы"
@@ -11,11 +10,6 @@ const NAV_LINKS: { to: string; label: string; end?: boolean }[] = [
   { to: '/orders', label: 'Заказы', end: true },
   { to: '/customers', label: 'Клиенты' },
 ]
-
-// signOut is a local operation (clears the persisted session, no network
-// request), so failure is unlikely — but don't swallow it silently.
-const handleSignOut = () =>
-  signOutUser().catch((err: unknown) => console.error('Sign-out failed', err))
 
 const PlusIcon = ({ className = 'size-4' }: { className?: string }) => (
   <svg
@@ -33,7 +27,7 @@ const PlusIcon = ({ className = 'size-4' }: { className?: string }) => (
   </svg>
 )
 
-const LogoutIcon = () => (
+const GearIcon = () => (
   <svg
     aria-hidden="true"
     viewBox="0 0 24 24"
@@ -44,9 +38,8 @@ const LogoutIcon = () => (
     strokeLinejoin="round"
     className="size-5"
   >
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-    <polyline points="16 17 21 12 16 7" />
-    <line x1="21" y1="12" x2="9" y2="12" />
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
   </svg>
 )
 
@@ -107,10 +100,11 @@ const MenuDivider = () => <span aria-hidden="true" className="block h-px w-full 
 
 // App-wide navigation header. On wide screens (md+) everything sits inline; on
 // narrow screens it collapses to a burger that reveals a top-to-bottom dropdown
-// over the content. Both layouts share NAV_LINKS so they never drift apart.
+// over the content. Both layouts share NAV_LINKS so they never drift apart. The
+// account control opens the settings dialog (which holds sign-out).
 const AppHeader = () => {
-  const { user } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
 
   // Close the mobile menu on Escape, so keyboard users aren't trapped with the
@@ -144,17 +138,18 @@ const AppHeader = () => {
           Новый заказ
         </NavLink>
 
-        {/* Account block pushed to the right. */}
-        <div className="ml-auto flex items-center gap-3">
-          {user && (
-            <span className="hidden text-sm text-text sm:inline">
-              {user.displayName ?? user.email}
-            </span>
-          )}
-          <Button variant="secondary" size="icon" onClick={handleSignOut} aria-label="Выйти" title="Выйти">
-            <LogoutIcon />
-          </Button>
-        </div>
+        {/* Account: the settings gear (which holds the user name and sign-out),
+            pushed to the right. */}
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={() => setSettingsOpen(true)}
+          aria-label="Настройки"
+          title="Настройки"
+          className="ml-auto"
+        >
+          <GearIcon />
+        </Button>
       </div>
 
       {/* Mobile bar / open-menu header (below md): the burger toggle sits at the
@@ -226,28 +221,24 @@ const AppHeader = () => {
 
         <MenuDivider />
 
-        {/* 2. Account: name + sign out. */}
-        <div className="flex items-center justify-between gap-3 px-4 py-3">
-          {user && (
-            <span className="min-w-0 truncate text-sm text-text">
-              {user.displayName ?? user.email}
-            </span>
-          )}
+        {/* 2. Account: the settings gear (which holds the user name and sign-out). */}
+        <div className="flex px-4 py-3">
           <Button
             variant="secondary"
             size="icon"
             onClick={() => {
               closeMenu()
-              handleSignOut()
+              setSettingsOpen(true)
             }}
-            aria-label="Выйти"
-            title="Выйти"
-            className="shrink-0"
+            aria-label="Настройки"
+            title="Настройки"
           >
-            <LogoutIcon />
+            <GearIcon />
           </Button>
         </div>
       </nav>
+
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </header>
   )
 }

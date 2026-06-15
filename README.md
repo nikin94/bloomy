@@ -103,13 +103,13 @@ values and the Firebase service account are provided as repository secrets.
 
 ```
 src/
-  components/   Reusable UI (AppHeader, Button, Input, Textarea, Select, DataTable, OrderForm, CustomerForm, Spinner, ProtectedRoute)
-  context/      Auth context and provider
-  firebase/     Firebase integration: setup and data access (client, auth, orders, customers)
+  components/   Reusable UI (AppHeader, Button, Input, Textarea, Select, DataTable, OrderForm, CustomerForm, SettingsModal, Spinner, ProtectedRoute)
+  context/      Auth + settings contexts and providers
+  firebase/     Firebase integration: setup and data access (client, auth, orders, customers, settings)
   utils/        Pure helpers, no Firebase (format — money/date formatting, rubles parsing)
   pages/        Route screens (Login, Orders, OrderDetail, NewOrder, EditOrder, Customers)
   styles/       Shared style constants (e.g. fieldStyles — form-control class strings)
-  types/        Zod schemas and inferred types (order, customer)
+  types/        Zod schemas and inferred types (order, customer, settings)
   theme.css     Design tokens (colours, typography, light/dark variants)
   index.css     Tailwind import, base styling, layout
   App.tsx       Routes
