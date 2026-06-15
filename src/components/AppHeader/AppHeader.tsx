@@ -1,19 +1,82 @@
+import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../context/authContext'
 import { signOutUser } from '../../firebase/auth'
 import Button from '../Button/Button'
 
-// App-wide navigation header. The buttons are NavLinks (they change the URL),
-// styled to look like buttons — links are the a11y-correct element for
-// navigation, and NavLink gives us the active-route state for free.
-//
-// Two visual kinds: the nav group (Заказы, Клиенты) are destinations — outline
-// buttons whose active route is filled. "Новый заказ" is an ACTION (it creates),
-// so it gets the primary treatment and sits apart, behind a divider, instead of
-// reading as a third tab. It is still a NavLink (it navigates to the form route)
-// — links stay the a11y-correct element for navigation, so it can't be a
-// <Button> — but it mirrors the primary Button's look so the create action is
-// unmistakably the main action.
+// Navigation destinations, defined once so a new section is added in ONE place
+// and appears in both the desktop bar and the mobile menu. `end` keeps "Заказы"
+// active only on the exact list route, not on /orders/new.
+const NAV_LINKS: { to: string; label: string; end?: boolean }[] = [
+  { to: '/orders', label: 'Заказы', end: true },
+  { to: '/customers', label: 'Клиенты' },
+]
+
+// signOut is a local operation (clears the persisted session, no network
+// request), so failure is unlikely — but don't swallow it silently.
+const handleSignOut = () =>
+  signOutUser().catch((err: unknown) => console.error('Sign-out failed', err))
+
+const PlusIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="size-4"
+  >
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+)
+
+const LogoutIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="size-5"
+  >
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" y1="12" x2="9" y2="12" />
+  </svg>
+)
+
+const BurgerIcon = ({ open }: { open: boolean }) => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="size-6"
+  >
+    {open ? (
+      <>
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </>
+    ) : (
+      <>
+        <line x1="3" y1="6" x2="21" y2="6" />
+        <line x1="3" y1="12" x2="21" y2="12" />
+        <line x1="3" y1="18" x2="21" y2="18" />
+      </>
+    )}
+  </svg>
+)
+
+// Desktop: nav destinations are outline buttons whose active route is filled.
 const navButtonClass = ({ isActive }: { isActive: boolean }) =>
   [
     'inline-flex items-center rounded-md px-4 py-2 text-sm font-medium no-underline transition-colors',
@@ -21,84 +84,167 @@ const navButtonClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'bg-primary text-white' : 'border border-border text-heading hover:bg-primary-bg',
   ].join(' ')
 
+// The "Новый заказ" ACTION (it creates) gets the primary treatment so it reads
+// as the main action, not a third nav tab. Still a NavLink (it navigates to the
+// form route — links stay the a11y-correct element for navigation), styled to
+// mirror the primary Button.
 const actionButtonClass =
   'inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium ' +
   'text-white no-underline transition-opacity hover:opacity-90 ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 
+// Mobile menu rows: full-width, same active-route fill as desktop.
+const mobileNavLinkClass = ({ isActive }: { isActive: boolean }) =>
+  [
+    'block rounded-md px-3 py-2 text-sm font-medium no-underline transition-colors',
+    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+    isActive ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg',
+  ].join(' ')
+
+const mobileActionClass =
+  'flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-white ' +
+  'no-underline transition-opacity hover:opacity-90 ' +
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+
+const MenuDivider = () => <span aria-hidden="true" className="my-1 h-px w-full bg-border" />
+
+// App-wide navigation header. On wide screens (md+) everything sits inline; on
+// narrow screens it collapses to a burger that reveals a top-to-bottom dropdown
+// over the content. Both layouts share NAV_LINKS so they never drift apart.
 const AppHeader = () => {
   const { user } = useAuth()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const closeMenu = () => setMenuOpen(false)
+
+  // Close the mobile menu on Escape, so keyboard users aren't trapped with the
+  // overlay open. Only listens while the menu is open.
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen])
 
   return (
-    <header className="flex items-center gap-2 border-b border-border px-6 py-4">
-      {/* Navigation group — destinations. `end` so "Заказы" is only active on
-          the exact list route, not on /orders/new. */}
-      <NavLink to="/orders" end className={navButtonClass}>
-        Заказы
-      </NavLink>
-      <NavLink to="/customers" className={navButtonClass}>
-        Клиенты
-      </NavLink>
+    <header className="relative z-30 border-b border-border">
+      {/* Desktop inline header (md and up). */}
+      <div data-testid="header-desktop" className="hidden items-center gap-2 px-6 py-4 md:flex">
+        {/* Navigation group — destinations. */}
+        {NAV_LINKS.map((link) => (
+          <NavLink key={link.to} to={link.to} end={link.end} className={navButtonClass}>
+            {link.label}
+          </NavLink>
+        ))}
 
-      {/* Divider so the create action below reads as a different kind of
-          control, not a third navigation tab. */}
-      <span aria-hidden="true" className="mx-1 h-6 w-px bg-border" />
+        {/* Divider so the create action reads as a different kind of control. */}
+        <span aria-hidden="true" className="mx-1 h-6 w-px bg-border" />
 
-      {/* Primary action: create an order. */}
-      <NavLink to="/orders/new" className={actionButtonClass}>
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="size-4"
-        >
-          <line x1="12" y1="5" x2="12" y2="19" />
-          <line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
-        Новый заказ
-      </NavLink>
+        {/* Primary action: create an order. */}
+        <NavLink to="/orders/new" className={actionButtonClass}>
+          <PlusIcon />
+          Новый заказ
+        </NavLink>
 
-      {/* Account block pushed to the right; sign-out flips the session and the
-          route guard sends the user back to the login screen. */}
-      <div className="ml-auto flex items-center gap-3">
-        {user && (
-          <span className="hidden text-sm text-text sm:inline">
-            {user.displayName ?? user.email}
-          </span>
-        )}
-        {/* Icon-only sign-out. `aria-label` + `title` keep the accessible name
-            (and a hover tooltip) now that the "Выйти" text is gone. */}
+        {/* Account block pushed to the right. */}
+        <div className="ml-auto flex items-center gap-3">
+          {user && (
+            <span className="hidden text-sm text-text sm:inline">
+              {user.displayName ?? user.email}
+            </span>
+          )}
+          <Button variant="secondary" size="icon" onClick={handleSignOut} aria-label="Выйти" title="Выйти">
+            <LogoutIcon />
+          </Button>
+        </div>
+      </div>
+
+      {/* Mobile bar (below md): a wordmark and the burger toggle. `relative z-40`
+          keeps it above the backdrop and panel so the burger stays clickable. */}
+      <div className="relative z-40 flex items-center justify-between px-4 py-3 md:hidden">
+        <span className="text-base font-semibold text-heading">Bloomy</span>
         <Button
           variant="secondary"
           size="icon"
-          onClick={() => {
-            // signOut is a local operation (clears persisted session, no network
-            // request), so failure is unlikely — but don't swallow it silently.
-            signOutUser().catch((err: unknown) => console.error('Sign-out failed', err))
-          }}
-          aria-label="Выйти"
-          title="Выйти"
+          onClick={() => setMenuOpen((open) => !open)}
+          aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
+          aria-expanded={menuOpen}
+          aria-controls="mobile-menu"
         >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="size-5"
-          >
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
+          <BurgerIcon open={menuOpen} />
         </Button>
       </div>
+
+      {/* Backdrop: catches outside taps to close. Below the panel, above content.
+          Only present while open so it never blocks the page otherwise. */}
+      {menuOpen && (
+        <button
+          type="button"
+          aria-hidden="true"
+          tabIndex={-1}
+          onClick={closeMenu}
+          className="fixed inset-0 z-20 cursor-default bg-black/30 md:hidden"
+        />
+      )}
+
+      {/* Mobile dropdown: slides down (max-height reveal) over the content below.
+          `inert` when closed removes the clipped rows from the tab order and the
+          accessibility tree. `md:hidden` so it never shows on the desktop layout. */}
+      <nav
+        id="mobile-menu"
+        aria-label="Меню"
+        inert={!menuOpen}
+        className={`absolute inset-x-0 top-full z-30 overflow-hidden border-b border-border bg-bg shadow-lg transition-[max-height] duration-300 ease-out motion-reduce:transition-none md:hidden ${
+          menuOpen ? 'max-h-96' : 'max-h-0'
+        }`}
+      >
+        <div className="flex flex-col gap-1 p-4">
+          {/* 1. Create action. */}
+          <NavLink to="/orders/new" className={mobileActionClass} onClick={closeMenu}>
+            <PlusIcon />
+            Новый заказ
+          </NavLink>
+
+          <MenuDivider />
+
+          {/* 2. Navigation destinations. */}
+          {NAV_LINKS.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              end={link.end}
+              className={mobileNavLinkClass}
+              onClick={closeMenu}
+            >
+              {link.label}
+            </NavLink>
+          ))}
+
+          <MenuDivider />
+
+          {/* 3. Account: name + sign out. */}
+          <div className="flex items-center justify-between gap-3 px-1 py-1">
+            {user && (
+              <span className="min-w-0 truncate text-sm text-text">
+                {user.displayName ?? user.email}
+              </span>
+            )}
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                closeMenu()
+                handleSignOut()
+              }}
+              className="shrink-0 gap-1.5"
+            >
+              <LogoutIcon />
+              Выйти
+            </Button>
+          </div>
+        </div>
+      </nav>
     </header>
   )
 }
