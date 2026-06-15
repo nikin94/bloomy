@@ -18,12 +18,12 @@
 /* Palette — light (default). */
 :root {
   /* Brand. `primary` is the main brand colour (buttons, links, focus, active
-     nav). Darkened from the original #aa3bff so white text on a primary button
-     clears the WCAG AA 4.5:1 contrast ratio (#aa3bff was 4.39:1). `primary-bg`
-     is the same hue at low alpha for subtle tints (hover backgrounds, the
-     customer-type slider track, the new-order highlight fade). */
-  --primary: #9d34f0;
-  --primary-bg: rgba(157, 52, 240, 0.1);
+     nav). A dark green chosen so white text on a primary button clears the WCAG
+     AA 4.5:1 contrast ratio (#166534 = 5.56:1). `primary-bg` is the same hue at
+     low alpha for subtle tints (hover backgrounds, the customer-type slider
+     track, the new-order highlight fade). */
+  --primary: #166534;
+  --primary-bg: rgba(22, 101, 52, 0.1);
 
   /* Neutrals. */
   --bg: #fff;
@@ -42,12 +42,14 @@
 /* Palette — dark. Only the values that differ from light are overridden. The
    brand colour is rebalanced (not just lightened): the primary button is
    `bg-primary` + white text in both themes, so the dark primary still has to
-   pass white-text contrast (#9d4edd = 4.60:1) while staying visible on the dark
-   background. */
+   pass white-text contrast (#137548 = 4.56:1) while staying visible on the dark
+   background. Green is the most luminous hue, so a green light enough to "pop"
+   on dark bg can't also carry white text — this shade is the balance point
+   (white-on 4.56, ~3.3:1 against the dark background). */
 @media (prefers-color-scheme: dark) {
   :root {
-    --primary: #9d4edd;
-    --primary-bg: rgba(157, 78, 221, 0.15);
+    --primary: #137548;
+    --primary-bg: rgba(19, 117, 72, 0.15);
 
     --bg: #16171d;
     --text: #9ca3af;
