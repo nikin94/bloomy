@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
 import { AuthContext } from './context/authContext'
@@ -40,7 +40,13 @@ describe('App routing', () => {
   it('resolves the lazy orders route for a signed-in user', async () => {
     renderAt('/orders', { user: USER, loading: false })
     // The chunk loads asynchronously, so the page content appears after a tick.
-    expect(await screen.findByRole('link', { name: 'Новый заказ' })).toBeInTheDocument()
+    // The header renders both layouts (desktop + mobile menu duplicate the nav),
+    // so scope to the desktop bar to match a single create-order link.
+    const header = await screen.findByTestId('header-desktop')
+    expect(within(header).getByRole('link', { name: 'Новый заказ' })).toHaveAttribute(
+      'href',
+      '/orders/new',
+    )
   })
 
   it('redirects an unauthenticated visitor away from a protected route', async () => {
