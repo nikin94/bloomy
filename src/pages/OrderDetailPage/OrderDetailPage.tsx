@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { fetchOrder } from '../../firebase/orders'
+import { fetchOrder, updateOrder } from '../../firebase/orders'
 import { fetchCustomer } from '../../firebase/customers'
 import { formatDate, formatMoney } from '../../utils/format'
 import {
@@ -8,11 +8,12 @@ import {
   getTotalMinor,
   DELIVERY_METHOD_LABELS,
   PAYMENT_METHOD_LABELS,
-  PAYMENT_STATUS_LABELS,
-  SHIPMENT_STATUS_LABELS,
+  PAYMENT_STATUS_OPTIONS,
+  SHIPMENT_STATUS_OPTIONS,
 } from '../../types/order'
 import { useAuth } from '../../context/authContext'
 import Spinner from '../../components/Spinner/Spinner'
+import Select from '../../components/Select/Select'
 import Button from '../../components/Button/Button'
 import type { Order } from '../../types/order'
 import type { Customer } from '../../types/customer'
@@ -28,6 +29,10 @@ const OrderDetailPage = () => {
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // Surfaced when an inline status save fails (the optimistic change is rolled
+  // back); kept separate from the page-load error, which replaces the whole body.
+  const [statusError, setStatusError] = useState<string | null>(null)
+  const [savingStatus, setSavingStatus] = useState(false)
 
   useEffect(() => {
     if (!id || !ownerId) return
@@ -51,6 +56,28 @@ const OrderDetailPage = () => {
       active = false
     }
   }, [id, ownerId])
+
+  // Save a single status change inline, optimistically: update the local order
+  // right away so the UI feels instant, then write the whole order (updateOrder
+  // overwrites in place, preserving id/number/dateCreated). On failure roll the
+  // value back and surface the error, so the screen never shows an unsaved state.
+  const saveStatus = async (patch: Partial<Order>) => {
+    if (!order) return
+    const previous = order
+    const next = { ...order, ...patch }
+    setOrder(next)
+    setStatusError(null)
+    setSavingStatus(true)
+    try {
+      const { id, ...stored } = next
+      await updateOrder(next.id, stored)
+    } catch (err: unknown) {
+      setOrder(previous)
+      setStatusError(err instanceof Error ? err.message : 'Не удалось сохранить статус')
+    } finally {
+      setSavingStatus(false)
+    }
+  }
 
   return (
     <div className="overflow-auto p-6">
@@ -85,15 +112,35 @@ const OrderDetailPage = () => {
             </div>
           </header>
 
-          {/* General info */}
+          {statusError && (
+            <p role="alert" className="m-0 text-danger">
+              {statusError}
+            </p>
+          )}
+
+          {/* General info. The two statuses are editable inline (the frequent
+              "mark paid/shipped" action) without opening the full edit form;
+              the rest is read-only and changed via "Редактировать". */}
           <section className="flex flex-col">
             <Field label="Клиент" value={customer?.name ?? '—'} />
             {customer?.phone && <Field label="Телефон" value={customer.phone} />}
             <Field label="Адрес доставки" value={order.address || '—'} />
             <Field label="Способ доставки" value={DELIVERY_METHOD_LABELS[order.deliveryMethod]} />
             <Field label="Способ оплаты" value={PAYMENT_METHOD_LABELS[order.paymentMethod]} />
-            <Field label="Статус оплаты" value={PAYMENT_STATUS_LABELS[order.paymentStatus]} />
-            <Field label="Статус отправки" value={SHIPMENT_STATUS_LABELS[order.shipmentStatus]} />
+            <InlineStatusField
+              label="Статус оплаты"
+              value={order.paymentStatus}
+              options={PAYMENT_STATUS_OPTIONS}
+              disabled={savingStatus}
+              onChange={(value) => saveStatus({ paymentStatus: value as Order['paymentStatus'] })}
+            />
+            <InlineStatusField
+              label="Статус отправки"
+              value={order.shipmentStatus}
+              options={SHIPMENT_STATUS_OPTIONS}
+              disabled={savingStatus}
+              onChange={(value) => saveStatus({ shipmentStatus: value as Order['shipmentStatus'] })}
+            />
             {order.comment && <Field label="Комментарий" value={order.comment} />}
           </section>
 
@@ -145,6 +192,41 @@ const Field = ({ label, value }: { label: string; value: string }) => (
   <div className="flex gap-3 border-b border-border py-2">
     <span className="shrink-0 basis-[200px] text-text">{label}</span>
     <span className="text-heading">{value}</span>
+  </div>
+)
+
+// A status row that's editable in place: same layout as Field, but the value is
+// a Select. Selecting an option calls onChange, which saves optimistically on
+// the page. Disabled while a save is in flight. Used for both order statuses.
+const InlineStatusField = ({
+  label,
+  value,
+  options,
+  disabled,
+  onChange,
+}: {
+  label: string
+  value: string
+  options: { value: string; label: string }[]
+  disabled: boolean
+  onChange: (value: string) => void
+}) => (
+  <div className="flex items-center gap-3 border-b border-border py-2">
+    <span className="shrink-0 basis-[200px] text-text">{label}</span>
+    <div className="min-w-0 max-w-[220px] flex-1">
+      <Select
+        aria-label={label}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </Select>
+    </div>
   </div>
 )
 
