@@ -417,7 +417,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                 } ${customerMode === 'new' ? 'translate-x-full' : 'translate-x-0'}`}
               />
               <label
-                className={`relative z-10 flex cursor-pointer items-center justify-center rounded-full py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary ${
+                className={`relative z-10 flex min-w-0 cursor-pointer items-center justify-center rounded-full px-2 py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary ${
                   customerMode === 'existing' ? 'text-white' : 'text-text hover:text-heading'
                 } ${customers.length === 0 ? 'cursor-not-allowed opacity-50' : ''}`}
               >
@@ -429,10 +429,12 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                   onChange={() => selectMode('existing')}
                   disabled={customers.length === 0}
                 />
-                Существующий
+                {/* truncate (with min-w-0 on the label) keeps a long label like
+                    "Существующий" inside its segment instead of overflowing. */}
+                <span className="min-w-0 truncate">Существующий</span>
               </label>
               <label
-                className={`relative z-10 flex cursor-pointer items-center justify-center rounded-full py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary ${
+                className={`relative z-10 flex min-w-0 cursor-pointer items-center justify-center rounded-full px-2 py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary ${
                   customerMode === 'new' ? 'text-white' : 'text-text hover:text-heading'
                 }`}
               >
@@ -443,7 +445,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                   checked={customerMode === 'new'}
                   onChange={() => selectMode('new')}
                 />
-                Новый
+                <span className="min-w-0 truncate">Новый</span>
               </label>
             </div>
 
@@ -629,11 +631,18 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                   {formatMoney(totalMinor)}
                 </span>
               </div>
-              <div className="flex gap-2">
-                <Button type="submit" variant="primary" disabled={saving}>
+              {/* Stack the actions full-width on narrow screens; lay them out in
+                  a row from `sm` up. */}
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={saving}
+                  className="w-full sm:w-auto"
+                >
                   {saving ? 'Сохранение…' : 'Сохранить'}
                 </Button>
-                <Button variant="secondary" onClick={onCancel}>
+                <Button variant="secondary" onClick={onCancel} className="w-full sm:w-auto">
                   Отмена
                 </Button>
               </div>
