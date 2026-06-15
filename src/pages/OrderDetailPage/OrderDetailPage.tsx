@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { fetchOrder } from '../../lib/orders'
 import { fetchCustomer } from '../../lib/customers'
-import { formatDate, formatMoney } from '../../lib/format'
+import { formatDate, formatMoney } from '../../utils/format'
 import {
   getSubtotalMinor,
   getTotalMinor,

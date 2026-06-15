@@ -4,7 +4,7 @@ import AppHeader from '../../components/AppHeader/AppHeader'
 import { createOrder } from '../../lib/orders'
 import { createCustomer, fetchCustomers } from '../../lib/customers'
 import { useAuth } from '../../context/auth-context'
-import { formatMoney, parseRublesToMinor } from '../../lib/format'
+import { formatMoney, parseRublesToMinor } from '../../utils/format'
 import {
   DELIVERY_METHOD_OPTIONS,
   PAYMENT_METHOD_OPTIONS,
