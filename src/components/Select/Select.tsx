@@ -1,19 +1,20 @@
 import type { SelectHTMLAttributes } from 'react'
+import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
 
-// A native <select> styled to match the app's inputs. We set `appearance-none`
-// so the browser drops its OS-native control: that removes the macOS popup
-// horizontal offset (the native menu aligns to the OS control, not our box) and
-// lets us draw our own chevron. The chevron is an absolutely positioned,
-// theme-aware (`text-text`) icon with `pointer-events-none`, and `pr-9` reserves
-// room for it so option text never collides with the arrow.
+// A native <select> styled to match the app's inputs (it shares FIELD_BASE /
+// FIELD_NORMAL with Input/Textarea). We set `appearance-none` so the browser
+// drops its OS-native control: that removes the macOS popup horizontal offset
+// (the native menu aligns to the OS control, not our box) and lets us draw our
+// own chevron. The chevron is an absolutely positioned, theme-aware (`text-text`)
+// icon with `pointer-events-none`, and `pr-9` reserves room for it so option text
+// never collides with the arrow (hence the custom padding instead of px-3).
 // `min-w-0` is essential: a native <select> won't shrink below its widest
 // <option> by default (its intrinsic min-width is the longest option), so a long
 // option — e.g. the customer picker's "Имя (+телефон)" — would otherwise pin the
 // whole form to that width and refuse to shrink on narrow screens. With `min-w-0`
 // the control shrinks to its assigned width and clips the shown value (`truncate`).
 const selectClass =
-  'w-full min-w-0 truncate appearance-none rounded-md border border-border bg-bg py-2 pl-3 pr-9 text-heading ' +
-  'focus-visible:outline-2 focus-visible:outline-offset-[-1px] focus-visible:outline-primary'
+  `${FIELD_BASE} ${FIELD_NORMAL} w-full min-w-0 truncate appearance-none py-2 pl-3 pr-9`
 
 function Select({ className = '', children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
