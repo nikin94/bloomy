@@ -163,10 +163,9 @@ const AppHeader = () => {
         </div>
       </div>
 
-      {/* Mobile bar (below md): a wordmark and the burger toggle. `relative z-40`
-          keeps it above the backdrop and panel so the burger stays clickable. */}
-      <div className="relative z-40 flex items-center justify-between px-4 py-3 md:hidden">
-        <span className="text-base font-semibold text-heading">Bloomy</span>
+      {/* Mobile bar (below md): just the burger toggle, aligned right. `relative
+          z-40` keeps it above the backdrop and panel so it stays clickable. */}
+      <div className="relative z-40 flex items-center justify-end px-4 py-3 md:hidden">
         <Button
           variant="secondary"
           size="icon"
@@ -251,15 +250,16 @@ const AppHeader = () => {
             )}
             <Button
               variant="secondary"
-              size="sm"
+              size="icon"
               onClick={() => {
                 closeMenu()
                 handleSignOut()
               }}
-              className="shrink-0 gap-1.5"
+              aria-label="Выйти"
+              title="Выйти"
+              className="shrink-0"
             >
               <LogoutIcon />
-              Выйти
             </Button>
           </div>
         </div>
