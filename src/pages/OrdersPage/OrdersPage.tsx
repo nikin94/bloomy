@@ -42,7 +42,9 @@ function OrdersPage() {
     let active = true
     // Two queries (orders + customers) instead of N+1: customers are loaded
     // once and the table resolves each order's name from this list in memory.
-    Promise.all([fetchOrders(ownerId), fetchCustomers(ownerId)])
+    // `includeDeleted` so an order whose customer was soft-deleted still shows
+    // the name in the list, not "—".
+    Promise.all([fetchOrders(ownerId), fetchCustomers(ownerId, { includeDeleted: true })])
       .then(([orderData, customerData]) => {
         if (!active) return
         setOrders(orderData)

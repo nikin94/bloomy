@@ -25,6 +25,9 @@ const AppHeader = () => {
       <NavLink to="/orders/new" className={navButtonClass}>
         Новый заказ
       </NavLink>
+      <NavLink to="/customers" className={navButtonClass}>
+        Клиенты
+      </NavLink>
 
       {/* Account block pushed to the right; sign-out flips the session and the
           route guard sends the user back to the login screen. */}

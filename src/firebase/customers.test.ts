@@ -2,18 +2,24 @@
 // these check OUR code: the owner-scoped query, the mapping of docs to validated
 // Customers, and the not-found path.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { addDoc, getDoc, getDocs, where } from 'firebase/firestore'
-import { createCustomer, fetchCustomer, fetchCustomers } from './customers'
+import { addDoc, doc, getDoc, getDocs, updateDoc, where } from 'firebase/firestore'
+import {
+  createCustomer,
+  fetchCustomer,
+  fetchCustomers,
+  softDeleteCustomer,
+} from './customers'
 import type { NewCustomer } from '../types/customer'
 
 vi.mock('./client', () => ({ db: {} }))
 vi.mock('firebase/firestore', () => ({
   addDoc: vi.fn(),
   collection: vi.fn(() => ({})),
-  doc: vi.fn(() => ({})),
+  doc: vi.fn(() => ({ ref: 'customer-ref' })),
   getDoc: vi.fn(),
   getDocs: vi.fn(),
   query: vi.fn(() => ({})),
+  updateDoc: vi.fn(),
   where: vi.fn(() => ({})),
 }))
 
@@ -45,6 +51,43 @@ describe('fetchCustomers', () => {
       { id: 'c1', ownerId: 'owner-1', name: 'Anna', createdAt: 1000 },
       { id: 'c2', ownerId: 'owner-1', name: 'Boris', phone: '+700', createdAt: 1000 },
     ])
+  })
+
+  it('excludes soft-deleted customers by default', async () => {
+    vi.mocked(getDocs).mockResolvedValue({
+      docs: [
+        { id: 'c1', data: () => storedCustomer({ name: 'Anna' }) },
+        { id: 'c2', data: () => storedCustomer({ name: 'Gone', isDeleted: true }) },
+      ],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+
+    const customers = await fetchCustomers('owner-1')
+
+    expect(customers.map((c) => c.id)).toEqual(['c1'])
+  })
+
+  it('keeps soft-deleted customers when includeDeleted is set', async () => {
+    vi.mocked(getDocs).mockResolvedValue({
+      docs: [
+        { id: 'c1', data: () => storedCustomer({ name: 'Anna' }) },
+        { id: 'c2', data: () => storedCustomer({ name: 'Gone', isDeleted: true }) },
+      ],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+
+    const customers = await fetchCustomers('owner-1', { includeDeleted: true })
+
+    expect(customers.map((c) => c.id)).toEqual(['c1', 'c2'])
+  })
+})
+
+describe('softDeleteCustomer', () => {
+  it('flags the customer as deleted without removing the document', async () => {
+    await softDeleteCustomer('c1')
+
+    expect(doc).toHaveBeenCalledWith(expect.anything(), 'customers', 'c1')
+    expect(updateDoc).toHaveBeenCalledWith({ ref: 'customer-ref' }, { isDeleted: true })
   })
 })
 
