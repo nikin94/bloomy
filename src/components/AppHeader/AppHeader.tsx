@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../../context/auth-context'
 import { signOutUser } from '../../lib/auth'
+import Button from '../Button/Button'
 
 // App-wide navigation header. The buttons are NavLinks (they change the URL),
 // styled to look like buttons — links are the a11y-correct element for
@@ -35,8 +36,9 @@ const AppHeader = () => {
         )}
         {/* Icon-only sign-out. `aria-label` + `title` keep the accessible name
             (and a hover tooltip) now that the "Выйти" text is gone. */}
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="icon"
           onClick={() => {
             // signOut is a local operation (clears persisted session, no network
             // request), so failure is unlikely — but don't swallow it silently.
@@ -44,7 +46,6 @@ const AppHeader = () => {
           }}
           aria-label="Выйти"
           title="Выйти"
-          className="inline-flex items-center justify-center rounded-md border border-border p-2 text-heading transition-colors hover:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           <svg
             aria-hidden="true"
@@ -60,7 +61,7 @@ const AppHeader = () => {
             <polyline points="16 17 21 12 16 7" />
             <line x1="21" y1="12" x2="9" y2="12" />
           </svg>
-        </button>
+        </Button>
       </div>
     </header>
   )
