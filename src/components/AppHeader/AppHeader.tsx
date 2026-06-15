@@ -175,7 +175,7 @@ const AppHeader = () => {
           aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
           aria-expanded={menuOpen}
           aria-controls="mobile-menu"
-          className="ml-auto focus-visible:outline-none"
+          className="ml-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border"
         >
           <BurgerIcon open={menuOpen} />
         </Button>
