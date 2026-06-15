@@ -25,14 +25,15 @@ const Probe = () => {
   return <button onClick={() => saveFontScale(1.25)}>{`scale:${fontScale}`}</button>
 }
 
-const renderProvider = (user: User | null = USER) =>
-  render(
-    <AuthContext.Provider value={{ user, loading: false }}>
-      <SettingsProvider>
-        <Probe />
-      </SettingsProvider>
-    </AuthContext.Provider>,
-  )
+const tree = (user: User | null) => (
+  <AuthContext.Provider value={{ user, loading: false }}>
+    <SettingsProvider>
+      <Probe />
+    </SettingsProvider>
+  </AuthContext.Provider>
+)
+
+const renderProvider = (user: User | null = USER) => render(tree(user))
 
 const cssScale = () => document.documentElement.style.getPropertyValue('--font-scale')
 
@@ -66,6 +67,16 @@ describe('SettingsProvider', () => {
     renderProvider(null)
     await screen.findByText('scale:1')
     expect(fetchSettings).not.toHaveBeenCalled()
+    expect(cssScale()).toBe('1')
+  })
+
+  it('resets state and the document to default on sign-out so the next user gets no stale value', async () => {
+    fetchSettings.mockResolvedValue({ fontScale: 1.25 })
+    const { rerender } = renderProvider()
+    await screen.findByText('scale:1.25')
+
+    rerender(tree(null))
+    await screen.findByText('scale:1')
     expect(cssScale()).toBe('1')
   })
 })

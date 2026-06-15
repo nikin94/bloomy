@@ -170,7 +170,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                   over the current notch. */}
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-x-3 top-1/2 flex -translate-y-1/2 justify-between"
+                className="pointer-events-none absolute inset-x-3 top-1/2 flex h-3 -translate-y-1/2 items-center justify-between"
               >
                 {Array.from({ length: SCALE_STEPS }).map((_, i) => (
                   <span key={i} className="h-3 w-0.5 rounded-full bg-border" />

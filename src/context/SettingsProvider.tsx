@@ -18,25 +18,24 @@ const applyFontScale = (scale: number) => {
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const ownerId = user?.uid
-  const [fontScale, setFontScale] = useState(DEFAULT_FONT_SCALE)
+  // The loaded value is tagged with the uid it belongs to. Tagging (rather than a
+  // bare scale + a sign-out reset) means the active scale derives to the default
+  // the instant the uid changes — sign-out OR switching users — with no stale
+  // flash while the next user's settings load, and no setState in an effect
+  // (which React Compiler forbids).
+  const [loaded, setLoaded] = useState<{ ownerId: string; scale: number } | null>(null)
+  const fontScale =
+    loaded && loaded.ownerId === ownerId ? loaded.scale : DEFAULT_FONT_SCALE
 
-  // Apply the current user's saved size, and reset the document to the default on
-  // sign-out so one user's preference never carries over visually to the next.
-  // Only the async `.then` mutates state (state can't be set synchronously in an
-  // effect); the signed-out path just resets the DOM variable, which is enough
-  // because the settings dialog is unreachable while signed out.
+  // Fetch the signed-in user's saved size. Tagging the result with ownerId keeps
+  // a late response from a previous user from applying to the current one.
   useEffect(() => {
-    if (!ownerId) {
-      applyFontScale(DEFAULT_FONT_SCALE)
-      return
-    }
+    if (!ownerId) return
     let active = true
     fetchSettings(ownerId)
       .then((settings) => {
         if (!active) return
-        const scale = clampFontScale(settings.fontScale ?? DEFAULT_FONT_SCALE)
-        setFontScale(scale)
-        applyFontScale(scale)
+        setLoaded({ ownerId, scale: clampFontScale(settings.fontScale ?? DEFAULT_FONT_SCALE) })
       })
       .catch(() => {
         // Non-fatal: fall back to the default size already applied.
@@ -46,6 +45,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
   }, [ownerId])
 
+  // Mirror the active scale onto the document root, where index.css reads it.
+  // Driven by state (not the fetch callback) so a uid change resets the document
+  // too. Slider previews write the variable directly and don't touch state, so
+  // they aren't clobbered until a save or uid change commits a new scale.
+  useEffect(() => {
+    applyFontScale(fontScale)
+  }, [fontScale])
+
   // Live-preview a size on the document without persisting (slider drag).
   const previewFontScale = (scale: number) => applyFontScale(scale)
 
@@ -53,9 +60,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   // error to the dialog; the live preview already reflects the attempted size.
   const saveFontScale = async (scale: number) => {
     const clamped = clampFontScale(scale)
-    if (ownerId) await saveSettings(ownerId, { fontScale: clamped })
-    setFontScale(clamped)
-    applyFontScale(clamped)
+    if (!ownerId) return
+    await saveSettings(ownerId, { fontScale: clamped })
+    setLoaded({ ownerId, scale: clamped })
   }
 
   return (
