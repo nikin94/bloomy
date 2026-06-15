@@ -276,6 +276,12 @@ function NewOrderPage() {
       setError('Добавьте хотя бы одно растение')
       return
     }
+    // A named plant with no price is incomplete — block the save (the matching
+    // price input is already flagged red via isPriceMissing).
+    if (items.some((item) => item.name.trim() !== '' && item.price.trim() === '')) {
+      setError('Укажите цену для каждого растения')
+      return
+    }
 
     setSaving(true)
     try {

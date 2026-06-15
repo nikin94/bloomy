@@ -142,6 +142,24 @@ describe('NewOrderPage', () => {
     expect(priceInput).toHaveAttribute('aria-invalid', 'false')
   })
 
+  it('blocks saving when a named plant has no price', async () => {
+    const user = userEvent.setup()
+    renderForm()
+    await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
+    await user.type(screen.getByPlaceholderText('Название'), 'Роза')
+    // No price entered for the named plant.
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Укажите цену для каждого растения')
+    expect(createOrder).not.toHaveBeenCalled()
+    expect(navigate).not.toHaveBeenCalled()
+
+    // Filling the price lets the save through.
+    await user.type(screen.getByPlaceholderText('Цена, ₽'), '149,90')
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(createOrder).toHaveBeenCalledTimes(1))
+  })
+
   it('submits a new-customer order in kopecks and navigates to the list to highlight it', async () => {
     const user = userEvent.setup()
     renderForm()
