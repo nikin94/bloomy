@@ -32,7 +32,9 @@ interface ItemInput {
   price: string // rubles, e.g. "149,90"
 }
 
-const emptyItem = (id: number): ItemInput => ({ id, name: '', quantity: '1', price: '' })
+// Quantity starts empty (not "1") so the field reads as blank; a blank quantity
+// is treated as 1 both in the live total below and when the order is saved.
+const emptyItem = (id: number): ItemInput => ({ id, name: '', quantity: '', price: '' })
 
 // Pick an existing customer from the address book, or enter a new one.
 type CustomerMode = 'existing' | 'new'
@@ -237,7 +239,8 @@ function NewOrderPage() {
 
   // Live preview of the derived totals (same money model as the order itself).
   const subtotalMinor = items.reduce(
-    (sum, item) => sum + parseRublesToMinor(item.price) * (Number(item.quantity) || 0),
+    // A blank/zero quantity counts as 1 here, matching what gets saved.
+    (sum, item) => sum + parseRublesToMinor(item.price) * (Number(item.quantity) || 1),
     0,
   )
   const totalMinor = subtotalMinor + parseRublesToMinor(deliveryPrice)
