@@ -49,17 +49,22 @@ const fieldClass =
   'rounded-md border border-border bg-bg px-3 py-2 text-heading ' +
   'focus-visible:outline-2 focus-visible:outline-offset-[-1px] focus-visible:outline-accent'
 
-// One editable plant line. Four controls (name, quantity, price, delete) don't
-// fit a phone width in a single row, so on narrow screens the name takes its own
-// line and quantity/price/delete share the line below; from `sm` up they all sit
-// in one row. Extracted from the map so the loop body is its own component.
+// One editable plant line, prefixed with its 1-based position. Four controls
+// (name, quantity, price, delete) don't fit a phone width in a single row, so on
+// narrow screens the number+name take their own line and quantity/price/delete
+// share the line below; from `sm` up they all sit in one row. Widths are fluid
+// at every size — the two groups distribute the row via flex proportions and the
+// inputs carry `min-w-0` so they shrink with the container instead of locking to
+// a fixed width. Extracted from the map so the loop body is its own component.
 const PlantItemRow = ({
+  position,
   item,
   priceMissing,
   canRemove,
   onChange,
   onRemove,
 }: {
+  position: number
   item: ItemInput
   priceMissing: boolean
   canRemove: boolean
@@ -67,15 +72,20 @@ const PlantItemRow = ({
   onRemove: () => void
 }) => (
   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-    <input
-      className={`${fieldClass} w-full min-w-0 sm:flex-1`}
-      placeholder="Название"
-      value={item.name}
-      onChange={(e) => onChange({ name: e.target.value })}
-    />
-    <div className="flex items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2 sm:flex-[2]">
+      <span aria-hidden="true" className="w-5 shrink-0 text-right text-sm text-text">
+        {position}.
+      </span>
       <input
-        className={`${fieldClass} min-w-0 flex-1 sm:w-20 sm:flex-none`}
+        className={`${fieldClass} min-w-0 flex-1`}
+        placeholder="Название"
+        value={item.name}
+        onChange={(e) => onChange({ name: e.target.value })}
+      />
+    </div>
+    <div className="flex min-w-0 items-center gap-2 sm:flex-1">
+      <input
+        className={`${fieldClass} min-w-0 flex-[2]`}
         type="number"
         min={1}
         step={1}
@@ -87,7 +97,7 @@ const PlantItemRow = ({
         // Border colour is set explicitly (danger vs normal) instead of
         // overriding the shared field class, so only one border-* colour utility
         // is ever present (avoids order-dependent wins).
-        className={`min-w-0 flex-1 rounded-md border bg-bg px-3 py-2 text-heading focus-visible:outline-2 focus-visible:outline-offset-[-1px] sm:w-28 sm:flex-none ${
+        className={`min-w-0 flex-[3] rounded-md border bg-bg px-3 py-2 text-heading focus-visible:outline-2 focus-visible:outline-offset-[-1px] ${
           priceMissing
             ? 'border-danger focus-visible:outline-danger'
             : 'border-border focus-visible:outline-accent'
@@ -435,6 +445,7 @@ function NewOrderPage() {
             {items.map((item, index) => (
               <PlantItemRow
                 key={item.id}
+                position={index + 1}
                 item={item}
                 priceMissing={isPriceMissing(item)}
                 canRemove={items.length > 1}
@@ -557,7 +568,7 @@ function NewOrderPage() {
                   disabled={saving}
                   className="rounded-md bg-accent px-5 py-2 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
-                  {saving ? 'Сохранение…' : 'Сохранить заказ'}
+                  {saving ? 'Сохранение…' : 'Сохранить'}
                 </button>
                 <button
                   type="button"
