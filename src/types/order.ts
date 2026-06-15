@@ -160,7 +160,13 @@ export function buildOrderColumns(
     { id: 'dateCreated', header: 'Дата', format: (o) => formatDate(o.dateCreated) },
     { id: 'customer', header: 'Клиент', format: (o) => getCustomerName(o.customerId) },
     { id: 'address', header: 'Адрес', field: 'address' },
-    { id: 'plants', header: 'Растения', format: (o) => o.plants.map((p) => p.name).join(', ') },
+    // One plant per line (joined by newlines, which the table/card renders as
+    // stacked rows) with its quantity, instead of one long comma-separated string.
+    {
+      id: 'plants',
+      header: 'Растения',
+      format: (o) => o.plants.map((p) => `${p.name} — ${p.quantity} шт.`).join('\n'),
+    },
     { id: 'total', header: 'Сумма', format: (o) => formatMoney(getTotalMinor(o)) },
     { id: 'paymentStatus', header: 'Оплата', format: (o) => PAYMENT_STATUS_LABELS[o.paymentStatus] },
     {

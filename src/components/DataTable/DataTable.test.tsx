@@ -42,7 +42,21 @@ describe('DataTable (table layout)', () => {
   it('renders a row with resolved and formatted cell values', () => {
     render(<DataTable orders={[order()]} columns={columns} onRowClick={vi.fn()} />)
     expect(table().getByText('Анна')).toBeInTheDocument() // customer resolved via the lookup
-    expect(table().getByText('Роза')).toBeInTheDocument() // plant name from the format fn
+    // Plant lines are stacked "name — qty шт."; one row per plant.
+    expect(table().getByText('Роза — 2 шт.')).toBeInTheDocument()
+  })
+
+  it('stacks each plant on its own line instead of a comma-separated string', () => {
+    const multi = order({
+      plants: [
+        { name: 'Роза', quantity: 2, unitPriceMinor: 15000 },
+        { name: 'Фикус', quantity: 1, unitPriceMinor: 30000 },
+      ],
+    })
+    render(<DataTable orders={[multi]} columns={columns} onRowClick={vi.fn()} />)
+    // Two separate lines, each with its quantity — not one "Роза, Фикус" cell.
+    expect(table().getByText('Роза — 2 шт.')).toBeInTheDocument()
+    expect(table().getByText('Фикус — 1 шт.')).toBeInTheDocument()
   })
 
   it('calls onRowClick with the row order when a row is clicked', async () => {
@@ -97,7 +111,7 @@ describe('DataTable (mobile card layout)', () => {
     // Each column shows up as a "label → value" pair inside the card.
     expect(within(card).getByText('Клиент')).toBeInTheDocument()
     expect(within(card).getByText('Анна')).toBeInTheDocument()
-    expect(within(card).getByText('Роза')).toBeInTheDocument()
+    expect(within(card).getByText('Роза — 2 шт.')).toBeInTheDocument()
   })
 
   it('activates a card with a click and with the keyboard', async () => {
