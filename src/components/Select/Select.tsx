@@ -6,13 +6,18 @@ import type { SelectHTMLAttributes } from 'react'
 // lets us draw our own chevron. The chevron is an absolutely positioned,
 // theme-aware (`text-text`) icon with `pointer-events-none`, and `pr-9` reserves
 // room for it so option text never collides with the arrow.
+// `min-w-0` is essential: a native <select> won't shrink below its widest
+// <option> by default (its intrinsic min-width is the longest option), so a long
+// option — e.g. the customer picker's "Имя (+телефон)" — would otherwise pin the
+// whole form to that width and refuse to shrink on narrow screens. With `min-w-0`
+// the control shrinks to its assigned width and clips the shown value (`truncate`).
 const selectClass =
-  'w-full appearance-none rounded-md border border-border bg-bg py-2 pl-3 pr-9 text-heading ' +
+  'w-full min-w-0 truncate appearance-none rounded-md border border-border bg-bg py-2 pl-3 pr-9 text-heading ' +
   'focus-visible:outline-2 focus-visible:outline-offset-[-1px] focus-visible:outline-accent'
 
 function Select({ className = '', children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <div className="relative w-full">
+    <div className="relative w-full min-w-0">
       <select className={`${selectClass} ${className}`} {...props}>
         {children}
       </select>

@@ -86,7 +86,7 @@ describe('NewOrderPage', () => {
     const user = userEvent.setup()
     renderForm()
     await screen.findByLabelText('Имя клиента')
-    await user.click(screen.getByRole('button', { name: 'Сохранить заказ' }))
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Укажите имя клиента')
     expect(createOrder).not.toHaveBeenCalled()
   })
@@ -95,7 +95,7 @@ describe('NewOrderPage', () => {
     const user = userEvent.setup()
     renderForm()
     await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
-    await user.click(screen.getByRole('button', { name: 'Сохранить заказ' }))
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Добавьте хотя бы одно растение')
     expect(createOrder).not.toHaveBeenCalled()
   })
@@ -106,7 +106,7 @@ describe('NewOrderPage', () => {
     renderForm()
     const picker = await screen.findByRole('combobox', { name: 'Существующий клиент' })
     // Submit with the placeholder still selected → error.
-    await user.click(screen.getByRole('button', { name: 'Сохранить заказ' }))
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Выберите клиента')
     // Picking a real customer clears exactly that error.
     await user.selectOptions(picker, 'c1')
@@ -134,12 +134,46 @@ describe('NewOrderPage', () => {
     expect(priceInput).toHaveAttribute('aria-invalid', 'false')
 
     // The flag appears only once the user tries to save without a price.
-    await user.click(screen.getByRole('button', { name: 'Сохранить заказ' }))
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(priceInput).toHaveAttribute('aria-invalid', 'true')
 
     // Filling the price clears the flag again.
     await user.type(priceInput, '149,90')
     expect(priceInput).toHaveAttribute('aria-invalid', 'false')
+  })
+
+  it('keeps the price field numeric, dropping letters and extra separators', async () => {
+    const user = userEvent.setup()
+    renderForm()
+    await screen.findByLabelText('Имя клиента')
+    const priceInput = screen.getByPlaceholderText('Цена, ₽')
+
+    // Letters are dropped, a single decimal separator is kept.
+    await user.type(priceInput, '1a2b,3c')
+    expect(priceInput).toHaveValue('12,3')
+
+    // The fractional part is capped at two digits.
+    await user.clear(priceInput)
+    await user.type(priceInput, '12,999')
+    expect(priceInput).toHaveValue('12,99')
+  })
+
+  it('blocks saving when a named plant has no price', async () => {
+    const user = userEvent.setup()
+    renderForm()
+    await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
+    await user.type(screen.getByPlaceholderText('Название'), 'Роза')
+    // No price entered for the named plant.
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Укажите цену для каждого растения')
+    expect(createOrder).not.toHaveBeenCalled()
+    expect(navigate).not.toHaveBeenCalled()
+
+    // Filling the price lets the save through.
+    await user.type(screen.getByPlaceholderText('Цена, ₽'), '149,90')
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(createOrder).toHaveBeenCalledTimes(1))
   })
 
   it('submits a new-customer order in kopecks and navigates to the list to highlight it', async () => {
@@ -149,7 +183,7 @@ describe('NewOrderPage', () => {
     await user.type(screen.getByPlaceholderText('Название'), 'Роза')
     await user.type(screen.getByPlaceholderText('Цена, ₽'), '149,90')
     await user.type(screen.getByPlaceholderText('0'), '300') // delivery cost
-    await user.click(screen.getByRole('button', { name: 'Сохранить заказ' }))
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
 
     await waitFor(() => expect(createOrder).toHaveBeenCalledTimes(1))
     // A new customer is created first, then the order references its id.
@@ -205,7 +239,7 @@ describe('NewOrderPage', () => {
     await user.type(screen.getByPlaceholderText('Название'), 'Роза')
     await user.type(screen.getByPlaceholderText('Цена, ₽'), '100')
 
-    const form = screen.getByRole('button', { name: 'Сохранить заказ' }).closest('form')!
+    const form = screen.getByRole('button', { name: 'Сохранить' }).closest('form')!
     // First submit kicks off createCustomer and flips `saving` true.
     fireEvent.submit(form)
     await waitFor(() => expect(createCustomer).toHaveBeenCalledTimes(1))
@@ -227,13 +261,13 @@ describe('NewOrderPage', () => {
     await user.type(screen.getByPlaceholderText('Название'), 'Роза')
     await user.type(screen.getByPlaceholderText('Цена, ₽'), '100')
 
-    await user.click(screen.getByRole('button', { name: 'Сохранить заказ' }))
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('network')
     expect(createCustomer).toHaveBeenCalledTimes(1)
 
     // Retry: the form has flipped to the "existing" branch, so no new customer
     // is created — the order reuses the id from the first createCustomer.
-    await user.click(screen.getByRole('button', { name: 'Сохранить заказ' }))
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith('/orders', { state: { highlightId: 'order-id' } }),
     )
@@ -252,7 +286,7 @@ describe('NewOrderPage', () => {
     await user.type(screen.getByPlaceholderText('Название'), 'Роза')
     await user.type(screen.getByPlaceholderText('Цена, ₽'), '100')
 
-    await user.click(screen.getByRole('button', { name: 'Сохранить заказ' }))
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось сохранить')
     expect(navigate).not.toHaveBeenCalled()
   })
