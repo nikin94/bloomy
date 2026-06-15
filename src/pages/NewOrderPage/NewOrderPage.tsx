@@ -14,6 +14,8 @@ import {
 import Spinner from '../../components/Spinner/Spinner'
 import Select from '../../components/Select/Select'
 import Button from '../../components/Button/Button'
+import Input from '../../components/Input/Input'
+import Textarea from '../../components/Textarea/Textarea'
 import type { NewOrder } from '../../lib/orders'
 import type {
   DeliveryMethod,
@@ -54,14 +56,6 @@ type CustomerMode = 'existing' | 'new'
 // constant so selecting a customer can clear exactly this error and nothing else.
 const SELECT_CUSTOMER_ERROR = 'Выберите клиента'
 
-// Width is intentionally NOT baked in here: in the generated Tailwind CSS
-// `.w-full` is emitted after `.w-20`/`.w-28`, so baking `w-full` in would win
-// over per-field width overrides (equal specificity → later rule wins) and
-// blow out the plant row. Each usage sets its own width instead.
-const fieldClass =
-  'rounded-md border border-border bg-bg px-3 py-2 text-heading ' +
-  'focus-visible:outline-2 focus-visible:outline-offset-[-1px] focus-visible:outline-primary'
-
 // One editable plant line, prefixed with its 1-based position. Four controls
 // (name, quantity, price, delete) don't fit a phone width in a single row, so on
 // narrow screens the number+name take their own line and quantity/price/delete
@@ -89,16 +83,16 @@ const PlantItemRow = ({
       <span aria-hidden="true" className="w-5 shrink-0 text-right text-sm text-text">
         {position}.
       </span>
-      <input
-        className={`${fieldClass} min-w-0 flex-1`}
+      <Input
+        className="min-w-0 flex-1"
         placeholder="Название"
         value={item.name}
         onChange={(e) => onChange({ name: e.target.value })}
       />
     </div>
     <div className="flex min-w-0 items-center gap-2 sm:flex-[3]">
-      <input
-        className={`${fieldClass} min-w-0 flex-1`}
+      <Input
+        className="min-w-0 flex-1"
         type="number"
         min={1}
         step={1}
@@ -106,18 +100,11 @@ const PlantItemRow = ({
         value={item.quantity}
         onChange={(e) => onChange({ quantity: e.target.value })}
       />
-      <input
-        // Border colour is set explicitly (danger vs normal) instead of
-        // overriding the shared field class, so only one border-* colour utility
-        // is ever present (avoids order-dependent wins).
-        className={`min-w-0 flex-[2] rounded-md border bg-bg px-3 py-2 text-heading focus-visible:outline-2 focus-visible:outline-offset-[-1px] ${
-          priceMissing
-            ? 'border-danger focus-visible:outline-danger'
-            : 'border-border focus-visible:outline-primary'
-        }`}
+      <Input
+        className="min-w-0 flex-[2]"
         inputMode="decimal"
         placeholder="Цена, ₽"
-        aria-invalid={priceMissing}
+        invalid={priceMissing}
         value={item.price}
         onChange={(e) => onChange({ price: sanitizePrice(e.target.value) })}
       />
@@ -427,22 +414,22 @@ function NewOrderPage() {
               )
             ) : (
               <div className="flex flex-col gap-3">
-                <input
-                  className={`${fieldClass} w-full`}
+                <Input
+                  className="w-full"
                   aria-label="Имя клиента"
                   placeholder="Имя*"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                 />
-                <input
-                  className={`${fieldClass} w-full`}
+                <Input
+                  className="w-full"
                   aria-label="Телефон"
                   placeholder="Телефон"
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
                 />
-                <textarea
-                  className={`${fieldClass} min-h-16 w-full resize-y`}
+                <Textarea
+                  className="min-h-16 w-full"
                   aria-label="Заметка о клиенте"
                   placeholder="Заметка"
                   value={newNote}
@@ -454,8 +441,8 @@ function NewOrderPage() {
 
           <label className="flex flex-col gap-1">
             <span className="text-sm text-text">Адрес доставки</span>
-            <input
-              className={`${fieldClass} w-full`}
+            <Input
+              className="w-full"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
             />
@@ -502,8 +489,8 @@ function NewOrderPage() {
 
             <label className="flex flex-col gap-1">
               <span className="text-sm text-text">Стоимость доставки, ₽</span>
-              <input
-                className={`${fieldClass} w-full`}
+              <Input
+                className="w-full"
                 inputMode="decimal"
                 placeholder="0"
                 value={deliveryPrice}
@@ -558,8 +545,8 @@ function NewOrderPage() {
 
           <label className="flex flex-col gap-1">
             <span className="text-sm text-text">Комментарий</span>
-            <textarea
-              className={`${fieldClass} min-h-20 w-full resize-y`}
+            <Textarea
+              className="min-h-20 w-full"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
             />
