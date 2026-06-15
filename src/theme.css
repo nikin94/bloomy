@@ -37,6 +37,13 @@
   /* Typography. */
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
+
+  /* Font sizing. `--font-base` is the app's baseline size; `--font-scale` is a
+     per-user multiplier the settings dialog adjusts (and persists to Firebase).
+     The base size is applied on the root in index.css, so rem-based Tailwind
+     text scales with it across the whole app. */
+  --font-base: 18px;
+  --font-scale: 1;
 }
 
 /* Palette — dark. Only the values that differ from light are overridden. The

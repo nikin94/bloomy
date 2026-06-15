@@ -33,6 +33,12 @@ service cloud.firestore {
       allow read, write: if isOwner(ownerId);
     }
 
+    // Per-user app settings keyed by uid (doc id = owner, like counters). Only
+    // that user may read or write their own settings document.
+    match /settings/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
     // Deny everything else by default.
     match /{document=**} {
       allow read, write: if false;
