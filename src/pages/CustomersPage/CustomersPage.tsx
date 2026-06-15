@@ -68,7 +68,7 @@ const CustomerRow = ({
       {confirming ? (
         <div className="flex shrink-0 items-center gap-2">
           <span className="hidden text-sm text-text sm:inline">Удалить клиента?</span>
-          <Button variant="secondary" size="sm" onClick={confirm} disabled={deleting}>
+          <Button variant="danger" size="sm" onClick={confirm} disabled={deleting}>
             {deleting ? 'Удаление…' : 'Удалить'}
           </Button>
           <Button
