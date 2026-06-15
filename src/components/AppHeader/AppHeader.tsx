@@ -159,7 +159,7 @@ const AppHeader = () => {
           top-right; when the menu is open it also holds the create-order action
           on the left, in line with the close (X) toggle. `relative z-40` keeps
           this row above the backdrop and panel so it stays clickable. */}
-      <div className="relative z-40 flex items-center gap-2 px-4 py-3 md:hidden">
+      <div className="relative z-40 flex items-center gap-2 bg-bg px-4 py-3 md:hidden">
         {menuOpen && (
           <NavLink to="/orders/new" className={actionButtonClass} onClick={closeMenu}>
             <PlusIcon />
