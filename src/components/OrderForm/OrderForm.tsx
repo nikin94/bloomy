@@ -125,11 +125,13 @@ interface OrderFormProps {
   heading: string
   // Persist the assembled order, then navigate. The form owns customer
   // resolution (creating a new customer when needed) and builds the order
-  // payload; the caller decides how it is stored (createOrder vs updateOrder)
-  // and where to go next. Throwing surfaces the message as a form error and
-  // keeps the user on the page — a newly created customer is already switched to
-  // the "existing" branch so a retry reuses it instead of duplicating.
-  onSubmit: (order: NewOrder) => Promise<void>
+  // payload, but NOT `dateCreated`: the caller owns it so create can stamp
+  // `Date.now()` while edit preserves the original. The caller decides how the
+  // order is stored (createOrder vs updateOrder) and where to go next. Throwing
+  // surfaces the message as a form error and keeps the user on the page — a
+  // newly created customer is already switched to the "existing" branch so a
+  // retry reuses it instead of duplicating.
+  onSubmit: (order: Omit<NewOrder, 'dateCreated'>) => Promise<void>
   // Leave the form without saving (the caller decides where to).
   onCancel: () => void
 }
@@ -319,8 +321,9 @@ const OrderForm = ({ heading, onSubmit, onCancel }: OrderFormProps) => {
         setCustomerMode('existing')
       }
 
-      const order: NewOrder = {
-        dateCreated: Date.now(),
+      // `dateCreated` is set by the caller (Date.now() on create, original on
+      // edit), so it is intentionally absent here.
+      const order: Omit<NewOrder, 'dateCreated'> = {
         ownerId,
         customerId,
         address: address.trim(),

@@ -13,7 +13,9 @@ const NewOrderPage = () => {
       heading="Новый заказ"
       onCancel={() => navigate('/orders')}
       onSubmit={async (order) => {
-        const id = await createOrder(order)
+        // Stamp the creation time here; the form leaves `dateCreated` to the
+        // caller so edit can preserve the original instead of overwriting it.
+        const id = await createOrder({ ...order, dateCreated: Date.now() })
         // Go to the list (not the order page) and pass the new id so the list
         // can briefly highlight the freshly created order at the top.
         navigate('/orders', { state: { highlightId: id } })
