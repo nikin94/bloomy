@@ -17,7 +17,7 @@ const NAV_LINKS: { to: string; label: string; end?: boolean }[] = [
 const handleSignOut = () =>
   signOutUser().catch((err: unknown) => console.error('Sign-out failed', err))
 
-const PlusIcon = () => (
+const PlusIcon = ({ className = 'size-4' }: { className?: string }) => (
   <svg
     aria-hidden="true"
     viewBox="0 0 24 24"
@@ -26,7 +26,7 @@ const PlusIcon = () => (
     strokeWidth={2}
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="size-4"
+    className={className}
   >
     <line x1="12" y1="5" x2="12" y2="19" />
     <line x1="5" y1="12" x2="19" y2="12" />
@@ -101,8 +101,11 @@ const mobileNavLinkClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg',
   ].join(' ')
 
-const mobileActionClass =
-  'flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-white ' +
+// The create-order "+" sits on the same row as the "Заказы" link (new order
+// belongs to orders), as a square primary icon button. Height matches the nav
+// row (p-2 + size-5 = same as the "Заказы" px-3 py-2 text-sm row) so they align.
+const mobileActionIconClass =
+  'flex shrink-0 items-center justify-center rounded-md bg-primary p-2 text-white ' +
   'no-underline transition-opacity hover:opacity-90 ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 
@@ -200,30 +203,46 @@ const AppHeader = () => {
         }`}
       >
         <div className="flex flex-col gap-1 p-4">
-          {/* 1. Create action. */}
-          <NavLink to="/orders/new" className={mobileActionClass} onClick={closeMenu}>
-            <PlusIcon />
-            Новый заказ
-          </NavLink>
+          {/* 1. Navigation destinations. The "Заказы" row carries the create-order
+              "+" on the same line (new order belongs to orders); other links are
+              plain full-width rows. */}
+          {NAV_LINKS.map((link) =>
+            link.to === '/orders' ? (
+              <div key={link.to} className="flex items-center gap-2">
+                <NavLink
+                  to={link.to}
+                  end={link.end}
+                  className={(state) => `${mobileNavLinkClass(state)} flex-1`}
+                  onClick={closeMenu}
+                >
+                  {link.label}
+                </NavLink>
+                <NavLink
+                  to="/orders/new"
+                  className={mobileActionIconClass}
+                  aria-label="Новый заказ"
+                  title="Новый заказ"
+                  onClick={closeMenu}
+                >
+                  <PlusIcon className="size-5" />
+                </NavLink>
+              </div>
+            ) : (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                end={link.end}
+                className={mobileNavLinkClass}
+                onClick={closeMenu}
+              >
+                {link.label}
+              </NavLink>
+            ),
+          )}
 
           <MenuDivider />
 
-          {/* 2. Navigation destinations. */}
-          {NAV_LINKS.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={link.end}
-              className={mobileNavLinkClass}
-              onClick={closeMenu}
-            >
-              {link.label}
-            </NavLink>
-          ))}
-
-          <MenuDivider />
-
-          {/* 3. Account: name + sign out. */}
+          {/* 2. Account: name + sign out. */}
           <div className="flex items-center justify-between gap-3 px-1 py-1">
             {user && (
               <span className="min-w-0 truncate text-sm text-text">

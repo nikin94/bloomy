@@ -79,6 +79,19 @@ describe('AppHeader (mobile menu)', () => {
     )
   })
 
+  it('pairs the orders row with the create-order action', async () => {
+    const user = userEvent.setup()
+    renderHeader()
+    await user.click(screen.getByRole('button', { name: 'Открыть меню' }))
+    // "Заказы" stays a destination link; the "+" beside it is an icon-only link
+    // to the new-order form, kept accessible by name via aria-label.
+    expect(mobileMenu().getByRole('link', { name: 'Заказы' })).toHaveAttribute('href', '/orders')
+    expect(mobileMenu().getByRole('link', { name: 'Новый заказ' })).toHaveAttribute(
+      'href',
+      '/orders/new',
+    )
+  })
+
   it('closes after a menu destination is chosen', async () => {
     const user = userEvent.setup()
     renderHeader()
