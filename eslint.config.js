@@ -21,6 +21,9 @@ export default defineConfig([
     rules: {
       // Always use strict equality (=== / !==), never == / !=.
       eqeqeq: ['error', 'always'],
+      // Allow dropping a key via a rest spread (`const { id, ...rest } = obj`)
+      // without the pulled-out key counting as an unused variable.
+      '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
     },
   },
 ])
