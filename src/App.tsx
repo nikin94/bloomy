@@ -12,6 +12,7 @@ import './App.css'
 const OrdersPage = lazy(() => import('./pages/OrdersPage/OrdersPage'))
 const NewOrderPage = lazy(() => import('./pages/NewOrderPage/NewOrderPage'))
 const OrderDetailPage = lazy(() => import('./pages/OrderDetailPage/OrderDetailPage'))
+const EditOrderPage = lazy(() => import('./pages/EditOrderPage/EditOrderPage'))
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/orders/new" element={<NewOrderPage />} />
           <Route path="/orders/:id" element={<OrderDetailPage />} />
+          <Route path="/orders/:id/edit" element={<EditOrderPage />} />
         </Route>
       </Routes>
     </Suspense>

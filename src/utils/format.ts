@@ -17,3 +17,15 @@ export const parseRublesToMinor = (value: string): number => {
   const rubles = Number(value.replace(',', '.').trim())
   return Number.isFinite(rubles) ? Math.round(rubles * 100) : 0
 }
+
+// Inverse of parseRublesToMinor: turn stored minor units (kopecks) back into the
+// plain string a form input expects (comma decimal separator, no currency
+// symbol), e.g. 14990 -> "149,90", 30000 -> "300". Zero becomes "" so a blank
+// field round-trips (the form treats an empty amount as 0). Used to prefill the
+// edit form from an existing order.
+export const formatMinorToInput = (minor: number): string => {
+  if (minor === 0) return ''
+  const rubles = Math.trunc(minor / 100)
+  const kopecks = Math.abs(minor % 100)
+  return kopecks === 0 ? String(rubles) : `${rubles},${String(kopecks).padStart(2, '0')}`
+}

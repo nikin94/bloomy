@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import AppHeader from '../AppHeader/AppHeader'
 import { createCustomer, fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
-import { formatMoney, parseRublesToMinor } from '../../utils/format'
+import { formatMinorToInput, formatMoney, parseRublesToMinor } from '../../utils/format'
 import {
   DELIVERY_METHOD_OPTIONS,
   PAYMENT_METHOD_OPTIONS,
@@ -17,6 +17,7 @@ import Textarea from '../Textarea/Textarea'
 import type { NewOrder } from '../../firebase/orders'
 import type {
   DeliveryMethod,
+  Order,
   OrderItem,
   PaymentMethod,
   PaymentStatus,
@@ -36,6 +37,19 @@ interface ItemInput {
 // Quantity starts empty (not "1") so the field reads as blank; a blank quantity
 // is treated as 1 both in the live total below and when the order is saved.
 const emptyItem = (id: number): ItemInput => ({ id, name: '', quantity: '', price: '' })
+
+// Build the editable item rows for the initial state: one blank row when
+// creating, or the stored plants converted back to input strings when editing.
+// Row ids are the array index, so the id ref continues from there for new rows.
+const initialItems = (order: Order | undefined): ItemInput[] =>
+  order
+    ? order.plants.map((p, id) => ({
+        id,
+        name: p.name,
+        quantity: String(p.quantity),
+        price: formatMinorToInput(p.unitPriceMinor),
+      }))
+    : [emptyItem(0)]
 
 // Constrain the price field to a valid ruble amount as the user types: digits
 // and a single decimal separator (comma or dot), at most two fractional digits.
@@ -123,6 +137,10 @@ const PlantItemRow = ({
 interface OrderFormProps {
   // Screen heading, e.g. "Новый заказ" / "Редактирование заказа".
   heading: string
+  // When editing, the existing order to prefill every field from. Omitted when
+  // creating (the form starts blank). Read once on mount — the caller must load
+  // the order before rendering the form, not swap this prop in later.
+  initialOrder?: Order
   // Persist the assembled order, then navigate. The form owns customer
   // resolution (creating a new customer when needed) and builds the order
   // payload, but NOT `dateCreated`: the caller owns it so create can stamp
@@ -139,15 +157,15 @@ interface OrderFormProps {
 // The order form screen, shared by the create and edit pages. Owns all form
 // state and validation; the caller supplies the heading and how a finished order
 // is persisted (see OrderFormProps).
-const OrderForm = ({ heading, onSubmit, onCancel }: OrderFormProps) => {
+const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps) => {
   // Owner of every record created here. Guaranteed non-null under ProtectedRoute.
   const { user } = useAuth()
   const ownerId = user?.uid
 
-  // Customer selection. Defaults to "new"; switches to "existing" once the
-  // address book turns out to be non-empty (returning users get the picker).
+  // Customer selection. New orders default to "new"; an edited order already has
+  // a customer, so it starts in "existing" mode with that customer selected.
   const [customers, setCustomers] = useState<Customer[]>([])
-  const [customerMode, setCustomerMode] = useState<CustomerMode>('new')
+  const [customerMode, setCustomerMode] = useState<CustomerMode>(initialOrder ? 'existing' : 'new')
   // Gate the form on the customer fetch: the initial mode depends on whether the
   // address book is empty, so rendering the form before it resolves would paint
   // the slider at "new" and snap it to "existing" once the data arrives. Showing
@@ -156,24 +174,34 @@ const OrderForm = ({ heading, onSubmit, onCancel }: OrderFormProps) => {
   // The slider pill only animates after the user interacts. The initial
   // fetch-driven switch to "existing" (for returning users) must not slide.
   const [animateModeSlider, setAnimateModeSlider] = useState(false)
-  const [selectedCustomerId, setSelectedCustomerId] = useState('')
+  const [selectedCustomerId, setSelectedCustomerId] = useState(initialOrder?.customerId ?? '')
   const [newName, setNewName] = useState('')
   const [newPhone, setNewPhone] = useState('')
   const [newNote, setNewNote] = useState('')
 
-  const [address, setAddress] = useState('')
+  const [address, setAddress] = useState(initialOrder?.address ?? '')
   // Monotonic id source for item rows, so React keys stay stable across
-  // add/remove instead of being tied to array position. The first row is
-  // seeded with id 0; the ref hands out 1, 2, … for rows added later.
-  const itemIdRef = useRef(0)
+  // add/remove instead of being tied to array position. Rows are seeded with ids
+  // 0..n-1 (see initialItems), so the ref continues from there for rows added later.
+  const itemIdRef = useRef(initialOrder ? initialOrder.plants.length - 1 : 0)
   const nextItemId = () => (itemIdRef.current += 1)
-  const [items, setItems] = useState<ItemInput[]>(() => [emptyItem(0)])
-  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('post')
-  const [deliveryPrice, setDeliveryPrice] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('pending')
-  const [shipmentStatus, setShipmentStatus] = useState<ShipmentStatus>('new')
-  const [comment, setComment] = useState('')
+  const [items, setItems] = useState<ItemInput[]>(() => initialItems(initialOrder))
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>(
+    initialOrder?.deliveryMethod ?? 'post',
+  )
+  const [deliveryPrice, setDeliveryPrice] = useState(
+    initialOrder ? formatMinorToInput(initialOrder.deliveryPriceMinor) : '',
+  )
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
+    initialOrder?.paymentMethod ?? 'cash',
+  )
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(
+    initialOrder?.paymentStatus ?? 'pending',
+  )
+  const [shipmentStatus, setShipmentStatus] = useState<ShipmentStatus>(
+    initialOrder?.shipmentStatus ?? 'new',
+  )
+  const [comment, setComment] = useState(initialOrder?.comment ?? '')
 
   const [saving, setSaving] = useState(false)
   // Becomes true on the first submit attempt; until then, incomplete-row hints

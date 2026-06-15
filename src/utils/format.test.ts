@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatMoney, formatDate, parseRublesToMinor } from './format'
+import { formatMoney, formatDate, parseRublesToMinor, formatMinorToInput } from './format'
 
 describe('parseRublesToMinor', () => {
   it('parses an integer rouble amount into kopecks', () => {
@@ -42,6 +42,29 @@ describe('formatMoney', () => {
 
   it('divides by 100 — 100 kopecks is one rouble', () => {
     expect(formatMoney(100)).toContain('1,00')
+  })
+})
+
+describe('formatMinorToInput', () => {
+  it('renders kopecks as a rouble string with a comma separator', () => {
+    expect(formatMinorToInput(14990)).toBe('149,90')
+  })
+
+  it('drops the fractional part when the amount is whole roubles', () => {
+    expect(formatMinorToInput(30000)).toBe('300')
+  })
+
+  it('pads a single-digit kopeck part to two digits', () => {
+    expect(formatMinorToInput(14905)).toBe('149,05')
+  })
+
+  it('returns an empty string for zero so a blank field round-trips', () => {
+    expect(formatMinorToInput(0)).toBe('')
+  })
+
+  it('round-trips through parseRublesToMinor', () => {
+    expect(parseRublesToMinor(formatMinorToInput(14990))).toBe(14990)
+    expect(parseRublesToMinor(formatMinorToInput(30000))).toBe(30000)
   })
 })
 
