@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { formatDate, formatMoney } from '../lib/format'
+import { formatDate, formatMoney } from '../utils/format'
 
 // Status/method unions are defined as Zod enums so the runtime validator (used
 // when reading Firestore documents) and the TypeScript types share a single

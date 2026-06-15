@@ -8,7 +8,7 @@ import { getDoc, getDocs, runTransaction, where } from 'firebase/firestore'
 import { createOrder, fetchOrder, fetchOrders } from './orders'
 import type { NewOrder } from './orders'
 
-vi.mock('./firebase', () => ({ db: {} }))
+vi.mock('./client', () => ({ db: {} }))
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn(() => ({})),
   doc: vi.fn(() => ({ id: 'generated-id' })),

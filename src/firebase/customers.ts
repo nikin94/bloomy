@@ -1,5 +1,5 @@
 import { addDoc, collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore'
-import { db } from './firebase'
+import { db } from './client'
 import { STORED_CUSTOMER_SCHEMA } from '../types/customer'
 import type { Customer, NewCustomer } from '../types/customer'
 

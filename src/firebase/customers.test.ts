@@ -6,7 +6,7 @@ import { addDoc, getDoc, getDocs, where } from 'firebase/firestore'
 import { createCustomer, fetchCustomer, fetchCustomers } from './customers'
 import type { NewCustomer } from '../types/customer'
 
-vi.mock('./firebase', () => ({ db: {} }))
+vi.mock('./client', () => ({ db: {} }))
 vi.mock('firebase/firestore', () => ({
   addDoc: vi.fn(),
   collection: vi.fn(() => ({})),

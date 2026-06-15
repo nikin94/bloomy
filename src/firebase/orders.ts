@@ -1,5 +1,5 @@
 import { collection, doc, getDoc, getDocs, query, runTransaction, where } from 'firebase/firestore'
-import { db } from './firebase'
+import { db } from './client'
 import { STORED_ORDER_SCHEMA } from '../types/order'
 import type { Order } from '../types/order'
 

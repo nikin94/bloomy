@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { useAuth } from '../../context/auth-context'
-import { signInWithGoogle } from '../../lib/auth'
+import { useAuth } from '../../context/authContext'
+import { signInWithGoogle } from '../../firebase/auth'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
 

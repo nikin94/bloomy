@@ -3,7 +3,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
-import { AuthContext } from '../../context/auth-context'
+import { AuthContext } from '../../context/authContext'
 import type { Customer } from '../../types/customer'
 
 // Firebase-touching modules are mocked so the data layer never initializes the
@@ -14,13 +14,13 @@ const createCustomer = vi.fn()
 const fetchCustomers = vi.fn()
 const navigate = vi.fn()
 
-vi.mock('../../lib/orders', () => ({ createOrder: (...args: unknown[]) => createOrder(...args) }))
-vi.mock('../../lib/customers', () => ({
+vi.mock('../../firebase/orders', () => ({ createOrder: (...args: unknown[]) => createOrder(...args) }))
+vi.mock('../../firebase/customers', () => ({
   createCustomer: (...args: unknown[]) => createCustomer(...args),
   fetchCustomers: (...args: unknown[]) => fetchCustomers(...args),
 }))
 // AppHeader imports signOutUser from here; stub it so firebase stays untouched.
-vi.mock('../../lib/auth', () => ({ signOutUser: vi.fn() }))
+vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
 vi.mock('react-router-dom', async (importOriginal) => ({
   ...(await importOriginal<typeof import('react-router-dom')>()),
   useNavigate: () => navigate,

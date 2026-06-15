@@ -1,5 +1,5 @@
 import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth'
-import { auth } from './firebase'
+import { auth } from './client'
 
 // Google sign-in for the web app. We use signInWithPopup rather than
 // signInWithRedirect: the redirect flow breaks in browsers that partition

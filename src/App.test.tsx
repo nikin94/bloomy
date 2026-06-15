@@ -2,14 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
-import { AuthContext } from './context/auth-context'
-import type { AuthState } from './context/auth-context'
+import { AuthContext } from './context/authContext'
+import type { AuthState } from './context/authContext'
 
 // Firebase-touching modules are mocked so rendering a lazy route never spins up
 // the real SDK. We test the routing/Suspense wiring, not the pages' internals.
-vi.mock('./lib/orders', () => ({ fetchOrders: vi.fn().mockResolvedValue([]) }))
-vi.mock('./lib/customers', () => ({ fetchCustomers: vi.fn().mockResolvedValue([]) }))
-vi.mock('./lib/auth', () => ({ signInWithGoogle: vi.fn(), signOutUser: vi.fn() }))
+vi.mock('./firebase/orders', () => ({ fetchOrders: vi.fn().mockResolvedValue([]) }))
+vi.mock('./firebase/customers', () => ({ fetchCustomers: vi.fn().mockResolvedValue([]) }))
+vi.mock('./firebase/auth', () => ({ signInWithGoogle: vi.fn(), signOutUser: vi.fn() }))
 
 // Imported after the mocks above are registered.
 import App from './App'

@@ -3,11 +3,11 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
-import { AuthContext } from '../../context/auth-context'
+import { AuthContext } from '../../context/authContext'
 
 // Stub the auth module so the sign-out button never touches the real Firebase SDK.
 const signOutUser = vi.fn()
-vi.mock('../../lib/auth', () => ({ signOutUser: (...args: unknown[]) => signOutUser(...args) }))
+vi.mock('../../firebase/auth', () => ({ signOutUser: (...args: unknown[]) => signOutUser(...args) }))
 
 // Imported after the mock above is registered.
 import AppHeader from './AppHeader'
