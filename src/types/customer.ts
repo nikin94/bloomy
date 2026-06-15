@@ -18,6 +18,11 @@ export const STORED_CUSTOMER_SCHEMA = z.object({
   address: z.string().optional(), // default address, used to prefill an order's delivery address
   note: z.string().optional(), // free-text notes (preferences, etc.)
   createdAt: z.number(), // timestamp (ms)
+  // Soft-delete flag. A "deleted" customer is hidden from the address book and
+  // the order-form picker, but the document is kept so past orders still resolve
+  // its name (orders reference customers by id and store no name snapshot).
+  // Optional so documents written before this field stay valid.
+  isDeleted: z.boolean().optional(),
 })
 
 export type Customer = z.infer<typeof STORED_CUSTOMER_SCHEMA> & { id: string }
