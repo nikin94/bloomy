@@ -123,6 +123,18 @@ describe('NewOrderPage', () => {
     expect(addBtn).toBeEnabled()
   })
 
+  it('focuses the new row name input after adding a plant', async () => {
+    const user = userEvent.setup()
+    renderForm()
+    await screen.findByLabelText('Имя клиента')
+    await user.type(screen.getByPlaceholderText('Название'), 'Роза')
+    await user.click(screen.getByRole('button', { name: '+ Добавить растение' }))
+    // The just-added (second) name input grabs focus so the user can type at once.
+    const nameInputs = screen.getAllByPlaceholderText('Название')
+    expect(nameInputs).toHaveLength(2)
+    expect(nameInputs[1]).toHaveFocus()
+  })
+
   it('flags a named plant row without a price only after a submit attempt', async () => {
     const user = userEvent.setup()
     renderForm()
