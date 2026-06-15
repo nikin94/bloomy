@@ -97,16 +97,30 @@ export const plantLineLabel = (item: OrderItem): string =>
 // `field: keyof Order` (when used) guarantees we cannot reference a
 // non-existent field — TypeScript checks it at compile time. Columns that
 // show a derived value (e.g. total) omit `field` and provide `format`.
-
-export interface OrderColumn {
+//
+// Modeled as a discriminated union so a column MUST carry exactly one of `field`
+// or `format`: a `{ id, header }` with neither (which would render an empty
+// cell) is a compile error, and providing both is rejected too (the `never`
+// guards). This is the type-level guard the PR #5 review asked for.
+interface OrderColumnBase {
   // Stable identity for the React key and column id.
   id: string
   header: string
-  // Raw Order field for default cell rendering. Omit for derived columns.
-  field?: keyof Order
-  // Optional formatting of the cell value into a display string.
-  format?: (order: Order) => string
 }
+
+// A column backed by a raw Order field (default String() rendering).
+interface FieldOrderColumn extends OrderColumnBase {
+  field: keyof Order
+  format?: never
+}
+
+// A derived column whose value comes from a formatter (e.g. the total).
+interface FormatOrderColumn extends OrderColumnBase {
+  field?: never
+  format: (order: Order) => string
+}
+
+export type OrderColumn = FieldOrderColumn | FormatOrderColumn
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   pending: 'Ожидает',

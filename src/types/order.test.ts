@@ -73,6 +73,17 @@ describe('buildOrderColumns', () => {
     })
     expect(totalColumn?.format?.(order)).toContain('99,00')
   })
+
+  it('builds every column with exactly one of field or format (discriminated union)', () => {
+    const columns = buildOrderColumns(() => 'Анна')
+    for (const column of columns) {
+      // The type forbids a column with neither (compile-time); assert the data
+      // honours it at runtime too — each renders via a field OR a formatter.
+      const hasField = 'field' in column && column.field !== undefined
+      const hasFormat = 'format' in column && column.format !== undefined
+      expect(hasField !== hasFormat).toBe(true) // exactly one
+    }
+  })
 })
 
 describe('plantsByValueDesc', () => {
