@@ -88,22 +88,18 @@ describe('plantsByValueDesc', () => {
   })
 })
 
-describe('plantsByValueDesc', () => {
-  it('orders plants by line value (unit price × quantity), most valuable first', () => {
-    const ordered = plantsByValueDesc([
-      { name: 'Роза', quantity: 2, unitPriceMinor: 15000 }, // 30000
-      { name: 'Фикус', quantity: 1, unitPriceMinor: 50000 }, // 50000 — pricier
-    ])
-    expect(ordered.map((p) => p.name)).toEqual(['Фикус', 'Роза'])
-  })
+describe('the plants column', () => {
+  const plantsColumn = buildOrderColumns(() => 'Анна').find((c) => c.id === 'plants')
 
-  it('returns a copy without mutating the input', () => {
-    const input = [
-      { name: 'Роза', quantity: 1, unitPriceMinor: 1000 },
-      { name: 'Фикус', quantity: 1, unitPriceMinor: 9000 },
-    ]
-    plantsByValueDesc(input)
-    expect(input.map((p) => p.name)).toEqual(['Роза', 'Фикус'])
+  it('stacks plants priciest-first with the quantity as ×N, omitting it when 1', () => {
+    const order = makeOrder({
+      plants: [
+        { name: 'Роза', quantity: 2, unitPriceMinor: 15000 }, // 30000
+        { name: 'Фикус', quantity: 1, unitPriceMinor: 50000 }, // 50000 — pricier, no qty
+      ],
+    })
+    // Newline-joined, most valuable first; the single Фикус shows no quantity.
+    expect(plantsColumn?.format?.(order)).toBe('Фикус\nРоза ×2')
   })
 })
 

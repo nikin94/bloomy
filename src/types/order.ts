@@ -81,6 +81,12 @@ export const getTotalMinor = (order: Order): number =>
 export const plantsByValueDesc = (plants: OrderItem[]): OrderItem[] =>
   [...plants].sort((a, b) => b.unitPriceMinor * b.quantity - a.unitPriceMinor * a.quantity)
 
+// Compact per-line label for the orders-table list: the name, plus the quantity
+// as ×N only when it is more than 1 (a quantity of 1 is the common case and just
+// adds noise).
+export const plantLineLabel = (item: OrderItem): string =>
+  item.quantity === 1 ? item.name : `${item.name} ×${item.quantity}`
+
 // --- Table column configuration -----------------------------------------
 //
 // To control the visible fields in one place, columns are described
@@ -169,7 +175,14 @@ export function buildOrderColumns(
     // One plant per line, most valuable first. Rendered richly by DataTable
     // (the name in bold, the quantity as a plain number) keyed off this id —
     // bold-name-plus-quantity can't be expressed as a plain format string.
-    { id: 'plants', header: 'Растения' },
+    // One plant per line (joined by newlines, which the table/card renders as
+    // stacked rows), most valuable line first; the quantity shows as ×N only
+    // when above 1.
+    {
+      id: 'plants',
+      header: 'Растения',
+      format: (o) => plantsByValueDesc(o.plants).map(plantLineLabel).join('\n'),
+    },
     { id: 'total', header: 'Сумма', format: (o) => formatMoney(getTotalMinor(o)) },
     { id: 'paymentStatus', header: 'Оплата', format: (o) => PAYMENT_STATUS_LABELS[o.paymentStatus] },
     {

@@ -160,9 +160,9 @@ const OrderDetailPage = () => {
               <tbody>
                 {plantsByValueDesc(order.plants).map((item, index) => (
                   <tr key={index} className="border-b border-border">
-                    <td className="py-2 pr-3 font-semibold text-heading">{item.name}</td>
+                    <td className="py-2 pr-3 text-heading">{item.name}</td>
                     <td className="py-2 px-3 text-right text-text tabular-nums">
-                      {item.quantity === 1 ? '' : item.quantity}
+                      {item.quantity === 1 ? '' : `×${item.quantity}`}
                     </td>
                     <td className="py-2 px-3 text-right text-text tabular-nums">
                       {formatMoney(item.unitPriceMinor)}

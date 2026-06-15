@@ -2,7 +2,6 @@ import { useMemo } from 'react'
 import type { ReactNode } from 'react'
 import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table'
 import type { ColumnDef, Row } from '@tanstack/react-table'
-import { plantsByValueDesc } from '../../types/order'
 import type { Order, OrderColumn } from '../../types/order'
 
 interface DataTableProps {
@@ -14,27 +13,11 @@ interface DataTableProps {
   highlightOrderId?: string
 }
 
-// The plant list, one plant per line, most valuable first: name in bold with
-// the quantity as a plain trailing number (omitted when it is 1). Rendered here
-// rather than as a format string because the bold name can't be expressed in
-// plain text.
-const PlantsCell = ({ order }: { order: Order }) => (
-  <>
-    {plantsByValueDesc(order.plants).map((item, i) => (
-      <div key={i}>
-        <span className="font-semibold text-heading">{item.name}</span>
-        {item.quantity > 1 && <span className="text-text"> {item.quantity}</span>}
-      </div>
-    ))}
-  </>
-)
-
-// Cell value: the plant column renders richly (see PlantsCell); other columns
-// use the format function when present, otherwise stringify the raw field.
-// A formatted value may contain newlines; render each line on its own row so it
-// reads as a column, not one long string.
+// Cell value: use the column's format function when present, otherwise
+// stringify the raw field. Derived columns (no `field`) must provide `format`.
+// A formatted value may contain newlines (e.g. the stacked plant list); render
+// each line on its own row so it reads as a column, not one long string.
 const renderCell = (order: Order, column: OrderColumn): ReactNode => {
-  if (column.id === 'plants') return <PlantsCell order={order} />
   const value = column.format ? column.format(order) : column.field ? String(order[column.field]) : ''
   if (!value.includes('\n')) return value
   return value.split('\n').map((line, i) => <div key={i}>{line}</div>)

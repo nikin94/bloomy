@@ -80,13 +80,11 @@ describe('OrderDetailPage', () => {
     expect(screen.getByRole('combobox', { name: 'Статус отправки' })).toHaveValue('new')
   })
 
-  it('shows the plant name in bold with the quantity as a plain number', async () => {
+  it('shows the plant quantity in compact ×N form', async () => {
     renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })
-    // Order has one plant "Роза" ×2: the name renders bold, quantity is a plain "2".
-    const name = screen.getByText('Роза')
-    expect(name).toHaveClass('font-semibold')
-    expect(screen.getByRole('cell', { name: '2' })).toBeInTheDocument()
+    // Order has one plant "Роза" ×2.
+    expect(screen.getByText('×2')).toBeInTheDocument()
   })
 
   it('saves a status change in place via updateOrder, preserving the rest of the order', async () => {
