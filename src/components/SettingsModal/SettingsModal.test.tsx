@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { User } from 'firebase/auth'
+import { AuthContext } from '../../context/authContext'
 import { SettingsContext } from '../../context/settingsContext'
 import type { SettingsState } from '../../context/settingsContext'
 
@@ -22,11 +24,15 @@ const settings = (over: Partial<SettingsState> = {}): SettingsState => ({
   ...over,
 })
 
+const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
+
 const renderModal = (open = true, state = settings()) =>
   render(
-    <SettingsContext.Provider value={state}>
-      <SettingsModal open={open} onClose={onClose} />
-    </SettingsContext.Provider>,
+    <AuthContext.Provider value={{ user: USER, loading: false }}>
+      <SettingsContext.Provider value={state}>
+        <SettingsModal open={open} onClose={onClose} />
+      </SettingsContext.Provider>
+    </AuthContext.Provider>,
   )
 
 const slider = () => screen.getByRole('slider', { name: 'Размер шрифта' })
@@ -48,6 +54,11 @@ describe('SettingsModal', () => {
     expect(screen.getByRole('dialog', { name: 'Настройки' })).toBeInTheDocument()
     expect(slider()).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Выйти' })).toBeInTheDocument()
+  })
+
+  it('shows the signed-in user name alongside sign-out (moved out of the header)', () => {
+    renderModal()
+    expect(screen.getByText('Tester')).toBeInTheDocument()
   })
 
   it('previews the size live as the slider moves, without persisting', () => {

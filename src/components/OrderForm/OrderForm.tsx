@@ -396,7 +396,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
         {/* Scrollable body — the footer below stays pinned. */}
         <div className="flex-1 overflow-auto p-6">
           <div className="mx-auto flex max-w-2xl flex-col gap-5">
-            <h1 className="m-0 text-[22px] font-semibold text-heading">{heading}</h1>
+            <h1 className="m-0 text-[1.2222rem] font-semibold text-heading">{heading}</h1>
 
           <fieldset className="flex min-w-0 flex-col gap-3 border-0 p-0">
             <legend className="mb-1 p-0 text-sm text-text">Клиент</legend>

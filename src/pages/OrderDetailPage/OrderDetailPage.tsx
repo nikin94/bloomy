@@ -147,7 +147,7 @@ const OrderDetailPage = () => {
           {/* Itemized plant list */}
           <section className="flex flex-col gap-2">
             <h2 className="m-0 text-lg font-semibold text-heading">Растения</h2>
-            <table className="w-full border-collapse text-[15px]">
+            <table className="w-full border-collapse text-[0.8333rem]">
               <thead>
                 <tr className="border-b border-border text-left text-sm text-text">
                   <th className="py-2 pr-3 font-medium">Название</th>
@@ -174,7 +174,7 @@ const OrderDetailPage = () => {
           </section>
 
           {/* Money breakdown */}
-          <section className="flex flex-col gap-1 self-end text-[15px]">
+          <section className="flex flex-col gap-1 self-end text-[0.8333rem]">
             <Total label="Сумма растений" value={getSubtotalMinor(order)} />
             <Total label="Доставка" value={order.deliveryPriceMinor} />
             <div className="mt-1 flex justify-between gap-8 border-t border-border pt-2 font-semibold text-heading">

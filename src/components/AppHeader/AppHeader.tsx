@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { useAuth } from '../../context/authContext'
 import Button from '../Button/Button'
 import SettingsModal from '../SettingsModal/SettingsModal'
 
@@ -104,7 +103,6 @@ const MenuDivider = () => <span aria-hidden="true" className="block h-px w-full 
 // over the content. Both layouts share NAV_LINKS so they never drift apart. The
 // account control opens the settings dialog (which holds sign-out).
 const AppHeader = () => {
-  const { user } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
@@ -140,24 +138,18 @@ const AppHeader = () => {
           Новый заказ
         </NavLink>
 
-        {/* Account block pushed to the right: name + the settings gear (which
-            holds sign-out). */}
-        <div className="ml-auto flex items-center gap-3">
-          {user && (
-            <span className="hidden text-sm text-text sm:inline">
-              {user.displayName ?? user.email}
-            </span>
-          )}
-          <Button
-            variant="secondary"
-            size="icon"
-            onClick={() => setSettingsOpen(true)}
-            aria-label="Настройки"
-            title="Настройки"
-          >
-            <GearIcon />
-          </Button>
-        </div>
+        {/* Account: the settings gear (which holds the user name and sign-out),
+            pushed to the right. */}
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={() => setSettingsOpen(true)}
+          aria-label="Настройки"
+          title="Настройки"
+          className="ml-auto"
+        >
+          <GearIcon />
+        </Button>
       </div>
 
       {/* Mobile bar / open-menu header (below md): the burger toggle sits at the
@@ -229,13 +221,8 @@ const AppHeader = () => {
 
         <MenuDivider />
 
-        {/* 2. Account: name + the settings gear (which holds sign-out). */}
-        <div className="flex items-center justify-between gap-3 px-4 py-3">
-          {user && (
-            <span className="min-w-0 truncate text-sm text-text">
-              {user.displayName ?? user.email}
-            </span>
-          )}
+        {/* 2. Account: the settings gear (which holds the user name and sign-out). */}
+        <div className="flex px-4 py-3">
           <Button
             variant="secondary"
             size="icon"
@@ -245,7 +232,6 @@ const AppHeader = () => {
             }}
             aria-label="Настройки"
             title="Настройки"
-            className="shrink-0"
           >
             <GearIcon />
           </Button>

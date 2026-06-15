@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useAuth } from '../../context/authContext'
 import { useSettings } from '../../context/settingsContext'
 import { signOutUser } from '../../firebase/auth'
 import { FONT_SCALE_MAX, FONT_SCALE_MIN, FONT_SCALE_STEP } from '../../types/settings'
@@ -52,6 +53,7 @@ const SettingsModal = ({ open, onClose }: { open: boolean; onClose: () => void }
 // whole app immediately for preview, but the size is only persisted to Firebase
 // on "Сохранить"; closing without saving reverts the preview to the saved size.
 const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
+  const { user } = useAuth()
   const { fontScale, previewFontScale, saveFontScale } = useSettings()
   const [draft, setDraft] = useState(fontScale)
   const [saving, setSaving] = useState(false)
@@ -177,10 +179,19 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
 
         <span aria-hidden="true" className="h-px w-full bg-border" />
 
-        <Button variant="secondary" onClick={handleLogout} className="gap-1.5 self-start">
-          <LogoutIcon />
-          Выйти
-        </Button>
+        {/* Account row: the signed-in user's name (moved out of the header) next
+            to sign-out. */}
+        <div className="flex items-center justify-between gap-3">
+          {user && (
+            <span className="min-w-0 truncate text-sm text-text">
+              {user.displayName ?? user.email}
+            </span>
+          )}
+          <Button variant="secondary" onClick={handleLogout} className="shrink-0 gap-1.5">
+            <LogoutIcon />
+            Выйти
+          </Button>
+        </div>
       </div>
     </div>
   )
