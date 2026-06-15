@@ -31,6 +31,13 @@ describe('Button', () => {
     expect(screen.getByRole('button')).toHaveClass('border')
   })
 
+  it('applies the tinted danger style (border + danger text, not a solid fill)', () => {
+    render(<Button variant="danger">Удалить</Button>)
+    const button = screen.getByRole('button')
+    expect(button).toHaveClass('border-danger')
+    expect(button).toHaveClass('text-danger')
+  })
+
   it('forwards native attributes (onClick, disabled, aria-label)', async () => {
     const onClick = vi.fn()
     render(

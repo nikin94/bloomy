@@ -31,8 +31,15 @@
   --text-h: #08060d;
   --border: #e5e4e7;
 
-  /* Feedback. */
-  --danger: #e5484d;
+  /* Feedback. `danger` is the destructive/error colour (error text + the danger
+     button). A dark red so it clears WCAG AA 4.5:1 as text on the page bg
+     (#dc2626 = 4.83:1 on white). The danger button is TINTED (danger border +
+     text + a low-alpha hover fill), never solid-white-on-danger — in dark mode
+     no red can clear 4.5:1 for white text while also reading as text on the dark
+     bg, so the tinted treatment sidesteps that conflict. `danger-bg` is the same
+     hue at low alpha for that hover tint. */
+  --danger: #dc2626;
+  --danger-bg: rgba(220, 38, 38, 0.1);
 
   /* Typography. */
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
@@ -62,6 +69,11 @@
     --text: #9ca3af;
     --text-h: #f3f4f6;
     --border: #2e303a;
+
+    /* Lighter red so danger text clears AA against the dark bg (#ef4444 =
+       4.75:1 on #16171d). */
+    --danger: #ef4444;
+    --danger-bg: rgba(239, 68, 68, 0.15);
   }
 }
 
@@ -77,6 +89,7 @@
   --color-heading: var(--text-h);
   --color-border: var(--border);
   --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
 
   --font-sans: var(--sans);
   --font-mono: var(--mono);
