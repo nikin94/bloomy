@@ -49,6 +49,68 @@ const fieldClass =
   'rounded-md border border-border bg-bg px-3 py-2 text-heading ' +
   'focus-visible:outline-2 focus-visible:outline-offset-[-1px] focus-visible:outline-accent'
 
+// One editable plant line. Four controls (name, quantity, price, delete) don't
+// fit a phone width in a single row, so on narrow screens the name takes its own
+// line and quantity/price/delete share the line below; from `sm` up they all sit
+// in one row. Extracted from the map so the loop body is its own component.
+const PlantItemRow = ({
+  item,
+  priceMissing,
+  canRemove,
+  onChange,
+  onRemove,
+}: {
+  item: ItemInput
+  priceMissing: boolean
+  canRemove: boolean
+  onChange: (patch: Partial<ItemInput>) => void
+  onRemove: () => void
+}) => (
+  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+    <input
+      className={`${fieldClass} w-full min-w-0 sm:flex-1`}
+      placeholder="Название"
+      value={item.name}
+      onChange={(e) => onChange({ name: e.target.value })}
+    />
+    <div className="flex items-center gap-2">
+      <input
+        className={`${fieldClass} min-w-0 flex-1 sm:w-20 sm:flex-none`}
+        type="number"
+        min={1}
+        step={1}
+        placeholder="Кол-во"
+        value={item.quantity}
+        onChange={(e) => onChange({ quantity: e.target.value })}
+      />
+      <input
+        // Border colour is set explicitly (danger vs normal) instead of
+        // overriding the shared field class, so only one border-* colour utility
+        // is ever present (avoids order-dependent wins).
+        className={`min-w-0 flex-1 rounded-md border bg-bg px-3 py-2 text-heading focus-visible:outline-2 focus-visible:outline-offset-[-1px] sm:w-28 sm:flex-none ${
+          priceMissing
+            ? 'border-danger focus-visible:outline-danger'
+            : 'border-border focus-visible:outline-accent'
+        }`}
+        inputMode="decimal"
+        placeholder="Цена, ₽"
+        aria-invalid={priceMissing}
+        value={item.price}
+        onChange={(e) => onChange({ price: e.target.value })}
+      />
+      <button
+        type="button"
+        onClick={onRemove}
+        disabled={!canRemove}
+        aria-label="Удалить растение"
+        className="shrink-0 rounded-md border border-border px-3 py-2 text-text transition-colors hover:bg-accent-bg disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      >
+        ✕
+      </button>
+    </div>
+  </div>
+)
+
 function NewOrderPage() {
   const navigate = useNavigate()
   // Owner of every record created here. Guaranteed non-null under ProtectedRoute.
@@ -371,47 +433,14 @@ function NewOrderPage() {
           <fieldset className="flex flex-col gap-2 border-0 p-0">
             <legend className="mb-1 p-0 text-sm text-text">Растения</legend>
             {items.map((item, index) => (
-              <div key={item.id} className="flex items-center gap-2">
-                <input
-                  className={`${fieldClass} min-w-0 flex-1`}
-                  placeholder="Название"
-                  value={item.name}
-                  onChange={(e) => updateItem(index, { name: e.target.value })}
-                />
-                <input
-                  className={`${fieldClass} w-20 shrink-0`}
-                  type="number"
-                  min={1}
-                  step={1}
-                  placeholder="Кол-во"
-                  value={item.quantity}
-                  onChange={(e) => updateItem(index, { quantity: e.target.value })}
-                />
-                <input
-                  // Border colour is set explicitly (danger vs normal) instead
-                  // of overriding the shared field class, so only one border-*
-                  // colour utility is ever present (avoids order-dependent wins).
-                  className={`w-28 shrink-0 rounded-md border bg-bg px-3 py-2 text-heading focus-visible:outline-2 focus-visible:outline-offset-[-1px] ${
-                    isPriceMissing(item)
-                      ? 'border-danger focus-visible:outline-danger'
-                      : 'border-border focus-visible:outline-accent'
-                  }`}
-                  inputMode="decimal"
-                  placeholder="Цена, ₽"
-                  aria-invalid={isPriceMissing(item)}
-                  value={item.price}
-                  onChange={(e) => updateItem(index, { price: e.target.value })}
-                />
-                <button
-                  type="button"
-                  onClick={() => removeItem(index)}
-                  disabled={items.length === 1}
-                  aria-label="Удалить растение"
-                  className="shrink-0 rounded-md border border-border px-3 py-2 text-text transition-colors hover:bg-accent-bg disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                >
-                  ✕
-                </button>
-              </div>
+              <PlantItemRow
+                key={item.id}
+                item={item}
+                priceMissing={isPriceMissing(item)}
+                canRemove={items.length > 1}
+                onChange={(patch) => updateItem(index, patch)}
+                onRemove={() => removeItem(index)}
+              />
             ))}
             <button
               type="button"
