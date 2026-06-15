@@ -37,4 +37,14 @@ describe('AppHeader', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Выйти' }))
     expect(signOutUser).toHaveBeenCalledTimes(1)
   })
+
+  it('exposes the create-order action as a link to the new-order form', () => {
+    signOutUser.mockResolvedValue(undefined)
+    renderHeader()
+    // "Новый заказ" is styled as a primary action but stays a navigation link.
+    expect(screen.getByRole('link', { name: 'Новый заказ' })).toHaveAttribute(
+      'href',
+      '/orders/new',
+    )
+  })
 })
