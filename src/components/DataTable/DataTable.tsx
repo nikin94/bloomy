@@ -90,7 +90,7 @@ const OrderCard = ({
     }`}
     {...activationProps(row.original, onActivate)}
   >
-    <dl className="m-0 flex flex-col gap-1.5 text-[15px]">
+    <dl className="m-0 flex flex-col gap-1.5 text-[0.8333rem]">
       {row.getVisibleCells().map((cell) => (
         <div key={cell.id} className="flex gap-3">
           <dt className="shrink-0 basis-28 text-text">
@@ -140,7 +140,7 @@ const DataTable = ({ orders, columns, onRowClick, highlightOrderId }: DataTableP
       {/* Desktop: full table. */}
       <table
         data-testid="orders-table"
-        className="hidden w-full border-collapse text-[15px] lg:table"
+        className="hidden w-full border-collapse text-[0.8333rem] lg:table"
       >
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (

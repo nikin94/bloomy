@@ -138,6 +138,15 @@ describe('counters rules', () => {
   })
 })
 
+describe('settings rules', () => {
+  it('lets a user read/write only their own settings doc', async () => {
+    await assertSucceeds(setDoc(doc(alice(), 'settings/alice'), { fontScale: 1.25 }))
+    await assertSucceeds(getDoc(doc(alice(), 'settings/alice')))
+    await assertFails(setDoc(doc(alice(), 'settings/bob'), { fontScale: 1.25 }))
+    await assertFails(getDoc(doc(bob(), 'settings/alice')))
+  })
+})
+
 describe('default deny', () => {
   it('blocks access to any other collection, even when authenticated', async () => {
     await assertFails(getDoc(doc(alice(), 'secrets/s1')))

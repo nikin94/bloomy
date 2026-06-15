@@ -5,9 +5,9 @@ import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
 import { AuthContext } from '../../context/authContext'
 
-// Stub the auth module so the sign-out button never touches the real Firebase SDK.
-const signOutUser = vi.fn()
-vi.mock('../../firebase/auth', () => ({ signOutUser: (...args: unknown[]) => signOutUser(...args) }))
+// Stub the auth module: the settings dialog (rendered by the header) imports
+// signOutUser, so keep the real Firebase SDK out of the test.
+vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
 
 // Imported after the mock above is registered.
 import AppHeader from './AppHeader'
@@ -25,7 +25,7 @@ const renderHeader = () =>
 
 // The header renders both layouts (desktop inline + mobile menu) — jsdom has no
 // media queries, so both are in the DOM. Scope queries to the right layout, as
-// the mobile menu duplicates the same nav links and sign-out control.
+// the mobile menu duplicates the same nav links and settings control.
 const desktop = () => within(screen.getByTestId('header-desktop'))
 const mobileMenu = () => within(screen.getByRole('navigation', { name: 'Меню' }))
 
@@ -34,22 +34,21 @@ beforeEach(() => {
 })
 
 describe('AppHeader (desktop)', () => {
-  it('keeps the sign-out control accessible by name even though it is icon-only', () => {
-    signOutUser.mockResolvedValue(undefined)
+  it('exposes the settings control accessible by name even though it is icon-only', () => {
     renderHeader()
-    // The button shows only an icon; the accessible name must survive via aria-label.
-    expect(desktop().getByRole('button', { name: 'Выйти' })).toBeInTheDocument()
+    // The button shows only a gear icon; the accessible name survives via aria-label.
+    expect(desktop().getByRole('button', { name: 'Настройки' })).toBeInTheDocument()
   })
 
-  it('signs out when the logout icon is clicked', async () => {
-    signOutUser.mockResolvedValue(undefined)
+  it('opens the settings dialog from the gear', async () => {
     renderHeader()
-    await userEvent.click(desktop().getByRole('button', { name: 'Выйти' }))
-    expect(signOutUser).toHaveBeenCalledTimes(1)
+    // The dialog (which now holds sign-out) is closed until the gear is clicked.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await userEvent.click(desktop().getByRole('button', { name: 'Настройки' }))
+    expect(screen.getByRole('dialog', { name: 'Настройки' })).toBeInTheDocument()
   })
 
   it('exposes the create-order action as a link to the new-order form', () => {
-    signOutUser.mockResolvedValue(undefined)
     renderHeader()
     // "Новый заказ" is styled as a primary action but stays a navigation link.
     expect(desktop().getByRole('link', { name: 'Новый заказ' })).toHaveAttribute(
@@ -107,12 +106,11 @@ describe('AppHeader (mobile menu)', () => {
     )
   })
 
-  it('signs out from the mobile menu', async () => {
+  it('opens the settings dialog from the menu gear', async () => {
     const user = userEvent.setup()
-    signOutUser.mockResolvedValue(undefined)
     renderHeader()
     await user.click(screen.getByRole('button', { name: 'Открыть меню' }))
-    await user.click(mobileMenu().getByRole('button', { name: 'Выйти' }))
-    expect(signOutUser).toHaveBeenCalledTimes(1)
+    await user.click(mobileMenu().getByRole('button', { name: 'Настройки' }))
+    expect(screen.getByRole('dialog', { name: 'Настройки' })).toBeInTheDocument()
   })
 })
