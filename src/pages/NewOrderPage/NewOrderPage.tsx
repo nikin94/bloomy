@@ -13,6 +13,7 @@ import {
 } from '../../types/order'
 import Spinner from '../../components/Spinner/Spinner'
 import Select from '../../components/Select/Select'
+import Button from '../../components/Button/Button'
 import type { NewOrder } from '../../lib/orders'
 import type {
   DeliveryMethod,
@@ -120,15 +121,16 @@ const PlantItemRow = ({
         value={item.price}
         onChange={(e) => onChange({ price: sanitizePrice(e.target.value) })}
       />
-      <button
-        type="button"
+      <Button
+        variant="secondary"
+        size="icon"
         onClick={onRemove}
         disabled={!canRemove}
         aria-label="Удалить растение"
-        className="shrink-0 rounded-md border border-border px-3 py-2 text-text transition-colors hover:bg-primary-bg disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="shrink-0"
       >
         ✕
-      </button>
+      </Button>
     </div>
   </div>
 )
@@ -472,14 +474,15 @@ function NewOrderPage() {
                 onRemove={() => removeItem(index)}
               />
             ))}
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={addItem}
               disabled={!canAddItem}
-              className="self-start rounded-md border border-border px-3 py-2 text-sm text-heading transition-colors hover:bg-primary-bg disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="self-start"
             >
               + Добавить растение
-            </button>
+            </Button>
           </fieldset>
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -582,20 +585,12 @@ function NewOrderPage() {
                 </span>
               </div>
               <div className="flex gap-2">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-md bg-primary px-5 py-2 font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                >
+                <Button type="submit" variant="primary" disabled={saving}>
                   {saving ? 'Сохранение…' : 'Сохранить'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate('/orders')}
-                  className="rounded-md border border-border px-5 py-2 text-heading transition-colors hover:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                >
+                </Button>
+                <Button variant="secondary" onClick={() => navigate('/orders')}>
                   Отмена
-                </button>
+                </Button>
               </div>
             </div>
           </div>
