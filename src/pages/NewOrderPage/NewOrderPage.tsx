@@ -92,7 +92,7 @@ const PlantItemRow = ({
     </div>
     <div className="flex min-w-0 items-center gap-2 sm:flex-[3]">
       <Input
-        className="min-w-0 flex-1"
+        className="min-w-0 flex-[2]"
         type="number"
         min={1}
         step={1}
@@ -101,7 +101,7 @@ const PlantItemRow = ({
         onChange={(e) => onChange({ quantity: e.target.value })}
       />
       <Input
-        className="min-w-0 flex-[2]"
+        className="min-w-0 flex-[3]"
         inputMode="decimal"
         placeholder="Цена, ₽"
         invalid={priceMissing}
