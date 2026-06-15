@@ -50,4 +50,13 @@ describe('App routing', () => {
       expect(screen.getByText('Войдите, чтобы управлять заказами')).toBeInTheDocument(),
     )
   })
+
+  it('shows the spinner (not a redirect) while the session is still resolving', () => {
+    renderAt('/orders', { user: null, loading: true })
+    // While auth is resolving, ProtectedRoute holds on the spinner instead of
+    // redirecting — otherwise an already-signed-in user would flash the login
+    // screen before the session restores.
+    expect(screen.getByRole('status', { name: 'Загрузка' })).toBeInTheDocument()
+    expect(screen.queryByText('Войдите, чтобы управлять заказами')).not.toBeInTheDocument()
+  })
 })
