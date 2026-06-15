@@ -98,8 +98,8 @@ describe('the plants column', () => {
         { name: 'Фикус', quantity: 1, unitPriceMinor: 50000 }, // 50000 — pricier, no qty
       ],
     })
-    // Newline-joined, most valuable first; the single Фикус shows no "шт.".
-    expect(plantsColumn?.format?.(order)).toBe('Фикус\nРоза — 2 шт.')
+    // Newline-joined, most valuable first; the single Фикус shows no quantity.
+    expect(plantsColumn?.format?.(order)).toBe('Фикус\nРоза ×2')
   })
 })
 

@@ -85,7 +85,7 @@ export const plantsByValueDesc = (plants: OrderItem[]): OrderItem[] =>
 // only when it is more than 1 (a quantity of 1 is the common case and just adds
 // noise).
 export const plantLineLabel = (item: OrderItem): string =>
-  item.quantity === 1 ? item.name : `${item.name} — ${item.quantity} шт.`
+  item.quantity === 1 ? item.name : `${item.name} ×${item.quantity}`
 
 // --- Table column configuration -----------------------------------------
 //

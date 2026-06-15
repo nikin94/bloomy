@@ -80,10 +80,10 @@ describe('OrderDetailPage', () => {
     expect(screen.getByRole('combobox', { name: 'Статус отправки' })).toHaveValue('new')
   })
 
-  it('shows the plant quantity with the "шт." unit', async () => {
+  it('shows the plant quantity in compact ×N form', async () => {
     renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })
-    expect(screen.getByText('2 шт.')).toBeInTheDocument()
+    expect(screen.getByText('×2')).toBeInTheDocument()
   })
 
   it('saves a status change in place via updateOrder, preserving the rest of the order', async () => {
