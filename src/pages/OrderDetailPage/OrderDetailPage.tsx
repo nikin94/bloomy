@@ -69,7 +69,7 @@ const OrderDetailPage = () => {
     setStatusError(null)
     setSavingStatus(true)
     try {
-      const { id: _id, ...stored } = next
+      const { id, ...stored } = next
       await updateOrder(next.id, stored)
     } catch (err: unknown) {
       setOrder(previous)
