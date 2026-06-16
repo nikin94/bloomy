@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import DataTable from '../../components/DataTable/DataTable'
 import Spinner from '../../components/Spinner/Spinner'
-import Input from '../../components/Input/Input'
 import Select from '../../components/Select/Select'
 import Button from '../../components/Button/Button'
 import Modal from '../../components/Modal/Modal'
-import RangeSlider from 'react-range-slider-input'
+import RangeSliderImport from 'react-range-slider-input'
+import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
 import { fetchOrders } from '../../firebase/orders'
 import { fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
@@ -24,6 +24,14 @@ import {
 } from '../../types/order'
 import type { Order, OrderFilter, PaymentStatus, ShipmentStatus } from '../../types/order'
 import type { Customer } from '../../types/customer'
+
+// react-range-slider-input ships CommonJS (`exports.default = Component`).
+// Depending on the bundler's interop the default import can arrive wrapped one
+// level deep as `{ default: Component }`; unwrap so we render the component, not
+// the namespace object (otherwise React throws "Element type is invalid").
+const RangeSlider =
+  (RangeSliderImport as unknown as { default?: typeof RangeSliderImport }).default ??
+  RangeSliderImport
 
 // Slider step for the price filter: 1 ₽ (100 kopecks). Fine enough to land on a
 // specific amount, coarse enough that dragging feels smooth.
@@ -45,6 +53,81 @@ const FilterIcon = () => (
     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
   </svg>
 )
+
+const SearchIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="size-5"
+  >
+    <circle cx="11" cy="11" r="8" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </svg>
+)
+
+// Collapsed to just a loupe icon by default; clicking it expands an input that
+// slides out (width transition) and takes focus. It collapses again when blurred
+// while empty. While collapsed the input is removed from the tab order and the
+// accessibility tree, so only the loupe button is reachable.
+const SearchControl = ({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (next: string) => void
+}) => {
+  const [expanded, setExpanded] = useState(value.trim() !== '')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const expand = () => {
+    setExpanded(true)
+    // Focus after the state flush so the (now interactive) input takes the caret.
+    requestAnimationFrame(() => inputRef.current?.focus())
+  }
+
+  return (
+    <div className="flex items-center">
+      <Button
+        variant="secondary"
+        size="icon"
+        onClick={expanded ? () => inputRef.current?.focus() : expand}
+        aria-label="Поиск"
+        title="Поиск"
+        aria-expanded={expanded}
+        className="shrink-0"
+      >
+        <SearchIcon />
+      </Button>
+      <input
+        ref={inputRef}
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={() => {
+          if (value.trim() === '') setExpanded(false)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            onChange('')
+            setExpanded(false)
+          }
+        }}
+        placeholder="Поиск"
+        aria-label="Поиск заказов"
+        aria-hidden={!expanded}
+        tabIndex={expanded ? 0 : -1}
+        className={`${FIELD_BASE} ${FIELD_NORMAL} ml-1 transition-[width,padding,opacity] duration-200 ${
+          expanded ? 'w-40 px-3 py-2 opacity-100 sm:w-56' : 'w-0 border-0 p-0 opacity-0'
+        }`}
+      />
+    </div>
+  )
+}
 
 const OrdersPage = () => {
   const navigate = useNavigate()
@@ -125,54 +208,50 @@ const OrdersPage = () => {
       maxPriceMinor: hi >= priceCeilingMinor ? null : hi,
     }))
 
+  // Search + filter controls live in the header (next to settings). Search is an
+  // expanding loupe; the filter icon opens the dialog and carries an active dot.
+  const headerActions = (
+    <>
+      <SearchControl
+        value={filter.query}
+        onChange={(query) => setFilter((f) => ({ ...f, query }))}
+      />
+      <Button
+        variant="secondary"
+        size="icon"
+        onClick={() => setFiltersOpen(true)}
+        aria-label="Фильтры"
+        title="Фильтры"
+        className="relative shrink-0"
+      >
+        <FilterIcon />
+        {/* Active dot: the dialog filters are hidden, so the closed button still
+            signals that filtering is on. */}
+        {modalFilterActive && (
+          <span
+            aria-hidden="true"
+            className="absolute right-1 top-1 size-2 rounded-full border border-bg bg-primary"
+          />
+        )}
+      </Button>
+    </>
+  )
+
   return (
     <div className="flex h-full flex-col">
-      <AppHeader />
+      <AppHeader actions={headerActions} />
 
       {loading && <Spinner />}
       {error && <p className="px-6 py-8 text-danger">{error}</p>}
 
       {!loading && !error && (
-        <>
-          {/* Filter bar: inline search + a filter icon that opens the status
-              filters in a dialog. */}
-          <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-            <Input
-              type="search"
-              className="w-full sm:max-w-xs"
-              placeholder="Поиск по номеру или клиенту"
-              aria-label="Поиск заказов"
-              value={filter.query}
-              onChange={(e) => setFilter((f) => ({ ...f, query: e.target.value }))}
-            />
-            <Button
-              variant="secondary"
-              size="icon"
-              onClick={() => setFiltersOpen(true)}
-              aria-label="Фильтры"
-              title="Фильтры"
-              className="relative shrink-0"
-            >
-              <FilterIcon />
-              {/* Active dot: the dialog filters are hidden, so the closed button
-                  still signals that filtering is on. */}
-              {modalFilterActive && (
-                <span
-                  aria-hidden="true"
-                  className="absolute right-1 top-1 size-2 rounded-full border border-bg bg-primary"
-                />
-              )}
-            </Button>
-          </div>
-
-          <DataTable
-            orders={visibleOrders}
-            columns={columns}
-            onRowClick={(order) => navigate(`/orders/${order.id}`)}
-            highlightOrderId={highlightOrderId}
-            emptyMessage={filterActive ? 'Ничего не найдено' : 'Заказов пока нет'}
-          />
-        </>
+        <DataTable
+          orders={visibleOrders}
+          columns={columns}
+          onRowClick={(order) => navigate(`/orders/${order.id}`)}
+          highlightOrderId={highlightOrderId}
+          emptyMessage={filterActive ? 'Ничего не найдено' : 'Заказов пока нет'}
+        />
       )}
 
       {filtersOpen && (

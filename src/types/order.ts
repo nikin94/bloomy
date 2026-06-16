@@ -242,11 +242,11 @@ export const isModalFilterActive = (filter: OrderFilter): boolean =>
   filter.maxPriceMinor !== null
 
 // Filter the orders list in memory (the dataset is small and already loaded, so
-// no extra query). `query` matches the order number or the resolved customer
-// name, case- and whitespace-insensitive; each set status must match exactly;
-// the order total must fall within the price range. The customer name is
-// resolved via the same lookup the table uses, so a search finds orders by who
-// they belong to even though the order stores only an id.
+// no extra query). `query` matches the order number, the resolved customer name,
+// or any plant name, case- and whitespace-insensitive; each set status must
+// match exactly; the order total must fall within the price range. The customer
+// name is resolved via the same lookup the table uses, so a search finds orders
+// by who they belong to even though the order stores only an id.
 export const filterOrders = (
   orders: Order[],
   filter: OrderFilter,
@@ -260,6 +260,7 @@ export const filterOrders = (
     if (total < filter.minPriceMinor) return false
     if (filter.maxPriceMinor !== null && total > filter.maxPriceMinor) return false
     if (q === '') return true
-    return `${o.number} ${getCustomerName(o.customerId)}`.toLowerCase().includes(q)
+    const plantNames = o.plants.map((p) => p.name).join(' ')
+    return `${o.number} ${getCustomerName(o.customerId)} ${plantNames}`.toLowerCase().includes(q)
   })
 }

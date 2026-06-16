@@ -58,6 +58,15 @@ const renderPage = () =>
 
 // The desktop table and mobile cards both render in jsdom; scope to one layout.
 const table = () => within(screen.getByTestId('orders-table'))
+// The search/filter actions render in both the desktop header and the mobile
+// bar (jsdom applies no CSS), so scope action queries to the desktop header.
+const header = () => within(screen.getByTestId('header-desktop'))
+
+// The search input is collapsed behind a loupe; click it to reveal the input.
+const openSearch = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(header().getByRole('button', { name: 'Поиск' }))
+  return header().getByRole('searchbox', { name: 'Поиск заказов' })
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -80,10 +89,28 @@ describe('OrdersPage filtering', () => {
     expect(table().getByText('Анна')).toBeInTheDocument()
     expect(table().getByText('Борис')).toBeInTheDocument()
 
-    await user.type(screen.getByRole('searchbox', { name: 'Поиск заказов' }), 'Борис')
+    // The search box is hidden behind the loupe icon until it's opened.
+    expect(header().queryByRole('searchbox', { name: 'Поиск заказов' })).not.toBeInTheDocument()
+    await user.type(await openSearch(user), 'Борис')
 
     expect(table().queryByText('Анна')).not.toBeInTheDocument()
     expect(table().getByText('Борис')).toBeInTheDocument()
+  })
+
+  it('matches the search against plant names too', async () => {
+    const user = userEvent.setup()
+    fetchOrders.mockResolvedValue([
+      order({ id: 'o1', customerId: 'c-anna', plants: [{ name: 'Роза', quantity: 1, unitPriceMinor: 1000 }] }),
+      order({ id: 'o2', customerId: 'c-boris', plants: [{ name: 'Пион', quantity: 1, unitPriceMinor: 1000 }] }),
+    ])
+    renderPage()
+    await screen.findByTestId('orders-table')
+
+    await user.type(await openSearch(user), 'пион')
+
+    // Only the order containing a Пион remains (Борис's), found by plant name.
+    expect(table().getByText('Борис')).toBeInTheDocument()
+    expect(table().queryByText('Анна')).not.toBeInTheDocument()
   })
 
   it('filters by shipment status, chosen in the filter dialog', async () => {
@@ -93,7 +120,7 @@ describe('OrdersPage filtering', () => {
 
     // The status filters live behind the filter icon, not inline.
     expect(screen.queryByRole('combobox', { name: 'Фильтр по статусу отправки' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Фильтры' }))
+    await user.click(header().getByRole('button', { name: 'Фильтры' }))
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Фильтр по статусу отправки' }),
       'shipped',
@@ -111,7 +138,7 @@ describe('OrdersPage filtering', () => {
     renderPage()
     await screen.findByTestId('orders-table')
 
-    await user.click(screen.getByRole('button', { name: 'Фильтры' }))
+    await user.click(header().getByRole('button', { name: 'Фильтры' }))
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Фильтр по статусу отправки' }),
       'shipped',
@@ -133,7 +160,7 @@ describe('OrdersPage filtering', () => {
     renderPage()
     await screen.findByTestId('orders-table')
 
-    await user.click(screen.getByRole('button', { name: 'Фильтры' }))
+    await user.click(header().getByRole('button', { name: 'Фильтры' }))
     // The range renders as a single track with a "from"/"to" thumb pair; the
     // summary shows the full span until the user narrows it. (The actual drag is
     // pointer-geometry driven and lives in the library — the price-filtering
@@ -151,7 +178,7 @@ describe('OrdersPage filtering', () => {
     renderPage()
     await screen.findByTestId('orders-table')
 
-    await user.click(screen.getByRole('button', { name: 'Фильтры' }))
+    await user.click(header().getByRole('button', { name: 'Фильтры' }))
     // The ceiling is 0, so the price section is omitted — the status filters
     // remain.
     expect(screen.queryByText('Сумма заказа')).not.toBeInTheDocument()
@@ -163,7 +190,7 @@ describe('OrdersPage filtering', () => {
     renderPage()
     await screen.findByTestId('orders-table')
 
-    await user.type(screen.getByRole('searchbox', { name: 'Поиск заказов' }), 'нет такого')
+    await user.type(await openSearch(user), 'нет такого')
 
     expect(screen.getByText('Ничего не найдено')).toBeInTheDocument()
     expect(screen.queryByTestId('orders-table')).not.toBeInTheDocument()
