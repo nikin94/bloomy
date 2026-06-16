@@ -104,7 +104,7 @@ values and the Firebase service account are provided as repository secrets.
 
 ```
 src/
-  components/   Reusable UI (AppHeader, Button, Input, Textarea, Select, DataTable, Modal, OrderForm, CustomerForm, SettingsModal, Spinner, ProtectedRoute)
+  components/   Reusable UI (AppHeader, Button, Input, Textarea, Select, DataTable, Modal, OrderForm, CustomerForm, SettingsModal, UpdatePrompt, Spinner, ProtectedRoute)
   context/      Auth + settings contexts and providers
   firebase/     Firebase integration: setup and data access (client, auth, orders, customers, settings)
   utils/        Pure helpers, no Firebase (format — money/date formatting, rubles parsing)
@@ -126,6 +126,16 @@ namespace via `@theme inline`, so components use semantic utilities (`bg-primary
 `text-heading`, `border-border`) and never hardcode a colour. A dark variant is
 swapped in under `prefers-color-scheme: dark`. To retheme, edit the values in
 `theme.css`.
+
+## Update prompt (new-version detection)
+
+The build stamps a version (the deploy git SHA via `GITHUB_SHA`, or `dev`
+locally) into both the bundle (`__APP_VERSION__`, see `vite.config.ts`) and a
+`dist/version.json` file. A long-open tab polls `version.json` (on an interval
+and whenever the tab regains focus); when the deployed version differs from the
+bundle's, a non-blocking banner offers to reload. `version.json` and
+`index.html` are served `no-cache` (so the poll and reload see the new build)
+while hashed `/assets/**` stay immutable — see the `headers` in `firebase.json`.
 
 ## Data model
 

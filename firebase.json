@@ -3,7 +3,19 @@
     "site": "bloomy-pot",
     "public": "dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    "rewrites": [{ "source": "**", "destination": "/index.html" }],
+    "headers": [
+      {
+        "comment": "version.json and index.html must never be cached, or a long-open tab would poll a stale version and a reload wouldn't pick up the new build.",
+        "source": "/@(version.json|index.html)",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache, max-age=0" }]
+      },
+      {
+        "comment": "Hashed build assets are content-addressed, so they can be cached forever.",
+        "source": "/assets/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      }
+    ]
   },
   "firestore": {
     "rules": "firestore.rules"
