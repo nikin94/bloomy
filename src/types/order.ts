@@ -10,7 +10,6 @@ export type PaymentStatus = z.infer<typeof PAYMENT_STATUS_SCHEMA>
 
 export const SHIPMENT_STATUS_SCHEMA = z.enum([
   'new',
-  'packing',
   'shipped',
   'delivered',
   'cancelled',
@@ -162,7 +161,6 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
 
 export const SHIPMENT_STATUS_LABELS: Record<ShipmentStatus, string> = {
   new: 'Новый',
-  packing: 'Сборка',
   shipped: 'Отправлен',
   delivered: 'Доставлен',
   cancelled: 'Отменён',
@@ -193,8 +191,8 @@ function toOptions<K extends string>(labels: Record<K, string>): { value: K; lab
 export const PAYMENT_STATUS_OPTIONS = toOptions(PAYMENT_STATUS_LABELS)
 export const SHIPMENT_STATUS_OPTIONS = toOptions(SHIPMENT_STATUS_LABELS)
 export const PAYMENT_METHOD_OPTIONS = toOptions(PAYMENT_METHOD_LABELS)
-// Status/method selects above keep their workflow order (e.g. new → packing →
-// shipped), so toOptions preserves insertion order by design. Delivery methods
+// Status/method selects above keep their workflow order (e.g. new → shipped →
+// delivered), so toOptions preserves insertion order by design. Delivery methods
 // have no natural order, so sort them alphabetically in code rather than relying
 // on the order of keys in the label literal. The "other" catch-all is pinned
 // last, after the alphabetical names, regardless of its label.

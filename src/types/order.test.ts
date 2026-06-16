@@ -68,7 +68,6 @@ describe('isTerminalShipmentStatus', () => {
     expect(isTerminalShipmentStatus('delivered')).toBe(true)
     expect(isTerminalShipmentStatus('cancelled')).toBe(true)
     expect(isTerminalShipmentStatus('new')).toBe(false)
-    expect(isTerminalShipmentStatus('packing')).toBe(false)
     expect(isTerminalShipmentStatus('shipped')).toBe(false)
   })
 })
