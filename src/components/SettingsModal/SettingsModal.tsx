@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../../context/authContext'
 import { useSettings } from '../../context/settingsContext'
 import { signOutUser } from '../../firebase/auth'
 import { FONT_SCALE_MAX, FONT_SCALE_MIN, FONT_SCALE_STEP } from '../../types/settings'
 import Button from '../Button/Button'
+import Modal from '../Modal/Modal'
 
 // Number of discrete positions on the slider (one notch each), so the iOS-style
 // ticks below the track always match the actual snap points.
@@ -48,92 +49,25 @@ const LogoutIcon = () => (
   </svg>
 )
 
-const CloseIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-5"
-  >
-    <line x1="18" y1="6" x2="6" y2="18" />
-    <line x1="6" y1="6" x2="18" y2="18" />
-  </svg>
-)
-
 // Mounts the dialog only while open, so each opening starts from the persisted
 // size (draft is seeded from `fontScale` on mount) without a reset effect.
 const SettingsModal = ({ open, onClose }: { open: boolean; onClose: () => void }) =>
   open ? <SettingsDialog onClose={onClose} /> : null
 
-// Settings dialog. For now it holds the per-user font size (an iOS-style size
-// slider with a live sample) and the sign-out action. The slider updates the
-// whole app immediately for preview, but the size is only persisted to Firebase
-// on "Сохранить"; closing without saving reverts the preview to the saved size.
+// Settings dialog body. For now it holds the per-user font size (an iOS-style
+// size slider) and the sign-out action; the shared Modal owns the shell (dialog
+// role, backdrop, Escape, focus trap, header). The slider updates the whole app
+// immediately for preview, but the size is only persisted to Firebase on
+// "Сохранить"; closing without saving reverts the preview to the saved size.
 const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
   const { user } = useAuth()
   const { fontScale, previewFontScale, saveFontScale } = useSettings()
   const [draft, setDraft] = useState(fontScale)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const panelRef = useRef<HTMLDivElement>(null)
 
-  // Esc closes and reverts the live preview to the saved size.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        previewFontScale(fontScale)
-        onClose()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [fontScale, previewFontScale, onClose])
-
-  // Focus trap: move focus into the dialog on open, keep Tab/Shift+Tab cycling
-  // inside it (aria-modal hides the rest from screen readers but doesn't stop
-  // sighted keyboard users tabbing out), and restore focus to whatever opened
-  // the dialog (the gear button) when it closes.
-  useEffect(() => {
-    const panel = panelRef.current
-    if (!panel) return
-    const opener = document.activeElement as HTMLElement | null
-
-    const focusables = () =>
-      Array.from(
-        panel.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        ),
-      )
-
-    focusables()[0]?.focus()
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return
-      const items = focusables()
-      if (items.length === 0) return
-      const first = items[0]
-      const last = items[items.length - 1]
-      if (e.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) {
-        e.preventDefault()
-        last.focus()
-      } else if (!e.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) {
-        e.preventDefault()
-        first.focus()
-      }
-    }
-
-    panel.addEventListener('keydown', onKey)
-    return () => {
-      panel.removeEventListener('keydown', onKey)
-      opener?.focus?.()
-    }
-  }, [])
-
-  // Close without saving: drop the preview back to the persisted size.
+  // Dismissing (backdrop / Escape / close button / "Отмена") drops the live
+  // preview back to the persisted size, then closes.
   const handleClose = () => {
     previewFontScale(fontScale)
     onClose()
@@ -165,114 +99,80 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="settings-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-    >
-      {/* Backdrop: tap outside to close (reverting the preview). */}
-      <button
-        type="button"
-        aria-hidden="true"
-        tabIndex={-1}
-        onClick={handleClose}
-        className="absolute inset-0 cursor-default bg-black/40"
-      />
-
-      <div
-        ref={panelRef}
-        className="relative z-10 flex w-full max-w-md flex-col gap-6 rounded-lg border border-border bg-bg p-6 shadow-xl"
-      >
-        <header className="flex items-center justify-between gap-3">
-          <h2 id="settings-title" className="m-0 text-lg font-semibold text-heading">
-            Настройки
-          </h2>
-          <Button
-            variant="secondary"
-            size="icon"
-            onClick={handleClose}
-            aria-label="Закрыть"
-            title="Закрыть"
-          >
-            <CloseIcon />
-          </Button>
-        </header>
-
-        {/* Font size: an iOS-style size slider flanked by small/large "А". The
-            whole app scales live with the slider, so the dialog itself previews
-            the chosen size — no separate sample text needed. */}
-        <section className="flex flex-col gap-3">
-          <span className="text-sm font-medium text-heading">Размер шрифта</span>
-          <div className="flex items-center gap-3">
-            <span aria-hidden="true" className="shrink-0 text-sm text-text">
-              А
-            </span>
-            <div className="relative flex-1">
-              {/* Step notches, iOS-style. Inset by the thumb radius (px-3) so the
-                  ticks line up with the thumb's centre at each snap point; taller
-                  than the track so their ends show past it. The thumb (z-10) sits
-                  over the current notch. */}
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-x-3 top-1/2 flex h-3 -translate-y-1/2 items-center justify-between"
-              >
-                {Array.from({ length: SCALE_STEPS }).map((_, i) => (
-                  <span key={i} className="h-3 w-0.5 rounded-full bg-border" />
-                ))}
-              </div>
-              <input
-                type="range"
-                min={FONT_SCALE_MIN}
-                max={FONT_SCALE_MAX}
-                step={FONT_SCALE_STEP}
-                value={draft}
-                onChange={handleSlider}
-                aria-label="Размер шрифта"
-                // Screen readers announce a human-readable label (e.g. "увеличен")
-                // instead of the raw scale number (0.875, 1.25).
-                aria-valuetext={fontScaleLabel(draft)}
-                className={sliderClass}
-              />
+    <Modal title="Настройки" onClose={handleClose}>
+      {/* Font size: an iOS-style size slider flanked by small/large "А". The
+          whole app scales live with the slider, so the dialog itself previews
+          the chosen size — no separate sample text needed. */}
+      <section className="flex flex-col gap-3">
+        <span className="text-sm font-medium text-heading">Размер шрифта</span>
+        <div className="flex items-center gap-3">
+          <span aria-hidden="true" className="shrink-0 text-sm text-text">
+            А
+          </span>
+          <div className="relative flex-1">
+            {/* Step notches, iOS-style. Inset by the thumb radius (px-3) so the
+                ticks line up with the thumb's centre at each snap point; taller
+                than the track so their ends show past it. The thumb (z-10) sits
+                over the current notch. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-3 top-1/2 flex h-3 -translate-y-1/2 items-center justify-between"
+            >
+              {Array.from({ length: SCALE_STEPS }).map((_, i) => (
+                <span key={i} className="h-3 w-0.5 rounded-full bg-border" />
+              ))}
             </div>
-            <span aria-hidden="true" className="shrink-0 text-2xl text-text">
-              А
-            </span>
+            <input
+              type="range"
+              min={FONT_SCALE_MIN}
+              max={FONT_SCALE_MAX}
+              step={FONT_SCALE_STEP}
+              value={draft}
+              onChange={handleSlider}
+              aria-label="Размер шрифта"
+              // Screen readers announce a human-readable label (e.g. "увеличен")
+              // instead of the raw scale number (0.875, 1.25).
+              aria-valuetext={fontScaleLabel(draft)}
+              className={sliderClass}
+            />
           </div>
-        </section>
-
-        {error && (
-          <p role="alert" className="m-0 text-danger">
-            {error}
-          </p>
-        )}
-
-        <div className="flex justify-end gap-2">
-          <Button variant="primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Сохранение…' : 'Сохранить'}
-          </Button>
-          <Button variant="secondary" onClick={handleClose} disabled={saving}>
-            Отмена
-          </Button>
+          <span aria-hidden="true" className="shrink-0 text-2xl text-text">
+            А
+          </span>
         </div>
+      </section>
 
-        <span aria-hidden="true" className="h-px w-full bg-border" />
+      {error && (
+        <p role="alert" className="m-0 text-danger">
+          {error}
+        </p>
+      )}
 
-        {/* Account row: the signed-in user's name (moved out of the header) next
-            to sign-out. */}
-        <div className="flex items-center justify-between gap-3">
-          {user && (
-            <span className="min-w-0 truncate text-sm text-text">
-              {user.displayName ?? user.email}
-            </span>
-          )}
-          <Button variant="secondary" onClick={handleLogout} className="shrink-0 gap-1.5">
-            <LogoutIcon />
-            Выйти
-          </Button>
-        </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="primary" onClick={handleSave} disabled={saving}>
+          {saving ? 'Сохранение…' : 'Сохранить'}
+        </Button>
+        <Button variant="secondary" onClick={handleClose} disabled={saving}>
+          Отмена
+        </Button>
       </div>
-    </div>
+
+      <span aria-hidden="true" className="h-px w-full bg-border" />
+
+      {/* Account row: the signed-in user's name (moved out of the header) next
+          to sign-out. */}
+      <div className="flex items-center justify-between gap-3">
+        {user && (
+          <span className="min-w-0 truncate text-sm text-text">
+            {user.displayName ?? user.email}
+          </span>
+        )}
+        <Button variant="secondary" onClick={handleLogout} className="shrink-0 gap-1.5">
+          <LogoutIcon />
+          Выйти
+        </Button>
+      </div>
+    </Modal>
   )
 }
 
