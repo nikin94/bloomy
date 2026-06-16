@@ -42,7 +42,12 @@ const CustomerRow = ({
     <li className="flex items-center gap-3 border-b border-border py-3">
       <div className="min-w-0 flex-1">
         <p className="m-0 truncate text-heading">{customer.name}</p>
+        {/* The rest of the customer's details. Phone/address are usually short
+            (truncate to one line); the note can be long, so it wraps in full so
+            all the saved information is visible at a glance. */}
         {customer.phone && <p className="m-0 truncate text-sm text-text">{customer.phone}</p>}
+        {customer.address && <p className="m-0 truncate text-sm text-text">{customer.address}</p>}
+        {customer.note && <p className="m-0 break-words text-sm text-text">{customer.note}</p>}
       </div>
 
       {confirming ? (
