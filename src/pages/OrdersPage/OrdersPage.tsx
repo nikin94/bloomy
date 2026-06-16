@@ -70,9 +70,26 @@ const SearchIcon = () => (
   </svg>
 )
 
+const CloseIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="size-6"
+  >
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+)
+
 // Collapsed to just a loupe icon by default; clicking it expands an input that
-// slides out (width transition) and takes focus. It collapses again when blurred
-// while empty. While collapsed the input is removed from the tab order and the
+// slides out (width transition) and takes focus, replacing the loupe with a
+// persistent X that both clears the query and collapses the field (also via
+// Escape). While collapsed the input is removed from the tab order and the
 // accessibility tree, so only the loupe button is reachable.
 const SearchControl = ({
   value,
@@ -90,41 +107,61 @@ const SearchControl = ({
     requestAnimationFrame(() => inputRef.current?.focus())
   }
 
+  // Clear the field and collapse back to the loupe. Used by the X button and Escape.
+  const close = () => {
+    onChange('')
+    setExpanded(false)
+  }
+
   return (
     <div className="flex items-center">
-      <Button
-        variant="secondary"
-        size="icon"
-        onClick={expanded ? () => inputRef.current?.focus() : expand}
-        aria-label="Поиск"
-        title="Поиск"
-        aria-expanded={expanded}
-        className="shrink-0"
-      >
-        <SearchIcon />
-      </Button>
+      {/* Collapsed: just the loupe. It is replaced by the input + X once open, so
+          the loupe never sits alongside the expanded field. */}
+      {!expanded && (
+        <Button
+          variant="secondary"
+          size="icon"
+          onClick={expand}
+          aria-label="Поиск"
+          title="Поиск"
+          aria-expanded={false}
+          className="shrink-0"
+        >
+          <SearchIcon />
+        </Button>
+      )}
       <input
         ref={inputRef}
-        type="search"
+        type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onBlur={() => {
-          if (value.trim() === '') setExpanded(false)
-        }}
         onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            onChange('')
-            setExpanded(false)
-          }
+          if (e.key === 'Escape') close()
         }}
         placeholder="Поиск"
         aria-label="Поиск заказов"
         aria-hidden={!expanded}
         tabIndex={expanded ? 0 : -1}
-        className={`${FIELD_BASE} ${FIELD_NORMAL} ml-1 transition-[width,padding,opacity] duration-200 ${
+        className={`${FIELD_BASE} ${FIELD_NORMAL} transition-[width,padding,opacity] duration-200 ${
           expanded ? 'w-40 px-3 py-2 opacity-100 sm:w-56' : 'w-0 border-0 p-0 opacity-0'
         }`}
       />
+      {/* Persistent while open: clears the query AND collapses the field. Extra
+          padding enlarges the tap target beyond the icon for easier hits.
+          onMouseDown keeps focus from leaving before the click registers. */}
+      {expanded && (
+        <Button
+          variant="secondary"
+          size="icon"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={close}
+          aria-label="Очистить и закрыть поиск"
+          title="Закрыть"
+          className="ml-1 shrink-0 p-3"
+        >
+          <CloseIcon />
+        </Button>
+      )}
     </div>
   )
 }

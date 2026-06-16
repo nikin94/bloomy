@@ -65,7 +65,7 @@ const header = () => within(screen.getByTestId('header-desktop'))
 // The search input is collapsed behind a loupe; click it to reveal the input.
 const openSearch = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(header().getByRole('button', { name: 'Поиск' }))
-  return header().getByRole('searchbox', { name: 'Поиск заказов' })
+  return header().getByRole('textbox', { name: 'Поиск заказов' })
 }
 
 beforeEach(() => {
@@ -90,10 +90,30 @@ describe('OrdersPage filtering', () => {
     expect(table().getByText('Борис')).toBeInTheDocument()
 
     // The search box is hidden behind the loupe icon until it's opened.
-    expect(header().queryByRole('searchbox', { name: 'Поиск заказов' })).not.toBeInTheDocument()
+    expect(header().queryByRole('textbox', { name: 'Поиск заказов' })).not.toBeInTheDocument()
     await user.type(await openSearch(user), 'Борис')
 
     expect(table().queryByText('Анна')).not.toBeInTheDocument()
+    expect(table().getByText('Борис')).toBeInTheDocument()
+  })
+
+  it('hides the loupe while open and closes + clears via the X button', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByTestId('orders-table')
+
+    const input = await openSearch(user)
+    await user.type(input, 'Борис')
+    // The loupe is replaced by the input + an X while the search is open.
+    expect(header().queryByRole('button', { name: 'Поиск' })).not.toBeInTheDocument()
+    expect(table().queryByText('Анна')).not.toBeInTheDocument()
+
+    // X clears the query and collapses back to the loupe.
+    await user.click(header().getByRole('button', { name: 'Очистить и закрыть поиск' }))
+    expect(header().getByRole('button', { name: 'Поиск' })).toBeInTheDocument()
+    expect(header().queryByRole('textbox', { name: 'Поиск заказов' })).not.toBeInTheDocument()
+    // The list is unfiltered again.
+    expect(table().getByText('Анна')).toBeInTheDocument()
     expect(table().getByText('Борис')).toBeInTheDocument()
   })
 
