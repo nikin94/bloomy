@@ -11,6 +11,7 @@ import {
   PAYMENT_METHOD_LABELS,
   PAYMENT_STATUS_OPTIONS,
   SHIPMENT_STATUS_OPTIONS,
+  resolveCompletedAt,
 } from '../../types/order'
 import { useAuth } from '../../context/authContext'
 import Spinner from '../../components/Spinner/Spinner'
@@ -71,6 +72,14 @@ const OrderDetailPage = () => {
     if (!order) return
     const previous = order
     const next = { ...order, ...patch }
+    // Completion is derived from the shipment status: delivered/cancelled stamps
+    // the completion time, any other status clears it. Only recompute when this
+    // save actually touches the shipment status.
+    if (patch.shipmentStatus !== undefined) {
+      const completedAt = resolveCompletedAt(next.shipmentStatus, order.completedAt, Date.now())
+      if (completedAt === undefined) delete next.completedAt
+      else next.completedAt = completedAt
+    }
     setOrder(next)
     setStatusError(null)
     setSavingStatus(true)
@@ -172,6 +181,7 @@ const OrderDetailPage = () => {
               disabled={savingStatus}
               onChange={(value) => saveStatus({ shipmentStatus: value as Order['shipmentStatus'] })}
             />
+            {order.completedAt && <Field label="Завершён" value={formatDate(order.completedAt)} />}
             {order.comment && <Field label="Комментарий" value={order.comment} />}
           </section>
 

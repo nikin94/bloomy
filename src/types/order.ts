@@ -61,6 +61,12 @@ export const STORED_ORDER_SCHEMA = z.object({
   paymentStatus: PAYMENT_STATUS_SCHEMA,
   shipmentStatus: SHIPMENT_STATUS_SCHEMA,
   comment: z.string().optional(),
+  // When the order was completed (ms timestamp). An order is "completed" once it
+  // reaches a terminal shipment status (delivered or cancelled); this is stamped
+  // automatically on that transition and cleared if it leaves one (see
+  // resolveCompletedAt). Optional so orders that aren't finished — and any
+  // written before this field existed — stay valid without a migration.
+  completedAt: z.number().optional(),
   // Soft-delete flag. A "deleted" order is hidden from the list and the detail
   // page, but the document is kept so the per-owner numbering stays intact (a
   // hard delete would risk an unrecoverable loss of a real order and gaps in the
@@ -80,6 +86,26 @@ export const getSubtotalMinor = (order: Order): number =>
 
 export const getTotalMinor = (order: Order): number =>
   getSubtotalMinor(order) + order.deliveryPriceMinor
+
+// An order is "completed" once it is delivered or cancelled — both are terminal
+// shipment states with no further work to do on the order.
+export const TERMINAL_SHIPMENT_STATUSES = ['delivered', 'cancelled'] as const
+
+export const isTerminalShipmentStatus = (status: ShipmentStatus): boolean =>
+  (TERMINAL_SHIPMENT_STATUSES as readonly ShipmentStatus[]).includes(status)
+
+// The completion timestamp an order should carry for a given shipment status.
+// Entering a terminal status stamps the completion time (keeping an existing
+// stamp on a re-save, so the original completion moment survives); a
+// non-terminal status clears it. Pure (takes `now`) so it stays unit-testable
+// and is applied wherever the shipment status is written — the create/edit form
+// and the inline status save on the detail page.
+export const resolveCompletedAt = (
+  shipmentStatus: ShipmentStatus,
+  previousCompletedAt: number | undefined,
+  now: number,
+): number | undefined =>
+  isTerminalShipmentStatus(shipmentStatus) ? (previousCompletedAt ?? now) : undefined
 
 // Plants ordered for display: the most valuable line first (unit price ×
 // quantity), descending. Returns a copy, so the stored order array is never
