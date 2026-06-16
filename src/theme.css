@@ -6,42 +6,53 @@
    (bg-primary, text-heading, border-border, …) that this file generates.
 
    How it fits together (Tailwind CSS v4, CSS-first theming):
-   1. `:root` defines the raw palette as plain CSS variables (the values).
-   2. The dark `@media` block swaps those values — no class rebuild needed.
+   1. `:root` defines the raw palette as plain CSS variables (the values). DARK
+      is the default theme, so `:root` holds the dark values.
+   2. `:root[data-theme='light']` swaps those values to the light palette. The
+      `data-theme` attribute is set on <html> before first paint by the inline
+      script in index.html (from the cached choice, default dark), and reconciled
+      from the user's saved setting once it loads — see SettingsProvider.
    3. `@theme inline` maps each token to a `--color-*` entry so Tailwind emits
       the matching utilities; `inline` keeps the `var()` reference in the output,
-      so a token change (or the dark swap above) updates every utility live.
+      so a token change (or the theme swap above) updates every utility live.
 
-   To retheme the app, change the values in `:root` (and the dark block). To add
-   a colour, add it in `:root` and expose it in `@theme inline`. */
+   To retheme the app, change the values below. To add a colour, add it in both
+   palettes and expose it in `@theme inline`. */
 
-/* Palette — light (default). */
+/* Palette — dark (default). The brand colour is rebalanced (not just lightened):
+   the primary button is `bg-primary` + white text in both themes, so the dark
+   primary still has to pass white-text contrast (#137548 = 4.56:1) while staying
+   visible on the dark background. Green is the most luminous hue, so a green
+   light enough to "pop" on dark bg can't also carry white text — this shade is
+   the balance point (white-on 4.56, ~3.3:1 against the dark background). */
 :root {
+  /* `color-scheme` keeps native UI (scrollbars, the date picker, form controls)
+     matched to the active theme. */
+  color-scheme: dark;
+
   /* Brand. `primary` is the main brand colour (buttons, links, focus, active
-     nav). A dark green chosen so white text on a primary button clears the WCAG
-     AA 4.5:1 contrast ratio (#166534 = 5.56:1). `primary-bg` is the same hue at
-     low alpha for subtle tints (hover backgrounds, the customer-type slider
-     track, the new-order highlight fade). */
-  --primary: #166534;
-  --primary-bg: rgba(22, 101, 52, 0.1);
+     nav); `primary-bg` is the same hue at low alpha for subtle tints (hover
+     backgrounds, the customer-type slider track, the new-order highlight fade). */
+  --primary: #137548;
+  --primary-bg: rgba(19, 117, 72, 0.15);
 
   /* Neutrals. */
-  --bg: #fff;
-  --text: #6b6375;
-  --text-h: #08060d;
-  --border: #e5e4e7;
+  --bg: #16171d;
+  --text: #9ca3af;
+  --text-h: #f3f4f6;
+  --border: #2e303a;
 
   /* Feedback. `danger` is the destructive/error colour (error text + the danger
-     button). A dark red so it clears WCAG AA 4.5:1 as text on the page bg
-     (#dc2626 = 4.83:1 on white). The danger button is TINTED (danger border +
-     text + a low-alpha hover fill), never solid-white-on-danger — in dark mode
+     button). A lighter red so danger text clears WCAG AA 4.5:1 against the dark
+     bg (#ef4444 = 4.75:1 on #16171d). The danger button is TINTED (danger border
+     + text + a low-alpha hover fill), never solid-white-on-danger — in dark mode
      no red can clear 4.5:1 for white text while also reading as text on the dark
      bg, so the tinted treatment sidesteps that conflict. `danger-bg` is the same
      hue at low alpha for that hover tint. */
-  --danger: #dc2626;
-  --danger-bg: rgba(220, 38, 38, 0.1);
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.15);
 
-  /* Typography. */
+  /* Typography (theme-independent). */
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
@@ -53,33 +64,28 @@
   --font-scale: 1;
 }
 
-/* Palette — dark. Only the values that differ from light are overridden. The
-   brand colour is rebalanced (not just lightened): the primary button is
-   `bg-primary` + white text in both themes, so the dark primary still has to
-   pass white-text contrast (#137548 = 4.56:1) while staying visible on the dark
-   background. Green is the most luminous hue, so a green light enough to "pop"
-   on dark bg can't also carry white text — this shade is the balance point
-   (white-on 4.56, ~3.3:1 against the dark background). */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --primary: #137548;
-    --primary-bg: rgba(19, 117, 72, 0.15);
+/* Palette — light. Only the values that differ from the dark default. The brand
+   green is darker here so white text on a primary button clears AA 4.5:1
+   (#166534 = 5.56:1 on white); `danger` is darker for the same reason as text on
+   the light bg (#dc2626 = 4.83:1 on white). */
+:root[data-theme='light'] {
+  color-scheme: light;
 
-    --bg: #16171d;
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --border: #2e303a;
+  --primary: #166534;
+  --primary-bg: rgba(22, 101, 52, 0.1);
 
-    /* Lighter red so danger text clears AA against the dark bg (#ef4444 =
-       4.75:1 on #16171d). */
-    --danger: #ef4444;
-    --danger-bg: rgba(239, 68, 68, 0.15);
-  }
+  --bg: #fff;
+  --text: #6b6375;
+  --text-h: #08060d;
+  --border: #e5e4e7;
+
+  --danger: #dc2626;
+  --danger-bg: rgba(220, 38, 38, 0.1);
 }
 
 /* Expose the tokens to Tailwind as semantic colour utilities
    (bg-primary, text-text, text-heading, border-border, text-primary, …).
-   `inline` keeps the var() reference so the dark override above swaps the
+   `inline` keeps the var() reference so the theme override above swaps the
    value without rebuilding the generated classes. */
 @theme inline {
   --color-primary: var(--primary);

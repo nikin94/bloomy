@@ -5,6 +5,18 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>bloomy</title>
+    <!-- Set the theme on <html> BEFORE first paint so there is no flash of the
+         wrong theme. Reads a localStorage cache (written by SettingsProvider);
+         the per-user setting in Firestore is the source of truth and reconciles
+         this once it loads. Defaults to dark when nothing is cached. -->
+    <script>
+      try {
+        var t = localStorage.getItem('bloomy-theme')
+        document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark')
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark')
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

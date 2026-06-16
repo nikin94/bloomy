@@ -3,6 +3,7 @@ import { useAuth } from '../../context/authContext'
 import { useSettings } from '../../context/settingsContext'
 import { signOutUser } from '../../firebase/auth'
 import { FONT_SCALE_MAX, FONT_SCALE_MIN, FONT_SCALE_STEP } from '../../types/settings'
+import type { ThemeMode } from '../../types/settings'
 import Button from '../Button/Button'
 import Modal from '../Modal/Modal'
 
@@ -32,6 +33,72 @@ const fontScaleLabel = (scale: number) => {
   return 'по умолчанию'
 }
 
+const SunIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="size-4"
+  >
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+  </svg>
+)
+
+const MoonIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="size-4"
+  >
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </svg>
+)
+
+// Theme switch styled as a pill track with a sun (light) and a moon (dark) at
+// its ends; the sliding knob carries the ACTIVE theme's icon, so the visible
+// track icon is the other option. A real `role="switch"` (checked = dark) so it
+// is keyboard- and screen-reader-operable.
+const ThemeToggle = ({ value, onChange }: { value: ThemeMode; onChange: (next: ThemeMode) => void }) => {
+  const isDark = value === 'dark'
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={isDark}
+      aria-label="Тёмная тема"
+      onClick={() => onChange(isDark ? 'light' : 'dark')}
+      className="relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border border-border bg-primary-bg p-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+    >
+      {/* Track icons at each end (the not-selected option stays visible). */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 flex items-center justify-between px-1.5 text-text"
+      >
+        <SunIcon />
+        <MoonIcon />
+      </span>
+      {/* Sliding knob carrying the active theme's icon. */}
+      <span
+        className={`relative z-10 flex size-6 items-center justify-center rounded-full bg-bg text-primary shadow transition-transform ${
+          isDark ? 'translate-x-6' : 'translate-x-0'
+        }`}
+      >
+        {isDark ? <MoonIcon /> : <SunIcon />}
+      </span>
+    </button>
+  )
+}
+
 const LogoutIcon = () => (
   <svg
     aria-hidden="true"
@@ -50,40 +117,49 @@ const LogoutIcon = () => (
 )
 
 // Mounts the dialog only while open, so each opening starts from the persisted
-// size (draft is seeded from `fontScale` on mount) without a reset effect.
+// values (drafts are seeded from the applied settings on mount) without a reset
+// effect.
 const SettingsModal = ({ open, onClose }: { open: boolean; onClose: () => void }) =>
   open ? <SettingsDialog onClose={onClose} /> : null
 
-// Settings dialog body. For now it holds the per-user font size (an iOS-style
-// size slider) and the sign-out action; the shared Modal owns the shell (dialog
-// role, backdrop, Escape, focus trap, header). The slider updates the whole app
-// immediately for preview, but the size is only persisted to Firebase on
-// "Сохранить"; closing without saving reverts the preview to the saved size.
+// Settings dialog body. Holds the colour theme (a sun/moon switch) and the
+// per-user font size (an iOS-style size slider), plus sign-out; the shared Modal
+// owns the shell (dialog role, backdrop, Escape, focus trap, header). Both
+// controls update the whole app immediately for preview, but are only persisted
+// to Firebase on "Сохранить"; dismissing reverts the live preview to the saved
+// values.
 const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
   const { user } = useAuth()
-  const { fontScale, previewFontScale, saveFontScale } = useSettings()
-  const [draft, setDraft] = useState(fontScale)
+  const { fontScale, theme, previewFontScale, previewTheme, saveSettings } = useSettings()
+  const [fontDraft, setFontDraft] = useState(fontScale)
+  const [themeDraft, setThemeDraft] = useState(theme)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Dismissing (backdrop / Escape / close button / "Отмена") drops the live
-  // preview back to the persisted size, then closes.
+  // preview back to the persisted values, then closes.
   const handleClose = () => {
     previewFontScale(fontScale)
+    previewTheme(theme)
     onClose()
   }
 
   const handleSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
     const next = Number(e.target.value)
-    setDraft(next)
+    setFontDraft(next)
     previewFontScale(next) // live page update; not persisted until "Сохранить"
+  }
+
+  const handleTheme = (next: ThemeMode) => {
+    setThemeDraft(next)
+    previewTheme(next) // live page update; not persisted until "Сохранить"
   }
 
   const handleSave = async () => {
     setSaving(true)
     setError(null)
     try {
-      await saveFontScale(draft)
+      await saveSettings({ fontScale: fontDraft, theme: themeDraft })
       onClose()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Не удалось сохранить настройки')
@@ -100,6 +176,12 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <Modal title="Настройки" onClose={handleClose}>
+      {/* Colour theme: a sun/moon switch. The whole app re-themes live. */}
+      <section className="flex items-center justify-between gap-3">
+        <span className="text-sm font-medium text-heading">Тёмная тема</span>
+        <ThemeToggle value={themeDraft} onChange={handleTheme} />
+      </section>
+
       {/* Font size: an iOS-style size slider flanked by small/large "А". The
           whole app scales live with the slider, so the dialog itself previews
           the chosen size — no separate sample text needed. */}
@@ -127,12 +209,12 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
               min={FONT_SCALE_MIN}
               max={FONT_SCALE_MAX}
               step={FONT_SCALE_STEP}
-              value={draft}
+              value={fontDraft}
               onChange={handleSlider}
               aria-label="Размер шрифта"
               // Screen readers announce a human-readable label (e.g. "увеличен")
               // instead of the raw scale number (0.875, 1.25).
-              aria-valuetext={fontScaleLabel(draft)}
+              aria-valuetext={fontScaleLabel(fontDraft)}
               className={sliderClass}
             />
           </div>

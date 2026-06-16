@@ -15,13 +15,16 @@ vi.mock('../../firebase/auth', () => ({ signOutUser: (...args: unknown[]) => sig
 import SettingsModal from './SettingsModal'
 
 const previewFontScale = vi.fn()
-const saveFontScale = vi.fn()
+const previewTheme = vi.fn()
+const saveSettings = vi.fn()
 const onClose = vi.fn()
 
 const settings = (over: Partial<SettingsState> = {}): SettingsState => ({
   fontScale: 1,
+  theme: 'dark',
   previewFontScale,
-  saveFontScale,
+  previewTheme,
+  saveSettings,
   ...over,
 })
 
@@ -38,9 +41,11 @@ const renderModal = (open = true, state = settings()) =>
 
 const slider = () => screen.getByRole('slider', { name: 'Размер шрифта' })
 
+const themeSwitch = () => screen.getByRole('switch', { name: 'Тёмная тема' })
+
 beforeEach(() => {
   vi.clearAllMocks()
-  saveFontScale.mockResolvedValue(undefined)
+  saveSettings.mockResolvedValue(undefined)
   signOutUser.mockResolvedValue(undefined)
 })
 
@@ -62,36 +67,53 @@ describe('SettingsModal', () => {
     expect(screen.getByText('Tester')).toBeInTheDocument()
   })
 
+  it('reflects the current theme and toggles it live without persisting', async () => {
+    const user = userEvent.setup()
+    renderModal(true, settings({ theme: 'dark' }))
+    // The switch is "on" for dark…
+    expect(themeSwitch()).toBeChecked()
+    await user.click(themeSwitch())
+    // …toggling to light previews live, switch flips, nothing persisted yet.
+    expect(previewTheme).toHaveBeenCalledWith('light')
+    expect(themeSwitch()).not.toBeChecked()
+    expect(saveSettings).not.toHaveBeenCalled()
+  })
+
   it('previews the size live as the slider moves, without persisting', () => {
     renderModal()
     fireEvent.change(slider(), { target: { value: '1.25' } })
     expect(previewFontScale).toHaveBeenCalledWith(1.25)
-    expect(saveFontScale).not.toHaveBeenCalled()
+    expect(saveSettings).not.toHaveBeenCalled()
   })
 
-  it('persists the chosen size only on Save, then closes', async () => {
+  it('persists the chosen size and theme only on Save, then closes', async () => {
     const user = userEvent.setup()
-    renderModal()
+    renderModal(true, settings({ fontScale: 1, theme: 'dark' }))
     fireEvent.change(slider(), { target: { value: '1.25' } })
+    await user.click(themeSwitch()) // dark → light
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
-    expect(saveFontScale).toHaveBeenCalledWith(1.25)
+    expect(saveSettings).toHaveBeenCalledWith({ fontScale: 1.25, theme: 'light' })
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('reverts the live preview to the saved size on cancel, without saving', async () => {
+  it('reverts the live preview to the saved values on cancel, without saving', async () => {
     const user = userEvent.setup()
-    renderModal(true, settings({ fontScale: 1 }))
+    renderModal(true, settings({ fontScale: 1, theme: 'dark' }))
     fireEvent.change(slider(), { target: { value: '1.375' } })
+    await user.click(themeSwitch()) // preview light
     previewFontScale.mockClear()
+    previewTheme.mockClear()
     await user.click(screen.getByRole('button', { name: 'Отмена' }))
+    // Both previews revert to the persisted values.
     expect(previewFontScale).toHaveBeenLastCalledWith(1)
-    expect(saveFontScale).not.toHaveBeenCalled()
+    expect(previewTheme).toHaveBeenLastCalledWith('dark')
+    expect(saveSettings).not.toHaveBeenCalled()
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
   it('surfaces a save error and re-enables the button without closing', async () => {
     const user = userEvent.setup()
-    saveFontScale.mockRejectedValueOnce(new Error('Сбой сети'))
+    saveSettings.mockRejectedValueOnce(new Error('Сбой сети'))
     renderModal()
     fireEvent.change(slider(), { target: { value: '1.25' } })
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
