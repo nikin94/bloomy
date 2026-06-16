@@ -32,13 +32,13 @@ beforeEach(() => {
 
 describe('App routing', () => {
   it('renders the login screen eagerly at "/"', () => {
-    renderAt('/', { user: null, loading: false })
+    renderAt('/', { user: null, loading: false, sessionLost: false })
     // LoginPage is not lazy, so it is present on the first synchronous render.
     expect(screen.getByText('Войдите, чтобы управлять заказами')).toBeInTheDocument()
   })
 
   it('resolves the lazy orders route for a signed-in user', async () => {
-    renderAt('/orders', { user: USER, loading: false })
+    renderAt('/orders', { user: USER, loading: false, sessionLost: false })
     // The chunk loads asynchronously, so the page content appears after a tick.
     // The header renders both layouts (desktop + mobile menu duplicate the nav),
     // so scope to the desktop bar to match a single create-order link.
@@ -50,7 +50,7 @@ describe('App routing', () => {
   })
 
   it('redirects an unauthenticated visitor away from a protected route', async () => {
-    renderAt('/orders', { user: null, loading: false })
+    renderAt('/orders', { user: null, loading: false, sessionLost: false })
     // ProtectedRoute sends signed-out users to the login screen.
     await waitFor(() =>
       expect(screen.getByText('Войдите, чтобы управлять заказами')).toBeInTheDocument(),
@@ -58,7 +58,7 @@ describe('App routing', () => {
   })
 
   it('shows the spinner (not a redirect) while the session is still resolving', () => {
-    renderAt('/orders', { user: null, loading: true })
+    renderAt('/orders', { user: null, loading: true, sessionLost: false })
     // While auth is resolving, ProtectedRoute holds on the spinner instead of
     // redirecting — otherwise an already-signed-in user would flash the login
     // screen before the session restores.

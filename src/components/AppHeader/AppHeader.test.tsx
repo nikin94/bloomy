@@ -16,7 +16,7 @@ const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } a
 
 const renderHeader = () =>
   render(
-    <AuthContext.Provider value={{ user: USER, loading: false }}>
+    <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
       <MemoryRouter>
         <AppHeader />
       </MemoryRouter>

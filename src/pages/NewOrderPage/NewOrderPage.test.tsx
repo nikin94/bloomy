@@ -51,7 +51,7 @@ function deferred<T>() {
 
 function renderForm() {
   return render(
-    <AuthContext.Provider value={{ user: USER, loading: false }}>
+    <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
       <MemoryRouter>
         <NewOrderPage />
       </MemoryRouter>

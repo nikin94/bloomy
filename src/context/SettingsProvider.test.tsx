@@ -26,7 +26,7 @@ const Probe = () => {
 }
 
 const tree = (user: User | null) => (
-  <AuthContext.Provider value={{ user, loading: false }}>
+  <AuthContext.Provider value={{ user, loading: false, sessionLost: false }}>
     <SettingsProvider>
       <Probe />
     </SettingsProvider>

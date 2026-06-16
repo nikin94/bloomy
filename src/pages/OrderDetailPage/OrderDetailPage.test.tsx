@@ -61,7 +61,7 @@ const customer = (over: Partial<Customer> = {}): Customer => ({
 
 const renderPage = () =>
   render(
-    <AuthContext.Provider value={{ user: USER, loading: false }}>
+    <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
       <MemoryRouter>
         <OrderDetailPage />
       </MemoryRouter>

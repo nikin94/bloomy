@@ -29,7 +29,7 @@ const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } a
 
 const renderModal = (open = true, state = settings()) =>
   render(
-    <AuthContext.Provider value={{ user: USER, loading: false }}>
+    <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
       <SettingsContext.Provider value={state}>
         <SettingsModal open={open} onClose={onClose} />
       </SettingsContext.Provider>
@@ -134,7 +134,7 @@ describe('SettingsModal', () => {
     const Harness = () => {
       const [open, setOpen] = useState(false)
       return (
-        <AuthContext.Provider value={{ user: USER, loading: false }}>
+        <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
           <SettingsContext.Provider value={settings()}>
             <button onClick={() => setOpen(true)}>Открыть</button>
             <SettingsModal open={open} onClose={() => setOpen(false)} />

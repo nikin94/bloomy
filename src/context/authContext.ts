@@ -7,8 +7,17 @@ import type { User } from 'firebase/auth'
 export interface AuthState {
   user: User | null
   loading: boolean
+  // True when the session ended unexpectedly — a non-null → null transition the
+  // app did not initiate (i.e. not via signOutUser). The login screen reads it
+  // to explain why the user was bounced instead of silently showing the sign-in
+  // button. Reset on a successful sign-in.
+  sessionLost: boolean
 }
 
-export const AuthContext = createContext<AuthState>({ user: null, loading: true })
+export const AuthContext = createContext<AuthState>({
+  user: null,
+  loading: true,
+  sessionLost: false,
+})
 
 export const useAuth = (): AuthState => useContext(AuthContext)
