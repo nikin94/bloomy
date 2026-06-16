@@ -182,7 +182,6 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
   const [selectedCustomerId, setSelectedCustomerId] = useState(initialOrder?.customerId ?? '')
   const [newName, setNewName] = useState('')
   const [newPhone, setNewPhone] = useState('')
-  const [newNote, setNewNote] = useState('')
 
   const [address, setAddress] = useState(initialOrder?.address ?? '')
   // Monotonic id source for item rows, so React keys stay stable across
@@ -360,7 +359,6 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
           name: newName.trim(),
           createdAt: Date.now(),
           ...(newPhone.trim() !== '' ? { phone: newPhone.trim() } : {}),
-          ...(newNote.trim() !== '' ? { note: newNote.trim() } : {}),
           ...(address.trim() !== '' ? { address: address.trim() } : {}),
         }
         customerId = await createCustomer(newCustomer)
@@ -495,13 +493,6 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                   placeholder="Телефон"
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
-                />
-                <Textarea
-                  className="min-h-16 w-full"
-                  aria-label="Заметка о клиенте"
-                  placeholder="Заметка"
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
                 />
               </div>
             )}
