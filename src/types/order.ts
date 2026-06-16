@@ -61,6 +61,12 @@ export const STORED_ORDER_SCHEMA = z.object({
   paymentStatus: PAYMENT_STATUS_SCHEMA,
   shipmentStatus: SHIPMENT_STATUS_SCHEMA,
   comment: z.string().optional(),
+  // Soft-delete flag. A "deleted" order is hidden from the list and the detail
+  // page, but the document is kept so the per-owner numbering stays intact (a
+  // hard delete would risk an unrecoverable loss of a real order and gaps in the
+  // counter). Optional so orders written before this field stay valid. Distinct
+  // from "cancelled", which is a shipment status that keeps the order visible.
+  isDeleted: z.boolean().optional(),
 })
 
 // A single order for potted plants and flowers = one table row. The doc id is

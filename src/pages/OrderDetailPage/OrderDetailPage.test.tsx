@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
@@ -11,11 +11,14 @@ import type { Customer } from '../../types/customer'
 // SDK. We test the page render and the inline status save flow, not Firestore.
 const fetchOrder = vi.fn()
 const updateOrder = vi.fn()
+const softDeleteOrder = vi.fn()
 const fetchCustomer = vi.fn()
+const navigate = vi.fn()
 
 vi.mock('../../firebase/orders', () => ({
   fetchOrder: (...args: unknown[]) => fetchOrder(...args),
   updateOrder: (...args: unknown[]) => updateOrder(...args),
+  softDeleteOrder: (...args: unknown[]) => softDeleteOrder(...args),
 }))
 vi.mock('../../firebase/customers', () => ({
   fetchCustomer: (...args: unknown[]) => fetchCustomer(...args),
@@ -23,6 +26,7 @@ vi.mock('../../firebase/customers', () => ({
 vi.mock('react-router-dom', async (importOriginal) => ({
   ...(await importOriginal<typeof import('react-router-dom')>()),
   useParams: () => ({ id: 'o1' }),
+  useNavigate: () => navigate,
 }))
 
 // Imported after the mocks above are registered.
@@ -69,6 +73,7 @@ beforeEach(() => {
   fetchOrder.mockResolvedValue(order())
   fetchCustomer.mockResolvedValue(customer())
   updateOrder.mockResolvedValue(undefined)
+  softDeleteOrder.mockResolvedValue(undefined)
 })
 
 describe('OrderDetailPage', () => {
@@ -124,5 +129,37 @@ describe('OrderDetailPage', () => {
     // Error announced, and the select reverts to the original value.
     expect(await screen.findByRole('alert')).toHaveTextContent('Сеть недоступна')
     expect(screen.getByRole('combobox', { name: 'Статус отправки' })).toHaveValue('new')
+  })
+
+  it('soft-deletes the order after confirming and returns to the list', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+
+    // Delete asks for confirmation in a dialog before doing anything.
+    await user.click(screen.getByRole('button', { name: 'Удалить' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Удалить заказ №5?' })
+    expect(softDeleteOrder).not.toHaveBeenCalled()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Удалить' }))
+
+    await waitFor(() => expect(softDeleteOrder).toHaveBeenCalledWith('o1'))
+    // On success the user is sent back to the list (where it no longer appears).
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/orders'))
+  })
+
+  it('keeps the order and surfaces an error when the delete fails', async () => {
+    const user = userEvent.setup()
+    softDeleteOrder.mockRejectedValue(new Error('Сеть недоступна'))
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+
+    await user.click(screen.getByRole('button', { name: 'Удалить' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Удалить заказ №5?' })
+    await user.click(within(dialog).getByRole('button', { name: 'Удалить' }))
+
+    // The error is shown in the dialog and the user is NOT navigated away.
+    expect(await screen.findByRole('alert')).toHaveTextContent('Сеть недоступна')
+    expect(navigate).not.toHaveBeenCalledWith('/orders')
   })
 })

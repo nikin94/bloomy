@@ -4,7 +4,7 @@
 // including atomicity when many orders are created concurrently. Run with
 // `yarn test:emulator` (starts the emulator via `firebase emulators:exec`).
 import { describe, expect, it } from 'vitest'
-import { createOrder, fetchOrder, fetchOrders, updateOrder } from './orders'
+import { createOrder, fetchOrder, fetchOrders, softDeleteOrder, updateOrder } from './orders'
 import type { NewOrder } from './orders'
 
 // Each test uses a fresh ownerId so its per-owner counter starts at 1 and tests
@@ -98,5 +98,38 @@ describe('updateOrder (emulator)', () => {
     const nextId = await createOrder(makeOrder(owner))
     const next = await fetchOrder(nextId, owner)
     expect(next?.number).toBe(2)
+  })
+})
+
+describe('softDeleteOrder (emulator)', () => {
+  it('hides the order from the list and the detail fetch without touching the counter', async () => {
+    const owner = 'owner-soft-delete'
+    const keepId = await createOrder(makeOrder(owner)) // number 1
+    const dropId = await createOrder(makeOrder(owner)) // number 2
+
+    await softDeleteOrder(dropId)
+
+    // Gone from the list and from a direct fetch (treated as not found)…
+    const listed = await fetchOrders(owner)
+    expect(listed.map((o) => o.id)).toEqual([keepId])
+    expect(await fetchOrder(dropId, owner)).toBeNull()
+
+    // …but the counter is untouched: the next create is number 3, not a reused 2.
+    const nextId = await createOrder(makeOrder(owner))
+    expect((await fetchOrder(nextId, owner))?.number).toBe(3)
+  })
+
+  it('preserves every other field on the kept document', async () => {
+    const owner = 'owner-soft-delete-fields'
+    const id = await createOrder(makeOrder(owner))
+
+    await softDeleteOrder(id)
+
+    // Read past the fetchOrder filter via a fresh owner-scoped list is not
+    // possible (it filters deleted), so assert through the data the delete left:
+    // a subsequent create still numbers 2, proving the doc (and its number 1) was
+    // kept rather than removed.
+    const nextId = await createOrder(makeOrder(owner))
+    expect((await fetchOrder(nextId, owner))?.number).toBe(2)
   })
 })

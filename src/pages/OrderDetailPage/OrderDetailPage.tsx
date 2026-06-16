@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { fetchOrder, updateOrder } from '../../firebase/orders'
+import { fetchOrder, softDeleteOrder, updateOrder } from '../../firebase/orders'
 import { fetchCustomer } from '../../firebase/customers'
 import { formatDate, formatMoney } from '../../utils/format'
 import {
@@ -16,6 +16,7 @@ import { useAuth } from '../../context/authContext'
 import Spinner from '../../components/Spinner/Spinner'
 import Select from '../../components/Select/Select'
 import Button from '../../components/Button/Button'
+import Modal from '../../components/Modal/Modal'
 import type { Order } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
@@ -34,6 +35,10 @@ const OrderDetailPage = () => {
   // back); kept separate from the page-load error, which replaces the whole body.
   const [statusError, setStatusError] = useState<string | null>(null)
   const [savingStatus, setSavingStatus] = useState(false)
+  // Delete is confirmed in a modal (destructive, so not a one-click action).
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id || !ownerId) return
@@ -80,6 +85,21 @@ const OrderDetailPage = () => {
     }
   }
 
+  // Soft-delete the order, then return to the list (where it no longer appears).
+  // On failure keep the dialog open and surface the error so the user can retry.
+  const handleDelete = async () => {
+    if (!order) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await softDeleteOrder(order.id)
+      navigate('/orders')
+    } catch (err: unknown) {
+      setDeleteError(err instanceof Error ? err.message : 'Не удалось удалить заказ')
+      setDeleting(false)
+    }
+  }
+
   return (
     <div className="overflow-auto p-6">
       <Link to="/orders" className="mb-4 inline-block text-primary no-underline hover:underline">
@@ -109,6 +129,16 @@ const OrderDetailPage = () => {
                 onClick={() => navigate(`/orders/${order.id}/edit`)}
               >
                 Редактировать
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => {
+                  setDeleteError(null)
+                  setConfirmingDelete(true)
+                }}
+              >
+                Удалить
               </Button>
             </div>
           </header>
@@ -186,6 +216,31 @@ const OrderDetailPage = () => {
             </div>
           </section>
         </div>
+      )}
+
+      {confirmingDelete && order && (
+        <Modal title={`Удалить заказ №${order.number}?`} onClose={() => setConfirmingDelete(false)}>
+          <p className="m-0 text-text">
+            Заказ исчезнет из списка. Его можно вернуть только обратившись в поддержку.
+          </p>
+          {deleteError && (
+            <p role="alert" className="m-0 text-danger">
+              {deleteError}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="danger" onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Удаление…' : 'Удалить'}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setConfirmingDelete(false)}
+              disabled={deleting}
+            >
+              Отмена
+            </Button>
+          </div>
+        </Modal>
       )}
     </div>
   )
