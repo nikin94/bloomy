@@ -22,11 +22,10 @@ export const THEME_MODES = ['light', 'dark'] as const
 export type ThemeMode = (typeof THEME_MODES)[number]
 export const DEFAULT_THEME: ThemeMode = 'dark'
 
-// Defaults used to prefill a NEW order's delivery/payment method. These mirror
-// OrderForm's previous hardcoded fallbacks, so a user who never set a preference
-// gets the same starting point as before.
+// Defaults used to prefill a NEW order's delivery/payment method when the user
+// has not set a preference: post (Почта) for delivery, card (Карта) for payment.
 export const DEFAULT_DELIVERY_METHOD: DeliveryMethod = 'post'
-export const DEFAULT_PAYMENT_METHOD: PaymentMethod = 'cash'
+export const DEFAULT_PAYMENT_METHOD: PaymentMethod = 'card'
 
 // Per-user app settings, stored at settings/{uid} (the doc id IS the owner uid,
 // like counters). Every field is optional so a document written before a field

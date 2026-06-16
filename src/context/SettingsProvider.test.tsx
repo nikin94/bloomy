@@ -97,10 +97,10 @@ describe('SettingsProvider', () => {
     await screen.findByText('payment:bank')
   })
 
-  it('defaults the order methods to post/cash when none are saved', async () => {
+  it('defaults the order methods to post/card when none are saved', async () => {
     renderProvider()
     await screen.findByText('delivery:post')
-    await screen.findByText('payment:cash')
+    await screen.findByText('payment:card')
   })
 
   it('persists and applies new values on save', async () => {
