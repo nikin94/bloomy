@@ -74,10 +74,15 @@
   --primary: #166534;
   --primary-bg: rgba(22, 101, 52, 0.1);
 
-  --bg: #fff;
+  /* A soft cool off-white, not pure white — easier on the eyes. Kept light
+     enough that the muted body text (`--text`) still clears AA 4.5:1 on it
+     (#6b6375 on #eceef1 = 4.7:1); a darker bg like #ccc would drop that below
+     AA, so this is about as dark as the bg can go without also darkening text.
+     The border is darkened to stay visible against the now-greyer bg. */
+  --bg: #eceef1;
   --text: #6b6375;
   --text-h: #08060d;
-  --border: #e5e4e7;
+  --border: #d7d8de;
 
   --danger: #dc2626;
   --danger-bg: rgba(220, 38, 38, 0.1);
