@@ -230,9 +230,7 @@ const OrderDetailPage = () => {
 
       {confirmingDelete && order && (
         <Modal title={`Удалить заказ №${order.number}?`} onClose={() => setConfirmingDelete(false)}>
-          <p className="m-0 text-text">
-            Заказ исчезнет из списка. Его можно вернуть только обратившись в поддержку.
-          </p>
+          <p className="m-0 text-text">Заказ исчезнет из списка.</p>
           {deleteError && (
             <p role="alert" className="m-0 text-danger">
               {deleteError}
