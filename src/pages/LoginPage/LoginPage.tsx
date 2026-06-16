@@ -28,7 +28,7 @@ const signInErrorMessage = (err: unknown): string => {
 }
 
 const LoginPage = () => {
-  const { user, loading } = useAuth()
+  const { user, loading, sessionLost } = useAuth()
   const [signingIn, setSigningIn] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -53,6 +53,29 @@ const LoginPage = () => {
     <div className="flex h-full flex-col items-center justify-center gap-6 p-6 text-center">
       <h1 className="m-0 text-4xl font-semibold text-heading">Bloomy</h1>
       <p className="m-0 text-text">Войдите, чтобы управлять заказами</p>
+
+      {/* Session dropped unexpectedly (not a deliberate sign-out). We can't read
+          the browser console on the user's machine, so we put a screenshottable
+          explanation on screen: the likely cause AND the live connection state,
+          which together confirm whether a blocked token refresh is to blame. */}
+      {sessionLost && (
+        <div
+          role="alert"
+          className="max-w-md rounded-lg border border-danger bg-danger-bg p-4 text-left text-sm text-text"
+        >
+          <p className="m-0 font-medium text-heading">Сессия прервалась</p>
+          <p className="m-0 mt-1">
+            Вход слетел сам по себе. Чаще всего это значит, что VPN, блокировщик
+            рекламы или антивирус блокирует серверы входа Google. Отключите их или
+            смените сеть и войдите снова.
+          </p>
+          <p className="m-0 mt-2 text-text/80">
+            Соединение: {navigator.onLine ? 'есть (онлайн)' : 'нет (офлайн)'}. Если
+            проблема повторяется — пришлите нам скриншот этого экрана.
+          </p>
+        </div>
+      )}
+
       <Button variant="primary" onClick={handleSignIn} disabled={signingIn}>
         {signingIn ? 'Вход…' : 'Войти через Google'}
       </Button>

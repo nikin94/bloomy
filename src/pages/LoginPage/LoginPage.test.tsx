@@ -17,9 +17,9 @@ import LoginPage from './LoginPage'
 // A FirebaseError-like rejection: an Error subclass carrying a string `code`.
 const authError = (code: string) => Object.assign(new Error(code), { code })
 
-const renderLogin = () =>
+const renderLogin = (sessionLost = false) =>
   render(
-    <AuthContext.Provider value={{ user: null, loading: false }}>
+    <AuthContext.Provider value={{ user: null, loading: false, sessionLost }}>
       <MemoryRouter>
         <LoginPage />
       </MemoryRouter>
@@ -64,5 +64,18 @@ describe('LoginPage', () => {
 
     await screen.findByRole('alert')
     await waitFor(() => expect(button).toBeEnabled())
+  })
+
+  it('explains an unexpected session drop so the user can screenshot the cause', () => {
+    renderLogin(true)
+    const alert = screen.getByRole('alert')
+    expect(alert).toHaveTextContent('Сессия прервалась')
+    // Points at the likely cause (env, not the app) for an actionable screenshot.
+    expect(alert).toHaveTextContent(/VPN|блокировщик|антивирус/i)
+  })
+
+  it('shows no session-lost banner on a normal visit', () => {
+    renderLogin(false)
+    expect(screen.queryByText('Сессия прервалась')).not.toBeInTheDocument()
   })
 })
