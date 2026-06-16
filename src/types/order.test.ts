@@ -6,6 +6,7 @@ import {
   plantsByValueDesc,
   filterOrders,
   isOrderFilterActive,
+  isStatusFilterActive,
   EMPTY_ORDER_FILTER,
   DELIVERY_METHOD_OPTIONS,
   STORED_ORDER_SCHEMA,
@@ -130,6 +131,16 @@ describe('isOrderFilterActive', () => {
     expect(isOrderFilterActive({ ...EMPTY_ORDER_FILTER, query: 'роза' })).toBe(true)
     expect(isOrderFilterActive({ ...EMPTY_ORDER_FILTER, paymentStatus: 'paid' })).toBe(true)
     expect(isOrderFilterActive({ ...EMPTY_ORDER_FILTER, shipmentStatus: 'shipped' })).toBe(true)
+  })
+})
+
+describe('isStatusFilterActive', () => {
+  it('counts only the status filters, not the inline search query', () => {
+    // The query is shown inline; the dialog's filter-icon dot reflects statuses.
+    expect(isStatusFilterActive(EMPTY_ORDER_FILTER)).toBe(false)
+    expect(isStatusFilterActive({ ...EMPTY_ORDER_FILTER, query: 'роза' })).toBe(false)
+    expect(isStatusFilterActive({ ...EMPTY_ORDER_FILTER, paymentStatus: 'paid' })).toBe(true)
+    expect(isStatusFilterActive({ ...EMPTY_ORDER_FILTER, shipmentStatus: 'shipped' })).toBe(true)
   })
 })
 

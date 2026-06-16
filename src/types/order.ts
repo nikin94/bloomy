@@ -224,7 +224,13 @@ export const EMPTY_ORDER_FILTER: OrderFilter = {
 // True when no filter is active — used to tell "no orders yet" apart from
 // "nothing matched the filter".
 export const isOrderFilterActive = (filter: OrderFilter): boolean =>
-  filter.query.trim() !== '' || filter.paymentStatus !== '' || filter.shipmentStatus !== ''
+  filter.query.trim() !== '' || isStatusFilterActive(filter)
+
+// True when a status filter (payment or shipment) is set. The status filters
+// live behind the filter dialog, so this drives the filter-icon's active dot —
+// the inline search query is shown separately and isn't counted here.
+export const isStatusFilterActive = (filter: OrderFilter): boolean =>
+  filter.paymentStatus !== '' || filter.shipmentStatus !== ''
 
 // Filter the orders list in memory (the dataset is small and already loaded, so
 // no extra query). `query` matches the order number or the resolved customer

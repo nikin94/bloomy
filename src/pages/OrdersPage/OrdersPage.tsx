@@ -5,6 +5,8 @@ import DataTable from '../../components/DataTable/DataTable'
 import Spinner from '../../components/Spinner/Spinner'
 import Input from '../../components/Input/Input'
 import Select from '../../components/Select/Select'
+import Button from '../../components/Button/Button'
+import Modal from '../../components/Modal/Modal'
 import { fetchOrders } from '../../firebase/orders'
 import { fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
@@ -12,12 +14,30 @@ import {
   buildOrderColumns,
   filterOrders,
   isOrderFilterActive,
+  isStatusFilterActive,
   EMPTY_ORDER_FILTER,
   PAYMENT_STATUS_OPTIONS,
   SHIPMENT_STATUS_OPTIONS,
 } from '../../types/order'
 import type { Order, OrderFilter, PaymentStatus, ShipmentStatus } from '../../types/order'
 import type { Customer } from '../../types/customer'
+
+// Funnel icon for the filter button. A small dot is overlaid by the caller when
+// a status filter is active, so the closed dialog still signals it's filtering.
+const FilterIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="size-5"
+  >
+    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+  </svg>
+)
 
 const OrdersPage = () => {
   const navigate = useNavigate()
@@ -31,6 +51,9 @@ const OrdersPage = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<OrderFilter>(EMPTY_ORDER_FILTER)
+  // The status filters live in a dialog opened from the filter icon; the search
+  // box stays inline as the most-frequent action.
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   // Set by NewOrderPage after a successful create, to highlight the new order.
   // Read once into state, then strip it from history so a refresh or back-nav
@@ -79,6 +102,7 @@ const OrdersPage = () => {
   // small, and it keeps search instant with no extra reads.
   const visibleOrders = filterOrders(orders, filter, getCustomerName)
   const filterActive = isOrderFilterActive(filter)
+  const statusFilterActive = isStatusFilterActive(filter)
 
   return (
     <div className="flex h-full flex-col">
@@ -89,9 +113,9 @@ const OrdersPage = () => {
 
       {!loading && !error && (
         <>
-          {/* Filter bar: search by number/customer + status filters. Stacks on
-              narrow screens, sits inline from sm up. */}
-          <div className="flex flex-col gap-2 border-b border-border px-4 py-3 sm:flex-row sm:items-center">
+          {/* Filter bar: inline search + a filter icon that opens the status
+              filters in a dialog. */}
+          <div className="flex items-center gap-2 border-b border-border px-4 py-3">
             <Input
               type="search"
               className="w-full sm:max-w-xs"
@@ -100,36 +124,24 @@ const OrdersPage = () => {
               value={filter.query}
               onChange={(e) => setFilter((f) => ({ ...f, query: e.target.value }))}
             />
-            <Select
-              aria-label="Фильтр по статусу оплаты"
-              className="sm:w-44"
-              value={filter.paymentStatus}
-              onChange={(e) =>
-                setFilter((f) => ({ ...f, paymentStatus: e.target.value as PaymentStatus | '' }))
-              }
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={() => setFiltersOpen(true)}
+              aria-label="Фильтры"
+              title="Фильтры"
+              className="relative shrink-0"
             >
-              <option value="">Оплата: все</option>
-              {PAYMENT_STATUS_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
-            <Select
-              aria-label="Фильтр по статусу отправки"
-              className="sm:w-44"
-              value={filter.shipmentStatus}
-              onChange={(e) =>
-                setFilter((f) => ({ ...f, shipmentStatus: e.target.value as ShipmentStatus | '' }))
-              }
-            >
-              <option value="">Отправка: все</option>
-              {SHIPMENT_STATUS_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
+              <FilterIcon />
+              {/* Active dot: the status filters are hidden in the dialog, so the
+                  closed button still signals that filtering is on. */}
+              {statusFilterActive && (
+                <span
+                  aria-hidden="true"
+                  className="absolute right-1 top-1 size-2 rounded-full border border-bg bg-primary"
+                />
+              )}
+            </Button>
           </div>
 
           <DataTable
@@ -140,6 +152,63 @@ const OrdersPage = () => {
             emptyMessage={filterActive ? 'Ничего не найдено' : 'Заказов пока нет'}
           />
         </>
+      )}
+
+      {filtersOpen && (
+        <Modal title="Фильтры" onClose={() => setFiltersOpen(false)}>
+          <div className="flex flex-col gap-4">
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-heading">Статус оплаты</span>
+              <Select
+                aria-label="Фильтр по статусу оплаты"
+                value={filter.paymentStatus}
+                onChange={(e) =>
+                  setFilter((f) => ({ ...f, paymentStatus: e.target.value as PaymentStatus | '' }))
+                }
+              >
+                <option value="">Все</option>
+                {PAYMENT_STATUS_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-heading">Статус отправки</span>
+              <Select
+                aria-label="Фильтр по статусу отправки"
+                value={filter.shipmentStatus}
+                onChange={(e) =>
+                  setFilter((f) => ({ ...f, shipmentStatus: e.target.value as ShipmentStatus | '' }))
+                }
+              >
+                <option value="">Все</option>
+                {SHIPMENT_STATUS_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  setFilter((f) => ({ ...f, paymentStatus: '', shipmentStatus: '' }))
+                }
+                disabled={!statusFilterActive}
+              >
+                Сбросить
+              </Button>
+              <Button variant="primary" onClick={() => setFiltersOpen(false)}>
+                Готово
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   )

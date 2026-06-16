@@ -86,19 +86,42 @@ describe('OrdersPage filtering', () => {
     expect(table().getByText('Борис')).toBeInTheDocument()
   })
 
-  it('filters by shipment status', async () => {
+  it('filters by shipment status, chosen in the filter dialog', async () => {
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('orders-table')
 
+    // The status filters live behind the filter icon, not inline.
+    expect(screen.queryByRole('combobox', { name: 'Фильтр по статусу отправки' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Фильтры' }))
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Фильтр по статусу отправки' }),
       'shipped',
     )
+    // Close the dialog to see the filtered list.
+    await user.click(screen.getByRole('button', { name: 'Готово' }))
 
     // Only the shipped order (Борис) remains.
     expect(table().getByText('Борис')).toBeInTheDocument()
     expect(table().queryByText('Анна')).not.toBeInTheDocument()
+  })
+
+  it('resets the status filters from the dialog', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByTestId('orders-table')
+
+    await user.click(screen.getByRole('button', { name: 'Фильтры' }))
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Фильтр по статусу отправки' }),
+      'shipped',
+    )
+    await user.click(screen.getByRole('button', { name: 'Сбросить' }))
+    await user.click(screen.getByRole('button', { name: 'Готово' }))
+
+    // Both orders are back once the status filter is cleared.
+    expect(table().getByText('Анна')).toBeInTheDocument()
+    expect(table().getByText('Борис')).toBeInTheDocument()
   })
 
   it('shows a "nothing found" message when the filter matches no orders', async () => {
