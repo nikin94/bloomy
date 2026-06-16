@@ -22,6 +22,8 @@ const onClose = vi.fn()
 const settings = (over: Partial<SettingsState> = {}): SettingsState => ({
   fontScale: 1,
   theme: 'dark',
+  defaultDeliveryMethod: 'post',
+  defaultPaymentMethod: 'cash',
   previewFontScale,
   previewTheme,
   saveSettings,
@@ -92,8 +94,30 @@ describe('SettingsModal', () => {
     fireEvent.change(slider(), { target: { value: '1.25' } })
     await user.click(themeSwitch()) // dark → light
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
-    expect(saveSettings).toHaveBeenCalledWith({ fontScale: 1.25, theme: 'light' })
+    expect(saveSettings).toHaveBeenCalledWith({
+      fontScale: 1.25,
+      theme: 'light',
+      defaultDeliveryMethod: 'post',
+      defaultPaymentMethod: 'cash',
+    })
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('saves the chosen order defaults (delivery + payment)', async () => {
+    const user = userEvent.setup()
+    renderModal()
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Способ доставки по умолчанию' }),
+      'cdek',
+    )
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Способ оплаты по умолчанию' }),
+      'card',
+    )
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(saveSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ defaultDeliveryMethod: 'cdek', defaultPaymentMethod: 'card' }),
+    )
   })
 
   it('reverts the live preview to the saved values on cancel, without saving', async () => {

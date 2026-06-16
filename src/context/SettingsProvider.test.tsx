@@ -21,12 +21,26 @@ const USER = { uid: 'owner-1' } as User
 // Reads the applied values and offers a save trigger, so a test can observe the
 // provider's state and the document side effects.
 const Probe = () => {
-  const { fontScale, theme, saveSettings: save } = useSettings()
+  const { fontScale, theme, defaultDeliveryMethod, defaultPaymentMethod, saveSettings: save } =
+    useSettings()
   return (
     <>
-      <button onClick={() => save({ fontScale: 1.25, theme: 'light' })}>save</button>
+      <button
+        onClick={() =>
+          save({
+            fontScale: 1.25,
+            theme: 'light',
+            defaultDeliveryMethod: 'cdek',
+            defaultPaymentMethod: 'card',
+          })
+        }
+      >
+        save
+      </button>
       <span>scale:{fontScale}</span>
       <span>theme:{theme}</span>
+      <span>delivery:{defaultDeliveryMethod}</span>
+      <span>payment:{defaultPaymentMethod}</span>
     </>
   )
 }
@@ -76,16 +90,36 @@ describe('SettingsProvider', () => {
     expect(dataTheme()).toBe('dark')
   })
 
+  it('loads the saved order defaults (delivery + payment)', async () => {
+    fetchSettings.mockResolvedValue({ defaultDeliveryMethod: 'taxi', defaultPaymentMethod: 'bank' })
+    renderProvider()
+    await screen.findByText('delivery:taxi')
+    await screen.findByText('payment:bank')
+  })
+
+  it('defaults the order methods to post/cash when none are saved', async () => {
+    renderProvider()
+    await screen.findByText('delivery:post')
+    await screen.findByText('payment:cash')
+  })
+
   it('persists and applies new values on save', async () => {
     const user = userEvent.setup()
     renderProvider()
     await screen.findByText('scale:1')
     await user.click(screen.getByRole('button', { name: 'save' }))
     await waitFor(() =>
-      expect(saveSettings).toHaveBeenCalledWith('owner-1', { fontScale: 1.25, theme: 'light' }),
+      expect(saveSettings).toHaveBeenCalledWith('owner-1', {
+        fontScale: 1.25,
+        theme: 'light',
+        defaultDeliveryMethod: 'cdek',
+        defaultPaymentMethod: 'card',
+      }),
     )
     await screen.findByText('scale:1.25')
     await screen.findByText('theme:light')
+    await screen.findByText('delivery:cdek')
+    await screen.findByText('payment:card')
     expect(cssScale()).toBe('1.25')
     expect(dataTheme()).toBe('light')
   })

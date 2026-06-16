@@ -40,4 +40,18 @@ describe('STORED_SETTINGS_SCHEMA', () => {
     expect(parsed.theme).toBeUndefined()
     expect(parsed.theme ?? DEFAULT_THEME).toBe('dark')
   })
+
+  it('accepts the optional order defaults (delivery + payment method)', () => {
+    const parsed = STORED_SETTINGS_SCHEMA.parse({
+      defaultDeliveryMethod: 'cdek',
+      defaultPaymentMethod: 'card',
+    })
+    expect(parsed.defaultDeliveryMethod).toBe('cdek')
+    expect(parsed.defaultPaymentMethod).toBe('card')
+  })
+
+  it('rejects an unknown delivery/payment method', () => {
+    expect(STORED_SETTINGS_SCHEMA.safeParse({ defaultDeliveryMethod: 'drone' }).success).toBe(false)
+    expect(STORED_SETTINGS_SCHEMA.safeParse({ defaultPaymentMethod: 'crypto' }).success).toBe(false)
+  })
 })

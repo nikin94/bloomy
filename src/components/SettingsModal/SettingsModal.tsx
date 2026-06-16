@@ -1,10 +1,14 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { useAuth } from '../../context/authContext'
 import { useSettings } from '../../context/settingsContext'
 import { signOutUser } from '../../firebase/auth'
 import { FONT_SCALE_MAX, FONT_SCALE_MIN, FONT_SCALE_STEP } from '../../types/settings'
 import type { ThemeMode } from '../../types/settings'
+import { DELIVERY_METHOD_OPTIONS, PAYMENT_METHOD_OPTIONS } from '../../types/order'
+import type { DeliveryMethod, PaymentMethod } from '../../types/order'
 import Button from '../Button/Button'
+import Select from '../Select/Select'
 import Modal from '../Modal/Modal'
 
 // Number of discrete positions on the slider (one notch each), so the iOS-style
@@ -116,6 +120,28 @@ const LogoutIcon = () => (
   </svg>
 )
 
+// iOS-style grouped list: a small uppercase caption above a rounded card whose
+// rows are separated by hairline dividers. Keeps each setting a "label left,
+// control right" row so the dialog reads as a settings list, not a loose stack.
+const SectionLabel = ({ children }: { children: ReactNode }) => (
+  <h3 className="m-0 px-1 text-xs font-medium uppercase tracking-wide text-text">{children}</h3>
+)
+
+// A rounded card grouping its rows; adjacent rows get a top hairline divider.
+const Group = ({ children }: { children: ReactNode }) => (
+  <div className="overflow-hidden rounded-lg border border-border [&>*+*]:border-t [&>*+*]:border-border">
+    {children}
+  </div>
+)
+
+// One settings row: label on the left, control on the right.
+const Row = ({ label, children }: { label: string; children: ReactNode }) => (
+  <div className="flex items-center justify-between gap-3 px-4 py-3">
+    <span className="text-sm font-medium text-heading">{label}</span>
+    {children}
+  </div>
+)
+
 // Mounts the dialog only while open, so each opening starts from the persisted
 // values (drafts are seeded from the applied settings on mount) without a reset
 // effect.
@@ -130,9 +156,21 @@ const SettingsModal = ({ open, onClose }: { open: boolean; onClose: () => void }
 // values.
 const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
   const { user } = useAuth()
-  const { fontScale, theme, previewFontScale, previewTheme, saveSettings } = useSettings()
+  const {
+    fontScale,
+    theme,
+    defaultDeliveryMethod,
+    defaultPaymentMethod,
+    previewFontScale,
+    previewTheme,
+    saveSettings,
+  } = useSettings()
   const [fontDraft, setFontDraft] = useState(fontScale)
   const [themeDraft, setThemeDraft] = useState(theme)
+  // The order defaults don't change the live app, so they have no preview —
+  // they apply on Save. Kept as drafts so Cancel discards an unsaved change.
+  const [deliveryDraft, setDeliveryDraft] = useState(defaultDeliveryMethod)
+  const [paymentDraft, setPaymentDraft] = useState(defaultPaymentMethod)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -159,7 +197,12 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
     setSaving(true)
     setError(null)
     try {
-      await saveSettings({ fontScale: fontDraft, theme: themeDraft })
+      await saveSettings({
+        fontScale: fontDraft,
+        theme: themeDraft,
+        defaultDeliveryMethod: deliveryDraft,
+        defaultPaymentMethod: paymentDraft,
+      })
       onClose()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Не удалось сохранить настройки')
@@ -176,54 +219,96 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <Modal title="Настройки" onClose={handleClose}>
-      {/* Colour theme: a sun/moon switch. The icons make it self-explanatory,
-          so it carries no text label; aligned to the end so it reads as a quick
-          toggle at the top of the dialog (its accessible name lives on the
-          control for screen readers). The whole app re-themes live. */}
-      <section className="flex justify-end">
-        <ThemeToggle value={themeDraft} onChange={handleTheme} />
+      {/* Appearance: theme + font size, as an iOS-style grouped list. */}
+      <section className="flex flex-col gap-2">
+        <SectionLabel>Внешний вид</SectionLabel>
+        <Group>
+          {/* Theme: a sun/moon switch on the right. The icons are
+              self-explanatory, so the row's text label carries the name; the
+              switch's accessible name lives on the control for screen readers.
+              The whole app re-themes live. */}
+          <Row label="Тема">
+            <ThemeToggle value={themeDraft} onChange={handleTheme} />
+          </Row>
+
+          {/* Font size: an iOS-style size slider flanked by small/large "А".
+              The label sits above so the slider has the full row width; the
+              whole app scales live, so the dialog previews the chosen size. */}
+          <div className="flex flex-col gap-2 px-4 py-3">
+            <span className="text-sm font-medium text-heading">Размер шрифта</span>
+            <div className="flex items-center gap-3">
+              <span aria-hidden="true" className="shrink-0 text-sm text-text">
+                А
+              </span>
+              <div className="relative flex-1">
+                {/* Step notches, iOS-style. Inset by the thumb radius (px-3) so
+                    the ticks line up with the thumb's centre at each snap point;
+                    taller than the track so their ends show past it. The thumb
+                    (z-10) sits over the current notch. */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-3 top-1/2 flex h-3 -translate-y-1/2 items-center justify-between"
+                >
+                  {Array.from({ length: SCALE_STEPS }).map((_, i) => (
+                    <span key={i} className="h-3 w-0.5 rounded-full bg-border" />
+                  ))}
+                </div>
+                <input
+                  type="range"
+                  min={FONT_SCALE_MIN}
+                  max={FONT_SCALE_MAX}
+                  step={FONT_SCALE_STEP}
+                  value={fontDraft}
+                  onChange={handleSlider}
+                  aria-label="Размер шрифта"
+                  // Screen readers announce a human-readable label (e.g.
+                  // "увеличен") instead of the raw scale number (0.875, 1.25).
+                  aria-valuetext={fontScaleLabel(fontDraft)}
+                  className={sliderClass}
+                />
+              </div>
+              <span aria-hidden="true" className="shrink-0 text-2xl text-text">
+                А
+              </span>
+            </div>
+          </div>
+        </Group>
       </section>
 
-      {/* Font size: an iOS-style size slider flanked by small/large "А". The
-          whole app scales live with the slider, so the dialog itself previews
-          the chosen size — no separate sample text needed. */}
-      <section className="flex flex-col gap-3">
-        <span className="text-sm font-medium text-heading">Размер шрифта</span>
-        <div className="flex items-center gap-3">
-          <span aria-hidden="true" className="shrink-0 text-sm text-text">
-            А
-          </span>
-          <div className="relative flex-1">
-            {/* Step notches, iOS-style. Inset by the thumb radius (px-3) so the
-                ticks line up with the thumb's centre at each snap point; taller
-                than the track so their ends show past it. The thumb (z-10) sits
-                over the current notch. */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-x-3 top-1/2 flex h-3 -translate-y-1/2 items-center justify-between"
+      {/* New-order defaults: prefill the order form's delivery/payment method.
+          These don't change the live app, only the next new order. */}
+      <section className="flex flex-col gap-2">
+        <SectionLabel>Заказы по умолчанию</SectionLabel>
+        <Group>
+          <Row label="Способ доставки">
+            <Select
+              aria-label="Способ доставки по умолчанию"
+              value={deliveryDraft}
+              onChange={(e) => setDeliveryDraft(e.target.value as DeliveryMethod)}
+              className="w-40"
             >
-              {Array.from({ length: SCALE_STEPS }).map((_, i) => (
-                <span key={i} className="h-3 w-0.5 rounded-full bg-border" />
+              {DELIVERY_METHOD_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
               ))}
-            </div>
-            <input
-              type="range"
-              min={FONT_SCALE_MIN}
-              max={FONT_SCALE_MAX}
-              step={FONT_SCALE_STEP}
-              value={fontDraft}
-              onChange={handleSlider}
-              aria-label="Размер шрифта"
-              // Screen readers announce a human-readable label (e.g. "увеличен")
-              // instead of the raw scale number (0.875, 1.25).
-              aria-valuetext={fontScaleLabel(fontDraft)}
-              className={sliderClass}
-            />
-          </div>
-          <span aria-hidden="true" className="shrink-0 text-2xl text-text">
-            А
-          </span>
-        </div>
+            </Select>
+          </Row>
+          <Row label="Способ оплаты">
+            <Select
+              aria-label="Способ оплаты по умолчанию"
+              value={paymentDraft}
+              onChange={(e) => setPaymentDraft(e.target.value as PaymentMethod)}
+              className="w-40"
+            >
+              {PAYMENT_METHOD_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </Row>
+        </Group>
       </section>
 
       {error && (

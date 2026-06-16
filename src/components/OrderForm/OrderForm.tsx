@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import AppHeader from '../AppHeader/AppHeader'
 import { createCustomer, fetchCustomer, fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
+import { useSettings } from '../../context/settingsContext'
 import { formatMinorToInput, formatMoney, parseRublesToMinor } from '../../utils/format'
 import {
   DELIVERY_METHOD_OPTIONS,
@@ -167,6 +168,9 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
   // Owner of every record created here. Guaranteed non-null under ProtectedRoute.
   const { user } = useAuth()
   const ownerId = user?.uid
+  // A new order's delivery/payment method starts from the user's saved defaults
+  // (set in Settings); an edited order keeps its own stored values.
+  const { defaultDeliveryMethod, defaultPaymentMethod } = useSettings()
 
   // Customer selection. New orders default to "new"; an edited order already has
   // a customer, so it starts in "existing" mode with that customer selected.
@@ -196,13 +200,13 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
   // a prefill) so no row steals focus on load.
   const [focusItemId, setFocusItemId] = useState<number | null>(null)
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>(
-    initialOrder?.deliveryMethod ?? 'post',
+    initialOrder?.deliveryMethod ?? defaultDeliveryMethod,
   )
   const [deliveryPrice, setDeliveryPrice] = useState(
     initialOrder ? formatMinorToInput(initialOrder.deliveryPriceMinor) : '',
   )
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
-    initialOrder?.paymentMethod ?? 'cash',
+    initialOrder?.paymentMethod ?? defaultPaymentMethod,
   )
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(
     initialOrder?.paymentStatus ?? 'pending',
