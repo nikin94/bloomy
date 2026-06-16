@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
 import { AuthContext } from '../../context/authContext'
+import { SettingsContext } from '../../context/settingsContext'
+import type { SettingsState } from '../../context/settingsContext'
 import type { Customer } from '../../types/customer'
 
 // Firebase-touching modules are mocked so the data layer never initializes the
@@ -49,12 +51,27 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
-function renderForm() {
+// Settings context with overridable order defaults, so a test can verify the
+// form prefills delivery/payment from the user's saved preferences.
+const settingsState = (over: Partial<SettingsState> = {}): SettingsState => ({
+  fontScale: 1,
+  theme: 'dark',
+  defaultDeliveryMethod: 'post',
+  defaultPaymentMethod: 'cash',
+  previewFontScale: vi.fn(),
+  previewTheme: vi.fn(),
+  saveSettings: vi.fn(),
+  ...over,
+})
+
+function renderForm(settings: SettingsState = settingsState()) {
   return render(
     <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-      <MemoryRouter>
-        <NewOrderPage />
-      </MemoryRouter>
+      <SettingsContext.Provider value={settings}>
+        <MemoryRouter>
+          <NewOrderPage />
+        </MemoryRouter>
+      </SettingsContext.Provider>
     </AuthContext.Provider>,
   )
 }
@@ -319,5 +336,14 @@ describe('NewOrderPage', () => {
     expect(screen.getAllByPlaceholderText('Название')).toHaveLength(1)
     // The surviving first row kept its value — removal didn't reindex state.
     expect(screen.getByPlaceholderText('Название')).toHaveValue('Роза')
+  })
+
+  it('prefills the delivery/payment method from the saved order defaults', async () => {
+    renderForm(settingsState({ defaultDeliveryMethod: 'cdek', defaultPaymentMethod: 'card' }))
+    await screen.findByLabelText('Имя клиента')
+
+    // A fresh order opens with the user's saved default methods, not post/cash.
+    expect(screen.getByRole('combobox', { name: 'Способ доставки' })).toHaveValue('cdek')
+    expect(screen.getByRole('combobox', { name: 'Тип оплаты' })).toHaveValue('card')
   })
 })

@@ -2,9 +2,17 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useAuth } from './authContext'
 import { fetchSettings, saveSettings as persistSettings } from '../firebase/settings'
-import { clampFontScale, DEFAULT_FONT_SCALE, DEFAULT_THEME } from '../types/settings'
+import {
+  clampFontScale,
+  DEFAULT_DELIVERY_METHOD,
+  DEFAULT_FONT_SCALE,
+  DEFAULT_PAYMENT_METHOD,
+  DEFAULT_THEME,
+} from '../types/settings'
 import type { ThemeMode } from '../types/settings'
+import type { DeliveryMethod, PaymentMethod } from '../types/order'
 import { SettingsContext } from './settingsContext'
+import type { SettingsDraft } from './settingsContext'
 
 // localStorage key for the theme. The Firestore setting is the source of truth
 // (cross-device); this cache lets the inline script in index.html paint the
@@ -46,10 +54,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     ownerId: string
     scale: number
     theme: ThemeMode
+    defaultDeliveryMethod: DeliveryMethod
+    defaultPaymentMethod: PaymentMethod
   } | null>(null)
   const applies = loaded && loaded.ownerId === ownerId
   const fontScale = applies ? loaded.scale : DEFAULT_FONT_SCALE
   const theme = applies ? loaded.theme : DEFAULT_THEME
+  const defaultDeliveryMethod = applies ? loaded.defaultDeliveryMethod : DEFAULT_DELIVERY_METHOD
+  const defaultPaymentMethod = applies ? loaded.defaultPaymentMethod : DEFAULT_PAYMENT_METHOD
 
   // Fetch the signed-in user's saved settings. Tagging the result with ownerId
   // keeps a late response from a previous user from applying to the current one.
@@ -63,6 +75,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           ownerId,
           scale: clampFontScale(settings.fontScale ?? DEFAULT_FONT_SCALE),
           theme: settings.theme ?? DEFAULT_THEME,
+          defaultDeliveryMethod: settings.defaultDeliveryMethod ?? DEFAULT_DELIVERY_METHOD,
+          defaultPaymentMethod: settings.defaultPaymentMethod ?? DEFAULT_PAYMENT_METHOD,
         })
       })
       .catch(() => {
@@ -90,16 +104,35 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   // Persist to Firebase, then commit as the applied values. Throwing surfaces
   // the error to the dialog; the live preview already reflects the attempt.
-  const saveSettings = async (next: { fontScale: number; theme: ThemeMode }) => {
+  const saveSettings = async (next: SettingsDraft) => {
     if (!ownerId) return
     const scale = clampFontScale(next.fontScale)
-    await persistSettings(ownerId, { fontScale: scale, theme: next.theme })
-    setLoaded({ ownerId, scale, theme: next.theme })
+    await persistSettings(ownerId, {
+      fontScale: scale,
+      theme: next.theme,
+      defaultDeliveryMethod: next.defaultDeliveryMethod,
+      defaultPaymentMethod: next.defaultPaymentMethod,
+    })
+    setLoaded({
+      ownerId,
+      scale,
+      theme: next.theme,
+      defaultDeliveryMethod: next.defaultDeliveryMethod,
+      defaultPaymentMethod: next.defaultPaymentMethod,
+    })
   }
 
   return (
     <SettingsContext.Provider
-      value={{ fontScale, theme, previewFontScale, previewTheme, saveSettings }}
+      value={{
+        fontScale,
+        theme,
+        defaultDeliveryMethod,
+        defaultPaymentMethod,
+        previewFontScale,
+        previewTheme,
+        saveSettings,
+      }}
     >
       {children}
     </SettingsContext.Provider>

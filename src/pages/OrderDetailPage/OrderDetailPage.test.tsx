@@ -146,7 +146,7 @@ describe('OrderDetailPage', () => {
     await screen.findByRole('heading', { name: 'Заказ №5' })
     expect(screen.getByText('Завершён')).toBeInTheDocument()
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус отправки' }), 'packing')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус отправки' }), 'new')
 
     await waitFor(() => expect(updateOrder).toHaveBeenCalledTimes(1))
     // Reopened — the wholesale write drops the completion stamp entirely.
