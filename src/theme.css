@@ -41,6 +41,8 @@
   --text: #9ca3af;
   --text-h: #f3f4f6;
   --border: #2e303a;
+  /* Input placeholder — dimmer than --text, still legible (3.7:1 on --bg). */
+  --placeholder: #6b7280;
 
   /* Feedback. `danger` is the destructive/error colour (error text + the danger
      button). A lighter red so danger text clears WCAG AA 4.5:1 against the dark
@@ -74,18 +76,22 @@
   --primary: #166534;
   --primary-bg: rgba(22, 101, 52, 0.1);
 
-  /* A soft cool off-white, not pure white — easier on the eyes. Kept light
-     enough that the muted body text (`--text`) still clears AA 4.5:1 on it
-     (#6b6375 on #eceef1 = 4.7:1); a darker bg like #ccc would drop that below
-     AA, so this is about as dark as the bg can go without also darkening text.
-     The border is darkened to stay visible against the now-greyer bg. */
-  --bg: #eceef1;
-  --text: #6b6375;
+  /* A muted grey surface (~#ccc), not pure white — far easier on the eyes. The
+     darker bg forces every foreground token darker to keep WCAG AA: the muted
+     body text drops below 4.5:1 on a grey this dark unless it's deepened too, and
+     the same goes for danger text. Measured on this bg: text 5.5:1, danger 4.9:1,
+     heading 12.8:1. The border and placeholder are likewise darkened so dividers
+     and hints stay visible against the greyer surface. */
+  --bg: #cdced3;
+  --text: #4f4860;
   --text-h: #08060d;
-  --border: #d7d8de;
+  --border: #aaacb4;
+  /* Placeholder — between --text and --border, legible on the input bg (3.9:1). */
+  --placeholder: #655f76;
 
-  --danger: #dc2626;
-  --danger-bg: rgba(220, 38, 38, 0.1);
+  /* Deepened so danger text clears AA on the greyer bg (#a51616 = 4.9:1). */
+  --danger: #a51616;
+  --danger-bg: rgba(165, 22, 22, 0.1);
 }
 
 /* Expose the tokens to Tailwind as semantic colour utilities
@@ -99,6 +105,7 @@
   --color-text: var(--text);
   --color-heading: var(--text-h);
   --color-border: var(--border);
+  --color-placeholder: var(--placeholder);
   --color-danger: var(--danger);
   --color-danger-bg: var(--danger-bg);
 

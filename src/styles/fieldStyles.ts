@@ -11,7 +11,7 @@
 // (Select needs pr-9 for its chevron; inputs take a per-usage width), and the
 // consumer's className is merged last so its width wins cleanly.
 export const FIELD_BASE =
-  'rounded-md border bg-bg text-heading focus-visible:outline-2 focus-visible:outline-offset-[-1px]'
+  'rounded-md border bg-bg text-heading placeholder:text-placeholder focus-visible:outline-2 focus-visible:outline-offset-[-1px]'
 
 export const FIELD_NORMAL = 'border-border focus-visible:outline-primary'
 
