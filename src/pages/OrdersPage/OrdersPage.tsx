@@ -7,20 +7,27 @@ import Input from '../../components/Input/Input'
 import Select from '../../components/Select/Select'
 import Button from '../../components/Button/Button'
 import Modal from '../../components/Modal/Modal'
+import Slider from '../../components/Slider/Slider'
 import { fetchOrders } from '../../firebase/orders'
 import { fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
+import { formatMoney } from '../../utils/format'
 import {
   buildOrderColumns,
   filterOrders,
+  getTotalMinor,
   isOrderFilterActive,
-  isStatusFilterActive,
+  isModalFilterActive,
   EMPTY_ORDER_FILTER,
   PAYMENT_STATUS_OPTIONS,
   SHIPMENT_STATUS_OPTIONS,
 } from '../../types/order'
 import type { Order, OrderFilter, PaymentStatus, ShipmentStatus } from '../../types/order'
 import type { Customer } from '../../types/customer'
+
+// Slider step for the price filter: 1 ₽ (100 kopecks). Fine enough to land on a
+// specific amount, coarse enough that dragging feels smooth.
+const PRICE_STEP_MINOR = 100
 
 // Funnel icon for the filter button. A small dot is overlaid by the caller when
 // a status filter is active, so the closed dialog still signals it's filtering.
@@ -102,7 +109,21 @@ const OrdersPage = () => {
   // small, and it keeps search instant with no extra reads.
   const visibleOrders = filterOrders(orders, filter, getCustomerName)
   const filterActive = isOrderFilterActive(filter)
-  const statusFilterActive = isStatusFilterActive(filter)
+  const modalFilterActive = isModalFilterActive(filter)
+
+  // Price slider bounds: 0 to the highest order total in the list. The max thumb
+  // sits at the ceiling when there is no upper bound (maxPriceMinor === null).
+  const priceCeilingMinor = orders.reduce((max, o) => Math.max(max, getTotalMinor(o)), 0)
+  const maxThumb = filter.maxPriceMinor ?? priceCeilingMinor
+  // Clamp the thumbs against each other so the range can't invert. The max thumb
+  // returns to "no upper bound" (null) once it reaches the ceiling.
+  const setMinPrice = (value: number) =>
+    setFilter((f) => ({ ...f, minPriceMinor: Math.min(value, f.maxPriceMinor ?? priceCeilingMinor) }))
+  const setMaxPrice = (value: number) =>
+    setFilter((f) => ({
+      ...f,
+      maxPriceMinor: value >= priceCeilingMinor ? null : Math.max(value, f.minPriceMinor),
+    }))
 
   return (
     <div className="flex h-full flex-col">
@@ -133,9 +154,9 @@ const OrdersPage = () => {
               className="relative shrink-0"
             >
               <FilterIcon />
-              {/* Active dot: the status filters are hidden in the dialog, so the
-                  closed button still signals that filtering is on. */}
-              {statusFilterActive && (
+              {/* Active dot: the dialog filters are hidden, so the closed button
+                  still signals that filtering is on. */}
+              {modalFilterActive && (
                 <span
                   aria-hidden="true"
                   className="absolute right-1 top-1 size-2 rounded-full border border-bg bg-primary"
@@ -193,13 +214,51 @@ const OrdersPage = () => {
               </Select>
             </label>
 
+            {/* Price range: two sliders (from / to) over the same 0…ceiling
+                scale, reusing the shared Slider. Hidden when every order costs
+                the same (or there are none) — there is no range to pick. */}
+            {priceCeilingMinor > 0 && (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-sm font-medium text-heading">Сумма заказа</span>
+                  <span className="text-sm text-text">
+                    {formatMoney(filter.minPriceMinor)} – {formatMoney(maxThumb)}
+                  </span>
+                </div>
+                <Slider
+                  min={0}
+                  max={priceCeilingMinor}
+                  step={PRICE_STEP_MINOR}
+                  value={filter.minPriceMinor}
+                  onChange={setMinPrice}
+                  ariaLabel="Минимальная сумма"
+                  ariaValueText={formatMoney(filter.minPriceMinor)}
+                />
+                <Slider
+                  min={0}
+                  max={priceCeilingMinor}
+                  step={PRICE_STEP_MINOR}
+                  value={maxThumb}
+                  onChange={setMaxPrice}
+                  ariaLabel="Максимальная сумма"
+                  ariaValueText={formatMoney(maxThumb)}
+                />
+              </div>
+            )}
+
             <div className="flex justify-end gap-2">
               <Button
                 variant="secondary"
                 onClick={() =>
-                  setFilter((f) => ({ ...f, paymentStatus: '', shipmentStatus: '' }))
+                  setFilter((f) => ({
+                    ...f,
+                    paymentStatus: '',
+                    shipmentStatus: '',
+                    minPriceMinor: 0,
+                    maxPriceMinor: null,
+                  }))
                 }
-                disabled={!statusFilterActive}
+                disabled={!modalFilterActive}
               >
                 Сбросить
               </Button>

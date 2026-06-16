@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
@@ -122,6 +122,35 @@ describe('OrdersPage filtering', () => {
     // Both orders are back once the status filter is cleared.
     expect(table().getByText('Анна')).toBeInTheDocument()
     expect(table().getByText('Борис')).toBeInTheDocument()
+  })
+
+  it('filters by the price range using the dialog sliders', async () => {
+    const user = userEvent.setup()
+    fetchOrders.mockResolvedValue([
+      // 1000 ₽ order…
+      order({
+        id: 'o1',
+        customerId: 'c-anna',
+        plants: [{ name: 'Роза', quantity: 1, unitPriceMinor: 100000 }],
+      }),
+      // …and a 5000 ₽ order (the price ceiling).
+      order({
+        id: 'o2',
+        customerId: 'c-boris',
+        plants: [{ name: 'Пион', quantity: 1, unitPriceMinor: 500000 }],
+      }),
+    ])
+    renderPage()
+    await screen.findByTestId('orders-table')
+
+    await user.click(screen.getByRole('button', { name: 'Фильтры' }))
+    // Cap the upper bound at 2000 ₽ — only the cheaper order qualifies.
+    fireEvent.change(screen.getByRole('slider', { name: 'Максимальная сумма' }), {
+      target: { value: '200000' },
+    })
+
+    expect(table().getByText('Анна')).toBeInTheDocument()
+    expect(table().queryByText('Борис')).not.toBeInTheDocument()
   })
 
   it('shows a "nothing found" message when the filter matches no orders', async () => {

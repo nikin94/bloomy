@@ -208,35 +208,45 @@ export function buildOrderColumns(
 }
 
 // Active filters for the orders list. An empty string in a status field means
-// "any"; an empty query matches everything.
+// "any"; an empty query matches everything. The price range is in minor units
+// (kopecks): `minPriceMinor` defaults to 0 and `maxPriceMinor` is null when
+// there is no upper bound (the order total is matched against this range).
 export interface OrderFilter {
   query: string
   paymentStatus: PaymentStatus | ''
   shipmentStatus: ShipmentStatus | ''
+  minPriceMinor: number
+  maxPriceMinor: number | null
 }
 
 export const EMPTY_ORDER_FILTER: OrderFilter = {
   query: '',
   paymentStatus: '',
   shipmentStatus: '',
+  minPriceMinor: 0,
+  maxPriceMinor: null,
 }
 
 // True when no filter is active — used to tell "no orders yet" apart from
 // "nothing matched the filter".
 export const isOrderFilterActive = (filter: OrderFilter): boolean =>
-  filter.query.trim() !== '' || isStatusFilterActive(filter)
+  filter.query.trim() !== '' || isModalFilterActive(filter)
 
-// True when a status filter (payment or shipment) is set. The status filters
-// live behind the filter dialog, so this drives the filter-icon's active dot —
-// the inline search query is shown separately and isn't counted here.
-export const isStatusFilterActive = (filter: OrderFilter): boolean =>
-  filter.paymentStatus !== '' || filter.shipmentStatus !== ''
+// True when any filter that lives behind the filter dialog is set (payment
+// status, shipment status, or the price range). Drives the filter-icon's active
+// dot — the inline search query is shown separately and isn't counted here.
+export const isModalFilterActive = (filter: OrderFilter): boolean =>
+  filter.paymentStatus !== '' ||
+  filter.shipmentStatus !== '' ||
+  filter.minPriceMinor > 0 ||
+  filter.maxPriceMinor !== null
 
 // Filter the orders list in memory (the dataset is small and already loaded, so
 // no extra query). `query` matches the order number or the resolved customer
-// name, case- and whitespace-insensitive; each set status must match exactly.
-// The customer name is resolved via the same lookup the table uses, so a search
-// finds orders by who they belong to even though the order stores only an id.
+// name, case- and whitespace-insensitive; each set status must match exactly;
+// the order total must fall within the price range. The customer name is
+// resolved via the same lookup the table uses, so a search finds orders by who
+// they belong to even though the order stores only an id.
 export const filterOrders = (
   orders: Order[],
   filter: OrderFilter,
@@ -246,6 +256,9 @@ export const filterOrders = (
   return orders.filter((o) => {
     if (filter.paymentStatus !== '' && o.paymentStatus !== filter.paymentStatus) return false
     if (filter.shipmentStatus !== '' && o.shipmentStatus !== filter.shipmentStatus) return false
+    const total = getTotalMinor(o)
+    if (total < filter.minPriceMinor) return false
+    if (filter.maxPriceMinor !== null && total > filter.maxPriceMinor) return false
     if (q === '') return true
     return `${o.number} ${getCustomerName(o.customerId)}`.toLowerCase().includes(q)
   })

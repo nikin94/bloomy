@@ -104,7 +104,7 @@ values and the Firebase service account are provided as repository secrets.
 
 ```
 src/
-  components/   Reusable UI (AppHeader, Button, Input, Textarea, Select, DataTable, Modal, OrderForm, CustomerForm, SettingsModal, Spinner, ProtectedRoute)
+  components/   Reusable UI (AppHeader, Button, Input, Textarea, Select, Slider, DataTable, Modal, OrderForm, CustomerForm, SettingsModal, Spinner, ProtectedRoute)
   context/      Auth + settings contexts and providers
   firebase/     Firebase integration: setup and data access (client, auth, orders, customers, settings)
   utils/        Pure helpers, no Firebase (format — money/date formatting, rubles parsing)
