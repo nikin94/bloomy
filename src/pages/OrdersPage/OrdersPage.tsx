@@ -86,6 +86,11 @@ const CloseIcon = () => (
   </svg>
 )
 
+// Width/opacity transition duration for the search field, kept in sync with the
+// `duration-200` utilities below so the loupe is revealed exactly when the
+// collapse animation ends.
+const SEARCH_TRANSITION_MS = 200
+
 // Collapsed to just a loupe icon by default; clicking it expands an input that
 // slides out (width transition) and takes focus, replacing the loupe with a
 // persistent X that both clears the query and collapses the field (also via
@@ -99,25 +104,40 @@ const SearchControl = ({
   onChange: (next: string) => void
 }) => {
   const [expanded, setExpanded] = useState(value.trim() !== '')
+  // The loupe shows only once the field is FULLY collapsed (not mid-animation),
+  // so it appears calmly in its resting spot instead of riding the width
+  // animation as the right cluster reflows leftward.
+  const [loupeVisible, setLoupeVisible] = useState(value.trim() === '')
   const inputRef = useRef<HTMLInputElement>(null)
+  const collapseTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const expand = () => {
+    clearTimeout(collapseTimer.current)
+    setLoupeVisible(false)
     setExpanded(true)
     // Focus after the state flush so the (now interactive) input takes the caret.
     requestAnimationFrame(() => inputRef.current?.focus())
   }
 
-  // Clear the field and collapse back to the loupe. Used by the X button and Escape.
+  // Clear the field and collapse back to the loupe. Used by the X button and
+  // Escape. The loupe is revealed only after the collapse animation finishes
+  // (SEARCH_TRANSITION_MS), so it doesn't appear to fly into place.
   const close = () => {
     onChange('')
     setExpanded(false)
+    collapseTimer.current = setTimeout(() => setLoupeVisible(true), SEARCH_TRANSITION_MS)
   }
+
+  // Clear any pending reveal on unmount.
+  useEffect(() => () => clearTimeout(collapseTimer.current), [])
 
   return (
     <div className="flex items-center">
-      {/* Collapsed: just the loupe. It is replaced by the input (with the X
-          living INSIDE it) once open, so nothing else sits beside the field. */}
-      {!expanded && (
+      {/* Collapsed: just the loupe. Hidden the instant the field opens and not
+          shown again until the collapse animation has finished, so it never
+          appears mid-reflow. The input (with the X inside it) is the only thing
+          beside it while open. */}
+      {loupeVisible && (
         <Button
           variant="secondary"
           size="icon"
@@ -151,7 +171,11 @@ const SearchControl = ({
           // the a11y tree AND moves focus out, so closing via the X never leaves
           // focus trapped on a hidden input (the aria-hidden focus warning).
           inert={!expanded}
-          className={`${FIELD_BASE} ${FIELD_NORMAL} w-full transition-[padding,opacity] duration-200 ${
+          // `leading-5` pins the line-box to 1.25rem so the field's height
+          // matches the icon buttons (size-5 icon + p-2); without it the input's
+          // default 145% line-height makes it a couple of pixels taller and
+          // stretches the header when it opens.
+          className={`${FIELD_BASE} ${FIELD_NORMAL} w-full leading-5 transition-[padding,opacity] duration-200 ${
             expanded ? 'py-2 pl-3 pr-9 opacity-100' : 'border-0 p-0 opacity-0'
           }`}
         />

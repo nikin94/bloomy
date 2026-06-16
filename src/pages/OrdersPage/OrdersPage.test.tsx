@@ -109,9 +109,10 @@ describe('OrdersPage filtering', () => {
     expect(header().queryByRole('button', { name: 'Поиск' })).not.toBeInTheDocument()
     expect(table().queryByText('Анна')).not.toBeInTheDocument()
 
-    // X clears the query and collapses back to the loupe.
+    // X clears the query and collapses back to the loupe. The loupe is revealed
+    // only after the collapse animation finishes, so wait for it to reappear.
     await user.click(header().getByRole('button', { name: 'Очистить и закрыть поиск' }))
-    expect(header().getByRole('button', { name: 'Поиск' })).toBeInTheDocument()
+    expect(await header().findByRole('button', { name: 'Поиск' })).toBeInTheDocument()
     // The field collapses back to inert (hidden behind the loupe).
     expect(header().getByRole('textbox', { name: 'Поиск заказов' })).toHaveAttribute('inert')
     // The list is unfiltered again.
