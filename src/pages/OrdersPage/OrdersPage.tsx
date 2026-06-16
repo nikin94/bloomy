@@ -79,7 +79,7 @@ const CloseIcon = () => (
     strokeWidth={2}
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="size-6"
+    className="size-5"
   >
     <line x1="18" y1="6" x2="6" y2="18" />
     <line x1="6" y1="6" x2="18" y2="18" />
@@ -115,8 +115,8 @@ const SearchControl = ({
 
   return (
     <div className="flex items-center">
-      {/* Collapsed: just the loupe. It is replaced by the input + X once open, so
-          the loupe never sits alongside the expanded field. */}
+      {/* Collapsed: just the loupe. It is replaced by the input (with the X
+          living INSIDE it) once open, so nothing else sits beside the field. */}
       {!expanded && (
         <Button
           variant="secondary"
@@ -130,38 +130,48 @@ const SearchControl = ({
           <SearchIcon />
         </Button>
       )}
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') close()
-        }}
-        placeholder="Поиск"
-        aria-label="Поиск заказов"
-        aria-hidden={!expanded}
-        tabIndex={expanded ? 0 : -1}
-        className={`${FIELD_BASE} ${FIELD_NORMAL} transition-[width,padding,opacity] duration-200 ${
-          expanded ? 'w-40 px-3 py-2 opacity-100 sm:w-56' : 'w-0 border-0 p-0 opacity-0'
+      {/* The input wrapper carries the width transition; the X is absolutely
+          positioned at its right edge, inside the field. */}
+      <div
+        className={`relative transition-[width] duration-200 ${
+          expanded ? 'w-40 sm:w-56' : 'w-0'
         }`}
-      />
-      {/* Persistent while open: clears the query AND collapses the field. Extra
-          padding enlarges the tap target beyond the icon for easier hits.
-          onMouseDown keeps focus from leaving before the click registers. */}
-      {expanded && (
-        <Button
-          variant="secondary"
-          size="icon"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={close}
-          aria-label="Очистить и закрыть поиск"
-          title="Закрыть"
-          className="ml-1 shrink-0 p-3"
-        >
-          <CloseIcon />
-        </Button>
-      )}
+      >
+        <input
+          ref={inputRef}
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') close()
+          }}
+          placeholder="Поиск"
+          aria-label="Поиск заказов"
+          // `inert` (not aria-hidden) when collapsed: it removes the field from
+          // the a11y tree AND moves focus out, so closing via the X never leaves
+          // focus trapped on a hidden input (the aria-hidden focus warning).
+          inert={!expanded}
+          className={`${FIELD_BASE} ${FIELD_NORMAL} w-full transition-[padding,opacity] duration-200 ${
+            expanded ? 'py-2 pl-3 pr-9 opacity-100' : 'border-0 p-0 opacity-0'
+          }`}
+        />
+        {/* Inside the field at its right end: clears the query AND collapses.
+            The px/py padding enlarges the tap target beyond the icon (hitslop)
+            without the icon overflowing the input. onMouseDown keeps focus from
+            leaving before the click registers. */}
+        {expanded && (
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={close}
+            aria-label="Очистить и закрыть поиск"
+            title="Закрыть"
+            className="absolute inset-y-0 right-0 flex items-center px-1.5 text-text transition-colors hover:text-heading focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
+          >
+            <CloseIcon />
+          </button>
+        )}
+      </div>
     </div>
   )
 }

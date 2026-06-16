@@ -89,8 +89,9 @@ describe('OrdersPage filtering', () => {
     expect(table().getByText('Анна')).toBeInTheDocument()
     expect(table().getByText('Борис')).toBeInTheDocument()
 
-    // The search box is hidden behind the loupe icon until it's opened.
-    expect(header().queryByRole('textbox', { name: 'Поиск заказов' })).not.toBeInTheDocument()
+    // The search box is collapsed (inert, behind the loupe) until it's opened.
+    expect(header().getByRole('button', { name: 'Поиск' })).toBeInTheDocument()
+    expect(header().getByRole('textbox', { name: 'Поиск заказов' })).toHaveAttribute('inert')
     await user.type(await openSearch(user), 'Борис')
 
     expect(table().queryByText('Анна')).not.toBeInTheDocument()
@@ -111,7 +112,8 @@ describe('OrdersPage filtering', () => {
     // X clears the query and collapses back to the loupe.
     await user.click(header().getByRole('button', { name: 'Очистить и закрыть поиск' }))
     expect(header().getByRole('button', { name: 'Поиск' })).toBeInTheDocument()
-    expect(header().queryByRole('textbox', { name: 'Поиск заказов' })).not.toBeInTheDocument()
+    // The field collapses back to inert (hidden behind the loupe).
+    expect(header().getByRole('textbox', { name: 'Поиск заказов' })).toHaveAttribute('inert')
     // The list is unfiltered again.
     expect(table().getByText('Анна')).toBeInTheDocument()
     expect(table().getByText('Борис')).toBeInTheDocument()
