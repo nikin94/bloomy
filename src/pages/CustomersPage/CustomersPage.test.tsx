@@ -88,8 +88,9 @@ describe('CustomersPage', () => {
     renderPage()
 
     await user.click(await screen.findByRole('button', { name: 'Удалить клиента Анна' }))
-    // Confirm step appears in place; confirming calls the data layer.
-    await user.click(screen.getByRole('button', { name: 'Удалить' }))
+    // A confirmation dialog opens; confirming there calls the data layer.
+    const dialog = within(screen.getByRole('dialog', { name: 'Удалить клиента Анна?' }))
+    await user.click(dialog.getByRole('button', { name: 'Удалить' }))
 
     await waitFor(() => expect(softDeleteCustomer).toHaveBeenCalledWith('c1'))
     await waitFor(() => expect(screen.queryByText('Анна')).not.toBeInTheDocument())
@@ -176,10 +177,10 @@ describe('CustomersPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Удалить клиента Анна' }))
     await user.click(screen.getByRole('button', { name: 'Удалить' }))
 
-    // The error is announced, but the row (and the rest of the list) stays.
+    // The error is announced in the still-open dialog, and the row (and the rest
+    // of the list) stays so the user can retry or cancel.
     expect(await screen.findByRole('alert')).toHaveTextContent('Сеть недоступна')
     expect(screen.getByText('Анна')).toBeInTheDocument()
-    // The row reset its confirm state, so the trash button is back.
-    expect(screen.getByRole('button', { name: 'Удалить клиента Анна' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Удалить клиента Анна?' })).toBeInTheDocument()
   })
 })
