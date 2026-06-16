@@ -134,10 +134,11 @@ const Group = ({ children }: { children: ReactNode }) => (
   </div>
 )
 
-// One settings row: label on the left, control on the right.
+// One settings row: label on the left, control on the right. The label stays on
+// one line (shrink-0 + nowrap) so a wide control can't squeeze it into a wrap.
 const Row = ({ label, children }: { label: string; children: ReactNode }) => (
   <div className="flex items-center justify-between gap-3 px-4 py-3">
-    <span className="text-sm font-medium text-heading">{label}</span>
+    <span className="shrink-0 whitespace-nowrap text-sm font-medium text-heading">{label}</span>
     {children}
   </div>
 )
@@ -231,12 +232,14 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
             <ThemeToggle value={themeDraft} onChange={handleTheme} />
           </Row>
 
-          {/* Font size: an iOS-style size slider flanked by small/large "А".
-              The label sits above so the slider has the full row width; the
+          {/* Font size: label on the left, the iOS-style slider (flanked by
+              small/large "А") taking the rest of the row after a fixed gap. The
               whole app scales live, so the dialog previews the chosen size. */}
-          <div className="flex flex-col gap-2 px-4 py-3">
-            <span className="text-sm font-medium text-heading">Размер шрифта</span>
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4 px-4 py-3">
+            <span className="shrink-0 whitespace-nowrap text-sm font-medium text-heading">
+              Размер шрифта
+            </span>
+            <div className="flex flex-1 items-center gap-3">
               <span aria-hidden="true" className="shrink-0 text-sm text-text">
                 А
               </span>
@@ -285,7 +288,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
               aria-label="Способ доставки по умолчанию"
               value={deliveryDraft}
               onChange={(e) => setDeliveryDraft(e.target.value as DeliveryMethod)}
-              className="w-40"
+              className="w-32 min-w-0"
             >
               {DELIVERY_METHOD_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -299,7 +302,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
               aria-label="Способ оплаты по умолчанию"
               value={paymentDraft}
               onChange={(e) => setPaymentDraft(e.target.value as PaymentMethod)}
-              className="w-40"
+              className="w-32 min-w-0"
             >
               {PAYMENT_METHOD_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
