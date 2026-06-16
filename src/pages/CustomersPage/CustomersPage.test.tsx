@@ -63,6 +63,19 @@ describe('CustomersPage', () => {
     expect(fetchCustomers).toHaveBeenCalledWith('owner-1')
   })
 
+  it('shows the full customer details (phone, address, note) in the list', async () => {
+    fetchCustomers.mockResolvedValue([
+      customer({ name: 'Анна', phone: '+700', address: 'ул. Пушкина, 1', note: 'Любит пионы' }),
+    ])
+    renderPage()
+
+    const item = await screen.findByRole('listitem')
+    expect(within(item).getByText('Анна')).toBeInTheDocument()
+    expect(within(item).getByText('+700')).toBeInTheDocument()
+    expect(within(item).getByText('ул. Пушкина, 1')).toBeInTheDocument()
+    expect(within(item).getByText('Любит пионы')).toBeInTheDocument()
+  })
+
   it('shows an empty state when there are no customers', async () => {
     fetchCustomers.mockResolvedValue([])
     renderPage()
