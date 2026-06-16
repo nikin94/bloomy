@@ -280,30 +280,26 @@ const OrdersPage = () => {
     }))
 
   // Search + filter controls live in the header (next to settings). Search is an
-  // expanding loupe; the filter icon opens the dialog and carries an active dot.
+  // expanding loupe; the filter icon opens the dialog and fills in when active.
   const headerActions = (
     <>
       <SearchControl
         value={filter.query}
         onChange={(query) => setFilter((f) => ({ ...f, query }))}
       />
+      {/* When a dialog filter is active the whole button fills in (primary), the
+          same language as an active nav button — far more legible than a small
+          badge that filtering is on while the filters themselves are hidden. */}
       <Button
-        variant="secondary"
+        variant={modalFilterActive ? 'primary' : 'secondary'}
         size="icon"
         onClick={() => setFiltersOpen(true)}
         aria-label="Фильтры"
         title="Фильтры"
-        className="relative shrink-0"
+        aria-pressed={modalFilterActive}
+        className="shrink-0"
       >
         <FilterIcon />
-        {/* Active dot: the dialog filters are hidden, so the closed button still
-            signals that filtering is on. */}
-        {modalFilterActive && (
-          <span
-            aria-hidden="true"
-            className="absolute right-1 top-1 size-2 rounded-full border border-bg bg-primary"
-          />
-        )}
       </Button>
     </>
   )
