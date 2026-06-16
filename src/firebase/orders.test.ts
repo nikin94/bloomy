@@ -4,8 +4,8 @@
 // dependency-free. The real transaction semantics (atomicity under concurrency)
 // are exercised separately against the Firestore emulator (orders.emulator.test.ts).
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getDoc, getDocs, runTransaction, setDoc, where } from 'firebase/firestore'
-import { createOrder, fetchOrder, fetchOrders, updateOrder } from './orders'
+import { doc, getDoc, getDocs, runTransaction, setDoc, updateDoc, where } from 'firebase/firestore'
+import { createOrder, fetchOrder, fetchOrders, softDeleteOrder, updateOrder } from './orders'
 import type { NewOrder } from './orders'
 import type { Order } from '../types/order'
 
@@ -18,6 +18,7 @@ vi.mock('firebase/firestore', () => ({
   query: vi.fn(() => ({})),
   runTransaction: vi.fn(),
   setDoc: vi.fn(),
+  updateDoc: vi.fn(),
   where: vi.fn(() => ({})),
 }))
 
@@ -140,6 +141,17 @@ describe('fetchOrder', () => {
 
     expect(await fetchOrder('missing', 'owner-1')).toBeNull()
   })
+
+  it('returns null for a soft-deleted order (treated as gone)', async () => {
+    vi.mocked(getDoc).mockResolvedValue({
+      exists: () => true,
+      id: 'o1',
+      data: () => storedOrder({ ownerId: 'owner-1', isDeleted: true }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+
+    expect(await fetchOrder('o1', 'owner-1')).toBeNull()
+  })
 })
 
 describe('fetchOrders', () => {
@@ -157,5 +169,32 @@ describe('fetchOrders', () => {
 
     expect(where).toHaveBeenCalledWith('ownerId', '==', 'owner-1')
     expect(orders.map((o) => o.id)).toEqual(['new', 'mid', 'old'])
+  })
+
+  it('drops soft-deleted orders from the list', async () => {
+    vi.mocked(getDocs).mockResolvedValue({
+      docs: [
+        { id: 'live', data: () => storedOrder({ dateCreated: 2000 }) },
+        { id: 'gone', data: () => storedOrder({ dateCreated: 3000, isDeleted: true }) },
+      ],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+
+    const orders = await fetchOrders('owner-1')
+
+    expect(orders.map((o) => o.id)).toEqual(['live'])
+  })
+})
+
+describe('softDeleteOrder', () => {
+  it('flags the order as deleted without removing the document', async () => {
+    vi.mocked(doc).mockReturnValue({ ref: 'order-ref' } as never)
+
+    await softDeleteOrder('o1')
+
+    expect(doc).toHaveBeenCalledWith(expect.anything(), 'orders', 'o1')
+    // A partial update (not setDoc) — every other field stays intact.
+    expect(updateDoc).toHaveBeenCalledWith({ ref: 'order-ref' }, { isDeleted: true })
+    expect(setDoc).not.toHaveBeenCalled()
   })
 })
