@@ -77,20 +77,20 @@ const ThemeToggle = ({ value, onChange }: { value: ThemeMode; onChange: (next: T
       aria-checked={isDark}
       aria-label="Тёмная тема"
       onClick={() => onChange(isDark ? 'light' : 'dark')}
-      className="relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border border-border bg-primary-bg p-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      className="relative inline-flex h-9 w-[4.5rem] shrink-0 items-center rounded-full border border-border bg-primary-bg p-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
     >
       {/* Track icons at each end (the not-selected option stays visible). */}
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 flex items-center justify-between px-1.5 text-text"
+        className="pointer-events-none absolute inset-0 flex items-center justify-between px-2 text-text"
       >
         <SunIcon />
         <MoonIcon />
       </span>
       {/* Sliding knob carrying the active theme's icon. */}
       <span
-        className={`relative z-10 flex size-6 items-center justify-center rounded-full bg-bg text-primary shadow transition-transform ${
-          isDark ? 'translate-x-6' : 'translate-x-0'
+        className={`relative z-10 flex size-7 items-center justify-center rounded-full bg-bg text-primary shadow transition-transform ${
+          isDark ? 'translate-x-[2.25rem]' : 'translate-x-0'
         }`}
       >
         {isDark ? <MoonIcon /> : <SunIcon />}
@@ -176,9 +176,11 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <Modal title="Настройки" onClose={handleClose}>
-      {/* Colour theme: a sun/moon switch. The whole app re-themes live. */}
-      <section className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-heading">Тёмная тема</span>
+      {/* Colour theme: a sun/moon switch. The icons make it self-explanatory,
+          so it carries no text label; aligned to the end so it reads as a quick
+          toggle at the top of the dialog (its accessible name lives on the
+          control for screen readers). The whole app re-themes live. */}
+      <section className="flex justify-end">
         <ThemeToggle value={themeDraft} onChange={handleTheme} />
       </section>
 
