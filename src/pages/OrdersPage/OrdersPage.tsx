@@ -4,6 +4,7 @@ import AppHeader from '../../components/AppHeader/AppHeader'
 import DataTable from '../../components/DataTable/DataTable'
 import Spinner from '../../components/Spinner/Spinner'
 import Select from '../../components/Select/Select'
+import Input from '../../components/Input/Input'
 import Button from '../../components/Button/Button'
 import Modal from '../../components/Modal/Modal'
 import RangeSliderImport from 'react-range-slider-input'
@@ -382,6 +383,36 @@ const OrdersPage = () => {
               </div>
             )}
 
+            {/* Delivery-date range. Each bound is optional, so the user can
+                filter "from", "until", or a closed window. */}
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-heading">Дата доставки</span>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-text">С</span>
+                  <Input
+                    type="date"
+                    aria-label="Дата доставки с"
+                    max={filter.deliveryTo || undefined}
+                    value={filter.deliveryFrom}
+                    onChange={(e) =>
+                      setFilter((f) => ({ ...f, deliveryFrom: e.target.value }))
+                    }
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-text">По</span>
+                  <Input
+                    type="date"
+                    aria-label="Дата доставки по"
+                    min={filter.deliveryFrom || undefined}
+                    value={filter.deliveryTo}
+                    onChange={(e) => setFilter((f) => ({ ...f, deliveryTo: e.target.value }))}
+                  />
+                </label>
+              </div>
+            </div>
+
             <div className="flex justify-end gap-2">
               <Button
                 variant="secondary"
@@ -392,6 +423,8 @@ const OrdersPage = () => {
                     shipmentStatus: '',
                     minPriceMinor: 0,
                     maxPriceMinor: null,
+                    deliveryFrom: '',
+                    deliveryTo: '',
                   }))
                 }
                 disabled={!modalFilterActive}

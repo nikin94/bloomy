@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { formatDate, formatMoney } from '../utils/format'
+import { formatDate, formatIsoDate, formatMoney } from '../utils/format'
 
 // Status/method unions are defined as Zod enums so the runtime validator (used
 // when reading Firestore documents) and the TypeScript types share a single
@@ -60,6 +60,13 @@ export const STORED_ORDER_SCHEMA = z.object({
   currency: z.literal('RUB'),
   paymentStatus: PAYMENT_STATUS_SCHEMA,
   shipmentStatus: SHIPMENT_STATUS_SCHEMA,
+  // The date the order is to be delivered to the customer — which is also its
+  // completion date (delivered ⇒ done). A date-only ISO string ("YYYY-MM-DD",
+  // not a ms timestamp like dateCreated) so it carries no time and never shifts
+  // across timezones, sorts lexicographically = chronologically, and maps
+  // straight onto a native <input type="date">. Optional so orders written
+  // before this field stay valid (no migration).
+  deliveryDate: z.string().optional(),
   comment: z.string().optional(),
   // Soft-delete flag. A "deleted" order is hidden from the list and the detail
   // page, but the document is kept so the per-owner numbering stays intact (a
@@ -190,6 +197,11 @@ export function buildOrderColumns(
   return [
     { id: 'number', header: '№', format: (o) => String(o.number) },
     { id: 'dateCreated', header: 'Дата', format: (o) => formatDate(o.dateCreated) },
+    {
+      id: 'deliveryDate',
+      header: 'Доставить к',
+      format: (o) => (o.deliveryDate ? formatIsoDate(o.deliveryDate) : '—'),
+    },
     { id: 'customer', header: 'Клиент', format: (o) => getCustomerName(o.customerId) },
     { id: 'address', header: 'Адрес', field: 'address' },
     // One plant per line, most valuable first. Rendered richly by DataTable
@@ -223,6 +235,11 @@ export interface OrderFilter {
   shipmentStatus: ShipmentStatus | ''
   minPriceMinor: number
   maxPriceMinor: number | null
+  // Inclusive delivery-date range as date-only ISO strings ("YYYY-MM-DD"); ""
+  // means that bound is open. An order with no delivery date never matches a set
+  // range (it has no date to compare).
+  deliveryFrom: string
+  deliveryTo: string
 }
 
 export const EMPTY_ORDER_FILTER: OrderFilter = {
@@ -231,6 +248,8 @@ export const EMPTY_ORDER_FILTER: OrderFilter = {
   shipmentStatus: '',
   minPriceMinor: 0,
   maxPriceMinor: null,
+  deliveryFrom: '',
+  deliveryTo: '',
 }
 
 // True when no filter is active — used to tell "no orders yet" apart from
@@ -245,7 +264,9 @@ export const isModalFilterActive = (filter: OrderFilter): boolean =>
   filter.paymentStatus !== '' ||
   filter.shipmentStatus !== '' ||
   filter.minPriceMinor > 0 ||
-  filter.maxPriceMinor !== null
+  filter.maxPriceMinor !== null ||
+  filter.deliveryFrom !== '' ||
+  filter.deliveryTo !== ''
 
 // Filter the orders list in memory (the dataset is small and already loaded, so
 // no extra query). `query` matches the order number, the resolved customer name,
@@ -265,6 +286,12 @@ export const filterOrders = (
     const total = getTotalMinor(o)
     if (total < filter.minPriceMinor) return false
     if (filter.maxPriceMinor !== null && total > filter.maxPriceMinor) return false
+    // Delivery-date range. ISO date-only strings compare lexicographically =
+    // chronologically. An order with no delivery date can't satisfy a set bound.
+    if (filter.deliveryFrom !== '' && (!o.deliveryDate || o.deliveryDate < filter.deliveryFrom))
+      return false
+    if (filter.deliveryTo !== '' && (!o.deliveryDate || o.deliveryDate > filter.deliveryTo))
+      return false
     if (q === '') return true
     const plantNames = o.plants.map((p) => p.name).join(' ')
     return `${o.number} ${getCustomerName(o.customerId)} ${plantNames}`.toLowerCase().includes(q)

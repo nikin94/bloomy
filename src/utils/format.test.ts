@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatMoney, formatDate, parseRublesToMinor, formatMinorToInput } from './format'
+import { formatMoney, formatDate, formatIsoDate, parseRublesToMinor, formatMinorToInput } from './format'
 
 describe('parseRublesToMinor', () => {
   it('parses an integer rouble amount into kopecks', () => {
@@ -71,5 +71,22 @@ describe('formatMinorToInput', () => {
 describe('formatDate', () => {
   it('formats a timestamp as a short ru-RU date (dd.mm.yy…)', () => {
     expect(formatDate(0)).toMatch(/^\d{1,2}\.\d{1,2}\.\d{2,4}$/)
+  })
+})
+
+describe('formatIsoDate', () => {
+  it('formats a date-only ISO string as a ru-RU short date', () => {
+    expect(formatIsoDate('2026-06-20')).toBe('20.06.2026')
+  })
+
+  it('reads the date in local time, never shifting a day (parsed from parts)', () => {
+    // A naive `new Date("2026-01-01")` is UTC midnight, which a negative offset
+    // would render as 31.12.2025. Parsing from parts keeps the calendar day.
+    expect(formatIsoDate('2026-01-01')).toBe('01.01.2026')
+  })
+
+  it('returns an empty string for a malformed value', () => {
+    expect(formatIsoDate('')).toBe('')
+    expect(formatIsoDate('not-a-date')).toBe('')
   })
 })

@@ -10,6 +10,17 @@ export const formatMoney = (minor: number) =>
 export const formatDate = (ms: number) =>
   new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short' }).format(new Date(ms))
 
+// Format a date-only ISO string ("YYYY-MM-DD", as stored for an order's
+// delivery/completion date) as a ru-RU short date. Parsed from its parts rather
+// than `new Date(iso)` — the latter reads the string as UTC midnight, which a
+// negative local offset shifts to the previous day. Returns "" for an empty or
+// malformed value so callers can fall back to a placeholder.
+export const formatIsoDate = (iso: string): string => {
+  const [y, m, d] = iso.split('-').map(Number)
+  if (!y || !m || !d) return ''
+  return new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short' }).format(new Date(y, m - 1, d))
+}
+
 // Parse a user-entered amount in the major unit (rubles, e.g. "149,90") into
 // integer minor units (kopecks). Accepts a comma or a dot as the decimal
 // separator. Returns 0 for empty or non-numeric input.

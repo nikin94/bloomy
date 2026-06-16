@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
@@ -152,6 +152,27 @@ describe('OrdersPage filtering', () => {
     await user.click(screen.getByRole('button', { name: 'Готово' }))
 
     // Only the shipped order (Борис) remains.
+    expect(table().getByText('Борис')).toBeInTheDocument()
+    expect(table().queryByText('Анна')).not.toBeInTheDocument()
+  })
+
+  it('filters by the delivery-date range, chosen in the filter dialog', async () => {
+    const user = userEvent.setup()
+    fetchOrders.mockResolvedValue([
+      order({ id: 'o1', customerId: 'c-anna', deliveryDate: '2026-06-10' }),
+      order({ id: 'o2', customerId: 'c-boris', deliveryDate: '2026-06-25' }),
+    ])
+    renderPage()
+    await screen.findByTestId('orders-table')
+
+    await user.click(header().getByRole('button', { name: 'Фильтры' }))
+    // Date inputs aren't reliably driven by userEvent.type; set the value directly.
+    fireEvent.change(screen.getByLabelText('Дата доставки с'), {
+      target: { value: '2026-06-20' },
+    })
+    await user.click(screen.getByRole('button', { name: 'Готово' }))
+
+    // Only the order delivered on/after 20 Jun (Борис) remains.
     expect(table().getByText('Борис')).toBeInTheDocument()
     expect(table().queryByText('Анна')).not.toBeInTheDocument()
   })

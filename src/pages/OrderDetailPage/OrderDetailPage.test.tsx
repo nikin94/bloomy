@@ -85,6 +85,22 @@ describe('OrderDetailPage', () => {
     expect(screen.getByRole('combobox', { name: 'Статус отправки' })).toHaveValue('new')
   })
 
+  it('shows the delivery date, or a dash when the order has none', async () => {
+    fetchOrder.mockResolvedValueOnce(order({ deliveryDate: '2026-06-20' }))
+    const { unmount } = renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    expect(screen.getByText('Дата доставки')).toBeInTheDocument()
+    expect(screen.getByText('20.06.2026')).toBeInTheDocument()
+    unmount()
+
+    // An order without a delivery date renders a dash for that field.
+    fetchOrder.mockResolvedValueOnce(order())
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    const row = screen.getByText('Дата доставки').closest('div')!
+    expect(within(row).getByText('—')).toBeInTheDocument()
+  })
+
   it('numbers each plant row and shows the quantity as a plain number', async () => {
     renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })

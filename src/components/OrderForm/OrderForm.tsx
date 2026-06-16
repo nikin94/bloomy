@@ -200,6 +200,9 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
   const [deliveryPrice, setDeliveryPrice] = useState(
     initialOrder ? formatMinorToInput(initialOrder.deliveryPriceMinor) : '',
   )
+  // The delivery (= completion) date, a date-only ISO string for the native
+  // date input. Empty when unset.
+  const [deliveryDate, setDeliveryDate] = useState(initialOrder?.deliveryDate ?? '')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
     initialOrder?.paymentMethod ?? 'cash',
   )
@@ -382,6 +385,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
         currency: 'RUB',
         paymentStatus,
         shipmentStatus,
+        ...(deliveryDate !== '' ? { deliveryDate } : {}),
         ...(comment.trim() !== '' ? { comment: comment.trim() } : {}),
       }
 
@@ -535,7 +539,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
             </Button>
           </fieldset>
 
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <label className="flex flex-col gap-1">
               <span className="text-sm text-text">Способ доставки</span>
               <Select
@@ -558,6 +562,17 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                 placeholder="0"
                 value={deliveryPrice}
                 onChange={(e) => setDeliveryPrice(e.target.value)}
+              />
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-text">Дата доставки</span>
+              <Input
+                className="w-full"
+                type="date"
+                aria-label="Дата доставки"
+                value={deliveryDate}
+                onChange={(e) => setDeliveryDate(e.target.value)}
               />
             </label>
           </div>

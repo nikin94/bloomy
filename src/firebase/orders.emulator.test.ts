@@ -24,6 +24,13 @@ const makeOrder = (ownerId: string): NewOrder => ({
 })
 
 describe('createOrder (emulator)', () => {
+  it('round-trips an optional delivery date through Firestore', async () => {
+    const owner = 'owner-delivery-date'
+    const id = await createOrder({ ...makeOrder(owner), deliveryDate: '2026-06-20' })
+    const stored = await fetchOrder(id, owner)
+    expect(stored?.deliveryDate).toBe('2026-06-20')
+  })
+
   it('assigns sequential per-owner numbers across successive creates', async () => {
     const owner = 'owner-sequential'
     const id1 = await createOrder(makeOrder(owner))

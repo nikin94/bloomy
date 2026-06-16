@@ -78,6 +78,12 @@ describe('buildOrderColumns', () => {
     expect(totalColumn?.format?.(order)).toContain('99,00')
   })
 
+  it('formats the delivery-date column, falling back to a dash when unset', () => {
+    const col = buildOrderColumns(() => 'Анна').find((c) => c.id === 'deliveryDate')
+    expect(col?.format?.(makeOrder({ deliveryDate: '2026-06-20' }))).toBe('20.06.2026')
+    expect(col?.format?.(makeOrder())).toBe('—')
+  })
+
   it('builds every column with exactly one of field or format (discriminated union)', () => {
     const columns = buildOrderColumns(() => 'Анна')
     for (const column of columns) {
@@ -145,6 +151,8 @@ describe('isModalFilterActive', () => {
     expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, shipmentStatus: 'shipped' })).toBe(true)
     expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, minPriceMinor: 5000 })).toBe(true)
     expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, maxPriceMinor: 5000 })).toBe(true)
+    expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, deliveryFrom: '2026-06-01' })).toBe(true)
+    expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, deliveryTo: '2026-06-30' })).toBe(true)
   })
 })
 
@@ -208,6 +216,35 @@ describe('filterOrders', () => {
       ),
     ).toEqual(['mid'])
   })
+
+  it('filters by the delivery-date range (inclusive), excluding orders with no date', () => {
+    const dated = [
+      makeOrder({ id: 'jun01', deliveryDate: '2026-06-01' }),
+      makeOrder({ id: 'jun15', deliveryDate: '2026-06-15' }),
+      makeOrder({ id: 'jun30', deliveryDate: '2026-06-30' }),
+      makeOrder({ id: 'undated' }), // no deliveryDate
+    ]
+    // From only — bound is inclusive.
+    expect(
+      filterOrders(dated, { ...EMPTY_ORDER_FILTER, deliveryFrom: '2026-06-15' }, getName).map((o) => o.id),
+    ).toEqual(['jun15', 'jun30'])
+    // To only — inclusive.
+    expect(
+      filterOrders(dated, { ...EMPTY_ORDER_FILTER, deliveryTo: '2026-06-15' }, getName).map((o) => o.id),
+    ).toEqual(['jun01', 'jun15'])
+    // Closed window.
+    expect(
+      filterOrders(
+        dated,
+        { ...EMPTY_ORDER_FILTER, deliveryFrom: '2026-06-10', deliveryTo: '2026-06-20' },
+        getName,
+      ).map((o) => o.id),
+    ).toEqual(['jun15'])
+    // An order with no delivery date never satisfies a set bound.
+    expect(
+      filterOrders(dated, { ...EMPTY_ORDER_FILTER, deliveryFrom: '2026-06-01' }, getName).map((o) => o.id),
+    ).not.toContain('undated')
+  })
 })
 
 describe('DELIVERY_METHOD_OPTIONS', () => {
@@ -241,7 +278,14 @@ describe('STORED_ORDER_SCHEMA', () => {
   })
 
   it('accepts a valid document', () => {
+    // validDoc() carries no deliveryDate, so this also proves the new optional
+    // field keeps pre-existing (production) orders valid — no migration needed.
     expect(STORED_ORDER_SCHEMA.safeParse(validDoc()).success).toBe(true)
+  })
+
+  it('accepts and preserves an optional deliveryDate', () => {
+    const parsed = STORED_ORDER_SCHEMA.parse({ ...validDoc(), deliveryDate: '2026-06-20' })
+    expect(parsed.deliveryDate).toBe('2026-06-20')
   })
 
   it('defaults deliveryMethod to "post" on legacy documents that lack it', () => {

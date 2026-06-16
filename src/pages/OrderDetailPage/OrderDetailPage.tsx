@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { fetchOrder, softDeleteOrder, updateOrder } from '../../firebase/orders'
 import { fetchCustomer } from '../../firebase/customers'
-import { formatDate, formatMoney } from '../../utils/format'
+import { formatDate, formatIsoDate, formatMoney } from '../../utils/format'
 import {
   getSubtotalMinor,
   getTotalMinor,
@@ -156,6 +156,10 @@ const OrderDetailPage = () => {
             <Field label="Клиент" value={customer?.name ?? '—'} />
             {customer?.phone && <Field label="Телефон" value={customer.phone} />}
             <Field label="Адрес доставки" value={order.address || '—'} />
+            <Field
+              label="Дата доставки"
+              value={order.deliveryDate ? formatIsoDate(order.deliveryDate) : '—'}
+            />
             <Field label="Способ доставки" value={DELIVERY_METHOD_LABELS[order.deliveryMethod]} />
             <Field label="Способ оплаты" value={PAYMENT_METHOD_LABELS[order.paymentMethod]} />
             <InlineStatusField

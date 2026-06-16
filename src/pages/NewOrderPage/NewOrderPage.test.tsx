@@ -195,6 +195,7 @@ describe('NewOrderPage', () => {
     await user.type(screen.getByPlaceholderText('Название'), 'Роза')
     await user.type(screen.getByPlaceholderText('Цена, ₽'), '149,90')
     await user.type(screen.getByPlaceholderText('0'), '300') // delivery cost
+    fireEvent.change(screen.getByLabelText('Дата доставки'), { target: { value: '2026-06-20' } })
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
 
     await waitFor(() => expect(createOrder).toHaveBeenCalledTimes(1))
@@ -207,6 +208,7 @@ describe('NewOrderPage', () => {
         currency: 'RUB',
         deliveryMethod: 'post',
         deliveryPriceMinor: 30000,
+        deliveryDate: '2026-06-20',
         plants: [{ name: 'Роза', quantity: 1, unitPriceMinor: 14990 }],
       }),
     )
