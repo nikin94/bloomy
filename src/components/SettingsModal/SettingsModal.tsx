@@ -286,8 +286,9 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
           <Row label="Способ доставки">
             {/* Fixed-width wrapper: Select's own ROOT is `w-full`, so a width on
                 the Select itself is ignored — the box around it sets the size.
-                Both pickers share `w-32` so they're identical and line up. */}
-            <div className="w-32 shrink-0">
+                Both pickers share `w-36` so they're identical and line up, wide
+                enough that the longest option ("Самовывоз") isn't clipped. */}
+            <div className="w-36 shrink-0">
               <Select
                 aria-label="Способ доставки по умолчанию"
                 value={deliveryDraft}
@@ -302,7 +303,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
             </div>
           </Row>
           <Row label="Способ оплаты">
-            <div className="w-32 shrink-0">
+            <div className="w-36 shrink-0">
               <Select
                 aria-label="Способ оплаты по умолчанию"
                 value={paymentDraft}
