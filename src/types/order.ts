@@ -206,3 +206,41 @@ export function buildOrderColumns(
     },
   ]
 }
+
+// Active filters for the orders list. An empty string in a status field means
+// "any"; an empty query matches everything.
+export interface OrderFilter {
+  query: string
+  paymentStatus: PaymentStatus | ''
+  shipmentStatus: ShipmentStatus | ''
+}
+
+export const EMPTY_ORDER_FILTER: OrderFilter = {
+  query: '',
+  paymentStatus: '',
+  shipmentStatus: '',
+}
+
+// True when no filter is active — used to tell "no orders yet" apart from
+// "nothing matched the filter".
+export const isOrderFilterActive = (filter: OrderFilter): boolean =>
+  filter.query.trim() !== '' || filter.paymentStatus !== '' || filter.shipmentStatus !== ''
+
+// Filter the orders list in memory (the dataset is small and already loaded, so
+// no extra query). `query` matches the order number or the resolved customer
+// name, case- and whitespace-insensitive; each set status must match exactly.
+// The customer name is resolved via the same lookup the table uses, so a search
+// finds orders by who they belong to even though the order stores only an id.
+export const filterOrders = (
+  orders: Order[],
+  filter: OrderFilter,
+  getCustomerName: (customerId: string) => string,
+): Order[] => {
+  const q = filter.query.trim().toLowerCase()
+  return orders.filter((o) => {
+    if (filter.paymentStatus !== '' && o.paymentStatus !== filter.paymentStatus) return false
+    if (filter.shipmentStatus !== '' && o.shipmentStatus !== filter.shipmentStatus) return false
+    if (q === '') return true
+    return `${o.number} ${getCustomerName(o.customerId)}`.toLowerCase().includes(q)
+  })
+}
