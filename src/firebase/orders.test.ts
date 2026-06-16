@@ -4,14 +4,15 @@
 // dependency-free. The real transaction semantics (atomicity under concurrency)
 // are exercised separately against the Firestore emulator (orders.emulator.test.ts).
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getDoc, getDocs, runTransaction, setDoc, where } from 'firebase/firestore'
-import { createOrder, fetchOrder, fetchOrders, updateOrder } from './orders'
+import { deleteDoc, doc, getDoc, getDocs, runTransaction, setDoc, where } from 'firebase/firestore'
+import { createOrder, deleteOrder, fetchOrder, fetchOrders, updateOrder } from './orders'
 import type { NewOrder } from './orders'
 import type { Order } from '../types/order'
 
 vi.mock('./client', () => ({ db: {} }))
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn(() => ({})),
+  deleteDoc: vi.fn(),
   doc: vi.fn(() => ({ id: 'generated-id' })),
   getDoc: vi.fn(),
   getDocs: vi.fn(),
@@ -104,6 +105,19 @@ describe('updateOrder', () => {
     expect(setDoc).toHaveBeenCalledTimes(1)
     expect(setDoc).toHaveBeenCalledWith(expect.anything(), body)
     // No numbering transaction on edit.
+    expect(runTransaction).not.toHaveBeenCalled()
+  })
+})
+
+describe('deleteOrder', () => {
+  it('hard-deletes the document and never touches the counter', async () => {
+    await deleteOrder('o1')
+
+    // Single deleteDoc against the orders collection by id — a real removal,
+    // not a soft-delete flag.
+    expect(doc).toHaveBeenCalledWith(expect.anything(), 'orders', 'o1')
+    expect(deleteDoc).toHaveBeenCalledTimes(1)
+    // Numbering counter is left alone — gaps from removed orders are fine.
     expect(runTransaction).not.toHaveBeenCalled()
   })
 })

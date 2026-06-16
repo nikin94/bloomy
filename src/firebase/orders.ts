@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, query, runTransaction, setDoc, where } from 'firebase/firestore'
+import { collection, deleteDoc, doc, getDoc, getDocs, query, runTransaction, setDoc, where } from 'firebase/firestore'
 import { db } from './client'
 import { STORED_ORDER_SCHEMA } from '../types/order'
 import type { Order } from '../types/order'
@@ -68,4 +68,14 @@ export async function createOrder(order: NewOrder): Promise<string> {
 // e.g. the comment, are actually removed rather than lingering.
 export async function updateOrder(id: string, order: Omit<Order, 'id'>): Promise<void> {
   await setDoc(doc(db, ORDERS_COLLECTION, id), order)
+}
+
+// Permanently delete an order. Unlike customers — soft-deleted so existing
+// orders keep resolving the customer's name — nothing references an order, so a
+// hard delete is safe. The per-owner counter is deliberately left untouched:
+// order numbers are monotonic and a gap from a removed order is fine, the same
+// way editing never re-issues a number. Owner-scoped Firestore rules (allow
+// delete: if isOwner(...)) are the real boundary.
+export async function deleteOrder(id: string): Promise<void> {
+  await deleteDoc(doc(db, ORDERS_COLLECTION, id))
 }
