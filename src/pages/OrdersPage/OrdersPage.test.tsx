@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within, fireEvent } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
@@ -124,33 +124,38 @@ describe('OrdersPage filtering', () => {
     expect(table().getByText('Борис')).toBeInTheDocument()
   })
 
-  it('filters by the price range using the dialog sliders', async () => {
+  it('shows a price range slider spanning 0…ceiling when orders differ in price', async () => {
     const user = userEvent.setup()
     fetchOrders.mockResolvedValue([
-      // 1000 ₽ order…
-      order({
-        id: 'o1',
-        customerId: 'c-anna',
-        plants: [{ name: 'Роза', quantity: 1, unitPriceMinor: 100000 }],
-      }),
-      // …and a 5000 ₽ order (the price ceiling).
-      order({
-        id: 'o2',
-        customerId: 'c-boris',
-        plants: [{ name: 'Пион', quantity: 1, unitPriceMinor: 500000 }],
-      }),
+      order({ id: 'o1', plants: [{ name: 'Роза', quantity: 1, unitPriceMinor: 100000 }] }), // 1000 ₽
+      order({ id: 'o2', plants: [{ name: 'Пион', quantity: 1, unitPriceMinor: 500000 }] }), // 5000 ₽ — ceiling
     ])
     renderPage()
     await screen.findByTestId('orders-table')
 
     await user.click(screen.getByRole('button', { name: 'Фильтры' }))
-    // Cap the upper bound at 2000 ₽ — only the cheaper order qualifies.
-    fireEvent.change(screen.getByRole('slider', { name: 'Максимальная сумма' }), {
-      target: { value: '200000' },
-    })
+    // The range renders as a single track with a "from"/"to" thumb pair; the
+    // summary shows the full span until the user narrows it. (The actual drag is
+    // pointer-geometry driven and lives in the library — the price-filtering
+    // logic itself is covered by filterOrders' unit tests.)
+    expect(screen.getByText('Сумма заказа')).toBeInTheDocument()
+    expect(screen.getByRole('slider', { name: 'Минимальная сумма' })).toBeInTheDocument()
+    expect(screen.getByRole('slider', { name: 'Максимальная сумма' })).toBeInTheDocument()
+  })
 
-    expect(table().getByText('Анна')).toBeInTheDocument()
-    expect(table().queryByText('Борис')).not.toBeInTheDocument()
+  it('hides the price slider when there is no range to pick (all totals zero)', async () => {
+    const user = userEvent.setup()
+    fetchOrders.mockResolvedValue([
+      order({ id: 'o1', plants: [{ name: 'Роза', quantity: 1, unitPriceMinor: 0 }], deliveryPriceMinor: 0 }),
+    ])
+    renderPage()
+    await screen.findByTestId('orders-table')
+
+    await user.click(screen.getByRole('button', { name: 'Фильтры' }))
+    // The ceiling is 0, so the price section is omitted — the status filters
+    // remain.
+    expect(screen.queryByText('Сумма заказа')).not.toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Фильтр по статусу оплаты' })).toBeInTheDocument()
   })
 
   it('shows a "nothing found" message when the filter matches no orders', async () => {

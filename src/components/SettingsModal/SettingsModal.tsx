@@ -5,11 +5,24 @@ import { signOutUser } from '../../firebase/auth'
 import { FONT_SCALE_MAX, FONT_SCALE_MIN, FONT_SCALE_STEP } from '../../types/settings'
 import Button from '../Button/Button'
 import Modal from '../Modal/Modal'
-import Slider from '../Slider/Slider'
 
 // Number of discrete positions on the slider (one notch each), so the iOS-style
 // ticks below the track always match the actual snap points.
 const SCALE_STEPS = Math.round((FONT_SCALE_MAX - FONT_SCALE_MIN) / FONT_SCALE_STEP) + 1
+
+// Custom-styled range: the native `accent-color` thumb can't be resized, so we
+// strip the appearance and draw our own. The thumb is enlarged (size-6) for an
+// easy grab and ringed with the background so it reads as a knob riding over the
+// step ticks; `-mt-2.5` re-centres the 24px thumb on the 4px track. Stays a real
+// <input type="range">, so its slider role / keyboard control are unchanged.
+const sliderClass =
+  // `block` removes the inline-block descender gap below the input, so the
+  // wrapper's height matches the track and the step ticks centre on it exactly.
+  'relative block h-6 w-full cursor-pointer appearance-none bg-transparent focus-visible:outline-none ' +
+  '[&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-border ' +
+  '[&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-border ' +
+  '[&::-webkit-slider-thumb]:relative [&::-webkit-slider-thumb]:z-10 [&::-webkit-slider-thumb]:-mt-2.5 [&::-webkit-slider-thumb]:size-6 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-bg [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow ' +
+  '[&::-moz-range-thumb]:size-6 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-bg [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:shadow'
 
 // Human-readable description of the current scale for screen readers, so the
 // slider announces "уменьшен"/"по умолчанию"/"увеличен" rather than a raw number.
@@ -60,7 +73,8 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
     onClose()
   }
 
-  const handleSlider = (next: number) => {
+  const handleSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const next = Number(e.target.value)
     setDraft(next)
     previewFontScale(next) // live page update; not persisted until "Сохранить"
   }
@@ -95,19 +109,33 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
           <span aria-hidden="true" className="shrink-0 text-sm text-text">
             А
           </span>
-          <Slider
-            className="flex-1"
-            min={FONT_SCALE_MIN}
-            max={FONT_SCALE_MAX}
-            step={FONT_SCALE_STEP}
-            ticks={SCALE_STEPS}
-            value={draft}
-            onChange={handleSlider}
-            ariaLabel="Размер шрифта"
-            // Screen readers announce a human-readable label (e.g. "увеличен")
-            // instead of the raw scale number (0.875, 1.25).
-            ariaValueText={fontScaleLabel(draft)}
-          />
+          <div className="relative flex-1">
+            {/* Step notches, iOS-style. Inset by the thumb radius (px-3) so the
+                ticks line up with the thumb's centre at each snap point; taller
+                than the track so their ends show past it. The thumb (z-10) sits
+                over the current notch. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-3 top-1/2 flex h-3 -translate-y-1/2 items-center justify-between"
+            >
+              {Array.from({ length: SCALE_STEPS }).map((_, i) => (
+                <span key={i} className="h-3 w-0.5 rounded-full bg-border" />
+              ))}
+            </div>
+            <input
+              type="range"
+              min={FONT_SCALE_MIN}
+              max={FONT_SCALE_MAX}
+              step={FONT_SCALE_STEP}
+              value={draft}
+              onChange={handleSlider}
+              aria-label="Размер шрифта"
+              // Screen readers announce a human-readable label (e.g. "увеличен")
+              // instead of the raw scale number (0.875, 1.25).
+              aria-valuetext={fontScaleLabel(draft)}
+              className={sliderClass}
+            />
+          </div>
           <span aria-hidden="true" className="shrink-0 text-2xl text-text">
             А
           </span>

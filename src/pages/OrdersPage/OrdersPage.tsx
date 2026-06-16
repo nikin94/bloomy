@@ -7,7 +7,7 @@ import Input from '../../components/Input/Input'
 import Select from '../../components/Select/Select'
 import Button from '../../components/Button/Button'
 import Modal from '../../components/Modal/Modal'
-import Slider from '../../components/Slider/Slider'
+import RangeSlider from 'react-range-slider-input'
 import { fetchOrders } from '../../firebase/orders'
 import { fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
@@ -115,14 +115,14 @@ const OrdersPage = () => {
   // sits at the ceiling when there is no upper bound (maxPriceMinor === null).
   const priceCeilingMinor = orders.reduce((max, o) => Math.max(max, getTotalMinor(o)), 0)
   const maxThumb = filter.maxPriceMinor ?? priceCeilingMinor
-  // Clamp the thumbs against each other so the range can't invert. The max thumb
-  // returns to "no upper bound" (null) once it reaches the ceiling.
-  const setMinPrice = (value: number) =>
-    setFilter((f) => ({ ...f, minPriceMinor: Math.min(value, f.maxPriceMinor ?? priceCeilingMinor) }))
-  const setMaxPrice = (value: number) =>
+  // The range slider keeps its two thumbs ordered internally, so we just store
+  // the pair it reports. An upper thumb at the ceiling means "no upper bound"
+  // (null), so a fresh order priced above the old max still shows.
+  const setPriceRange = ([lo, hi]: [number, number]) =>
     setFilter((f) => ({
       ...f,
-      maxPriceMinor: value >= priceCeilingMinor ? null : Math.max(value, f.minPriceMinor),
+      minPriceMinor: lo,
+      maxPriceMinor: hi >= priceCeilingMinor ? null : hi,
     }))
 
   return (
@@ -214,34 +214,24 @@ const OrdersPage = () => {
               </Select>
             </label>
 
-            {/* Price range: two sliders (from / to) over the same 0…ceiling
-                scale, reusing the shared Slider. Hidden when every order costs
-                the same (or there are none) — there is no range to pick. */}
+            {/* Price range: one track with two thumbs (from / to) over the
+                0…ceiling scale. Hidden when every order costs the same (or there
+                are none) — there is no range to pick. */}
             {priceCeilingMinor > 0 && (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="text-sm font-medium text-heading">Сумма заказа</span>
                   <span className="text-sm text-text">
                     {formatMoney(filter.minPriceMinor)} – {formatMoney(maxThumb)}
                   </span>
                 </div>
-                <Slider
+                <RangeSlider
                   min={0}
                   max={priceCeilingMinor}
                   step={PRICE_STEP_MINOR}
-                  value={filter.minPriceMinor}
-                  onChange={setMinPrice}
-                  ariaLabel="Минимальная сумма"
-                  ariaValueText={formatMoney(filter.minPriceMinor)}
-                />
-                <Slider
-                  min={0}
-                  max={priceCeilingMinor}
-                  step={PRICE_STEP_MINOR}
-                  value={maxThumb}
-                  onChange={setMaxPrice}
-                  ariaLabel="Максимальная сумма"
-                  ariaValueText={formatMoney(maxThumb)}
+                  value={[filter.minPriceMinor, maxThumb]}
+                  onInput={setPriceRange}
+                  ariaLabel={['Минимальная сумма', 'Максимальная сумма']}
                 />
               </div>
             )}
