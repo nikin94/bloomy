@@ -284,32 +284,37 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
         <SectionLabel>Заказы по умолчанию</SectionLabel>
         <Group>
           <Row label="Способ доставки">
-            <Select
-              aria-label="Способ доставки по умолчанию"
-              value={deliveryDraft}
-              onChange={(e) => setDeliveryDraft(e.target.value as DeliveryMethod)}
-              className="w-28 shrink-0"
-            >
-              {DELIVERY_METHOD_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
+            {/* Fixed-width wrapper: Select's own ROOT is `w-full`, so a width on
+                the Select itself is ignored — the box around it sets the size.
+                Both pickers share `w-32` so they're identical and line up. */}
+            <div className="w-32 shrink-0">
+              <Select
+                aria-label="Способ доставки по умолчанию"
+                value={deliveryDraft}
+                onChange={(e) => setDeliveryDraft(e.target.value as DeliveryMethod)}
+              >
+                {DELIVERY_METHOD_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </Row>
           <Row label="Способ оплаты">
-            <Select
-              aria-label="Способ оплаты по умолчанию"
-              value={paymentDraft}
-              onChange={(e) => setPaymentDraft(e.target.value as PaymentMethod)}
-              className="w-28 shrink-0"
-            >
-              {PAYMENT_METHOD_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
+            <div className="w-32 shrink-0">
+              <Select
+                aria-label="Способ оплаты по умолчанию"
+                value={paymentDraft}
+                onChange={(e) => setPaymentDraft(e.target.value as PaymentMethod)}
+              >
+                {PAYMENT_METHOD_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </Row>
         </Group>
       </section>
