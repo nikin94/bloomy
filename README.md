@@ -2,7 +2,8 @@
 
 A single-page web app for managing orders of potted plants and flowers. Sign in
 with Google, keep an address book of customers, and create orders with an
-itemized plant list, delivery method, and live order totals.
+itemized plant list, delivery method, and live order totals. The orders list is
+searchable by number or customer and filterable by payment/shipment status.
 
 ## Tech stack
 

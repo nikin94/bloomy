@@ -1,6 +1,9 @@
 @import 'tailwindcss';
 /* Design tokens (colours, typography, light/dark variants) live in one place. */
 @import './theme.css';
+/* Base styles for the price range slider (react-range-slider-input); themed to
+   our tokens below. */
+@import 'react-range-slider-input/dist/style.css';
 
 /* Base document styling, applied via the design tokens defined in theme.css. */
 :root {
@@ -40,4 +43,25 @@ body,
 #root {
   display: flex;
   flex-direction: column;
+}
+
+/* Theme the price range slider (react-range-slider-input) with our tokens: a
+   muted track, the brand colour for the selected range and thumbs, and a
+   bg-coloured ring on the thumbs so they read as knobs riding the track. */
+.range-slider {
+  height: 4px;
+  background: var(--border);
+}
+.range-slider .range-slider__range {
+  background: var(--primary);
+}
+.range-slider .range-slider__thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--primary);
+  border: 2px solid var(--bg);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.range-slider .range-slider__thumb:focus-visible {
+  box-shadow: 0 0 0 4px var(--primary-bg);
 }

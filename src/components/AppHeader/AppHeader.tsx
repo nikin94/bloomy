@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import Button from '../Button/Button'
 import SettingsModal from '../SettingsModal/SettingsModal'
@@ -102,7 +103,11 @@ const MenuDivider = () => <span aria-hidden="true" className="block h-px w-full 
 // narrow screens it collapses to a burger that reveals a top-to-bottom dropdown
 // over the content. Both layouts share NAV_LINKS so they never drift apart. The
 // account control opens the settings dialog (which holds sign-out).
-const AppHeader = () => {
+//
+// `actions` is an optional slot for page-specific controls (e.g. the orders
+// search + filter icons), rendered in the right cluster just before the settings
+// gear so the page can add header controls without the header knowing about them.
+const AppHeader = ({ actions }: { actions?: ReactNode }) => {
   const [menuOpen, setMenuOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
@@ -138,18 +143,20 @@ const AppHeader = () => {
           Новый заказ
         </NavLink>
 
-        {/* Account: the settings gear (which holds the user name and sign-out),
-            pushed to the right. */}
-        <Button
-          variant="secondary"
-          size="icon"
-          onClick={() => setSettingsOpen(true)}
-          aria-label="Настройки"
-          title="Настройки"
-          className="ml-auto"
-        >
-          <GearIcon />
-        </Button>
+        {/* Right cluster: page actions (search/filter) then the settings gear
+            (which holds the user name and sign-out), pushed to the right. */}
+        <div className="ml-auto flex items-center gap-2">
+          {actions}
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Настройки"
+            title="Настройки"
+          >
+            <GearIcon />
+          </Button>
+        </div>
       </div>
 
       {/* Mobile bar / open-menu header (below md): the burger toggle sits at the
@@ -157,11 +164,15 @@ const AppHeader = () => {
           on the left, in line with the close (X) toggle. `relative z-40` keeps
           this row above the backdrop and panel so it stays clickable. */}
       <div className="relative z-40 flex items-center gap-2 bg-bg px-4 py-3 md:hidden">
-        {menuOpen && (
+        {menuOpen ? (
           <NavLink to="/orders/new" className={actionButtonClass} onClick={closeMenu}>
             <PlusIcon />
             Добавить заказ
           </NavLink>
+        ) : (
+          // Page actions (search/filter) sit on the left of the bar; hidden while
+          // the menu is open so the create-order action takes the row instead.
+          actions
         )}
         <Button
           variant="secondary"

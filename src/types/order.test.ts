@@ -4,6 +4,10 @@ import {
   getTotalMinor,
   buildOrderColumns,
   plantsByValueDesc,
+  filterOrders,
+  isOrderFilterActive,
+  isModalFilterActive,
+  EMPTY_ORDER_FILTER,
   DELIVERY_METHOD_OPTIONS,
   STORED_ORDER_SCHEMA,
 } from './order'
@@ -111,6 +115,98 @@ describe('the plants column', () => {
     })
     // Newline-joined, most valuable first; the single Фикус shows no quantity.
     expect(plantsColumn?.format?.(order)).toBe('Фикус\nРоза ×2')
+  })
+})
+
+describe('isOrderFilterActive', () => {
+  it('is false for the empty filter', () => {
+    expect(isOrderFilterActive(EMPTY_ORDER_FILTER)).toBe(false)
+  })
+
+  it('is false when the query is only whitespace and the rest is unset', () => {
+    expect(isOrderFilterActive({ ...EMPTY_ORDER_FILTER, query: '   ' })).toBe(false)
+  })
+
+  it('is true when any of query / payment / shipment / price is set', () => {
+    expect(isOrderFilterActive({ ...EMPTY_ORDER_FILTER, query: 'роза' })).toBe(true)
+    expect(isOrderFilterActive({ ...EMPTY_ORDER_FILTER, paymentStatus: 'paid' })).toBe(true)
+    expect(isOrderFilterActive({ ...EMPTY_ORDER_FILTER, shipmentStatus: 'shipped' })).toBe(true)
+    expect(isOrderFilterActive({ ...EMPTY_ORDER_FILTER, minPriceMinor: 5000 })).toBe(true)
+    expect(isOrderFilterActive({ ...EMPTY_ORDER_FILTER, maxPriceMinor: 5000 })).toBe(true)
+  })
+})
+
+describe('isModalFilterActive', () => {
+  it('counts the dialog filters (status + price), not the inline search query', () => {
+    // The query is shown inline; the dialog's filter-icon dot reflects the rest.
+    expect(isModalFilterActive(EMPTY_ORDER_FILTER)).toBe(false)
+    expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, query: 'роза' })).toBe(false)
+    expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, paymentStatus: 'paid' })).toBe(true)
+    expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, shipmentStatus: 'shipped' })).toBe(true)
+    expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, minPriceMinor: 5000 })).toBe(true)
+    expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, maxPriceMinor: 5000 })).toBe(true)
+  })
+})
+
+describe('filterOrders', () => {
+  const names: Record<string, string> = { 'c-anna': 'Анна', 'c-boris': 'Борис' }
+  const getName = (id: string) => names[id] ?? '—'
+  const orders = [
+    makeOrder({ id: 'o1', number: 1, customerId: 'c-anna', paymentStatus: 'paid', shipmentStatus: 'new' }),
+    makeOrder({ id: 'o2', number: 2, customerId: 'c-boris', paymentStatus: 'pending', shipmentStatus: 'shipped' }),
+    makeOrder({ id: 'o3', number: 13, customerId: 'c-anna', paymentStatus: 'pending', shipmentStatus: 'new' }),
+  ]
+
+  it('returns every order for the empty filter', () => {
+    expect(filterOrders(orders, EMPTY_ORDER_FILTER, getName).map((o) => o.id)).toEqual(['o1', 'o2', 'o3'])
+  })
+
+  it('matches the order number as a substring', () => {
+    // "1" matches order 1 and order 13.
+    expect(filterOrders(orders, { ...EMPTY_ORDER_FILTER, query: '1' }, getName).map((o) => o.id)).toEqual(['o1', 'o3'])
+  })
+
+  it('matches the resolved customer name, case-insensitively', () => {
+    expect(filterOrders(orders, { ...EMPTY_ORDER_FILTER, query: 'анна' }, getName).map((o) => o.id)).toEqual(['o1', 'o3'])
+  })
+
+  it('filters by an exact status', () => {
+    expect(
+      filterOrders(orders, { ...EMPTY_ORDER_FILTER, shipmentStatus: 'shipped' }, getName).map((o) => o.id),
+    ).toEqual(['o2'])
+  })
+
+  it('combines the query with status filters (AND)', () => {
+    expect(
+      filterOrders(orders, { ...EMPTY_ORDER_FILTER, query: 'анна', paymentStatus: 'pending' }, getName).map((o) => o.id),
+    ).toEqual(['o3'])
+  })
+
+  it('returns an empty array when nothing matches', () => {
+    expect(filterOrders(orders, { ...EMPTY_ORDER_FILTER, query: 'нет такого' }, getName)).toEqual([])
+  })
+
+  it('filters by the price range (order total in minor units)', () => {
+    // Three orders with distinct totals (plant subtotal + delivery).
+    const priced = [
+      makeOrder({ id: 'cheap', plants: [{ name: 'a', quantity: 1, unitPriceMinor: 10000 }] }), // 10000
+      makeOrder({ id: 'mid', plants: [{ name: 'b', quantity: 1, unitPriceMinor: 50000 }] }), // 50000
+      makeOrder({ id: 'pricey', plants: [{ name: 'c', quantity: 1, unitPriceMinor: 90000 }] }), // 90000
+    ]
+    // Lower bound only.
+    expect(
+      filterOrders(priced, { ...EMPTY_ORDER_FILTER, minPriceMinor: 50000 }, getName).map((o) => o.id),
+    ).toEqual(['mid', 'pricey'])
+    // Upper bound only.
+    expect(
+      filterOrders(priced, { ...EMPTY_ORDER_FILTER, maxPriceMinor: 50000 }, getName).map((o) => o.id),
+    ).toEqual(['cheap', 'mid'])
+    // Both bounds.
+    expect(
+      filterOrders(priced, { ...EMPTY_ORDER_FILTER, minPriceMinor: 20000, maxPriceMinor: 60000 }, getName).map(
+        (o) => o.id,
+      ),
+    ).toEqual(['mid'])
   })
 })
 

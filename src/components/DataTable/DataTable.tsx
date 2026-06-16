@@ -11,6 +11,9 @@ interface DataTableProps {
   // Order id to briefly highlight (e.g. the one just created). The matching
   // row/card plays a one-shot fade animation; see `.row-highlight` in App.css.
   highlightOrderId?: string
+  // Shown when there are no rows. The caller distinguishes "no orders yet" from
+  // "nothing matched the active filter".
+  emptyMessage?: string
 }
 
 // Cell value: use the column's format function when present, otherwise
@@ -112,7 +115,13 @@ const OrderCard = ({
 // stack of cards below that (the eight columns don't fit a tablet/phone width).
 // Both layouts come from the same TanStack row model, so the data and formatting
 // stay in sync.
-const DataTable = ({ orders, columns, onRowClick, highlightOrderId }: DataTableProps) => {
+const DataTable = ({
+  orders,
+  columns,
+  onRowClick,
+  highlightOrderId,
+  emptyMessage = 'Заказов пока нет',
+}: DataTableProps) => {
   // Memoize the column defs so the table instance keeps a stable reference
   // (TanStack recomputes its models when columns/data identity changes).
   const columnDefs = useMemo(() => columns.map(toColumnDef), [columns])
@@ -133,7 +142,7 @@ const DataTable = ({ orders, columns, onRowClick, highlightOrderId }: DataTableP
   if (rows.length === 0) {
     return (
       <div className="min-h-0 flex-1 overflow-auto">
-        <p className="px-4 py-8 text-center text-text">Заказов пока нет</p>
+        <p className="px-4 py-8 text-center text-text">{emptyMessage}</p>
       </div>
     )
   }
