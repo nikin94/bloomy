@@ -32,13 +32,17 @@
 
   /* Brand. `primary` is the main brand colour (buttons, links, focus, active
      nav); `primary-bg` is the same hue at low alpha for subtle tints (hover
-     backgrounds, the customer-type slider track, the new-order highlight fade). */
-  --primary: #137548;
-  --primary-bg: rgba(19, 117, 72, 0.15);
+     backgrounds, the customer-type slider track, the new-order highlight fade).
+     An olive-forest green from the project palette, tuned so white button text
+     clears AA on it (#41702f = 4.6:1) while staying readable as link text on the
+     dark bg — the palette's lighter greens (5D7C39/7EA467) can't carry white
+     text, and its darkest (18330C) vanishes on a dark background. */
+  --primary: #41702f;
+  --primary-bg: rgba(65, 112, 47, 0.15);
 
-  /* Neutrals. */
+  /* Neutrals. Muted text is the palette's grey-blue (#889491 = 5.8:1 on --bg). */
   --bg: #16171d;
-  --text: #9ca3af;
+  --text: #889491;
   --text-h: #f3f4f6;
   --border: #2e303a;
   /* Input placeholder — dimmer than --text, still legible (3.7:1 on --bg). */
@@ -67,14 +71,15 @@
 }
 
 /* Palette — light. Only the values that differ from the dark default. The brand
-   green is darker here so white text on a primary button clears AA 4.5:1
-   (#166534 = 5.56:1 on white); `danger` is darker for the same reason as text on
-   the light bg (#dc2626 = 4.83:1 on white). */
+   is the palette's deep forest green (#18330C): white text on a primary button
+   clears AA with huge margin (10.9:1) and it reads strongly as link text on the
+   light bg (7.4:1). `danger` is darker so it clears AA as text on the light bg
+   (#a51616 = 4.9:1). */
 :root[data-theme='light'] {
   color-scheme: light;
 
-  --primary: #166534;
-  --primary-bg: rgba(22, 101, 52, 0.1);
+  --primary: #18330C;
+  --primary-bg: rgba(24, 51, 12, 0.1);
 
   /* A muted grey surface (~#ccc), not pure white — far easier on the eyes. The
      darker bg forces every foreground token darker to keep WCAG AA: the muted
@@ -85,7 +90,8 @@
   --bg: #cdced3;
   --text: #4f4860;
   --text-h: #08060d;
-  --border: #aaacb4;
+  /* A palette-family grey for dividers, visible against the grey surface (1.5:1). */
+  --border: #9aa1a4;
   /* Placeholder — between --text and --border, legible on the input bg (3.9:1). */
   --placeholder: #655f76;
 
