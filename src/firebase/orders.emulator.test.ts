@@ -87,6 +87,17 @@ describe('updateOrder (emulator)', () => {
     expect(updated?.comment).toBe('edited')
   })
 
+  it('round-trips the optional completedAt stamp', async () => {
+    const owner = 'owner-completed-at'
+    const id = await createOrder(makeOrder(owner))
+    const original = await fetchOrder(id, owner)
+
+    await updateOrder(id, { ...original!, shipmentStatus: 'delivered', completedAt: 1700 })
+
+    const updated = await fetchOrder(id, owner)
+    expect(updated?.completedAt).toBe(1700)
+  })
+
   it('does not bump the owner counter (a later create still increments by one)', async () => {
     const owner = 'owner-edit-counter'
     const id = await createOrder(makeOrder(owner)) // number 1

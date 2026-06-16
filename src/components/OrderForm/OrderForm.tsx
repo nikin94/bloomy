@@ -8,6 +8,7 @@ import {
   PAYMENT_METHOD_OPTIONS,
   PAYMENT_STATUS_OPTIONS,
   SHIPMENT_STATUS_OPTIONS,
+  resolveCompletedAt,
 } from '../../types/order'
 import Spinner from '../Spinner/Spinner'
 import Select from '../Select/Select'
@@ -369,6 +370,11 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
         setCustomerMode('existing')
       }
 
+      // Completion stamp derived from the chosen status (e.g. creating or
+      // editing an order straight into "delivered"); a re-save keeps the
+      // original moment via the order's existing completedAt.
+      const completedAt = resolveCompletedAt(shipmentStatus, initialOrder?.completedAt, Date.now())
+
       // `dateCreated` is set by the caller (Date.now() on create, original on
       // edit), so it is intentionally absent here.
       const order: Omit<NewOrder, 'dateCreated'> = {
@@ -383,6 +389,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
         paymentStatus,
         shipmentStatus,
         ...(comment.trim() !== '' ? { comment: comment.trim() } : {}),
+        ...(completedAt !== undefined ? { completedAt } : {}),
       }
 
       // The caller persists the order (create vs update) and navigates.
@@ -564,7 +571,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-text">Оплата</span>
+              <span className="text-sm text-text">Тип оплаты</span>
               <Select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
@@ -592,7 +599,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-text">Отправка</span>
+              <span className="text-sm text-text">Статус заказа</span>
               <Select
                 value={shipmentStatus}
                 onChange={(e) => setShipmentStatus(e.target.value as ShipmentStatus)}

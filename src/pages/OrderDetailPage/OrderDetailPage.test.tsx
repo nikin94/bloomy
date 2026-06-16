@@ -124,6 +124,36 @@ describe('OrderDetailPage', () => {
     expect(screen.getByRole('combobox', { name: 'Статус оплаты' })).toHaveValue('paid')
   })
 
+  it('stamps the completion time when the order is marked delivered', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус отправки' }), 'delivered')
+
+    await waitFor(() => expect(updateOrder).toHaveBeenCalledTimes(1))
+    const saved = updateOrder.mock.calls[0][1]
+    expect(saved.shipmentStatus).toBe('delivered')
+    expect(typeof saved.completedAt).toBe('number')
+    // The completion row appears once stamped.
+    expect(await screen.findByText('Завершён')).toBeInTheDocument()
+  })
+
+  it('clears the completion time when a completed order leaves a terminal status', async () => {
+    const user = userEvent.setup()
+    fetchOrder.mockResolvedValue(order({ shipmentStatus: 'delivered', completedAt: 1700 }))
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    expect(screen.getByText('Завершён')).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус отправки' }), 'packing')
+
+    await waitFor(() => expect(updateOrder).toHaveBeenCalledTimes(1))
+    // Reopened — the wholesale write drops the completion stamp entirely.
+    expect(updateOrder.mock.calls[0][1]).not.toHaveProperty('completedAt')
+    expect(screen.queryByText('Завершён')).not.toBeInTheDocument()
+  })
+
   it('rolls the status back and surfaces an error when the save fails', async () => {
     const user = userEvent.setup()
     updateOrder.mockRejectedValue(new Error('Сеть недоступна'))

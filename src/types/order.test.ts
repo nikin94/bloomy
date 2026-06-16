@@ -7,6 +7,8 @@ import {
   filterOrders,
   isOrderFilterActive,
   isModalFilterActive,
+  isTerminalShipmentStatus,
+  resolveCompletedAt,
   EMPTY_ORDER_FILTER,
   DELIVERY_METHOD_OPTIONS,
   STORED_ORDER_SCHEMA,
@@ -58,6 +60,32 @@ describe('getTotalMinor', () => {
       deliveryPriceMinor: 0,
     })
     expect(getTotalMinor(order)).toBe(getSubtotalMinor(order))
+  })
+})
+
+describe('isTerminalShipmentStatus', () => {
+  it('is true only for delivered and cancelled', () => {
+    expect(isTerminalShipmentStatus('delivered')).toBe(true)
+    expect(isTerminalShipmentStatus('cancelled')).toBe(true)
+    expect(isTerminalShipmentStatus('new')).toBe(false)
+    expect(isTerminalShipmentStatus('packing')).toBe(false)
+    expect(isTerminalShipmentStatus('shipped')).toBe(false)
+  })
+})
+
+describe('resolveCompletedAt', () => {
+  it('stamps now when entering a terminal status without a prior stamp', () => {
+    expect(resolveCompletedAt('delivered', undefined, 1700)).toBe(1700)
+    expect(resolveCompletedAt('cancelled', undefined, 1700)).toBe(1700)
+  })
+
+  it('keeps the original stamp on a re-save while still terminal', () => {
+    expect(resolveCompletedAt('delivered', 1000, 9999)).toBe(1000)
+  })
+
+  it('clears the stamp when the status is not terminal', () => {
+    expect(resolveCompletedAt('new', 1000, 9999)).toBeUndefined()
+    expect(resolveCompletedAt('shipped', undefined, 9999)).toBeUndefined()
   })
 })
 
@@ -249,6 +277,12 @@ describe('STORED_ORDER_SCHEMA', () => {
     delete legacy.deliveryMethod
     const parsed = STORED_ORDER_SCHEMA.parse(legacy)
     expect(parsed.deliveryMethod).toBe('post')
+  })
+
+  it('stays valid without completedAt and accepts it when present', () => {
+    // Active/legacy orders have no completion stamp; finished ones carry a number.
+    expect(STORED_ORDER_SCHEMA.safeParse(validDoc()).success).toBe(true)
+    expect(STORED_ORDER_SCHEMA.safeParse({ ...validDoc(), completedAt: 1700 }).success).toBe(true)
   })
 
   it('rejects an order with no plants', () => {

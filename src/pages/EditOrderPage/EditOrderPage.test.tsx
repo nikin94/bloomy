@@ -106,7 +106,7 @@ describe('EditOrderPage', () => {
     await screen.findByRole('heading', { name: 'Редактирование заказа №5' })
 
     // Change a status and save.
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Отправка' }), 'shipped')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус заказа' }), 'shipped')
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
 
     await waitFor(() => expect(updateOrder).toHaveBeenCalledTimes(1))
