@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute'
 import Spinner from './components/Spinner/Spinner'
+import UpdatePrompt from './components/UpdatePrompt/UpdatePrompt'
 import LoginPage from './pages/LoginPage/LoginPage'
 import './App.css'
 
@@ -20,6 +21,8 @@ function App() {
     // Suspense fallback while a lazy route chunk is fetched. Reusing Spinner
     // keeps the loading UX identical to data loading (same centred overlay).
     <Suspense fallback={<Spinner />}>
+      {/* Outside Routes: the "new version available" banner shows on any page. */}
+      <UpdatePrompt />
       <Routes>
         {/* Public login screen. */}
         <Route path="/" element={<LoginPage />} />

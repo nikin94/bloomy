@@ -12,3 +12,7 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+// Build-time constant injected by Vite `define` (see vite.config.ts): the deploy
+// git SHA, or 'dev' for a local build.
+declare const __APP_VERSION__: string
