@@ -174,6 +174,28 @@ describe('OrdersPage filtering', () => {
     expect(table().getByText('Борис')).toBeInTheDocument()
   })
 
+  it('fills in the filter button while a dialog filter is active', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByTestId('orders-table')
+
+    // Inactive: outlined (secondary) and not pressed.
+    const filterBtn = () => header().getByRole('button', { name: 'Фильтры' })
+    expect(filterBtn()).toHaveAttribute('aria-pressed', 'false')
+    expect(filterBtn()).not.toHaveClass('bg-primary')
+
+    await user.click(filterBtn())
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Фильтр по статусу отправки' }),
+      'shipped',
+    )
+    await user.click(screen.getByRole('button', { name: 'Готово' }))
+
+    // Active: the whole button fills in (primary) and reports the pressed state.
+    expect(filterBtn()).toHaveAttribute('aria-pressed', 'true')
+    expect(filterBtn()).toHaveClass('bg-primary')
+  })
+
   it('shows a price range slider spanning 0…ceiling when orders differ in price', async () => {
     const user = userEvent.setup()
     fetchOrders.mockResolvedValue([
