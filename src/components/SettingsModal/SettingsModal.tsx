@@ -288,7 +288,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
               aria-label="Способ доставки по умолчанию"
               value={deliveryDraft}
               onChange={(e) => setDeliveryDraft(e.target.value as DeliveryMethod)}
-              className="w-32 min-w-0"
+              className="w-28 shrink-0"
             >
               {DELIVERY_METHOD_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -302,7 +302,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
               aria-label="Способ оплаты по умолчанию"
               value={paymentDraft}
               onChange={(e) => setPaymentDraft(e.target.value as PaymentMethod)}
-              className="w-32 min-w-0"
+              className="w-28 shrink-0"
             >
               {PAYMENT_METHOD_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
