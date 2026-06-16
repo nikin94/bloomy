@@ -12,7 +12,7 @@
   font-size: calc(var(--font-base) * var(--font-scale));
   line-height: 145%;
   letter-spacing: 0.18px;
-  color-scheme: light dark;
+  /* `color-scheme` is set per-theme in theme.css (keyed to data-theme). */
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;

@@ -123,9 +123,18 @@ Colours and typography are defined as design tokens in `src/theme.css` — the
 single source of truth for the project's palette. Tokens are plain CSS variables
 (e.g. `--primary`, the main brand colour) mapped to Tailwind's `--color-*`
 namespace via `@theme inline`, so components use semantic utilities (`bg-primary`,
-`text-heading`, `border-border`) and never hardcode a colour. A dark variant is
-swapped in under `prefers-color-scheme: dark`. To retheme, edit the values in
-`theme.css`.
+`text-heading`, `border-border`) and never hardcode a colour. To retheme, edit
+the values in `theme.css`.
+
+**Dark / light mode.** **Dark is the default.** The active theme is chosen per
+user (a sun/moon switch in the settings dialog), persisted to `settings/{uid}`,
+and applied by setting `data-theme` on `<html>` — `theme.css` holds the dark
+palette in `:root` and the light overrides under `:root[data-theme='light']`. To
+avoid a flash of the wrong theme on load, a tiny inline script in `index.html`
+sets `data-theme` before first paint from a `localStorage` cache (default dark);
+the Firestore setting is the cross-device source of truth and reconciles it once
+loaded (see `SettingsProvider`). The OS `prefers-color-scheme` is intentionally
+not followed — the default is dark regardless.
 
 ## Update prompt (new-version detection)
 

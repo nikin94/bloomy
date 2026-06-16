@@ -18,11 +18,17 @@ import { SettingsProvider } from './SettingsProvider'
 
 const USER = { uid: 'owner-1' } as User
 
-// Reads the applied scale and offers a save trigger, so a test can observe the
-// provider's state and the document side effect.
+// Reads the applied values and offers a save trigger, so a test can observe the
+// provider's state and the document side effects.
 const Probe = () => {
-  const { fontScale, saveFontScale } = useSettings()
-  return <button onClick={() => saveFontScale(1.25)}>{`scale:${fontScale}`}</button>
+  const { fontScale, theme, saveSettings: save } = useSettings()
+  return (
+    <>
+      <button onClick={() => save({ fontScale: 1.25, theme: 'light' })}>save</button>
+      <span>scale:{fontScale}</span>
+      <span>theme:{theme}</span>
+    </>
+  )
 }
 
 const tree = (user: User | null) => (
@@ -36,12 +42,15 @@ const tree = (user: User | null) => (
 const renderProvider = (user: User | null = USER) => render(tree(user))
 
 const cssScale = () => document.documentElement.style.getPropertyValue('--font-scale')
+const dataTheme = () => document.documentElement.getAttribute('data-theme')
 
 beforeEach(() => {
   vi.clearAllMocks()
   fetchSettings.mockResolvedValue({})
   saveSettings.mockResolvedValue(undefined)
   document.documentElement.style.removeProperty('--font-scale')
+  document.documentElement.removeAttribute('data-theme')
+  localStorage.clear()
 })
 
 describe('SettingsProvider', () => {
@@ -53,30 +62,53 @@ describe('SettingsProvider', () => {
     expect(cssScale()).toBe('1.25')
   })
 
-  it('persists and applies a new scale on save', async () => {
+  it('loads the saved theme and applies it to the document + cache', async () => {
+    fetchSettings.mockResolvedValue({ theme: 'light' })
+    renderProvider()
+    await screen.findByText('theme:light')
+    expect(dataTheme()).toBe('light')
+    expect(localStorage.getItem('bloomy-theme')).toBe('light')
+  })
+
+  it('defaults to the dark theme when none is saved', async () => {
+    renderProvider()
+    await screen.findByText('theme:dark')
+    expect(dataTheme()).toBe('dark')
+  })
+
+  it('persists and applies new values on save', async () => {
     const user = userEvent.setup()
     renderProvider()
     await screen.findByText('scale:1')
-    await user.click(screen.getByRole('button'))
-    await waitFor(() => expect(saveSettings).toHaveBeenCalledWith('owner-1', { fontScale: 1.25 }))
+    await user.click(screen.getByRole('button', { name: 'save' }))
+    await waitFor(() =>
+      expect(saveSettings).toHaveBeenCalledWith('owner-1', { fontScale: 1.25, theme: 'light' }),
+    )
     await screen.findByText('scale:1.25')
+    await screen.findByText('theme:light')
     expect(cssScale()).toBe('1.25')
+    expect(dataTheme()).toBe('light')
   })
 
-  it('falls back to the default scale when signed out and never fetches', async () => {
+  it('falls back to the defaults when signed out and never fetches', async () => {
     renderProvider(null)
     await screen.findByText('scale:1')
+    await screen.findByText('theme:dark')
     expect(fetchSettings).not.toHaveBeenCalled()
     expect(cssScale()).toBe('1')
+    expect(dataTheme()).toBe('dark')
   })
 
-  it('resets state and the document to default on sign-out so the next user gets no stale value', async () => {
-    fetchSettings.mockResolvedValue({ fontScale: 1.25 })
+  it('resets state and the document to defaults on sign-out so the next user gets no stale value', async () => {
+    fetchSettings.mockResolvedValue({ fontScale: 1.25, theme: 'light' })
     const { rerender } = renderProvider()
     await screen.findByText('scale:1.25')
+    await screen.findByText('theme:light')
 
     rerender(tree(null))
     await screen.findByText('scale:1')
+    await screen.findByText('theme:dark')
     expect(cssScale()).toBe('1')
+    expect(dataTheme()).toBe('dark')
   })
 })
