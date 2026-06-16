@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
@@ -80,11 +80,17 @@ describe('OrderDetailPage', () => {
     expect(screen.getByRole('combobox', { name: 'Статус отправки' })).toHaveValue('new')
   })
 
-  it('shows the plant quantity in compact ×N form', async () => {
+  it('numbers each plant row and shows the quantity as a plain number', async () => {
     renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })
-    // Order has one plant "Роза" ×2.
-    expect(screen.getByText('×2')).toBeInTheDocument()
+    const itemsTable = screen.getByRole('table')
+    // The single plant row is numbered "1" (leading № column)…
+    const cells = within(itemsTable).getAllByRole('cell')
+    expect(cells[0]).toHaveTextContent('1')
+    // …and its quantity (2) shows as a bare number, not "×2".
+    expect(within(itemsTable).getByText('Роза')).toBeInTheDocument()
+    expect(within(itemsTable).getByText('2')).toBeInTheDocument()
+    expect(within(itemsTable).queryByText('×2')).not.toBeInTheDocument()
   })
 
   it('saves a status change in place via updateOrder, preserving the rest of the order', async () => {
