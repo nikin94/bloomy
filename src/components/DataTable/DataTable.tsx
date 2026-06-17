@@ -87,10 +87,12 @@ const activationProps = (order: Order, onActivate: (order: Order) => void) => ({
 const OrderTableRow = ({
   row,
   highlighted,
+  widthById,
   onActivate,
 }: {
   row: Row<Order>
   highlighted: boolean
+  widthById: Map<string, string | undefined>
   onActivate: (order: Order) => void
 }) => (
   <tr
@@ -99,14 +101,19 @@ const OrderTableRow = ({
     }`}
     {...activationProps(row.original, onActivate)}
   >
-    {row.getVisibleCells().map((cell) => (
-      <td
-        key={cell.id}
-        className="max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-4 py-2.5 text-text"
-      >
-        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-      </td>
-    ))}
+    {row.getVisibleCells().map((cell) => {
+      const width = widthById.get(cell.column.id)
+      return (
+        <td
+          key={cell.id}
+          className={`max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-4 py-2.5 text-text${
+            width ? ` ${width}` : ''
+          }`}
+        >
+          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+        </td>
+      )
+    })}
   </tr>
 )
 
@@ -158,6 +165,14 @@ const DataTable = ({
   // (TanStack recomputes its models when columns/data identity changes).
   const columnDefs = useMemo(() => columns.map(toColumnDef), [columns])
 
+  // Per-column width hints, keyed by column id. Looked up here (rather than
+  // threaded through TanStack's meta) so the width stays a plain DataTable
+  // concern and OrderColumn doesn't depend on the library's typing.
+  const widthById = useMemo(
+    () => new Map(columns.map((c) => [c.id, c.width])),
+    [columns],
+  )
+
   // Sorting is local, ephemeral state: clicking a header sorts the in-memory
   // list, but we don't persist the choice (it resets when the page remounts).
   const [sorting, setSorting] = useState<SortingState>([])
@@ -172,9 +187,10 @@ const DataTable = ({
     columns: columnDefs,
     state: { sorting },
     onSortingChange: setSorting,
-    // First click sorts ascending for every column (TanStack defaults numeric
-    // columns to descending-first, which would read inconsistently here).
-    sortDescFirst: false,
+    // First click sorts descending for every column (overriding TanStack's
+    // type-dependent default), so the first click always reveals the "top"
+    // values — newest, priciest, latest — consistently across columns.
+    sortDescFirst: true,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
@@ -206,19 +222,25 @@ const DataTable = ({
                   <th
                     key={header.id}
                     aria-sort={header.column.getCanSort() ? ariaSort(sorted) : undefined}
-                    className="sticky top-0 z-10 whitespace-nowrap border-b border-border bg-bg px-4 py-3 text-left font-semibold text-heading"
+                    className={`sticky top-0 z-10 whitespace-nowrap border-b border-border bg-bg px-4 py-3 text-left font-semibold text-heading${
+                      widthById.get(header.column.id) ? ` ${widthById.get(header.column.id)}` : ''
+                    }`}
                   >
                     {header.column.getCanSort() ? (
                       // A real button so the sort toggles by keyboard (Enter/Space)
-                      // too; the negative margins keep its hit area filling the cell
-                      // padding without shifting the label.
+                      // too. The negative margins + w-full make the WHOLE cell the
+                      // hit area (not just the label), and the chevron rides a
+                      // fixed-size slot that's always present, so toggling the sort
+                      // never changes the column's width.
                       <button
                         type="button"
                         onClick={header.column.getToggleSortingHandler()}
-                        className="-mx-4 -my-3 inline-flex items-center gap-1 px-4 py-3 text-left font-semibold text-heading transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
+                        className="-mx-4 -my-3 flex w-full items-center gap-1 px-4 py-3 text-left font-semibold text-heading transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
                       >
                         {label}
-                        <SortChevron direction={sorted} />
+                        <span aria-hidden="true" className="inline-flex size-3 shrink-0 items-center justify-center">
+                          <SortChevron direction={sorted} />
+                        </span>
                       </button>
                     ) : (
                       label
@@ -235,6 +257,7 @@ const DataTable = ({
               key={row.id}
               row={row}
               highlighted={row.original.id === highlightOrderId}
+              widthById={widthById}
               onActivate={onRowClick}
             />
           ))}

@@ -143,6 +143,10 @@ interface OrderColumnBase {
   // this raw key instead. Omit to make the column non-sortable (e.g. the
   // multi-line plants list has no single meaningful key to order by).
   sortValue?: (order: Order) => string | number
+  // Optional width hint (a Tailwind width class, e.g. `w-16`) applied to the
+  // column's header and cells in the desktop table, so a few columns can be
+  // nudged wider/narrower than their content-driven default. Omit for auto width.
+  width?: string
 }
 
 // A column backed by a raw Order field (default String() rendering).
@@ -218,7 +222,7 @@ export function buildOrderColumns(
   getCustomerName: (customerId: string) => string,
 ): OrderColumn[] {
   return [
-    { id: 'number', header: '№', format: (o) => String(o.number), sortValue: (o) => o.number },
+    { id: 'number', header: '№', format: (o) => String(o.number), sortValue: (o) => o.number, width: 'w-20' },
     {
       id: 'dateCreated',
       header: 'Дата',
@@ -231,6 +235,7 @@ export function buildOrderColumns(
       header: 'Клиент',
       format: (o) => getCustomerName(o.customerId),
       sortValue: (o) => getCustomerName(o.customerId),
+      width: 'w-32',
     },
     { id: 'address', header: 'Адрес', field: 'address', sortValue: (o) => o.address },
     // One plant per line, most valuable first. Rendered richly by DataTable
@@ -245,6 +250,7 @@ export function buildOrderColumns(
       id: 'plants',
       header: 'Растения',
       format: (o) => plantsByValueDesc(o.plants).map(plantLineLabel).join('\n'),
+      width: 'w-40',
     },
     {
       id: 'total',
@@ -259,12 +265,14 @@ export function buildOrderColumns(
       format: (o) => PAYMENT_STATUS_LABELS[o.paymentStatus],
       // Sort by the displayed label so the order matches what the user reads.
       sortValue: (o) => PAYMENT_STATUS_LABELS[o.paymentStatus],
+      width: 'w-28',
     },
     {
       id: 'shipmentStatus',
       header: 'Отправка',
       format: (o) => SHIPMENT_STATUS_LABELS[o.shipmentStatus],
       sortValue: (o) => SHIPMENT_STATUS_LABELS[o.shipmentStatus],
+      width: 'w-28',
     },
   ]
 }

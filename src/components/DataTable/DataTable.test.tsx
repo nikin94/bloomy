@@ -127,13 +127,15 @@ describe('DataTable (sorting)', () => {
     expect(rowNumbers()).toEqual(['13', '2'])
 
     await user.click(table().getByRole('button', { name: '№' }))
-    // Ascending by the raw number — 2 before 13, NOT "13" before "2" (which a
-    // lexical sort of the formatted strings would give).
-    expect(rowNumbers()).toEqual(['2', '13'])
-
-    // Second click flips to descending.
-    await user.click(table().getByRole('button', { name: '№' }))
+    // First click sorts descending — 13 before 2 by the raw number, NOT a
+    // lexical sort of the formatted strings (which would keep "13" before "2"
+    // by coincidence here, so the SECOND click is the real numeric check).
     expect(rowNumbers()).toEqual(['13', '2'])
+
+    // Second click flips to ascending — 2 before 13 by the raw number, NOT
+    // "13" before "2" (which a lexical string sort would give).
+    await user.click(table().getByRole('button', { name: '№' }))
+    expect(rowNumbers()).toEqual(['2', '13'])
   })
 
   it('marks the sorted header with aria-sort and a direction chevron', async () => {
@@ -144,9 +146,9 @@ describe('DataTable (sorting)', () => {
     expect(header()).toHaveAttribute('aria-sort', 'none')
 
     await user.click(table().getByRole('button', { name: '№' }))
-    expect(header()).toHaveAttribute('aria-sort', 'ascending')
-    await user.click(table().getByRole('button', { name: '№' }))
     expect(header()).toHaveAttribute('aria-sort', 'descending')
+    await user.click(table().getByRole('button', { name: '№' }))
+    expect(header()).toHaveAttribute('aria-sort', 'ascending')
   })
 
   it('sorts the customer column by the resolved name', async () => {
@@ -156,8 +158,8 @@ describe('DataTable (sorting)', () => {
       order({ id: 'a', number: 2, customerId: 'c-anna' }),
     ])
     await user.click(table().getByRole('button', { name: 'Клиент' }))
-    // Ascending by name: Анна (order 2) before Борис (order 1).
-    expect(rowNumbers()).toEqual(['2', '1'])
+    // First click sorts descending by name: Борис (order 1) before Анна (order 2).
+    expect(rowNumbers()).toEqual(['1', '2'])
   })
 
   it('leaves the multi-line plants column non-sortable (no header button)', () => {
