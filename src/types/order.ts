@@ -235,7 +235,6 @@ export function buildOrderColumns(
       header: 'Клиент',
       format: (o) => getCustomerName(o.customerId),
       sortValue: (o) => getCustomerName(o.customerId),
-      width: 'w-32',
     },
     { id: 'address', header: 'Адрес', field: 'address', sortValue: (o) => o.address },
     // One plant per line, most valuable first. Rendered richly by DataTable
@@ -250,7 +249,6 @@ export function buildOrderColumns(
       id: 'plants',
       header: 'Растения',
       format: (o) => plantsByValueDesc(o.plants).map(plantLineLabel).join('\n'),
-      width: 'w-40',
     },
     {
       id: 'total',
@@ -258,6 +256,7 @@ export function buildOrderColumns(
       format: (o) => formatMoney(getTotalMinor(o)),
       // Sort by the numeric total (minor units), not the formatted money string.
       sortValue: (o) => getTotalMinor(o),
+      width: 'w-32',
     },
     {
       id: 'paymentStatus',
