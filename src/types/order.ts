@@ -137,6 +137,16 @@ interface OrderColumnBase {
   // Stable identity for the React key and column id.
   id: string
   header: string
+  // Comparable value the table sorts the column by when its header is clicked.
+  // The DISPLAYED value is often derived/formatted (e.g. "13", "1 500,00 ₽", a
+  // resolved customer name), so sorting can't use the rendered string — it uses
+  // this raw key instead. Omit to make the column non-sortable (e.g. the
+  // multi-line plants list has no single meaningful key to order by).
+  sortValue?: (order: Order) => string | number
+  // Optional width hint (a Tailwind width class, e.g. `w-16`) applied to the
+  // column's header and cells in the desktop table, so a few columns can be
+  // nudged wider/narrower than their content-driven default. Omit for auto width.
+  width?: string
 }
 
 // A column backed by a raw Order field (default String() rendering).
@@ -212,10 +222,21 @@ export function buildOrderColumns(
   getCustomerName: (customerId: string) => string,
 ): OrderColumn[] {
   return [
-    { id: 'number', header: '№', format: (o) => String(o.number) },
-    { id: 'dateCreated', header: 'Дата', format: (o) => formatDate(o.dateCreated) },
-    { id: 'customer', header: 'Клиент', format: (o) => getCustomerName(o.customerId) },
-    { id: 'address', header: 'Адрес', field: 'address' },
+    { id: 'number', header: '№', format: (o) => String(o.number), sortValue: (o) => o.number, width: 'w-20' },
+    {
+      id: 'dateCreated',
+      header: 'Дата',
+      format: (o) => formatDate(o.dateCreated),
+      // Sort by the raw timestamp, not the formatted "dd.mm.yy" string.
+      sortValue: (o) => o.dateCreated,
+    },
+    {
+      id: 'customer',
+      header: 'Клиент',
+      format: (o) => getCustomerName(o.customerId),
+      sortValue: (o) => getCustomerName(o.customerId),
+    },
+    { id: 'address', header: 'Адрес', field: 'address', sortValue: (o) => o.address },
     // One plant per line, most valuable first. Rendered richly by DataTable
     // (the name in bold, the quantity as a plain number) keyed off this id —
     // bold-name-plus-quantity can't be expressed as a plain format string.
@@ -223,16 +244,34 @@ export function buildOrderColumns(
     // stacked rows), most valuable line first; the quantity shows as ×N only
     // when above 1.
     {
+      // A stacked, multi-line list — no single key to sort by, so it stays
+      // non-sortable (no sortValue).
       id: 'plants',
       header: 'Растения',
       format: (o) => plantsByValueDesc(o.plants).map(plantLineLabel).join('\n'),
     },
-    { id: 'total', header: 'Сумма', format: (o) => formatMoney(getTotalMinor(o)) },
-    { id: 'paymentStatus', header: 'Оплата', format: (o) => PAYMENT_STATUS_LABELS[o.paymentStatus] },
+    {
+      id: 'total',
+      header: 'Сумма',
+      format: (o) => formatMoney(getTotalMinor(o)),
+      // Sort by the numeric total (minor units), not the formatted money string.
+      sortValue: (o) => getTotalMinor(o),
+      width: 'w-32',
+    },
+    {
+      id: 'paymentStatus',
+      header: 'Оплата',
+      format: (o) => PAYMENT_STATUS_LABELS[o.paymentStatus],
+      // Sort by the displayed label so the order matches what the user reads.
+      sortValue: (o) => PAYMENT_STATUS_LABELS[o.paymentStatus],
+      width: 'w-28',
+    },
     {
       id: 'shipmentStatus',
       header: 'Отправка',
       format: (o) => SHIPMENT_STATUS_LABELS[o.shipmentStatus],
+      sortValue: (o) => SHIPMENT_STATUS_LABELS[o.shipmentStatus],
+      width: 'w-28',
     },
   ]
 }

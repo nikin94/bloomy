@@ -1,7 +1,12 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table'
-import type { ColumnDef, Row } from '@tanstack/react-table'
+import {
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from '@tanstack/react-table'
+import type { ColumnDef, Row, SortingState } from '@tanstack/react-table'
 import type { Order, OrderColumn } from '../../types/order'
 
 interface DataTableProps {
@@ -29,12 +34,39 @@ const renderCell = (order: Order, column: OrderColumn): ReactNode => {
 // Adapt our declarative OrderColumn config to TanStack column definitions.
 // OrderColumn stays the domain-level source of truth (unit-tested on its own and
 // shared by both the table and the mobile card layout); TanStack owns only the
-// rendering engine (row model + flexRender), so the library never leaks types.
+// rendering engine (row model + flexRender + sorting), so the library never
+// leaks types. A column with a `sortValue` becomes sortable: that raw value is
+// the accessor TanStack's default sort compares (the rendered cell stays our
+// `format`); a column without one is explicitly non-sortable.
 const toColumnDef = (column: OrderColumn): ColumnDef<Order> => ({
   id: column.id,
   header: column.header,
   cell: ({ row }) => renderCell(row.original, column),
+  ...(column.sortValue
+    ? { accessorFn: column.sortValue, enableSorting: true }
+    : { enableSorting: false }),
 })
+
+// A filled triangle next to a sorted header: up for ascending, down for
+// descending. Rendered only on the column currently sorted, so the chevron
+// itself signals which column drives the order and in which direction.
+const SortChevron = ({ direction }: { direction: false | 'asc' | 'desc' }) => {
+  if (!direction) return null
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 12 12"
+      className="size-3 shrink-0"
+      fill="currentColor"
+    >
+      {direction === 'asc' ? <path d="M6 3 1 9h10z" /> : <path d="M6 9 1 3h10z" />}
+    </svg>
+  )
+}
+
+// Map TanStack's sort state to the `aria-sort` value assistive tech expects.
+const ariaSort = (direction: false | 'asc' | 'desc') =>
+  direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'
 
 // Shared interaction for a clickable order (table row or mobile card): acts as a
 // link, focusable and activatable with Enter/Space for keyboard users.
@@ -55,10 +87,12 @@ const activationProps = (order: Order, onActivate: (order: Order) => void) => ({
 const OrderTableRow = ({
   row,
   highlighted,
+  widthById,
   onActivate,
 }: {
   row: Row<Order>
   highlighted: boolean
+  widthById: Map<string, string | undefined>
   onActivate: (order: Order) => void
 }) => (
   <tr
@@ -67,14 +101,19 @@ const OrderTableRow = ({
     }`}
     {...activationProps(row.original, onActivate)}
   >
-    {row.getVisibleCells().map((cell) => (
-      <td
-        key={cell.id}
-        className="max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-4 py-2.5 text-text"
-      >
-        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-      </td>
-    ))}
+    {row.getVisibleCells().map((cell) => {
+      const width = widthById.get(cell.column.id)
+      return (
+        <td
+          key={cell.id}
+          className={`max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-4 py-2.5 text-text${
+            width ? ` ${width}` : ''
+          }`}
+        >
+          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+        </td>
+      )
+    })}
   </tr>
 )
 
@@ -126,6 +165,18 @@ const DataTable = ({
   // (TanStack recomputes its models when columns/data identity changes).
   const columnDefs = useMemo(() => columns.map(toColumnDef), [columns])
 
+  // Per-column width hints, keyed by column id. Looked up here (rather than
+  // threaded through TanStack's meta) so the width stays a plain DataTable
+  // concern and OrderColumn doesn't depend on the library's typing.
+  const widthById = useMemo(
+    () => new Map(columns.map((c) => [c.id, c.width])),
+    [columns],
+  )
+
+  // Sorting is local, ephemeral state: clicking a header sorts the in-memory
+  // list, but we don't persist the choice (it resets when the page remounts).
+  const [sorting, setSorting] = useState<SortingState>([])
+
   // React Compiler bails out of memoizing this component because useReactTable
   // returns fresh functions each render (react-hooks/incompatible-library). That
   // is safe here — TanStack manages its own memoization internally and the orders
@@ -134,7 +185,14 @@ const DataTable = ({
   const table = useReactTable({
     data: orders,
     columns: columnDefs,
+    state: { sorting },
+    onSortingChange: setSorting,
+    // First click sorts descending for every column (overriding TanStack's
+    // type-dependent default), so the first click always reveals the "top"
+    // values — newest, priciest, latest — consistently across columns.
+    sortDescFirst: true,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   })
 
   const rows = table.getRowModel().rows
@@ -157,14 +215,39 @@ const DataTable = ({
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <th
-                  key={header.id}
-                  className="sticky top-0 z-10 whitespace-nowrap border-b border-border bg-bg px-4 py-3 text-left font-semibold text-heading"
-                >
-                  {flexRender(header.column.columnDef.header, header.getContext())}
-                </th>
-              ))}
+              {headerGroup.headers.map((header) => {
+                const sorted = header.column.getIsSorted()
+                const label = flexRender(header.column.columnDef.header, header.getContext())
+                return (
+                  <th
+                    key={header.id}
+                    aria-sort={header.column.getCanSort() ? ariaSort(sorted) : undefined}
+                    className={`sticky top-0 z-10 whitespace-nowrap border-b border-border bg-bg px-4 py-3 text-left font-semibold text-heading${
+                      widthById.get(header.column.id) ? ` ${widthById.get(header.column.id)}` : ''
+                    }`}
+                  >
+                    {header.column.getCanSort() ? (
+                      // A real button so the sort toggles by keyboard (Enter/Space)
+                      // too. The negative margins + w-full make the WHOLE cell the
+                      // hit area (not just the label), and the chevron rides a
+                      // fixed-size slot that's always present, so toggling the sort
+                      // never changes the column's width.
+                      <button
+                        type="button"
+                        onClick={header.column.getToggleSortingHandler()}
+                        className="-mx-4 -my-3 flex w-full items-center gap-1 px-4 py-3 text-left font-semibold text-heading transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
+                      >
+                        {label}
+                        <span aria-hidden="true" className="inline-flex size-3 shrink-0 items-center justify-center">
+                          <SortChevron direction={sorted} />
+                        </span>
+                      </button>
+                    ) : (
+                      label
+                    )}
+                  </th>
+                )
+              })}
             </tr>
           ))}
         </thead>
@@ -174,6 +257,7 @@ const DataTable = ({
               key={row.id}
               row={row}
               highlighted={row.original.id === highlightOrderId}
+              widthById={widthById}
               onActivate={onRowClick}
             />
           ))}
