@@ -40,4 +40,32 @@ describe('Input', () => {
     await userEvent.type(screen.getByPlaceholderText('Имя'), 'a')
     expect(onChange).toHaveBeenCalled()
   })
+
+  it('numeric="decimal" stays a text field with the decimal keypad (not a number spinner)', () => {
+    render(<Input numeric="decimal" placeholder="Цена" value="" onChange={vi.fn()} />)
+    const input = screen.getByPlaceholderText('Цена')
+    // type="text" keeps the ru-RU comma working and drops the native spinner.
+    expect(input).toHaveAttribute('type', 'text')
+    expect(input).toHaveAttribute('inputmode', 'decimal')
+  })
+
+  it('numeric="decimal" sanitizes a keystroke before onChange (letters dropped, comma kept)', async () => {
+    const onChange = vi.fn()
+    render(<Input numeric="decimal" placeholder="Цена" value="12" onChange={onChange} />)
+    // Typing a letter is filtered out — onChange sees the cleaned value, not "12a".
+    await userEvent.type(screen.getByPlaceholderText('Цена'), 'a')
+    expect(onChange).toHaveBeenCalled()
+    expect(onChange.mock.calls.at(-1)![0].target.value).toBe('12')
+  })
+
+  it('numeric="integer" uses the numeric keypad and strips non-digits', async () => {
+    const onChange = vi.fn()
+    render(<Input numeric="integer" placeholder="Кол-во" value="3" onChange={onChange} />)
+    const input = screen.getByPlaceholderText('Кол-во')
+    expect(input).toHaveAttribute('type', 'text')
+    expect(input).toHaveAttribute('inputmode', 'numeric')
+    await userEvent.type(input, ',')
+    // A decimal separator can't enter an integer field.
+    expect(onChange.mock.calls.at(-1)![0].target.value).toBe('3')
+  })
 })

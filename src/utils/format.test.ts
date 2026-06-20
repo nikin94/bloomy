@@ -1,5 +1,53 @@
 import { describe, it, expect } from 'vitest'
-import { formatMoney, formatDate, parseRublesToMinor, formatMinorToInput } from './format'
+import {
+  formatMoney,
+  formatDate,
+  parseRublesToMinor,
+  formatMinorToInput,
+  sanitizeDecimalInput,
+  sanitizeIntegerInput,
+} from './format'
+
+describe('sanitizeDecimalInput', () => {
+  it('keeps a plain integer amount', () => {
+    expect(sanitizeDecimalInput('300')).toBe('300')
+  })
+
+  it('keeps a comma separator (ru-RU) and two fractional digits', () => {
+    expect(sanitizeDecimalInput('149,90')).toBe('149,90')
+  })
+
+  it('caps the fraction at two digits (kopecks)', () => {
+    expect(sanitizeDecimalInput('10,999')).toBe('10,99')
+  })
+
+  it('drops letters and any other non-numeric characters', () => {
+    expect(sanitizeDecimalInput('1a2b3')).toBe('123')
+  })
+
+  it('stops at a second separator, keeping only the first decimal group', () => {
+    expect(sanitizeDecimalInput('1,2,3')).toBe('1,2')
+  })
+
+  it('returns an empty string for input with no digits', () => {
+    expect(sanitizeDecimalInput('abc')).toBe('')
+  })
+})
+
+describe('sanitizeIntegerInput', () => {
+  it('keeps a run of digits', () => {
+    expect(sanitizeIntegerInput('42')).toBe('42')
+  })
+
+  it('strips a decimal separator and everything non-digit', () => {
+    expect(sanitizeIntegerInput('1,5')).toBe('15')
+    expect(sanitizeIntegerInput('2x')).toBe('2')
+  })
+
+  it('returns an empty string when there are no digits', () => {
+    expect(sanitizeIntegerInput('')).toBe('')
+  })
+})
 
 describe('parseRublesToMinor', () => {
   it('parses an integer rouble amount into kopecks', () => {

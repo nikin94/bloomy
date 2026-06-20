@@ -10,6 +10,20 @@ export const formatMoney = (minor: number) =>
 export const formatDate = (ms: number) =>
   new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short' }).format(new Date(ms))
 
+// Filter raw keystrokes into a decimal money string as the user types: digits
+// with at most one separator (comma or dot, ru-RU uses a comma) and at most two
+// fractional digits (kopecks). Drives the Input `numeric="decimal"` flag, so a
+// money field rejects letters/extra separators live instead of validating later.
+export const sanitizeDecimalInput = (value: string): string => {
+  const [intPart = '', sep = '', fracPart = ''] =
+    value.replace(/[^\d.,]/g, '').match(/^(\d*)([.,]?)(\d*)/)?.slice(1) ?? []
+  return sep ? `${intPart}${sep}${fracPart.slice(0, 2)}` : intPart
+}
+
+// Filter raw keystrokes into a non-negative integer string (digits only). Drives
+// the Input `numeric="integer"` flag (e.g. the plant quantity).
+export const sanitizeIntegerInput = (value: string): string => value.replace(/\D/g, '')
+
 // Parse a user-entered amount in the major unit (rubles, e.g. "149,90") into
 // integer minor units (kopecks). Accepts a comma or a dot as the decimal
 // separator. Returns 0 for empty or non-numeric input.
