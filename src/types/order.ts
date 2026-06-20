@@ -8,8 +8,12 @@ import { formatDate, formatMoney } from '../utils/format'
 export const PAYMENT_STATUS_SCHEMA = z.enum(['pending', 'paid', 'refunded'])
 export type PaymentStatus = z.infer<typeof PAYMENT_STATUS_SCHEMA>
 
+// Shipment status of an order, in workflow order. 'packing' must stay here:
+// real production orders are saved with it, so dropping it makes parseOrder throw
+// on those documents and crashes the whole list.
 export const SHIPMENT_STATUS_SCHEMA = z.enum([
   'new',
+  'packing',
   'shipped',
   'delivered',
   'cancelled',
@@ -171,6 +175,7 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
 
 export const SHIPMENT_STATUS_LABELS: Record<ShipmentStatus, string> = {
   new: 'Новый',
+  packing: 'Сборка',
   shipped: 'Отправлен',
   delivered: 'Доставлен',
   cancelled: 'Отменён',
