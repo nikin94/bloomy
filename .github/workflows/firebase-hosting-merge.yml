@@ -47,6 +47,12 @@ jobs:
           VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          # Sentry error monitoring. Without this the CI-built bundle has no DSN,
+          # so Sentry.init() no-ops and no events are ever sent (the local .env
+          # DSN only applies to a `yarn deploy` from a dev machine, which the
+          # auto-deploy here overwrites). Public/embeddable value — a secret keeps
+          # it configurable and consistent with the Firebase config above.
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
