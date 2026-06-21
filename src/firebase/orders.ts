@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -38,6 +39,18 @@ export async function fetchOrders(ownerId: string): Promise<Order[]> {
   return snapshot.docs
     .map((d) => parseOrder(d.id, d.data()))
     .filter((o) => !o.isDeleted)
+    .sort((a, b) => b.dateCreated - a.dateCreated)
+}
+
+// Load the owner's soft-deleted orders (for the trash page), newest-first. Same
+// owner-scoped query as fetchOrders, but keeps ONLY the deleted ones — the
+// complement of that list — so the trash shows exactly what the main list hides.
+export async function fetchDeletedOrders(ownerId: string): Promise<Order[]> {
+  const q = query(collection(db, ORDERS_COLLECTION), where('ownerId', '==', ownerId))
+  const snapshot = await getDocs(q)
+  return snapshot.docs
+    .map((d) => parseOrder(d.id, d.data()))
+    .filter((o) => o.isDeleted)
     .sort((a, b) => b.dateCreated - a.dateCreated)
 }
 
@@ -95,4 +108,12 @@ export async function updateOrder(id: string, order: Omit<Order, 'id'>): Promise
 // Firestore rules already permit this update (ownerId is unchanged).
 export async function softDeleteOrder(id: string): Promise<void> {
   await updateDoc(doc(db, ORDERS_COLLECTION, id), { isDeleted: true })
+}
+
+// Restore a soft-deleted order: REMOVE the `isDeleted` field (rather than store
+// `false`) so a restored order returns to its pristine, never-deleted shape —
+// matching how an active order has no flag at all. A partial update leaves every
+// other field intact; owner-scoped Firestore rules already permit it.
+export async function restoreOrder(id: string): Promise<void> {
+  await updateDoc(doc(db, ORDERS_COLLECTION, id), { isDeleted: deleteField() })
 }

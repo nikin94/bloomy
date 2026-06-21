@@ -10,6 +10,7 @@ import SettingsModal from '../SettingsModal/SettingsModal'
 const NAV_LINKS: { to: string; label: string; end?: boolean }[] = [
   { to: '/orders', label: 'Заказы', end: true },
   { to: '/customers', label: 'Клиенты' },
+  { to: '/orders/deleted', label: 'Корзина' },
 ]
 
 const PlusIcon = ({ className = 'size-4' }: { className?: string }) => (

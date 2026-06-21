@@ -4,7 +4,15 @@
 // including atomicity when many orders are created concurrently. Run with
 // `yarn test:emulator` (starts the emulator via `firebase emulators:exec`).
 import { describe, expect, it } from 'vitest'
-import { createOrder, fetchOrder, fetchOrders, softDeleteOrder, updateOrder } from './orders'
+import {
+  createOrder,
+  fetchDeletedOrders,
+  fetchOrder,
+  fetchOrders,
+  restoreOrder,
+  softDeleteOrder,
+  updateOrder,
+} from './orders'
 import type { NewOrder } from './orders'
 
 // Each test uses a fresh ownerId so its per-owner counter starts at 1 and tests
@@ -142,5 +150,28 @@ describe('softDeleteOrder (emulator)', () => {
     // kept rather than removed.
     const nextId = await createOrder(makeOrder(owner))
     expect((await fetchOrder(nextId, owner))?.number).toBe(2)
+  })
+})
+
+describe('fetchDeletedOrders + restoreOrder (emulator)', () => {
+  it('lists soft-deleted orders, and restore returns one to the active list', async () => {
+    const owner = 'owner-trash'
+    const keepId = await createOrder(makeOrder(owner)) // stays active
+    const dropId = await createOrder(makeOrder(owner)) // deleted then restored
+
+    await softDeleteOrder(dropId)
+
+    // The trash shows only the deleted order; the active list shows only the kept one.
+    expect((await fetchDeletedOrders(owner)).map((o) => o.id)).toEqual([dropId])
+    expect((await fetchOrders(owner)).map((o) => o.id)).toEqual([keepId])
+
+    await restoreOrder(dropId)
+
+    // After restore: trash is empty, the order is back in the active list and the
+    // detail fetch finds it again.
+    expect(await fetchDeletedOrders(owner)).toEqual([])
+    const listed = await fetchOrders(owner)
+    expect(listed.map((o) => o.id).sort()).toEqual([dropId, keepId].sort())
+    expect(await fetchOrder(dropId, owner)).not.toBeNull()
   })
 })

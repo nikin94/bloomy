@@ -4,14 +4,32 @@
 // dependency-free. The real transaction semantics (atomicity under concurrency)
 // are exercised separately against the Firestore emulator (orders.emulator.test.ts).
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { doc, getDoc, getDocs, runTransaction, setDoc, updateDoc, where } from 'firebase/firestore'
-import { createOrder, fetchOrder, fetchOrders, softDeleteOrder, updateOrder } from './orders'
+import {
+  deleteField,
+  doc,
+  getDoc,
+  getDocs,
+  runTransaction,
+  setDoc,
+  updateDoc,
+  where,
+} from 'firebase/firestore'
+import {
+  createOrder,
+  fetchDeletedOrders,
+  fetchOrder,
+  fetchOrders,
+  restoreOrder,
+  softDeleteOrder,
+  updateOrder,
+} from './orders'
 import type { NewOrder } from './orders'
 import type { Order } from '../types/order'
 
 vi.mock('./client', () => ({ db: {} }))
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn(() => ({})),
+  deleteField: vi.fn(() => ({ __deleted: true })),
   doc: vi.fn(() => ({ id: 'generated-id' })),
   getDoc: vi.fn(),
   getDocs: vi.fn(),
@@ -183,6 +201,38 @@ describe('fetchOrders', () => {
     const orders = await fetchOrders('owner-1')
 
     expect(orders.map((o) => o.id)).toEqual(['live'])
+  })
+})
+
+describe('fetchDeletedOrders', () => {
+  it('keeps only soft-deleted orders, newest-first (complement of the live list)', async () => {
+    vi.mocked(getDocs).mockResolvedValue({
+      docs: [
+        { id: 'live', data: () => storedOrder({ dateCreated: 1000 }) },
+        { id: 'gone-old', data: () => storedOrder({ dateCreated: 2000, isDeleted: true }) },
+        { id: 'gone-new', data: () => storedOrder({ dateCreated: 3000, isDeleted: true }) },
+      ],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+
+    const orders = await fetchDeletedOrders('owner-1')
+
+    expect(where).toHaveBeenCalledWith('ownerId', '==', 'owner-1')
+    expect(orders.map((o) => o.id)).toEqual(['gone-new', 'gone-old'])
+  })
+})
+
+describe('restoreOrder', () => {
+  it('removes the isDeleted field via a partial update (not a full overwrite)', async () => {
+    vi.mocked(doc).mockReturnValue({ ref: 'order-ref' } as never)
+
+    await restoreOrder('o1')
+
+    expect(doc).toHaveBeenCalledWith(expect.anything(), 'orders', 'o1')
+    // deleteField() clears the flag so the order returns to its pristine shape.
+    expect(deleteField).toHaveBeenCalled()
+    expect(updateDoc).toHaveBeenCalledWith({ ref: 'order-ref' }, { isDeleted: { __deleted: true } })
+    expect(setDoc).not.toHaveBeenCalled()
   })
 })
 

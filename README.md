@@ -108,7 +108,7 @@ src/
   context/      Auth + settings contexts and providers
   firebase/     Firebase integration: setup and data access (client, auth, orders, customers, settings)
   utils/        Pure helpers, no Firebase (format — money/date formatting, rubles parsing)
-  pages/        Route screens (Login, Orders, OrderDetail, NewOrder, EditOrder, Customers)
+  pages/        Route screens (Login, Orders, OrderDetail, NewOrder, EditOrder, DeletedOrders, Customers)
   styles/       Shared style constants (e.g. fieldStyles — form-control class strings)
   types/        Zod schemas and inferred types (order, customer, settings)
   theme.css     Design tokens (colours, typography, light/dark variants)
