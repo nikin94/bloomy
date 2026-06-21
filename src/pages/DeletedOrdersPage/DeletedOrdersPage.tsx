@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
@@ -114,11 +113,6 @@ const DeletedOrdersPage = () => {
 
       <div className="min-h-0 flex-1 overflow-auto p-6">
         <div className="mx-auto flex max-w-2xl flex-col gap-4">
-          <Link to="/orders" className="inline-block text-primary no-underline hover:underline">
-            ← К списку заказов
-          </Link>
-          <h1 className="m-0 text-2xl font-semibold text-heading">Удалённые заказы</h1>
-
           {loading && <Spinner />}
           {loadError && <p className="m-0 text-danger">{loadError}</p>}
 
