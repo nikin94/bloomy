@@ -32,13 +32,21 @@
 
   /* Brand. `primary` is the main brand colour (buttons, links, focus, active
      nav); `primary-bg` is the same hue at low alpha for subtle tints (hover
-     backgrounds, the customer-type slider track, the new-order highlight fade).
-     An olive-forest green from the project palette, tuned so white button text
-     clears AA on it (#41702f = 4.6:1) while staying readable as link text on the
-     dark bg — the palette's lighter greens (5D7C39/7EA467) can't carry white
-     text, and its darkest (18330C) vanishes on a dark background. */
+     backgrounds, the customer-type slider track). An olive-forest green from the
+     project palette, tuned so white button text clears AA on it (#41702f =
+     4.6:1) while staying readable as link text on the dark bg — the palette's
+     lighter greens (5D7C39/7EA467) can't carry white text, and its darkest
+     (18330C) vanishes on a dark background. */
   --primary: #41702f;
   --primary-bg: rgba(65, 112, 47, 0.15);
+
+  /* Accent. The palette's sage green, kept distinct from `primary` so the
+     "just created" order highlight reads as its own thing, not a primary hover.
+     Sage clears AA on the dark bg (#7ea467 = 6.3:1) so it also works as an
+     icon/fill here; `accent-bg` is the same hue at low alpha for the highlight
+     tint. On the LIGHT surface sage is too light for text — see that override. */
+  --accent: #7ea467;
+  --accent-bg: rgba(126, 164, 103, 0.2);
 
   /* Neutrals. Muted text is the palette's grey-blue (#889491 = 5.8:1 on --bg). */
   --bg: #16171d;
@@ -81,6 +89,13 @@
   --primary: #18330C;
   --primary-bg: rgba(24, 51, 12, 0.1);
 
+  /* Accent — the palette's deeper olive (#5d7c39) rather than the dark theme's
+     lighter sage, so the highlight tint stays visible on the greyer light
+     surface (the lighter sage would wash out). Decorative tint only here, not
+     text. */
+  --accent: #5d7c39;
+  --accent-bg: rgba(93, 124, 57, 0.18);
+
   /* A muted grey surface (~#ccc), not pure white — far easier on the eyes. The
      darker bg forces every foreground token darker to keep WCAG AA: the muted
      body text drops below 4.5:1 on a grey this dark unless it's deepened too, and
@@ -107,6 +122,8 @@
 @theme inline {
   --color-primary: var(--primary);
   --color-primary-bg: var(--primary-bg);
+  --color-accent: var(--accent);
+  --color-accent-bg: var(--accent-bg);
   --color-bg: var(--bg);
   --color-text: var(--text);
   --color-heading: var(--text-h);
