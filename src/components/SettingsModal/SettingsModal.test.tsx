@@ -153,6 +153,17 @@ describe('SettingsModal', () => {
     expect(signOutUser).toHaveBeenCalledTimes(1)
   })
 
+  it('surfaces a sign-out failure inline and keeps the dialog open', async () => {
+    const user = userEvent.setup()
+    signOutUser.mockRejectedValueOnce(new Error('Сеть недоступна'))
+    renderModal()
+    await user.click(screen.getByRole('button', { name: 'Выйти' }))
+    // The failure is announced (so the user knows they're still signed in) and
+    // the dialog is not dismissed.
+    expect(await screen.findByRole('alert')).toHaveTextContent('Сеть недоступна')
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
   it('moves focus into the dialog when it opens', () => {
     renderModal()
     // The first focusable control (the close button) receives focus on open.
