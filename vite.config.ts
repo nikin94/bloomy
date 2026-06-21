@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import tailwindcss from '@tailwindcss/vite'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 import { configDefaults } from 'vitest/config'
 
 // Build version: CI stamps the deploy's git SHA (GITHUB_SHA); a local build/dev
@@ -11,9 +12,19 @@ import { configDefaults } from 'vitest/config'
 // because they come from this single value.
 const APP_VERSION = (process.env.GITHUB_SHA ?? 'dev').slice(0, 12)
 
+// Sentry source-map upload is OPT-IN, gated on an auth token in the environment.
+// Without it a normal `yarn build` still works (Sentry just reports minified
+// stack traces); set SENTRY_AUTH_TOKEN/ORG/PROJECT to upload source maps so the
+// dashboard shows readable code. Build-time only, so these are plain env vars
+// (not VITE_-prefixed — they must never reach the client bundle).
+const SENTRY_AUTH_TOKEN = process.env.SENTRY_AUTH_TOKEN
+
 // https://vite.dev/config/
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(APP_VERSION) },
+  // Generate source maps only when we're going to upload (and then delete) them,
+  // so they're never shipped publicly alongside the bundle.
+  build: SENTRY_AUTH_TOKEN ? { sourcemap: true } : {},
   plugins: [
     react(),
     tailwindcss(),
@@ -31,6 +42,20 @@ export default defineConfig({
         })
       },
     },
+    // Upload source maps to Sentry on a production build, tagged with the same
+    // release as the running app. Added only when a token is configured; the
+    // maps are deleted from the output after upload so they don't ship publicly.
+    ...(SENTRY_AUTH_TOKEN
+      ? [
+          sentryVitePlugin({
+            org: process.env.SENTRY_ORG,
+            project: process.env.SENTRY_PROJECT,
+            authToken: SENTRY_AUTH_TOKEN,
+            release: { name: APP_VERSION },
+            sourcemaps: { filesToDeleteAfterUpload: ['./dist/**/*.map'] },
+          }),
+        ]
+      : []),
   ],
   // Vitest config. `globals: false` keeps the test API explicit (imported from
   // 'vitest'), matching the codebase's explicit-imports style; the setup file
