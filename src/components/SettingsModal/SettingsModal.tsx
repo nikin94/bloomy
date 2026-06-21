@@ -211,11 +211,20 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
     }
   }
 
-  const handleLogout = () => {
-    onClose()
+  const handleLogout = async () => {
     // signOut is a local operation (clears the persisted session, no network
-    // request), so failure is unlikely — but don't swallow it silently.
-    signOutUser().catch((err: unknown) => console.error('Sign-out failed', err))
+    // request), so it works offline and almost never fails. But if it does, the
+    // user must SEE it — otherwise they think they signed out while the session
+    // is still live. Await it, surface any failure inline, and close only on
+    // success (a successful sign-out unmounts this dialog via the auth change
+    // anyway, so the explicit close is just belt-and-suspenders).
+    setError(null)
+    try {
+      await signOutUser()
+      onClose()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Не удалось выйти. Попробуйте снова.')
+    }
   }
 
   return (
