@@ -13,6 +13,7 @@ const fetchOrder = vi.fn()
 const updateOrder = vi.fn()
 const softDeleteOrder = vi.fn()
 const fetchCustomer = vi.fn()
+const updateCustomer = vi.fn()
 const navigate = vi.fn()
 
 vi.mock('../../firebase/orders', () => ({
@@ -22,6 +23,7 @@ vi.mock('../../firebase/orders', () => ({
 }))
 vi.mock('../../firebase/customers', () => ({
   fetchCustomer: (...args: unknown[]) => fetchCustomer(...args),
+  updateCustomer: (...args: unknown[]) => updateCustomer(...args),
 }))
 vi.mock('react-router-dom', async (importOriginal) => ({
   ...(await importOriginal<typeof import('react-router-dom')>()),
@@ -74,6 +76,7 @@ beforeEach(() => {
   fetchCustomer.mockResolvedValue(customer())
   updateOrder.mockResolvedValue(undefined)
   softDeleteOrder.mockResolvedValue(undefined)
+  updateCustomer.mockResolvedValue(undefined)
 })
 
 describe('OrderDetailPage', () => {
@@ -197,5 +200,36 @@ describe('OrderDetailPage', () => {
     // The error is shown in the dialog and the user is NOT navigated away.
     expect(await screen.findByRole('alert')).toHaveTextContent('Сеть недоступна')
     expect(navigate).not.toHaveBeenCalledWith('/orders')
+  })
+
+  it('edits the customer in a dialog and reflects the new name live', async () => {
+    const user = userEvent.setup()
+    fetchCustomer.mockResolvedValue(customer({ name: 'Анна', phone: '+700' }))
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    expect(screen.getByText('Анна')).toBeInTheDocument()
+
+    // The edit button sits in the customer row; clicking it opens the form
+    // prefilled with the current customer values.
+    await user.click(screen.getByRole('button', { name: 'Редактировать клиента' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Редактирование клиента' })
+    const nameField = within(dialog).getByLabelText('Имя клиента')
+    expect(nameField).toHaveValue('Анна')
+    expect(within(dialog).getByLabelText('Телефон')).toHaveValue('+700')
+
+    await user.clear(nameField)
+    await user.type(nameField, 'Анна Петрова')
+    await user.click(within(dialog).getByRole('button', { name: 'Сохранить' }))
+
+    // The customer record is updated and the page reflects the new name without
+    // a refetch; the dialog closes.
+    await waitFor(() =>
+      expect(updateCustomer).toHaveBeenCalledWith(
+        'c1',
+        expect.objectContaining({ name: 'Анна Петрова', phone: '+700' }),
+      ),
+    )
+    expect(await screen.findByText('Анна Петрова')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

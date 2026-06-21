@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { fetchOrder, softDeleteOrder, updateOrder } from '../../firebase/orders'
-import { fetchCustomer } from '../../firebase/customers'
+import { fetchCustomer, updateCustomer } from '../../firebase/customers'
+import type { CustomerEdits } from '../../firebase/customers'
 import { formatDate, formatMoney } from '../../utils/format'
 import {
   getSubtotalMinor,
@@ -18,8 +20,25 @@ import Spinner from '../../components/Spinner/Spinner'
 import Select from '../../components/Select/Select'
 import Button from '../../components/Button/Button'
 import Modal from '../../components/Modal/Modal'
+import CustomerForm from '../../components/CustomerForm/CustomerForm'
 import type { Order } from '../../types/order'
 import type { Customer } from '../../types/customer'
+
+const EditIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="size-5"
+  >
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </svg>
+)
 
 const OrderDetailPage = () => {
   const { id } = useParams<{ id: string }>()
@@ -40,6 +59,10 @@ const OrderDetailPage = () => {
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  // The customer's name lives on the customer record, not the order, so it's
+  // edited here in a dialog (the shared CustomerForm) — fixing it where it's seen
+  // rather than sending the user to the customers page.
+  const [editingCustomer, setEditingCustomer] = useState(false)
 
   useEffect(() => {
     if (!id || !ownerId) return
@@ -92,6 +115,25 @@ const OrderDetailPage = () => {
     } finally {
       setSavingStatus(false)
     }
+  }
+
+  // Persist the customer's edited fields, then mirror them onto the local
+  // customer so the page (the "Клиент"/"Телефон" rows) updates live without a
+  // refetch. Empty optional fields drop to undefined, matching updateCustomer.
+  // Errors propagate to the CustomerForm in the dialog, which keeps itself open.
+  const handleSaveCustomer = async (edits: CustomerEdits) => {
+    if (!customer) return
+    await updateCustomer(customer.id, edits)
+    const trimmed = (value: string | undefined) =>
+      value && value.trim() !== '' ? value.trim() : undefined
+    setCustomer({
+      ...customer,
+      name: edits.name.trim(),
+      phone: trimmed(edits.phone),
+      address: trimmed(edits.address),
+      note: trimmed(edits.note),
+    })
+    setEditingCustomer(false)
   }
 
   // Soft-delete the order, then return to the list (where it no longer appears).
@@ -162,7 +204,23 @@ const OrderDetailPage = () => {
               "mark paid/shipped" action) without opening the full edit form;
               the rest is read-only and changed via "Редактировать". */}
           <section className="flex flex-col">
-            <Field label="Клиент" value={customer?.name ?? '—'} />
+            <Field
+              label="Клиент"
+              value={customer?.name ?? '—'}
+              action={
+                customer ? (
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    onClick={() => setEditingCustomer(true)}
+                    aria-label="Редактировать клиента"
+                    title="Редактировать клиента"
+                  >
+                    <EditIcon />
+                  </Button>
+                ) : undefined
+              }
+            />
             {customer?.phone && <Field label="Телефон" value={customer.phone} />}
             <Field label="Адрес доставки" value={order.address || '—'} />
             <Field label="Способ доставки" value={DELIVERY_METHOD_LABELS[order.deliveryMethod]} />
@@ -228,6 +286,21 @@ const OrderDetailPage = () => {
         </div>
       )}
 
+      {editingCustomer && customer && (
+        <Modal title="Редактирование клиента" onClose={() => setEditingCustomer(false)}>
+          <CustomerForm
+            initial={{
+              name: customer.name,
+              phone: customer.phone,
+              address: customer.address,
+              note: customer.note,
+            }}
+            onCancel={() => setEditingCustomer(false)}
+            onSubmit={handleSaveCustomer}
+          />
+        </Modal>
+      )}
+
       {confirmingDelete && order && (
         <Modal title={`Удалить заказ №${order.number}?`} onClose={() => setConfirmingDelete(false)}>
           <p className="m-0 text-text">Заказ исчезнет из списка.</p>
@@ -254,10 +327,21 @@ const OrderDetailPage = () => {
   )
 }
 
-const Field = ({ label, value }: { label: string; value: string }) => (
-  <div className="flex gap-3 border-b border-border py-2">
+// A read-only label/value row. An optional `action` slot (e.g. an edit button)
+// is pinned to the row's end — used by the "Клиент" row to edit the customer.
+const Field = ({
+  label,
+  value,
+  action,
+}: {
+  label: string
+  value: string
+  action?: ReactNode
+}) => (
+  <div className="flex items-center gap-3 border-b border-border py-2">
     <span className="shrink-0 basis-[200px] text-text">{label}</span>
-    <span className="text-heading">{value}</span>
+    <span className="min-w-0 flex-1 text-heading">{value}</span>
+    {action}
   </div>
 )
 
