@@ -14,6 +14,7 @@ const OrdersPage = lazy(() => import('./pages/OrdersPage/OrdersPage'))
 const NewOrderPage = lazy(() => import('./pages/NewOrderPage/NewOrderPage'))
 const OrderDetailPage = lazy(() => import('./pages/OrderDetailPage/OrderDetailPage'))
 const EditOrderPage = lazy(() => import('./pages/EditOrderPage/EditOrderPage'))
+const DeletedOrdersPage = lazy(() => import('./pages/DeletedOrdersPage/DeletedOrdersPage'))
 const CustomersPage = lazy(() => import('./pages/CustomersPage/CustomersPage'))
 
 function App() {
@@ -31,6 +32,9 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/orders/new" element={<NewOrderPage />} />
+          {/* Static path declared before /orders/:id; React Router ranks it above
+              the dynamic segment regardless, but the order reads clearly. */}
+          <Route path="/orders/deleted" element={<DeletedOrdersPage />} />
           <Route path="/orders/:id" element={<OrderDetailPage />} />
           <Route path="/orders/:id/edit" element={<EditOrderPage />} />
           <Route path="/customers" element={<CustomersPage />} />
