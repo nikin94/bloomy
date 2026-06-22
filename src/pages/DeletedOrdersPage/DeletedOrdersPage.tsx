@@ -94,30 +94,29 @@ const DeletedOrdersPage = () => {
     <div className="flex h-full flex-col">
       <AppHeader />
 
-      <div className="min-h-0 flex-1 overflow-auto p-6">
-        <div className="mx-auto flex max-w-2xl flex-col gap-4">
-          {loading && <Spinner />}
-          {loadError && <p className="m-0 text-danger">{loadError}</p>}
+      {/* Flex column so the empty state can center itself (m-auto) in the whole
+          available area, while the list keeps its constrained max-w-2xl column. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-auto p-6">
+        {loading && <Spinner />}
+        {loadError && <p className="mx-auto m-0 w-full max-w-2xl text-danger">{loadError}</p>}
 
-          {!loading && !loadError && (
-            <>
-              {orders.length === 0 ? (
-                <p className="m-0 text-text">Корзина пуста</p>
-              ) : (
-                <ul className="m-0 list-none p-0">
-                  {orders.map((order) => (
-                    <DeletedOrderRow
-                      key={order.id}
-                      order={order}
-                      customerName={getCustomerName(order.customerId)}
-                      onRestore={handleRestore}
-                    />
-                  ))}
-                </ul>
-              )}
-            </>
-          )}
-        </div>
+        {!loading &&
+          !loadError &&
+          (orders.length === 0 ? (
+            // m-auto in a flex container centers on both axes.
+            <p className="m-auto text-text">Корзина пуста</p>
+          ) : (
+            <ul className="mx-auto m-0 w-full max-w-2xl list-none p-0">
+              {orders.map((order) => (
+                <DeletedOrderRow
+                  key={order.id}
+                  order={order}
+                  customerName={getCustomerName(order.customerId)}
+                  onRestore={handleRestore}
+                />
+              ))}
+            </ul>
+          ))}
       </div>
     </div>
   )
