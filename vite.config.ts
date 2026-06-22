@@ -4,6 +4,7 @@ import babel from '@rolldown/plugin-babel'
 import tailwindcss from '@tailwindcss/vite'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 import { configDefaults } from 'vitest/config'
+import { buildServiceWorker, selectPrecache } from './vite.sw'
 
 // Build version: CI stamps the deploy's git SHA (GITHUB_SHA); a local build/dev
 // run gets 'dev'. It is both baked into the bundle (`__APP_VERSION__`, so the
@@ -39,6 +40,26 @@ export default defineConfig({
           type: 'asset',
           fileName: 'version.json',
           source: JSON.stringify({ version: APP_VERSION }),
+        })
+      },
+    },
+    // Emit /sw.js — a tiny hand-rolled service worker that precaches the app
+    // shell so the app boots and runs fully offline (cold start), not just while
+    // a tab stays open. Build only (dev keeps HMR; no SW). The precache manifest
+    // is the build's hashed chunks (read from the bundle here) plus the static
+    // shell; the SW source is keyed to this build's version so a new deploy
+    // refreshes the cache. Hand-rolled rather than vite-plugin-pwa to stay
+    // compatible with the rolldown-based build and to own the version.json
+    // interaction + kill switch (see vite.sw.ts).
+    {
+      name: 'emit-service-worker',
+      apply: 'build',
+      generateBundle(_options, bundle) {
+        const precache = selectPrecache(Object.keys(bundle))
+        this.emitFile({
+          type: 'asset',
+          fileName: 'sw.js',
+          source: buildServiceWorker(APP_VERSION, precache),
         })
       },
     },

@@ -6,8 +6,8 @@
     "rewrites": [{ "source": "**", "destination": "/index.html" }],
     "headers": [
       {
-        "comment": "version.json and index.html must never be cached, or a long-open tab would poll a stale version and a reload wouldn't pick up the new build.",
-        "source": "/@(version.json|index.html)",
+        "comment": "version.json, index.html and sw.js must never be cached. A stale version.json/index.html would hide a new build from a long-open tab; a stale sw.js would pin an old service worker (Firebase Hosting's default 1h cache would otherwise delay every SW update by up to an hour).",
+        "source": "/@(version.json|index.html|sw.js)",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, max-age=0" }]
       },
       {

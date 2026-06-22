@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './context/AuthProvider.tsx'
 import { SettingsProvider } from './context/SettingsProvider.tsx'
 import { initSentry } from './observability/sentry.ts'
+import { registerServiceWorker } from './lib/registerServiceWorker.ts'
 import AppCrashFallback from './components/AppCrashFallback/AppCrashFallback.tsx'
 import App from './App.tsx'
 import './index.css'
@@ -12,6 +13,10 @@ import './index.css'
 // Start error monitoring before anything renders, so an exception during the
 // initial mount is still captured (no-op in dev/test or without a DSN).
 initSentry()
+
+// Register the precaching service worker so the app boots offline on a cold
+// start (no-op in dev/test; see registerServiceWorker).
+registerServiceWorker()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
