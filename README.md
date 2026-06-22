@@ -146,6 +146,30 @@ bundle's, a non-blocking banner offers to reload. `version.json` and
 `index.html` are served `no-cache` (so the poll and reload see the new build)
 while hashed `/assets/**` stay immutable — see the `headers` in `firebase.json`.
 
+## Offline (service worker)
+
+A tiny hand-rolled service worker (`/sw.js`, generated at build time by the
+`emit-service-worker` plugin in `vite.config.ts`; source builder in `vite.sw.ts`)
+precaches the app shell — `index.html`, every hashed JS/CSS chunk, `version.json`
+and the icons — so the app **boots and runs fully offline on a cold start**, not
+just while a tab stays open. It is registered only in a production build
+(`src/lib/registerServiceWorker.ts`); dev keeps HMR.
+
+Behaviour: navigations fall back to the cached shell when offline; same-origin
+hashed assets are cache-first (and runtime-cached on first online use);
+`version.json` is network-first so update detection stays honest; **everything
+else — Firestore, Google auth, any cross-origin or non-GET request — passes
+straight to the network**, so Firestore's own offline persistence is never
+disturbed. Each deploy bakes a new version into the SW, so a new cache replaces
+the old one on activate (old caches are deleted), in lockstep with the update
+prompt above. `sw.js` is served `no-cache` so a new SW is never pinned by the CDN.
+
+**Kill switch (brick-safety):** if a bad SW ever needs disabling, post
+`{ type: 'BLOOMY_SW_KILL' }` to it (it unregisters and clears its caches), or
+deploy a `sw.js` whose `install` calls `self.registration.unregister()` — the
+standard remote escape hatch, since browsers re-fetch `sw.js` (served `no-cache`)
+on navigation.
+
 ## Data model
 
 - **Orders** and **customers** are stored in Firestore, each scoped to its owner
