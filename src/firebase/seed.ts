@@ -26,7 +26,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 
 // How many of each to generate. Orders are spread so every status/method appears
 // and a slice lands in the trash; customers include a couple of soft-deleted.
-export const SEED_ORDER_COUNT = 50
+export const SEED_ORDER_COUNT = 100
 const SEED_DELETED_CUSTOMER_COUNT = 2
 
 const PAYMENT_STATUSES = ['pending', 'paid', 'refunded'] as const
@@ -35,18 +35,60 @@ const PAYMENT_METHODS: PaymentMethod[] = ['cash', 'card', 'bank']
 const DELIVERY_METHODS: DeliveryMethod[] = ['bus', 'post', 'pickup', 'cdek', 'taxi', 'other']
 const TERMINAL = new Set(['delivered', 'cancelled'])
 
+// Potted house plants (the shop sells plants in pots, not cut flowers), so the
+// seeded line items read like the real catalogue.
 const PLANT_NAMES = [
-  'Роза',
-  'Пион',
-  'Тюльпан',
-  'Орхидея',
-  'Гортензия',
-  'Хризантема',
-  'Лилия',
-  'Эустома',
-  'Ранункулюс',
-  'Гвоздика',
+  'Филодендрон Биркин-пинк',
+  'Филодендрон Белая принцесса',
+  'Сансевиерия Муншайн',
+  'Монстера Деликатесная',
+  'Замиокулькас',
+  'Фикус Лирата',
+  'Калатея Орбифолия',
+  'Спатифиллум',
+  'Алоказия Полли',
+  'Эпипремнум Голден',
+  'Драцена Маргината',
+  'Хлорофитум Бонни',
 ]
+
+// Street names, and cities paired with a realistic postal index, used to build
+// full delivery addresses (see buildAddress). Index-driven, so deterministic.
+const STREET_NAMES = [
+  'Тараса Шевченко',
+  'Большая Морская',
+  'Адмирала Октябрьского',
+  'Героев Севастополя',
+  'Ленина',
+  'Гоголя',
+  'Пушкина',
+  'Нахимова',
+  'Очаковцев',
+  'Льва Толстого',
+]
+
+const CITIES: { city: string; index: string }[] = [
+  { city: 'г. Севастополь', index: '299011' },
+  { city: 'г. Симферополь', index: '295000' },
+  { city: 'г. Ялта', index: '298600' },
+  { city: 'г. Евпатория', index: '297400' },
+  { city: 'г. Керчь', index: '298300' },
+  { city: 'г. Феодосия', index: '298100' },
+  { city: 'г. Бахчисарай', index: '298400' },
+]
+
+// A full delivery address, deterministic off the index: street + house, an
+// apartment on most (every 4th is a private house with no flat), then city +
+// postal index — e.g. "ул. Тараса Шевченко, д. 21, кв. 91, г. Севастополь, 299011".
+function buildAddress(i: number): string {
+  const street = STREET_NAMES[i % STREET_NAMES.length]
+  const { city, index } = CITIES[i % CITIES.length]
+  const house = 1 + ((i * 7) % 120)
+  const parts = [`ул. ${street}`, `д. ${house}`]
+  if (i % 4 !== 0) parts.push(`кв. ${1 + ((i * 13) % 200)}`)
+  parts.push(city, index)
+  return parts.join(', ')
+}
 
 // A fixed cast of customers; the last SEED_DELETED_CUSTOMER_COUNT are marked
 // soft-deleted so the orders list can be checked to still resolve their names.
@@ -80,13 +122,15 @@ export function buildSeedCustomers(ownerId: string, now: number): NewCustomer[] 
   }))
 }
 
-// One order's line items: 1–3 plants cycled off the index, with varied qty/price.
+// One order's line items: 1–3 potted plants cycled off the index, with varied
+// qty/price. Prices land in a realistic ~500–2500 ₽ band (50-₽ steps), in the
+// same ballpark as the real catalogue.
 function buildPlants(i: number): OrderItem[] {
   const count = 1 + (i % 3)
   return Array.from({ length: count }, (_, k) => ({
     name: PLANT_NAMES[(i + k) % PLANT_NAMES.length],
     quantity: 1 + ((i + k) % 5),
-    unitPriceMinor: (900 + ((i * 7 + k * 11) % 60) * 50) * 100,
+    unitPriceMinor: (500 + ((i * 7 + k * 11) % 41) * 50) * 100,
   }))
 }
 
@@ -108,7 +152,7 @@ export function buildSeedOrders(
       dateCreated,
       ownerId,
       customerId: customerIds[i % customerIds.length],
-      address: `ул. Тестовая, ${i + 1}`,
+      address: buildAddress(i),
       plants: buildPlants(i),
       paymentMethod: PAYMENT_METHODS[i % PAYMENT_METHODS.length],
       deliveryMethod: DELIVERY_METHODS[i % DELIVERY_METHODS.length],

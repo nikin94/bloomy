@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { formatDate, formatMoney } from '../utils/format'
+import { formatDate, formatTime, formatMoney } from '../utils/format'
 
 // Status/method unions are defined as Zod enums so the runtime validator (used
 // when reading Firestore documents) and the TypeScript types share a single
@@ -249,10 +249,13 @@ export function buildOrderColumns(
     },
     {
       id: 'dateCreated',
-      header: 'Дата',
-      format: (o) => formatDate(o.dateCreated),
-      // Sort by the raw timestamp, not the formatted "dd.mm.yy" string.
+      // Date AND time of creation, on two lines (the date prominent, the time as
+      // a muted second line below) — see DataTable's newline-splitting renderer.
+      header: 'Добавлен',
+      format: (o) => `${formatDate(o.dateCreated)}\n${formatTime(o.dateCreated)}`,
+      // Sort by the raw timestamp, not the formatted strings.
       sortValue: (o) => o.dateCreated,
+      width: 'w-32',
     },
     {
       id: 'customer',
