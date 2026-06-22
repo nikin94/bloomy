@@ -329,8 +329,8 @@ const OrderDetailPage = () => {
             </p>
           )}
           <div className="flex justify-end gap-2">
-            <Button variant="danger" onClick={handleDelete} disabled={deleting}>
-              {deleting ? 'Удаление…' : 'Удалить'}
+            <Button variant="danger" onClick={handleDelete} isLoading={deleting}>
+              Удалить
             </Button>
             <Button
               variant="secondary"

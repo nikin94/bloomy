@@ -47,8 +47,8 @@ const DeletedOrderRow = ({
           {formatDate(order.dateCreated)} · {formatMoney(getTotalMinor(order))}
         </p>
       </div>
-      <Button variant="secondary" size="sm" onClick={restore} disabled={restoring} className="shrink-0">
-        {restoring ? 'Восстановление…' : 'Восстановить'}
+      <Button variant="secondary" size="sm" onClick={restore} isLoading={restoring} className="shrink-0">
+        Восстановить
       </Button>
     </li>
   )

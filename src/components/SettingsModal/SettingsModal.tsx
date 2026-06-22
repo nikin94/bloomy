@@ -336,8 +336,8 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
       )}
 
       <div className="flex justify-end gap-2">
-        <Button variant="primary" onClick={handleSave} disabled={saving}>
-          {saving ? 'Сохранение…' : 'Сохранить'}
+        <Button variant="primary" onClick={handleSave} isLoading={saving}>
+          Сохранить
         </Button>
         <Button variant="secondary" onClick={handleClose} disabled={saving}>
           Отмена

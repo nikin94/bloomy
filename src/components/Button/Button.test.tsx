@@ -61,6 +61,30 @@ describe('Button', () => {
     expect(onClick).not.toHaveBeenCalled()
   })
 
+  it('shows a loader in place of its children and disables itself when isLoading', () => {
+    render(
+      <Button isLoading>
+        Сохранить
+      </Button>,
+    )
+    const button = screen.getByRole('button')
+    expect(button).toBeDisabled()
+    // The label is swapped for the loader (status role), not rendered alongside it.
+    expect(button).not.toHaveTextContent('Сохранить')
+    expect(screen.getByRole('status')).toBeInTheDocument()
+  })
+
+  it('does not fire onClick while loading', async () => {
+    const onClick = vi.fn()
+    render(
+      <Button onClick={onClick} isLoading>
+        Сохранить
+      </Button>,
+    )
+    await userEvent.click(screen.getByRole('button'))
+    expect(onClick).not.toHaveBeenCalled()
+  })
+
   it('merges a caller className alongside the variant classes', () => {
     render(<Button className="self-start">Добавить</Button>)
     const button = screen.getByRole('button')

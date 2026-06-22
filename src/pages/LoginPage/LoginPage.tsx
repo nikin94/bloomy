@@ -75,8 +75,8 @@ const LoginPage = () => {
         </div>
       )}
 
-      <Button variant="primary" onClick={handleSignIn} disabled={signingIn}>
-        {signingIn ? 'Вход…' : 'Войти через Google'}
+      <Button variant="primary" onClick={handleSignIn} isLoading={signingIn}>
+        Войти через Google
       </Button>
       {error && (
         <p role="alert" className="m-0 text-danger">

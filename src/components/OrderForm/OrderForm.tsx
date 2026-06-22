@@ -640,10 +640,10 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                 <Button
                   type="submit"
                   variant="primary"
-                  disabled={saving}
+                  isLoading={saving}
                   className="w-full sm:w-auto"
                 >
-                  {saving ? 'Сохранение…' : 'Сохранить'}
+                  Сохранить
                 </Button>
                 <Button variant="secondary" onClick={onCancel} className="w-full sm:w-auto">
                   Отмена

@@ -241,8 +241,8 @@ const CustomersPage = () => {
             </p>
           )}
           <div className="flex justify-end gap-2">
-            <Button variant="danger" onClick={handleDelete} disabled={deleteBusy}>
-              {deleteBusy ? 'Удаление…' : 'Удалить'}
+            <Button variant="danger" onClick={handleDelete} isLoading={deleteBusy}>
+              Удалить
             </Button>
             <Button
               variant="secondary"

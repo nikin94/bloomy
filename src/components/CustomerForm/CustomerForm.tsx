@@ -85,8 +85,8 @@ const CustomerForm = ({ initial, onSubmit, onCancel }: CustomerFormProps) => {
       )}
 
       <div className="flex gap-2">
-        <Button type="submit" variant="primary" size="sm" disabled={saving}>
-          {saving ? 'Сохранение…' : 'Сохранить'}
+        <Button type="submit" variant="primary" size="sm" isLoading={saving}>
+          Сохранить
         </Button>
         <Button type="button" variant="secondary" size="sm" onClick={onCancel} disabled={saving}>
           Отмена
