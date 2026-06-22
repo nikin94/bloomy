@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import Button from '../Button/Button'
 import SettingsModal from '../SettingsModal/SettingsModal'
+import SyncStatus from '../SyncStatus/SyncStatus'
 
 // Navigation destinations, defined once so a new section is added in ONE place
 // and appears in both the desktop bar and the mobile menu. `end` keeps "Заказы"
@@ -147,6 +148,9 @@ const AppHeader = ({ actions }: { actions?: ReactNode }) => {
         {/* Right cluster: page actions (search/filter) then the settings gear
             (which holds the user name and sign-out), pushed to the right. */}
         <div className="ml-auto flex items-center gap-2">
+          {/* Connection/sync state — renders only when offline or still flushing
+              queued writes, so it stays invisible while everything is synced. */}
+          <SyncStatus />
           {actions}
           <Button
             variant="secondary"
@@ -175,17 +179,22 @@ const AppHeader = ({ actions }: { actions?: ReactNode }) => {
           // the menu is open so the create-order action takes the row instead.
           actions
         )}
-        <Button
-          variant="secondary"
-          size="icon"
-          onClick={() => setMenuOpen((open) => !open)}
-          aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
-          aria-expanded={menuOpen}
-          aria-controls="mobile-menu"
-          className="ml-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border"
-        >
-          <BurgerIcon open={menuOpen} />
-        </Button>
+        {/* Sync state + burger, grouped on the right. SyncStatus renders only
+            when offline/flushing, so normally just the burger shows here. */}
+        <div className="ml-auto flex items-center gap-2">
+          <SyncStatus />
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
+            className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border"
+          >
+            <BurgerIcon open={menuOpen} />
+          </Button>
+        </div>
       </div>
 
       {/* Backdrop: catches outside taps to close. Below the panel, above content.

@@ -10,6 +10,12 @@ export const formatMoney = (minor: number) =>
 export const formatDate = (ms: number) =>
   new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short' }).format(new Date(ms))
 
+// Short date AND time, e.g. "22.06.2026, 14:32". Used by the sync indicator to
+// show when the local data last reached the server (date matters when offline
+// for days; time matters within a day).
+export const formatDateTime = (ms: number) =>
+  new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(ms))
+
 // Filter raw keystrokes into a decimal money string as the user types: digits
 // with at most one separator (comma or dot, ru-RU uses a comma) and at most two
 // fractional digits (kopecks). Drives the Input `numeric="decimal"` flag, so a
