@@ -1,6 +1,12 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
-import { getFirestore } from 'firebase/firestore'
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentSingleTabManager,
+} from 'firebase/firestore'
+import type { Firestore } from 'firebase/firestore'
 
 // Config is read from Vite environment variables (.env, see .env.example).
 // This keeps keys out of the repository and lets us separate dev/prod projects.
@@ -16,7 +22,30 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 
 // Firebase Authentication — Google sign-in scopes data to the signed-in user.
+// The session persists in IndexedDB, so a once-online sign-in lets the app open
+// offline afterwards (only the first sign-in needs the network for the OAuth popup).
 export const auth = getAuth(app)
 
-// Firestore — the main storage for orders.
-export const db = getFirestore(app)
+// Whether this runtime can back the offline cache with IndexedDB. True in the
+// browser; false in the Node test/emulator runtime, where IndexedDB is absent —
+// there we fall back to the default in-memory cache so the data layer still
+// initialises (and `connectFirestoreEmulator` can point it at the emulator).
+const supportsPersistence = typeof window !== 'undefined' && typeof indexedDB !== 'undefined'
+
+// Firestore — the main storage for orders. In the browser we enable the
+// IndexedDB-backed persistent cache: reads are served from the cache when
+// offline, and writes are queued locally and flushed automatically once the
+// connection (or a sanctions-blocked Firebase endpoint) becomes reachable again.
+// Single-tab manager rather than multi-tab: this app is used as one tab per
+// device, and the single-tab manager sidesteps a class of multi-tab sync bugs in
+// the firebase-js-sdk. Persistence MUST be configured here, at init, before any
+// read/write — hence initializeFirestore instead of getFirestore.
+//
+// Note: transactions (createOrder's per-owner numbering) still require the
+// network and do NOT work offline — that is handled separately (deferred
+// numbering), not by this cache.
+export const db: Firestore = supportsPersistence
+  ? initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentSingleTabManager(undefined) }),
+    })
+  : getFirestore(app)
