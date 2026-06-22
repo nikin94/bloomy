@@ -13,9 +13,10 @@ export default defineConfig({
     // The app's firebase.ts reads the project id from this; a `demo-*` id needs
     // no credentials and matches the project the emulator runs under.
     env: { VITE_FIREBASE_PROJECT_ID: 'demo-bloomy' },
-    // Transactions retry under contention and the first emulator call is cold,
-    // so allow more headroom than the 5s default.
-    testTimeout: 20000,
-    hookTimeout: 20000,
+    // Transactions retry under contention and the first emulator call is cold;
+    // the seed test also writes/reads ~100 orders in one go. Allow generous
+    // headroom over the 5s default so a cold CI emulator doesn't flake.
+    testTimeout: 40000,
+    hookTimeout: 40000,
   },
 })

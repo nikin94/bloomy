@@ -10,6 +10,11 @@ export const formatMoney = (minor: number) =>
 export const formatDate = (ms: number) =>
   new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short' }).format(new Date(ms))
 
+// Time of day only, e.g. "14:32". Pairs with formatDate to show a creation
+// moment over two lines (date above, time below) in the orders table.
+export const formatTime = (ms: number) =>
+  new Intl.DateTimeFormat('ru-RU', { timeStyle: 'short' }).format(new Date(ms))
+
 // Short date AND time, e.g. "22.06.2026, 14:32". Used by the sync indicator to
 // show when the local data last reached the server (date matters when offline
 // for days; time matters within a day).
