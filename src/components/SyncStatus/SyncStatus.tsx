@@ -29,12 +29,13 @@ const writeLastSynced = (ms: number) => {
 // Connection / sync indicator for the offline-capable data layer. Renders ONLY
 // when there is something worth saying — the browser is offline, or queued
 // writes are still flushing — so the header stays clean while everything is in
-// sync. When offline it shows WHEN the local data last reached the server, so
-// the user knows how fresh it is. The freshness is taken from
-// waitForPendingWrites (a real server acknowledgement), not navigator.onLine
-// alone, so it stays honest in the case that matters most here: the network is
-// up but Firebase itself is blocked — then writes never flush and the indicator
-// keeps showing "Синхронизация…" instead of falsely claiming a sync.
+// sync. Offline shows just "Не в сети" to stay compact; WHEN the local data last
+// reached the server is in the `title` tooltip (hover) instead of inline, so the
+// header doesn't widen. The freshness is taken from waitForPendingWrites (a real
+// server acknowledgement), not navigator.onLine alone, so it stays honest in the
+// case that matters most here: the network is up but Firebase itself is blocked —
+// then writes never flush and the indicator keeps showing "Синхронизация…"
+// instead of falsely claiming a sync.
 const SyncStatus = () => {
   const [online, setOnline] = useState(() => navigator.onLine)
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(readLastSynced)
@@ -89,22 +90,25 @@ const SyncStatus = () => {
   // Nothing to report: online and everything already acknowledged.
   if (online && !flushing) return null
 
+  // Last-synced time lives in the tooltip (hover), not inline, so offline shows
+  // just "Не в сети" and the header stays compact.
+  const lastSyncedTitle =
+    !online && lastSyncedAt !== null
+      ? `Последняя синхронизация: ${formatDateTime(lastSyncedAt)}`
+      : undefined
+
   return (
     <div
       role="status"
       aria-live="polite"
+      title={lastSyncedTitle}
       className="flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs text-text"
     >
       <span
         aria-hidden="true"
         className={`size-2 shrink-0 rounded-full ${online ? 'animate-pulse bg-primary' : 'bg-text'}`}
       />
-      <span className="whitespace-nowrap">
-        {online ? 'Синхронизация…' : 'Не в сети'}
-        {!online && lastSyncedAt !== null && (
-          <span className="hidden sm:inline"> · синхр. {formatDateTime(lastSyncedAt)}</span>
-        )}
-      </span>
+      <span className="whitespace-nowrap">{online ? 'Синхронизация…' : 'Не в сети'}</span>
     </div>
   )
 }

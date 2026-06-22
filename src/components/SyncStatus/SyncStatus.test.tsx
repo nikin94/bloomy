@@ -44,7 +44,7 @@ describe('SyncStatus', () => {
     await waitFor(() => expect(localStorage.getItem('bloomy-last-synced')).not.toBeNull())
   })
 
-  it('shows the offline state with the last-synced time', () => {
+  it('shows the offline state with the last-synced time in the tooltip', () => {
     const synced = 1718000000000
     localStorage.setItem('bloomy-last-synced', String(synced))
     setOnline(false)
@@ -52,18 +52,20 @@ describe('SyncStatus', () => {
     render(<SyncStatus />)
 
     const status = screen.getByRole('status')
+    // Inline text stays compact — just "Не в сети".
     expect(status).toHaveTextContent('Не в сети')
-    expect(status).toHaveTextContent(formatDateTime(synced))
+    // The last-synced time lives in the hover tooltip, not inline.
+    expect(status).toHaveAttribute('title', `Последняя синхронизация: ${formatDateTime(synced)}`)
     // Offline: it must not probe the server for pending writes.
     expect(waitForPendingWrites).not.toHaveBeenCalled()
   })
 
-  it('omits the time when nothing was ever synced', () => {
+  it('omits the tooltip when nothing was ever synced', () => {
     setOnline(false)
     render(<SyncStatus />)
     const status = screen.getByRole('status')
     expect(status).toHaveTextContent('Не в сети')
-    expect(status).not.toHaveTextContent('синхр.')
+    expect(status).not.toHaveAttribute('title')
   })
 
   it('surfaces "Синхронизация…" only once a flush is slow', () => {
