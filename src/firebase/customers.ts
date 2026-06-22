@@ -86,8 +86,10 @@ export function updateCustomer(id: string, edits: CustomerEdits): void {
 // and picker, without removing the document. Past orders keep resolving its name
 // (they reference it by id and store no name snapshot), so the order history is
 // never silently rewritten — the reason we soft-delete instead of `deleteDoc`.
-// Still awaited (unlike the edit above): the delete is a confirmed, destructive
-// action whose dialog surfaces a failure inline, so the caller wants the result.
-export async function softDeleteCustomer(id: string): Promise<void> {
-  await updateDoc(doc(db, CUSTOMERS_COLLECTION, id), { isDeleted: true })
+// Fire-and-forget like every other mutation, so it works offline and never hangs
+// the confirm dialog; a failed write is reported to Sentry.
+export function softDeleteCustomer(id: string): void {
+  void updateDoc(doc(db, CUSTOMERS_COLLECTION, id), { isDeleted: true }).catch((err) =>
+    reportError(err, 'softDeleteCustomer'),
+  )
 }

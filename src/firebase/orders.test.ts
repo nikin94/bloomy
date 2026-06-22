@@ -75,9 +75,11 @@ const newOrder: NewOrder = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  // createOrder/createCustomer fire-and-forget the write and attach a `.catch`,
-  // so the mocked setDoc must return a promise.
+  // Every mutation fire-and-forgets its write and attaches a `.catch`, so the
+  // mocked writes must return a promise (setDoc for create, updateDoc for the
+  // rest — updateOrder/patchOrder/softDeleteOrder/restoreOrder).
   vi.mocked(setDoc).mockResolvedValue(undefined)
+  vi.mocked(updateDoc).mockResolvedValue(undefined)
 })
 
 describe('createOrder', () => {

@@ -150,19 +150,6 @@ describe('OrderDetailPage', () => {
     expect(screen.queryByText('Завершён')).not.toBeInTheDocument()
   })
 
-  it('rolls the status back and surfaces an error when the save fails', async () => {
-    const user = userEvent.setup()
-    patchOrder.mockRejectedValue(new Error('Сеть недоступна'))
-    renderPage()
-    await screen.findByRole('heading', { name: 'Заказ №5' })
-
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус отправки' }), 'shipped')
-
-    // Error announced, and the select reverts to the original value.
-    expect(await screen.findByRole('alert')).toHaveTextContent('Сеть недоступна')
-    expect(screen.getByRole('combobox', { name: 'Статус отправки' })).toHaveValue('new')
-  })
-
   it('soft-deletes the order after confirming and returns to the list', async () => {
     const user = userEvent.setup()
     renderPage()
@@ -178,21 +165,6 @@ describe('OrderDetailPage', () => {
     await waitFor(() => expect(softDeleteOrder).toHaveBeenCalledWith('o1'))
     // On success the user is sent back to the list (where it no longer appears).
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/orders'))
-  })
-
-  it('keeps the order and surfaces an error when the delete fails', async () => {
-    const user = userEvent.setup()
-    softDeleteOrder.mockRejectedValue(new Error('Сеть недоступна'))
-    renderPage()
-    await screen.findByRole('heading', { name: 'Заказ №5' })
-
-    await user.click(screen.getByRole('button', { name: 'Удалить' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Удалить заказ №5?' })
-    await user.click(within(dialog).getByRole('button', { name: 'Удалить' }))
-
-    // The error is shown in the dialog and the user is NOT navigated away.
-    expect(await screen.findByRole('alert')).toHaveTextContent('Сеть недоступна')
-    expect(navigate).not.toHaveBeenCalledWith('/orders')
   })
 
   it('edits the customer in a dialog and reflects the new name live', async () => {

@@ -167,20 +167,4 @@ describe('CustomersPage', () => {
     expect(softDeleteCustomer).not.toHaveBeenCalled()
     expect(screen.getByText('Анна')).toBeInTheDocument()
   })
-
-  it('surfaces a delete error without hiding the list', async () => {
-    const user = userEvent.setup()
-    fetchCustomers.mockResolvedValue([customer({ name: 'Анна' })])
-    softDeleteCustomer.mockRejectedValue(new Error('Сеть недоступна'))
-    renderPage()
-
-    await user.click(await screen.findByRole('button', { name: 'Удалить клиента Анна' }))
-    await user.click(screen.getByRole('button', { name: 'Удалить' }))
-
-    // The error is announced in the still-open dialog, and the row (and the rest
-    // of the list) stays so the user can retry or cancel.
-    expect(await screen.findByRole('alert')).toHaveTextContent('Сеть недоступна')
-    expect(screen.getByText('Анна')).toBeInTheDocument()
-    expect(screen.getByRole('dialog', { name: 'Удалить клиента Анна?' })).toBeInTheDocument()
-  })
 })
