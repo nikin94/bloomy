@@ -234,30 +234,50 @@ const OrdersPage = () => {
   useEffect(() => {
     if (!ownerId) return
     let active = true
-    // First assign real numbers to any orders created offline (no-op when there
-    // are none, or best-effort skip when still offline), THEN load the list — so
-    // a freshly-synced order shows its number instead of "—". Two queries
-    // (orders + customers) instead of N+1: customers are loaded once and the
-    // table resolves each order's name from this list in memory. `includeDeleted`
-    // so an order whose customer was soft-deleted still shows the name, not "—".
-    reconcileOrderNumbers(ownerId)
-      .catch(() => false)
-      .then(() =>
-        Promise.all([fetchOrders(ownerId), fetchCustomers(ownerId, { includeDeleted: true })]),
-      )
-      .then(([orderData, customerData]) => {
-        if (!active) return
-        setOrders(orderData)
-        setCustomers(customerData)
-      })
-      .catch((err: unknown) => {
-        if (active) setError(err instanceof Error ? err.message : 'Не удалось загрузить заказы')
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
+
+    // Load and render the list FIRST, straight from the cache — never gated on
+    // reconcileOrderNumbers. Offline, the numbering transaction never settles
+    // (it needs the server), so gating the render on it would hang the spinner
+    // forever. Two queries (orders + customers) instead of N+1: customers are
+    // loaded once and the table resolves each order's name in memory.
+    // `includeDeleted` so an order whose customer was soft-deleted still shows
+    // the name, not "—".
+    const load = () =>
+      Promise.all([fetchOrders(ownerId), fetchCustomers(ownerId, { includeDeleted: true })])
+        .then(([orderData, customerData]) => {
+          if (!active) return
+          setOrders(orderData)
+          setCustomers(customerData)
+        })
+        .catch((err: unknown) => {
+          if (active) setError(err instanceof Error ? err.message : 'Не удалось загрузить заказы')
+        })
+
+    load().finally(() => {
+      if (active) setLoading(false)
+    })
+
+    // In the BACKGROUND, assign real numbers to any orders created offline. This
+    // runs online (its transaction is best-effort offline — it just stays pending
+    // and is retried next time, never blocking the list). When it numbers
+    // something, reload so the freshly-assigned № replaces the "—" live.
+    const reconcile = () => {
+      reconcileOrderNumbers(ownerId)
+        .then((numbered) => {
+          if (active && numbered) return load()
+        })
+        .catch(() => {
+          // Offline / Firebase unreachable: leave the list as-is, retry later.
+        })
+    }
+    reconcile()
+
+    // Coming back online retries the numbering and reloads, so an order created
+    // offline gets its № (and the list refreshes) without a manual page reload.
+    window.addEventListener('online', reconcile)
     return () => {
       active = false
+      window.removeEventListener('online', reconcile)
     }
   }, [ownerId])
 

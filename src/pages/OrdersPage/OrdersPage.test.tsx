@@ -247,3 +247,36 @@ describe('OrdersPage filtering', () => {
     expect(screen.queryByTestId('orders-table')).not.toBeInTheDocument()
   })
 })
+
+describe('OrdersPage offline numbering', () => {
+  it('renders the list from cache even when numbering never settles (offline)', async () => {
+    // Offline, reconcileOrderNumbers' transaction never settles. The list must
+    // still render (from the cache) instead of hanging on the spinner forever,
+    // so the render is NOT gated on reconcile.
+    reconcileOrderNumbers.mockReturnValue(new Promise(() => {}))
+
+    renderPage()
+
+    expect(await screen.findByTestId('orders-table')).toBeInTheDocument()
+    expect(table().getByText('Анна')).toBeInTheDocument()
+  })
+
+  it('fills in the № live when connectivity returns, without a reload', async () => {
+    // An order created offline has no number yet — the table shows "—".
+    reconcileOrderNumbers.mockResolvedValue(false)
+    fetchOrders.mockResolvedValue([order({ id: 'o1', number: null, customerId: 'c-anna' })])
+
+    renderPage()
+    const tbl = await screen.findByTestId('orders-table')
+    expect(within(tbl).getByText('—')).toBeInTheDocument()
+
+    // Reconnecting numbers the order and the background reload returns the real
+    // №, so the cell updates in place — no manual page reload.
+    reconcileOrderNumbers.mockResolvedValue(true)
+    fetchOrders.mockResolvedValue([order({ id: 'o1', number: 7, customerId: 'c-anna' })])
+    window.dispatchEvent(new Event('online'))
+
+    await within(tbl).findByText('7')
+    expect(within(tbl).queryByText('—')).not.toBeInTheDocument()
+  })
+})
