@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   formatMoney,
   formatDate,
+  formatDateTime,
   parseRublesToMinor,
   formatMinorToInput,
   sanitizeDecimalInput,
@@ -119,5 +120,12 @@ describe('formatMinorToInput', () => {
 describe('formatDate', () => {
   it('formats a timestamp as a short ru-RU date (dd.mm.yy…)', () => {
     expect(formatDate(0)).toMatch(/^\d{1,2}\.\d{1,2}\.\d{2,4}$/)
+  })
+})
+
+describe('formatDateTime', () => {
+  it('formats a timestamp as a short ru-RU date AND time', () => {
+    // Date part then a HH:MM time part, separated by a comma.
+    expect(formatDateTime(0)).toMatch(/^\d{1,2}\.\d{1,2}\.\d{2,4},\s\d{1,2}:\d{2}$/)
   })
 })
