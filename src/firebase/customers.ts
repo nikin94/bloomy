@@ -63,26 +63,31 @@ export function createCustomer(customer: NewCustomer): string {
   return ref.id
 }
 
-// Update a customer's editable fields. Optional fields (phone/address/note) that
-// come in empty are removed from the document via `deleteField()` rather than
-// stored as "" — so clearing a field in the edit form actually clears it, and
-// the stored shape stays clean (matching createCustomer, which omits them too).
-// `ownerId`/`createdAt`/`isDeleted` are left untouched.
-export async function updateCustomer(id: string, edits: CustomerEdits): Promise<void> {
+// Update a customer's editable fields. Fire-and-forget (like createOrder /
+// createCustomer): the write is NOT awaited, so it never blocks the UI and works
+// OFFLINE — the change lands in the local cache at once and flushes to the server
+// on reconnect. A genuine failure (e.g. an online permission-denied) has no
+// caller to catch it, so it is routed to reportError (Sentry). Optional fields
+// (phone/address/note) that come in empty are removed via `deleteField()` rather
+// than stored as "" — so clearing a field actually clears it and the stored shape
+// stays clean. `ownerId`/`createdAt`/`isDeleted` are left untouched.
+export function updateCustomer(id: string, edits: CustomerEdits): void {
   const optional = (value: string | undefined) =>
     value && value.trim() !== '' ? value.trim() : deleteField()
-  await updateDoc(doc(db, CUSTOMERS_COLLECTION, id), {
+  void updateDoc(doc(db, CUSTOMERS_COLLECTION, id), {
     name: edits.name.trim(),
     phone: optional(edits.phone),
     address: optional(edits.address),
     note: optional(edits.note),
-  })
+  }).catch((err) => reportError(err, 'updateCustomer'))
 }
 
 // Soft-delete a customer: flip `isDeleted` so it drops out of the address book
 // and picker, without removing the document. Past orders keep resolving its name
 // (they reference it by id and store no name snapshot), so the order history is
 // never silently rewritten — the reason we soft-delete instead of `deleteDoc`.
+// Still awaited (unlike the edit above): the delete is a confirmed, destructive
+// action whose dialog surfaces a failure inline, so the caller wants the result.
 export async function softDeleteCustomer(id: string): Promise<void> {
   await updateDoc(doc(db, CUSTOMERS_COLLECTION, id), { isDeleted: true })
 }

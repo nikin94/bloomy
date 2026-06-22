@@ -127,9 +127,10 @@ const CustomersPage = () => {
   // Persist an edit, then update the in-memory list. Optional fields that came
   // in empty are dropped (mirroring updateCustomer) so a cleared field also
   // clears in the UI; the list is re-sorted because the name may have changed.
-  // Errors propagate to the CustomerForm in the dialog, which keeps itself open.
+  // updateCustomer is fire-and-forget (offline-safe), so this never blocks and
+  // the dialog closes at once; a failed write is reported to Sentry.
   const handleSave = async (id: string, edits: CustomerEdits) => {
-    await updateCustomer(id, edits)
+    updateCustomer(id, edits)
     const trimmed = (value: string | undefined) =>
       value && value.trim() !== '' ? value.trim() : undefined
     setCustomers((prev) =>
