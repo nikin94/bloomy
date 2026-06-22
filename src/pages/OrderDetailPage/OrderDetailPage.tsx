@@ -53,14 +53,8 @@ const OrderDetailPage = () => {
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  // Surfaced when an inline status save fails (the optimistic change is rolled
-  // back); kept separate from the page-load error, which replaces the whole body.
-  const [statusError, setStatusError] = useState<string | null>(null)
-  const [savingStatus, setSavingStatus] = useState(false)
   // Delete is confirmed in a modal (destructive, so not a one-click action).
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
   // The customer's name lives on the customer record, not the order, so it's
   // edited here in a dialog (the shared CustomerForm) — fixing it where it's seen
   // rather than sending the user to the customers page.
@@ -92,11 +86,11 @@ const OrderDetailPage = () => {
   // Save a single status change inline, optimistically: update the local order
   // right away so the UI feels instant, then write ONLY the changed field(s)
   // (patchOrder is a per-field merge, so this inline toggle never clobbers a
-  // concurrent edit to another field on another device). On failure roll the
-  // value back and surface the error, so the screen never shows an unsaved state.
-  const saveStatus = async (patch: Partial<Order>) => {
+  // concurrent edit to another field on another device). The write is fire-and-
+  // forget — it never blocks and works offline — so the optimistic value stays
+  // and syncs on reconnect; a failed write is reported to Sentry, not rolled back.
+  const saveStatus = (patch: Partial<Order>) => {
     if (!order) return
-    const previous = order
     const next = { ...order, ...patch }
     // The write touches only the fields the caller changed (paymentStatus OR
     // shipmentStatus), so the merge stays field-scoped.
@@ -116,16 +110,7 @@ const OrderDetailPage = () => {
       }
     }
     setOrder(next)
-    setStatusError(null)
-    setSavingStatus(true)
-    try {
-      await patchOrder(next.id, writePatch)
-    } catch (err: unknown) {
-      setOrder(previous)
-      setStatusError(err instanceof Error ? err.message : 'Не удалось сохранить статус')
-    } finally {
-      setSavingStatus(false)
-    }
+    patchOrder(next.id, writePatch)
   }
 
   // Persist the customer's edited fields, then mirror them onto the local
@@ -149,18 +134,12 @@ const OrderDetailPage = () => {
   }
 
   // Soft-delete the order, then return to the list (where it no longer appears).
-  // On failure keep the dialog open and surface the error so the user can retry.
-  const handleDelete = async () => {
+  // The write is fire-and-forget (offline-safe) so deleting never blocks; the
+  // order moves to the trash locally at once and syncs on reconnect.
+  const handleDelete = () => {
     if (!order) return
-    setDeleting(true)
-    setDeleteError(null)
-    try {
-      await softDeleteOrder(order.id)
-      navigate('/orders')
-    } catch (err: unknown) {
-      setDeleteError(err instanceof Error ? err.message : 'Не удалось удалить заказ')
-      setDeleting(false)
-    }
+    softDeleteOrder(order.id)
+    navigate('/orders')
   }
 
   return (
@@ -201,21 +180,12 @@ const OrderDetailPage = () => {
               <Button
                 variant="danger"
                 size="sm"
-                onClick={() => {
-                  setDeleteError(null)
-                  setConfirmingDelete(true)
-                }}
+                onClick={() => setConfirmingDelete(true)}
               >
                 Удалить
               </Button>
             </div>
           </header>
-
-          {statusError && (
-            <p role="alert" className="m-0 text-danger">
-              {statusError}
-            </p>
-          )}
 
           {/* General info. The two statuses are editable inline (the frequent
               "mark paid/shipped" action) without opening the full edit form;
@@ -246,14 +216,12 @@ const OrderDetailPage = () => {
               label="Статус оплаты"
               value={order.paymentStatus}
               options={PAYMENT_STATUS_OPTIONS}
-              disabled={savingStatus}
               onChange={(value) => saveStatus({ paymentStatus: value as Order['paymentStatus'] })}
             />
             <InlineStatusField
               label="Статус отправки"
               value={order.shipmentStatus}
               options={SHIPMENT_STATUS_OPTIONS}
-              disabled={savingStatus}
               onChange={(value) => saveStatus({ shipmentStatus: value as Order['shipmentStatus'] })}
             />
             {order.completedAt && <Field label="Завершён" value={formatDate(order.completedAt)} />}
@@ -323,21 +291,12 @@ const OrderDetailPage = () => {
           title={`Удалить заказ №${formatOrderNumber(order.number)}?`}
           onClose={() => setConfirmingDelete(false)}
         >
-          <p className="m-0 text-text">Заказ исчезнет из списка.</p>
-          {deleteError && (
-            <p role="alert" className="m-0 text-danger">
-              {deleteError}
-            </p>
-          )}
+          <p className="m-0 text-text">Заказ переместится в корзину — его можно будет восстановить.</p>
           <div className="flex justify-end gap-2">
-            <Button variant="danger" onClick={handleDelete} isLoading={deleting}>
+            <Button variant="danger" onClick={handleDelete}>
               Удалить
             </Button>
-            <Button
-              variant="secondary"
-              onClick={() => setConfirmingDelete(false)}
-              disabled={deleting}
-            >
+            <Button variant="secondary" onClick={() => setConfirmingDelete(false)}>
               Отмена
             </Button>
           </div>
@@ -367,29 +326,23 @@ const Field = ({
 
 // A status row that's editable in place: same layout as Field, but the value is
 // a Select. Selecting an option calls onChange, which saves optimistically on
-// the page. Disabled while a save is in flight. Used for both order statuses.
+// the page (the write is fire-and-forget, so there's no in-flight disabled
+// state). Used for both order statuses.
 const InlineStatusField = ({
   label,
   value,
   options,
-  disabled,
   onChange,
 }: {
   label: string
   value: string
   options: { value: string; label: string }[]
-  disabled: boolean
   onChange: (value: string) => void
 }) => (
   <div className="flex items-center gap-3 border-b border-border py-2">
     <span className="shrink-0 basis-[200px] text-text">{label}</span>
     <div className="min-w-0 max-w-[220px] flex-1">
-      <Select
-        aria-label={label}
-        value={value}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.value)}
-      >
+      <Select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}

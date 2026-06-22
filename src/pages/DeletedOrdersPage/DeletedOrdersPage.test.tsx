@@ -100,18 +100,4 @@ describe('DeletedOrdersPage', () => {
     // On success the row leaves the list; with no others left, the empty state shows.
     await waitFor(() => expect(screen.getByText('Корзина пуста')).toBeInTheDocument())
   })
-
-  it('keeps the order and surfaces an error when the restore fails', async () => {
-    const user = userEvent.setup()
-    fetchDeletedOrders.mockResolvedValue([order({ id: 'o1', number: 5 })])
-    restoreOrder.mockRejectedValue(new Error('Сеть недоступна'))
-    renderPage()
-
-    await user.click(await screen.findByRole('button', { name: 'Восстановить' }))
-
-    // The error is announced and the row stays so the user can retry.
-    expect(await screen.findByRole('alert')).toHaveTextContent('Сеть недоступна')
-    expect(screen.getByText(/Заказ №5/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Восстановить' })).toBeInTheDocument()
-  })
 })

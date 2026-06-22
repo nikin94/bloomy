@@ -22,37 +22,27 @@ const DeletedOrderRow = ({
 }: {
   order: Order
   customerName: string
-  onRestore: (id: string) => Promise<void>
-}) => {
-  const [restoring, setRestoring] = useState(false)
-
-  // On success the parent removes this row from the list, unmounting us; on
-  // failure (surfaced page-level) we reset so the user can retry.
-  const restore = async () => {
-    setRestoring(true)
-    try {
-      await onRestore(order.id)
-    } catch {
-      setRestoring(false)
-    }
-  }
-
-  return (
-    <li className="flex items-center gap-3 border-b border-border py-3">
-      <div className="min-w-0 flex-1">
-        <p className="m-0 truncate text-heading">
-          Заказ №{formatOrderNumber(order.number)} · {customerName}
-        </p>
-        <p className="m-0 truncate text-sm text-text">
-          {formatDate(order.dateCreated)} · {formatMoney(getTotalMinor(order))}
-        </p>
-      </div>
-      <Button variant="secondary" size="sm" onClick={restore} isLoading={restoring} className="shrink-0">
-        Восстановить
-      </Button>
-    </li>
-  )
-}
+  onRestore: (id: string) => void
+}) => (
+  <li className="flex items-center gap-3 border-b border-border py-3">
+    <div className="min-w-0 flex-1">
+      <p className="m-0 truncate text-heading">
+        Заказ №{formatOrderNumber(order.number)} · {customerName}
+      </p>
+      <p className="m-0 truncate text-sm text-text">
+        {formatDate(order.dateCreated)} · {formatMoney(getTotalMinor(order))}
+      </p>
+    </div>
+    <Button
+      variant="secondary"
+      size="sm"
+      onClick={() => onRestore(order.id)}
+      className="shrink-0"
+    >
+      Восстановить
+    </Button>
+  </li>
+)
 
 // Trash screen: lists the signed-in user's soft-deleted orders and lets each be
 // restored back into the active list. Reached from the "Корзина" nav link. The
@@ -65,11 +55,8 @@ const DeletedOrdersPage = () => {
   const [orders, setOrders] = useState<Order[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
-  // Two separate errors: a load failure means there is no list to show, so it
-  // replaces the content; a restore failure happens with the list already on
-  // screen, so it surfaces above the list without unmounting it.
+  // A load failure means there is no list to show, so it replaces the content.
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [restoreError, setRestoreError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!ownerId) return
@@ -96,15 +83,11 @@ const DeletedOrdersPage = () => {
   const customerNameById = new Map(customers.map((c) => [c.id, c.name]))
   const getCustomerName = (id: string) => customerNameById.get(id) ?? '—'
 
-  const handleRestore = async (id: string) => {
-    setRestoreError(null)
-    try {
-      await restoreOrder(id)
-      setOrders((prev) => prev.filter((o) => o.id !== id))
-    } catch (err: unknown) {
-      setRestoreError(err instanceof Error ? err.message : 'Не удалось восстановить заказ')
-      throw err
-    }
+  // Restore is fire-and-forget (offline-safe): drop the row optimistically and
+  // the order returns to the active list; a failed write is reported to Sentry.
+  const handleRestore = (id: string) => {
+    restoreOrder(id)
+    setOrders((prev) => prev.filter((o) => o.id !== id))
   }
 
   return (
@@ -118,11 +101,6 @@ const DeletedOrdersPage = () => {
 
           {!loading && !loadError && (
             <>
-              {restoreError && (
-                <p role="alert" className="m-0 text-danger">
-                  {restoreError}
-                </p>
-              )}
               {orders.length === 0 ? (
                 <p className="m-0 text-text">Корзина пуста</p>
               ) : (

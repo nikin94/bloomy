@@ -154,12 +154,19 @@ const CLEARABLE_ORDER_FIELDS = ['comment', 'completedAt'] as const
 // clobbering whichever synced last. The edit form sends every form field, so a
 // field the user cleared (comment, completedAt) is absent here; we turn those
 // absences into `deleteField()` so clearing still clears rather than lingering.
-export async function updateOrder(id: string, order: Omit<Order, 'id'>): Promise<void> {
+//
+// Fire-and-forget (like createOrder): the write is NOT awaited, so saving an edit
+// never blocks and works OFFLINE — it lands in the local cache at once and flushes
+// on reconnect. A genuine failure (e.g. an online permission-denied) has no caller
+// to catch it, so it is routed to reportError (Sentry).
+export function updateOrder(id: string, order: Omit<Order, 'id'>): void {
   const writes: Record<string, unknown> = { ...order }
   for (const field of CLEARABLE_ORDER_FIELDS) {
     if (!(field in order)) writes[field] = deleteField()
   }
-  await updateDoc(doc(db, ORDERS_COLLECTION, id), writes)
+  void updateDoc(doc(db, ORDERS_COLLECTION, id), writes).catch((err) =>
+    reportError(err, 'updateOrder'),
+  )
 }
 
 // A partial inline edit — sets ONLY the named fields, used for the order page's
@@ -176,12 +183,16 @@ export type OrderPatch = Partial<{
   completedAt: number | null
 }>
 
-export async function patchOrder(id: string, patch: OrderPatch): Promise<void> {
+// Fire-and-forget, like updateOrder — the inline toggle never blocks and works
+// offline; a failed write is reported to Sentry.
+export function patchOrder(id: string, patch: OrderPatch): void {
   const writes: Record<string, unknown> = { ...patch }
   // null is the caller's signal to remove the stamp; map it to deleteField so
   // the field is dropped, not stored as a literal null (which the schema rejects).
   if (patch.completedAt === null) writes.completedAt = deleteField()
-  await updateDoc(doc(db, ORDERS_COLLECTION, id), writes)
+  void updateDoc(doc(db, ORDERS_COLLECTION, id), writes).catch((err) =>
+    reportError(err, 'patchOrder'),
+  )
 }
 
 // Soft-delete an order: flip `isDeleted` so it drops out of the list and detail
@@ -189,15 +200,21 @@ export async function patchOrder(id: string, patch: OrderPatch): Promise<void> {
 // untouched — kept docs mean numbering can never collide, and the hidden order
 // stays recoverable (a real order deleted by mistake is one flag-flip away). A
 // partial `updateDoc` (not setDoc) leaves every other field intact. Owner-scoped
-// Firestore rules already permit this update (ownerId is unchanged).
-export async function softDeleteOrder(id: string): Promise<void> {
-  await updateDoc(doc(db, ORDERS_COLLECTION, id), { isDeleted: true })
+// Firestore rules already permit this update (ownerId is unchanged). Fire-and-
+// forget so it works offline; a failed write is reported to Sentry.
+export function softDeleteOrder(id: string): void {
+  void updateDoc(doc(db, ORDERS_COLLECTION, id), { isDeleted: true }).catch((err) =>
+    reportError(err, 'softDeleteOrder'),
+  )
 }
 
 // Restore a soft-deleted order: REMOVE the `isDeleted` field (rather than store
 // `false`) so a restored order returns to its pristine, never-deleted shape —
 // matching how an active order has no flag at all. A partial update leaves every
-// other field intact; owner-scoped Firestore rules already permit it.
-export async function restoreOrder(id: string): Promise<void> {
-  await updateDoc(doc(db, ORDERS_COLLECTION, id), { isDeleted: deleteField() })
+// other field intact; owner-scoped Firestore rules already permit it. Fire-and-
+// forget so it works offline; a failed write is reported to Sentry.
+export function restoreOrder(id: string): void {
+  void updateDoc(doc(db, ORDERS_COLLECTION, id), { isDeleted: deleteField() }).catch((err) =>
+    reportError(err, 'restoreOrder'),
+  )
 }

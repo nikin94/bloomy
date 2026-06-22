@@ -59,9 +59,10 @@ const EditOrderPage = () => {
       initialOrder={order}
       onCancel={() => navigate(`/orders/${order.id}`)}
       onSubmit={async (fields) => {
-        // Overwrite in place, preserving the original id, number and dateCreated;
-        // only the form-owned fields change.
-        await updateOrder(order.id, {
+        // Save in place (per-field merge), preserving the original id, number and
+        // dateCreated; only the form-owned fields change. updateOrder is fire-and-
+        // forget (offline-safe), so this never blocks — navigate straight back.
+        updateOrder(order.id, {
           ...fields,
           number: order.number,
           dateCreated: order.dateCreated,

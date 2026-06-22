@@ -92,16 +92,11 @@ const CustomersPage = () => {
   // The customer currently being edited, or null. Holding it on the page (not
   // per row) means only ONE edit dialog is ever open at a time.
   const [editing, setEditing] = useState<Customer | null>(null)
-  // The customer pending a delete confirmation, plus an in-flight flag so the
-  // confirm button can show progress and stay disabled during the write.
+  // The customer pending a delete confirmation.
   const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null)
-  const [deleteBusy, setDeleteBusy] = useState(false)
   const [loading, setLoading] = useState(true)
-  // Two separate errors: a load failure means there is no list to show, so it
-  // replaces the content; a delete failure happens with the list already on
-  // screen, so it surfaces above the list without unmounting it.
+  // A load failure means there is no list to show, so it replaces the content.
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!ownerId) return
@@ -150,22 +145,14 @@ const CustomersPage = () => {
     )
   }
 
-  // Soft-delete the confirmed customer, then drop it from the list and close the
-  // dialog. On failure the dialog stays open with the error so the user can
-  // retry or cancel.
-  const handleDelete = async () => {
+  // Soft-delete the confirmed customer, drop it from the list and close the
+  // dialog. The write is fire-and-forget (offline-safe), so it never blocks and
+  // the removal is optimistic; a failed write is reported to Sentry.
+  const handleDelete = () => {
     if (!deletingCustomer) return
-    setDeleteError(null)
-    setDeleteBusy(true)
-    try {
-      await softDeleteCustomer(deletingCustomer.id)
-      setCustomers((prev) => prev.filter((c) => c.id !== deletingCustomer.id))
-      setDeletingCustomer(null)
-    } catch (err: unknown) {
-      setDeleteError(err instanceof Error ? err.message : 'Не удалось удалить клиента')
-    } finally {
-      setDeleteBusy(false)
-    }
+    softDeleteCustomer(deletingCustomer.id)
+    setCustomers((prev) => prev.filter((c) => c.id !== deletingCustomer.id))
+    setDeletingCustomer(null)
   }
 
   return (
@@ -182,8 +169,6 @@ const CustomersPage = () => {
       {!loading && !loadError && (
         <div className="min-h-0 flex-1 overflow-auto p-6">
           <div className="mx-auto flex max-w-2xl flex-col gap-3">
-            <h1 className="m-0 text-[1.2222rem] font-semibold text-heading">Клиенты</h1>
-
             {customers.length === 0 ? (
               <p className="m-0 text-text">Клиентов пока нет</p>
             ) : (
@@ -225,34 +210,18 @@ const CustomersPage = () => {
       )}
 
       {/* Delete confirmation — a dialog (matching the order page), so a
-          destructive action takes an explicit second step. Closing clears any
-          previous error so a reopened dialog starts clean. */}
+          destructive action takes an explicit second step. */}
       {deletingCustomer && (
         <Modal
           title={`Удалить клиента ${deletingCustomer.name}?`}
-          onClose={() => {
-            setDeletingCustomer(null)
-            setDeleteError(null)
-          }}
+          onClose={() => setDeletingCustomer(null)}
         >
           <p className="m-0 text-text">Клиент исчезнет из списка.</p>
-          {deleteError && (
-            <p role="alert" className="m-0 text-danger">
-              {deleteError}
-            </p>
-          )}
           <div className="flex justify-end gap-2">
-            <Button variant="danger" onClick={handleDelete} isLoading={deleteBusy}>
+            <Button variant="danger" onClick={handleDelete}>
               Удалить
             </Button>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setDeletingCustomer(null)
-                setDeleteError(null)
-              }}
-              disabled={deleteBusy}
-            >
+            <Button variant="secondary" onClick={() => setDeletingCustomer(null)}>
               Отмена
             </Button>
           </div>
