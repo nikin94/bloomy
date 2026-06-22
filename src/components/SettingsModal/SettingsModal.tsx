@@ -10,6 +10,8 @@ import type { DeliveryMethod, PaymentMethod } from '../../types/order'
 import Button from '../Button/Button'
 import Select from '../Select/Select'
 import Modal from '../Modal/Modal'
+import AdminSeedSection from './AdminSeedSection'
+import { isAdmin } from '../../lib/admin'
 
 // Number of discrete positions on the slider (one notch each), so the iOS-style
 // ticks below the track always match the actual snap points.
@@ -359,6 +361,9 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
           Выйти
         </Button>
       </div>
+
+      {/* Admin-only test-data seeder (heavy fixtures lazy-loaded on use). */}
+      {isAdmin(user?.uid) && user && <AdminSeedSection ownerId={user.uid} />}
     </Modal>
   )
 }
