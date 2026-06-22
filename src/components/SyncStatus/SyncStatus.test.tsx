@@ -54,8 +54,11 @@ describe('SyncStatus', () => {
     const status = screen.getByRole('status')
     // Inline text stays compact — just "Не в сети".
     expect(status).toHaveTextContent('Не в сети')
-    // The last-synced time lives in the hover tooltip, not inline.
-    expect(status).toHaveAttribute('title', `Последняя синхронизация: ${formatDateTime(synced)}`)
+    // The last-synced time lives in the instant hover tooltip (role="tooltip"),
+    // not inline — and the badge is described by it for screen readers.
+    expect(screen.getByRole('tooltip')).toHaveTextContent(
+      `Последняя синхронизация: ${formatDateTime(synced)}`,
+    )
     // Offline: it must not probe the server for pending writes.
     expect(waitForPendingWrites).not.toHaveBeenCalled()
   })
@@ -65,7 +68,7 @@ describe('SyncStatus', () => {
     render(<SyncStatus />)
     const status = screen.getByRole('status')
     expect(status).toHaveTextContent('Не в сети')
-    expect(status).not.toHaveAttribute('title')
+    expect(screen.queryByRole('tooltip')).toBeNull()
   })
 
   it('surfaces "Синхронизация…" only once a flush is slow', () => {

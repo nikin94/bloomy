@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { waitForPendingWrites } from 'firebase/firestore'
 import { db } from '../../firebase/client'
 import { formatDateTime } from '../../utils/format'
+import Tooltip from '../Tooltip/Tooltip'
 
 // localStorage key for the last moment Firestore confirmed our queued writes
 // reached the server. Persisted so the indicator can show a real "last synced"
@@ -30,7 +31,8 @@ const writeLastSynced = (ms: number) => {
 // when there is something worth saying — the browser is offline, or queued
 // writes are still flushing — so the header stays clean while everything is in
 // sync. Offline shows just "Не в сети" to stay compact; WHEN the local data last
-// reached the server is in the `title` tooltip (hover) instead of inline, so the
+// reached the server is in a hover tooltip (a custom Tooltip that shows instantly,
+// not the native `title` which the browser delays ~1s) instead of inline, so the
 // header doesn't widen. The freshness is taken from waitForPendingWrites (a real
 // server acknowledgement), not navigator.onLine alone, so it stays honest in the
 // case that matters most here: the network is up but Firebase itself is blocked —
@@ -92,16 +94,15 @@ const SyncStatus = () => {
 
   // Last-synced time lives in the tooltip (hover), not inline, so offline shows
   // just "Не в сети" and the header stays compact.
-  const lastSyncedTitle =
+  const lastSyncedHint =
     !online && lastSyncedAt !== null
       ? `Последняя синхронизация: ${formatDateTime(lastSyncedAt)}`
-      : undefined
+      : null
 
-  return (
+  const badge = (
     <div
       role="status"
       aria-live="polite"
-      title={lastSyncedTitle}
       className="flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs text-text"
     >
       <span
@@ -111,6 +112,10 @@ const SyncStatus = () => {
       <span className="whitespace-nowrap">{online ? 'Синхронизация…' : 'Не в сети'}</span>
     </div>
   )
+
+  // When there is a last-synced time, wrap the badge in the instant tooltip;
+  // otherwise (online flush, or never synced) render the bare badge.
+  return lastSyncedHint ? <Tooltip label={lastSyncedHint}>{badge}</Tooltip> : badge
 }
 
 export default SyncStatus
