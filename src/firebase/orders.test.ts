@@ -19,6 +19,7 @@ import {
   fetchDeletedOrders,
   fetchOrder,
   fetchOrders,
+  patchOrder,
   reconcileOrderNumbers,
   restoreOrder,
   softDeleteOrder,
@@ -154,17 +155,53 @@ describe('reconcileOrderNumbers', () => {
 })
 
 describe('updateOrder', () => {
-  it('overwrites the document wholesale with the supplied body', async () => {
+  it('writes the supplied fields with updateDoc (per-field merge) and removes cleared optionals', async () => {
+    // No comment / completedAt on the body → they must be deleteField()'d so a
+    // field the user cleared is actually removed, not left lingering by the merge.
     const body = storedOrder({ number: 7, paymentStatus: 'paid' }) as Omit<Order, 'id'>
 
     await updateOrder('o1', body)
 
-    // A single full-document write (no merge) — the caller-supplied number is
-    // preserved and cleared fields disappear.
-    expect(setDoc).toHaveBeenCalledTimes(1)
-    expect(setDoc).toHaveBeenCalledWith(expect.anything(), body)
+    // A per-field merge (updateDoc, not a wholesale setDoc) — and the absent
+    // optionals are removed via the deleteField sentinel.
+    expect(updateDoc).toHaveBeenCalledTimes(1)
+    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
+      ...body,
+      comment: { __deleted: true },
+      completedAt: { __deleted: true },
+    })
+    expect(setDoc).not.toHaveBeenCalled()
     // No numbering transaction on edit.
     expect(runTransaction).not.toHaveBeenCalled()
+  })
+
+  it('keeps present optional fields instead of deleting them', async () => {
+    const body = storedOrder({ comment: 'note', completedAt: 1700 }) as Omit<Order, 'id'>
+
+    await updateOrder('o1', body)
+
+    const written = vi.mocked(updateDoc).mock.calls[0][1] as unknown as Record<string, unknown>
+    expect(written.comment).toBe('note')
+    expect(written.completedAt).toBe(1700)
+  })
+})
+
+describe('patchOrder', () => {
+  it('writes only the given field (partial merge), with no wholesale replace', async () => {
+    await patchOrder('o1', { paymentStatus: 'paid' })
+
+    expect(updateDoc).toHaveBeenCalledTimes(1)
+    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), { paymentStatus: 'paid' })
+    expect(setDoc).not.toHaveBeenCalled()
+  })
+
+  it('removes the completion stamp when completedAt is null', async () => {
+    await patchOrder('o1', { shipmentStatus: 'new', completedAt: null })
+
+    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
+      shipmentStatus: 'new',
+      completedAt: { __deleted: true },
+    })
   })
 })
 

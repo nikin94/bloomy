@@ -12,7 +12,7 @@ import {
 } from 'firebase/firestore'
 import { db } from './client'
 import { STORED_ORDER_SCHEMA } from '../types/order'
-import type { Order } from '../types/order'
+import type { Order, PaymentStatus, ShipmentStatus } from '../types/order'
 import { reportError } from '../observability/reportError'
 
 const ORDERS_COLLECTION = 'orders'
@@ -136,14 +136,52 @@ export async function reconcileOrderNumbers(ownerId: string): Promise<boolean> {
   return numberedAny
 }
 
-// Overwrite an existing order in place (used by the edit screen). Unlike
-// createOrder, this does NOT run the numbering transaction: editing must keep
-// the order's id and human-readable `number`, so the caller passes the full
-// document — including the original `number` and `dateCreated` — and we replace
-// it wholesale. A wholesale replace (not a merge) means fields the user cleared,
-// e.g. the comment, are actually removed rather than lingering.
+// Optional order fields that can be CLEARED by an edit. The edit form omits a
+// field it has no value for (an empty comment, a non-completed order), so on a
+// per-field merge those omissions must become explicit removals — otherwise an
+// omitted field would just linger (see updateOrder).
+const CLEARABLE_ORDER_FIELDS = ['comment', 'completedAt'] as const
+
+// Save an edited order in place (used by the edit screen). Unlike createOrder,
+// this runs NO numbering transaction: editing keeps the order's id and
+// human-readable `number`, so the caller passes the full field set (including
+// the original `number` and `dateCreated`).
+//
+// PER-FIELD MERGE: writes with `updateDoc` (not `setDoc`), so each field is set
+// individually. That matters offline across two devices — if the phone changed
+// the status while the desktop edits the address, the two writes touch different
+// fields and BOTH survive the sync, instead of a wholesale `setDoc` replace
+// clobbering whichever synced last. The edit form sends every form field, so a
+// field the user cleared (comment, completedAt) is absent here; we turn those
+// absences into `deleteField()` so clearing still clears rather than lingering.
 export async function updateOrder(id: string, order: Omit<Order, 'id'>): Promise<void> {
-  await setDoc(doc(db, ORDERS_COLLECTION, id), order)
+  const writes: Record<string, unknown> = { ...order }
+  for (const field of CLEARABLE_ORDER_FIELDS) {
+    if (!(field in order)) writes[field] = deleteField()
+  }
+  await updateDoc(doc(db, ORDERS_COLLECTION, id), writes)
+}
+
+// A partial inline edit — sets ONLY the named fields, used for the order page's
+// inline status changes. `completedAt: null` removes the completion stamp (when
+// an order leaves a terminal status); any other value is written as-is.
+//
+// This is the strongest case for the per-field merge: a single inline toggle
+// ("отметить оплачено/отправлен") writes just that one field, so it merges
+// cleanly with a concurrent edit to any OTHER field on another device — the
+// frequent two-device action. updateOrder would instead resend the whole order.
+export type OrderPatch = Partial<{
+  paymentStatus: PaymentStatus
+  shipmentStatus: ShipmentStatus
+  completedAt: number | null
+}>
+
+export async function patchOrder(id: string, patch: OrderPatch): Promise<void> {
+  const writes: Record<string, unknown> = { ...patch }
+  // null is the caller's signal to remove the stamp; map it to deleteField so
+  // the field is dropped, not stored as a literal null (which the schema rejects).
+  if (patch.completedAt === null) writes.completedAt = deleteField()
+  await updateDoc(doc(db, ORDERS_COLLECTION, id), writes)
 }
 
 // Soft-delete an order: flip `isDeleted` so it drops out of the list and detail

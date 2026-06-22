@@ -10,7 +10,7 @@ import type { Customer } from '../../types/customer'
 // Firebase-touching modules are mocked so the page never initializes the real
 // SDK. We test the page render and the inline status save flow, not Firestore.
 const fetchOrder = vi.fn()
-const updateOrder = vi.fn()
+const patchOrder = vi.fn()
 const softDeleteOrder = vi.fn()
 const fetchCustomer = vi.fn()
 const updateCustomer = vi.fn()
@@ -18,7 +18,7 @@ const navigate = vi.fn()
 
 vi.mock('../../firebase/orders', () => ({
   fetchOrder: (...args: unknown[]) => fetchOrder(...args),
-  updateOrder: (...args: unknown[]) => updateOrder(...args),
+  patchOrder: (...args: unknown[]) => patchOrder(...args),
   softDeleteOrder: (...args: unknown[]) => softDeleteOrder(...args),
 }))
 vi.mock('../../firebase/customers', () => ({
@@ -74,7 +74,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   fetchOrder.mockResolvedValue(order())
   fetchCustomer.mockResolvedValue(customer())
-  updateOrder.mockResolvedValue(undefined)
+  patchOrder.mockResolvedValue(undefined)
   softDeleteOrder.mockResolvedValue(undefined)
   updateCustomer.mockResolvedValue(undefined)
 })
@@ -101,28 +101,20 @@ describe('OrderDetailPage', () => {
     expect(within(itemsTable).queryByText('×2')).not.toBeInTheDocument()
   })
 
-  it('saves a status change in place via updateOrder, preserving the rest of the order', async () => {
+  it('saves a status change as a partial patch (only the changed field)', async () => {
     const user = userEvent.setup()
     renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Статус оплаты' }), 'paid')
 
-    await waitFor(() => expect(updateOrder).toHaveBeenCalledTimes(1))
-    expect(updateOrder).toHaveBeenCalledWith(
-      'o1',
-      expect.objectContaining({
-        // The changed field…
-        paymentStatus: 'paid',
-        // …with everything else (and number/dateCreated) preserved.
-        number: 5,
-        dateCreated: 1000,
-        shipmentStatus: 'new',
-        customerId: 'c1',
-      }),
-    )
-    // The id is overwritten in place, not stored in the body.
-    expect(updateOrder.mock.calls[0][1]).not.toHaveProperty('id')
+    await waitFor(() => expect(patchOrder).toHaveBeenCalledTimes(1))
+    // A per-field merge: ONLY the changed field is written, so a concurrent edit
+    // to another field (on another device) is never clobbered.
+    expect(patchOrder).toHaveBeenCalledWith('o1', { paymentStatus: 'paid' })
+    const saved = patchOrder.mock.calls[0][1]
+    expect(saved).not.toHaveProperty('shipmentStatus')
+    expect(saved).not.toHaveProperty('id')
     // The optimistic value sticks on success.
     expect(screen.getByRole('combobox', { name: 'Статус оплаты' })).toHaveValue('paid')
   })
@@ -134,8 +126,8 @@ describe('OrderDetailPage', () => {
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Статус отправки' }), 'delivered')
 
-    await waitFor(() => expect(updateOrder).toHaveBeenCalledTimes(1))
-    const saved = updateOrder.mock.calls[0][1]
+    await waitFor(() => expect(patchOrder).toHaveBeenCalledTimes(1))
+    const saved = patchOrder.mock.calls[0][1]
     expect(saved.shipmentStatus).toBe('delivered')
     expect(typeof saved.completedAt).toBe('number')
     // The completion row appears once stamped.
@@ -151,15 +143,16 @@ describe('OrderDetailPage', () => {
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Статус отправки' }), 'new')
 
-    await waitFor(() => expect(updateOrder).toHaveBeenCalledTimes(1))
-    // Reopened — the wholesale write drops the completion stamp entirely.
-    expect(updateOrder.mock.calls[0][1]).not.toHaveProperty('completedAt')
+    await waitFor(() => expect(patchOrder).toHaveBeenCalledTimes(1))
+    // Reopened — the patch carries completedAt: null, the signal patchOrder turns
+    // into a deleteField() so the stamp is removed.
+    expect(patchOrder.mock.calls[0][1].completedAt).toBeNull()
     expect(screen.queryByText('Завершён')).not.toBeInTheDocument()
   })
 
   it('rolls the status back and surfaces an error when the save fails', async () => {
     const user = userEvent.setup()
-    updateOrder.mockRejectedValue(new Error('Сеть недоступна'))
+    patchOrder.mockRejectedValue(new Error('Сеть недоступна'))
     renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })
 
