@@ -131,10 +131,11 @@ const OrderDetailPage = () => {
   // Persist the customer's edited fields, then mirror them onto the local
   // customer so the page (the "Клиент"/"Телефон" rows) updates live without a
   // refetch. Empty optional fields drop to undefined, matching updateCustomer.
-  // Errors propagate to the CustomerForm in the dialog, which keeps itself open.
+  // updateCustomer is fire-and-forget (offline-safe), so this never blocks and
+  // the dialog closes at once; a failed write is reported to Sentry.
   const handleSaveCustomer = async (edits: CustomerEdits) => {
     if (!customer) return
-    await updateCustomer(customer.id, edits)
+    updateCustomer(customer.id, edits)
     const trimmed = (value: string | undefined) =>
       value && value.trim() !== '' ? value.trim() : undefined
     setCustomer({

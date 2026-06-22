@@ -36,9 +36,10 @@ const storedCustomer = (overrides: Partial<Record<string, unknown>> = {}) => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
-  // createCustomer fire-and-forgets the write and attaches a `.catch`, so the
-  // mocked setDoc must return a promise.
+  // createCustomer / updateCustomer fire-and-forget the write and attach a
+  // `.catch`, so the mocked setDoc/updateDoc must return a promise.
   vi.mocked(setDoc).mockResolvedValue(undefined)
+  vi.mocked(updateDoc).mockResolvedValue(undefined)
 })
 
 describe('fetchCustomers', () => {
