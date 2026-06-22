@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { waitForPendingWrites } from 'firebase/firestore'
 import { db } from '../../firebase/client'
 import { formatDateTime } from '../../utils/format'
+import Tooltip from '../Tooltip/Tooltip'
 
 // localStorage key for the last moment Firestore confirmed our queued writes
 // reached the server. Persisted so the indicator can show a real "last synced"
@@ -29,12 +30,14 @@ const writeLastSynced = (ms: number) => {
 // Connection / sync indicator for the offline-capable data layer. Renders ONLY
 // when there is something worth saying — the browser is offline, or queued
 // writes are still flushing — so the header stays clean while everything is in
-// sync. When offline it shows WHEN the local data last reached the server, so
-// the user knows how fresh it is. The freshness is taken from
-// waitForPendingWrites (a real server acknowledgement), not navigator.onLine
-// alone, so it stays honest in the case that matters most here: the network is
-// up but Firebase itself is blocked — then writes never flush and the indicator
-// keeps showing "Синхронизация…" instead of falsely claiming a sync.
+// sync. Offline shows just "Не в сети" to stay compact; WHEN the local data last
+// reached the server is in a hover tooltip (a custom Tooltip that shows instantly,
+// not the native `title` which the browser delays ~1s) instead of inline, so the
+// header doesn't widen. The freshness is taken from waitForPendingWrites (a real
+// server acknowledgement), not navigator.onLine alone, so it stays honest in the
+// case that matters most here: the network is up but Firebase itself is blocked —
+// then writes never flush and the indicator keeps showing "Синхронизация…"
+// instead of falsely claiming a sync.
 const SyncStatus = () => {
   const [online, setOnline] = useState(() => navigator.onLine)
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(readLastSynced)
@@ -89,7 +92,14 @@ const SyncStatus = () => {
   // Nothing to report: online and everything already acknowledged.
   if (online && !flushing) return null
 
-  return (
+  // Last-synced time lives in the tooltip (hover), not inline, so offline shows
+  // just "Не в сети" and the header stays compact.
+  const lastSyncedHint =
+    !online && lastSyncedAt !== null
+      ? `Последняя синхронизация: ${formatDateTime(lastSyncedAt)}`
+      : null
+
+  const badge = (
     <div
       role="status"
       aria-live="polite"
@@ -99,14 +109,13 @@ const SyncStatus = () => {
         aria-hidden="true"
         className={`size-2 shrink-0 rounded-full ${online ? 'animate-pulse bg-primary' : 'bg-text'}`}
       />
-      <span className="whitespace-nowrap">
-        {online ? 'Синхронизация…' : 'Не в сети'}
-        {!online && lastSyncedAt !== null && (
-          <span className="hidden sm:inline"> · синхр. {formatDateTime(lastSyncedAt)}</span>
-        )}
-      </span>
+      <span className="whitespace-nowrap">{online ? 'Синхронизация…' : 'Не в сети'}</span>
     </div>
   )
+
+  // When there is a last-synced time, wrap the badge in the instant tooltip;
+  // otherwise (online flush, or never synced) render the bare badge.
+  return lastSyncedHint ? <Tooltip label={lastSyncedHint}>{badge}</Tooltip> : badge
 }
 
 export default SyncStatus
