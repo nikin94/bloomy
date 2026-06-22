@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../context/authContext'
 import { signInWithGoogle } from '../../firebase/auth'
+import { reportError } from '../../observability/reportError'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
 
@@ -44,6 +45,13 @@ const LoginPage = () => {
       await signInWithGoogle()
       // onAuthStateChanged flips `user`, which triggers the redirect above.
     } catch (err: unknown) {
+      // Report the raw failure to Sentry so we can see the real FirebaseError
+      // `code` instead of guessing from screenshots — the friendly message below
+      // collapses several codes (and the generic fallback) into one line, hiding
+      // WHICH failure it was. The main user is in a sanctions-restricted region
+      // where Google may reject the OAuth exchange itself, so the exact code is
+      // what tells us whether it's a geo block vs a real bug.
+      reportError(err, 'signIn')
       setError(signInErrorMessage(err))
       setSigningIn(false)
     }

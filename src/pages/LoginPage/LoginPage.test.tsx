@@ -10,6 +10,11 @@ const signInWithGoogle = vi.fn()
 vi.mock('../../firebase/auth', () => ({
   signInWithGoogle: (...args: unknown[]) => signInWithGoogle(...args),
 }))
+// Spy on the telemetry helper so a test can assert the raw failure is reported.
+const reportError = vi.fn()
+vi.mock('../../observability/reportError', () => ({
+  reportError: (...args: unknown[]) => reportError(...args),
+}))
 
 // Imported after the mock above is registered.
 import LoginPage from './LoginPage'
@@ -52,6 +57,18 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Войти через Google' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось войти. Попробуйте снова.')
+  })
+
+  it('reports the raw failure to Sentry so the real code is visible, not just the friendly text', async () => {
+    const user = userEvent.setup()
+    const err = authError('auth/internal-error')
+    signInWithGoogle.mockRejectedValue(err)
+    renderLogin()
+
+    await user.click(screen.getByRole('button', { name: 'Войти через Google' }))
+
+    await screen.findByRole('alert')
+    expect(reportError).toHaveBeenCalledWith(err, 'signIn')
   })
 
   it('re-enables the button after a failure so the user can retry', async () => {
