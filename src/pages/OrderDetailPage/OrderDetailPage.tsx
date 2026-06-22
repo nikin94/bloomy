@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { fetchOrder, softDeleteOrder, updateOrder } from '../../firebase/orders'
+import { fetchOrder, patchOrder, softDeleteOrder } from '../../firebase/orders'
+import type { OrderPatch } from '../../firebase/orders'
 import { fetchCustomer, updateCustomer } from '../../firebase/customers'
 import type { CustomerEdits } from '../../firebase/customers'
 import { formatDate, formatMoney } from '../../utils/format'
@@ -89,27 +90,36 @@ const OrderDetailPage = () => {
   }, [id, ownerId])
 
   // Save a single status change inline, optimistically: update the local order
-  // right away so the UI feels instant, then write the whole order (updateOrder
-  // overwrites in place, preserving id/number/dateCreated). On failure roll the
+  // right away so the UI feels instant, then write ONLY the changed field(s)
+  // (patchOrder is a per-field merge, so this inline toggle never clobbers a
+  // concurrent edit to another field on another device). On failure roll the
   // value back and surface the error, so the screen never shows an unsaved state.
   const saveStatus = async (patch: Partial<Order>) => {
     if (!order) return
     const previous = order
     const next = { ...order, ...patch }
+    // The write touches only the fields the caller changed (paymentStatus OR
+    // shipmentStatus), so the merge stays field-scoped.
+    const writePatch: OrderPatch = {}
+    if (patch.paymentStatus !== undefined) writePatch.paymentStatus = patch.paymentStatus
     // Completion is derived from the shipment status: delivered/cancelled stamps
-    // the completion time, any other status clears it. Only recompute when this
-    // save actually touches the shipment status.
+    // the completion time, any other status clears it (null → removed in patchOrder).
     if (patch.shipmentStatus !== undefined) {
+      writePatch.shipmentStatus = patch.shipmentStatus
       const completedAt = resolveCompletedAt(next.shipmentStatus, order.completedAt, Date.now())
-      if (completedAt === undefined) delete next.completedAt
-      else next.completedAt = completedAt
+      if (completedAt === undefined) {
+        delete next.completedAt
+        writePatch.completedAt = null
+      } else {
+        next.completedAt = completedAt
+        writePatch.completedAt = completedAt
+      }
     }
     setOrder(next)
     setStatusError(null)
     setSavingStatus(true)
     try {
-      const { id, ...stored } = next
-      await updateOrder(next.id, stored)
+      await patchOrder(next.id, writePatch)
     } catch (err: unknown) {
       setOrder(previous)
       setStatusError(err instanceof Error ? err.message : 'Не удалось сохранить статус')

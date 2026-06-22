@@ -11,6 +11,7 @@ import {
   fetchDeletedOrders,
   fetchOrder,
   fetchOrders,
+  patchOrder,
   reconcileOrderNumbers,
   restoreOrder,
   softDeleteOrder,
@@ -159,6 +160,54 @@ describe('updateOrder (emulator)', () => {
 
     const updated = await fetchOrder(id, owner)
     expect(updated?.completedAt).toBe(1700)
+  })
+
+  it('removes an optional field the edit cleared (comment dropped, not lingering)', async () => {
+    const owner = 'owner-clear-comment'
+    const id = await createNumbered(makeOrder(owner))
+    await updateOrder(id, { ...(await fetchOrder(id, owner))!, comment: 'note' })
+    expect((await fetchOrder(id, owner))?.comment).toBe('note')
+
+    // Re-save WITHOUT a comment key — the per-field merge must delete it, not
+    // leave the old value behind (the setDoc-replace behaviour we kept).
+    const withComment = await fetchOrder(id, owner)
+    delete withComment!.comment
+    await updateOrder(id, withComment!)
+
+    expect((await fetchOrder(id, owner))?.comment).toBeUndefined()
+  })
+})
+
+describe('patchOrder (emulator)', () => {
+  it('merges concurrent edits to DIFFERENT fields instead of clobbering', async () => {
+    const owner = 'owner-merge'
+    const id = await createNumbered(makeOrder(owner))
+
+    // Two independent inline patches, as two devices would send them: one flips
+    // the payment status, the other the shipment status. A per-field merge keeps
+    // BOTH — a wholesale replace would have let the later write erase the earlier.
+    await patchOrder(id, { paymentStatus: 'paid' })
+    await patchOrder(id, { shipmentStatus: 'shipped' })
+
+    const merged = await fetchOrder(id, owner)
+    expect(merged?.paymentStatus).toBe('paid')
+    expect(merged?.shipmentStatus).toBe('shipped')
+    // The rest of the order is untouched by either partial write.
+    expect(merged?.address).toBe('Main St 1')
+    expect(merged?.number).toBe(1)
+  })
+
+  it('drops the completion stamp when patched with completedAt: null', async () => {
+    const owner = 'owner-patch-clear'
+    const id = await createNumbered(makeOrder(owner))
+    await patchOrder(id, { shipmentStatus: 'delivered', completedAt: 1700 })
+    expect((await fetchOrder(id, owner))?.completedAt).toBe(1700)
+
+    await patchOrder(id, { shipmentStatus: 'new', completedAt: null })
+
+    const reopened = await fetchOrder(id, owner)
+    expect(reopened?.completedAt).toBeUndefined()
+    expect(reopened?.shipmentStatus).toBe('new')
   })
 
   it('does not bump the owner counter (a later create still increments by one)', async () => {
