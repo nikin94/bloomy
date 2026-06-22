@@ -2,7 +2,6 @@ import { useState } from 'react'
 import Input from '../Input/Input'
 import Textarea from '../Textarea/Textarea'
 import Button from '../Button/Button'
-import Loader from '../Loader/Loader'
 import type { CustomerEdits } from '../../firebase/customers'
 
 interface CustomerFormProps {
@@ -86,8 +85,8 @@ const CustomerForm = ({ initial, onSubmit, onCancel }: CustomerFormProps) => {
       )}
 
       <div className="flex gap-2">
-        <Button type="submit" variant="primary" size="sm" disabled={saving}>
-          {saving ? <Loader size="sm" /> : 'Сохранить'}
+        <Button type="submit" variant="primary" size="sm" isLoading={saving}>
+          Сохранить
         </Button>
         <Button type="button" variant="secondary" size="sm" onClick={onCancel} disabled={saving}>
           Отмена

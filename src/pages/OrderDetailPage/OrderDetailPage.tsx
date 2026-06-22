@@ -21,7 +21,6 @@ import { useAuth } from '../../context/authContext'
 import Spinner from '../../components/Spinner/Spinner'
 import Select from '../../components/Select/Select'
 import Button from '../../components/Button/Button'
-import Loader from '../../components/Loader/Loader'
 import Modal from '../../components/Modal/Modal'
 import CustomerForm from '../../components/CustomerForm/CustomerForm'
 import type { Order } from '../../types/order'
@@ -330,8 +329,8 @@ const OrderDetailPage = () => {
             </p>
           )}
           <div className="flex justify-end gap-2">
-            <Button variant="danger" onClick={handleDelete} disabled={deleting}>
-              {deleting ? <Loader size="sm" /> : 'Удалить'}
+            <Button variant="danger" onClick={handleDelete} isLoading={deleting}>
+              Удалить
             </Button>
             <Button
               variant="secondary"

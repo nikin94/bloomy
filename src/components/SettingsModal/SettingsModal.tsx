@@ -8,7 +8,6 @@ import type { ThemeMode } from '../../types/settings'
 import { DELIVERY_METHOD_OPTIONS, PAYMENT_METHOD_OPTIONS } from '../../types/order'
 import type { DeliveryMethod, PaymentMethod } from '../../types/order'
 import Button from '../Button/Button'
-import Loader from '../Loader/Loader'
 import Select from '../Select/Select'
 import Modal from '../Modal/Modal'
 
@@ -337,8 +336,8 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
       )}
 
       <div className="flex justify-end gap-2">
-        <Button variant="primary" onClick={handleSave} disabled={saving}>
-          {saving ? <Loader size="sm" /> : 'Сохранить'}
+        <Button variant="primary" onClick={handleSave} isLoading={saving}>
+          Сохранить
         </Button>
         <Button variant="secondary" onClick={handleClose} disabled={saving}>
           Отмена

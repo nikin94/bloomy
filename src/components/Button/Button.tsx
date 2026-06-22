@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes } from 'react'
+import Loader from '../Loader/Loader'
 
 // Shared button. The app has three visual kinds — a filled brand button, an
 // outlined neutral one, and a tinted `danger` for destructive actions — so they
@@ -36,6 +37,12 @@ const sizeClass: Record<ButtonSize, string> = {
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
   size?: ButtonSize
+  // When true the button shows a Loader IN PLACE of its children and disables
+  // itself, so a busy caller passes `isLoading={saving}` plain children instead
+  // of hand-rolling the `saving ? <Loader/> : 'Сохранить'` ternary and a
+  // matching `disabled`. The Loader draws from currentColor, so it stays legible
+  // on every variant (white on primary, danger-red on danger).
+  isLoading?: boolean
 }
 
 // `type` defaults to "button" so a button never submits a form by accident;
@@ -45,13 +52,20 @@ const Button = ({
   size = 'md',
   type = 'button',
   className = '',
+  isLoading = false,
+  disabled,
+  children,
   ...props
 }: ButtonProps) => (
   <button
     type={type}
+    // A loading button is non-interactive, on top of any caller-set disabled.
+    disabled={disabled || isLoading}
     className={`${baseClass} ${variantClass[variant]} ${sizeClass[size]} ${className}`}
     {...props}
-  />
+  >
+    {isLoading ? <Loader size="sm" /> : children}
+  </button>
 )
 
 export default Button

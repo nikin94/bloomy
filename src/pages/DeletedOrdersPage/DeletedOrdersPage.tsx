@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
-import Loader from '../../components/Loader/Loader'
 import { fetchDeletedOrders, restoreOrder } from '../../firebase/orders'
 import { fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
@@ -48,8 +47,8 @@ const DeletedOrderRow = ({
           {formatDate(order.dateCreated)} · {formatMoney(getTotalMinor(order))}
         </p>
       </div>
-      <Button variant="secondary" size="sm" onClick={restore} disabled={restoring} className="shrink-0">
-        {restoring ? <Loader size="sm" /> : 'Восстановить'}
+      <Button variant="secondary" size="sm" onClick={restore} isLoading={restoring} className="shrink-0">
+        Восстановить
       </Button>
     </li>
   )
