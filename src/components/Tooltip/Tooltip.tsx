@@ -32,7 +32,7 @@ const Tooltip = ({
       <span
         id={id}
         role="tooltip"
-        className="pointer-events-none invisible absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-bg px-2 py-1 text-xs text-text opacity-0 shadow-md group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100"
+        className="pointer-events-none invisible absolute left-1/2 top-full z-50 mt-1 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-tooltip-bg px-2 py-1 text-xs text-heading opacity-0 shadow-md group-hover:visible group-hover:opacity-100 group-focus-visible:visible group-focus-visible:opacity-100"
       >
         {label}
       </span>

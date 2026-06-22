@@ -53,6 +53,10 @@
   --text: #889491;
   --text-h: #f3f4f6;
   --border: #2e303a;
+  /* Tooltip surface — a grey lifted off the very dark `--bg` so a tooltip bubble
+     reads as a distinct layer instead of blending into the page (heading text on
+     it clears AA with margin, 8.6:1). */
+  --tooltip-bg: #33353f;
   /* Input placeholder — dimmer than --text, still legible (3.7:1 on --bg). */
   --placeholder: #6b7280;
 
@@ -105,6 +109,9 @@
   --bg: #cdced3;
   --text: #4f4860;
   --text-h: #08060d;
+  /* Tooltip surface — a grey deepened below the light `--bg` so the bubble stands
+     apart from the page instead of merging into it (heading text on it = 11.3:1). */
+  --tooltip-bg: #b6b8bf;
   /* A palette-family grey for dividers, visible against the grey surface (1.5:1). */
   --border: #9aa1a4;
   /* Placeholder — between --text and --border, legible on the input bg (3.9:1). */
@@ -125,6 +132,7 @@
   --color-accent: var(--accent);
   --color-accent-bg: var(--accent-bg);
   --color-bg: var(--bg);
+  --color-tooltip-bg: var(--tooltip-bg);
   --color-text: var(--text);
   --color-heading: var(--text-h);
   --color-border: var(--border);
