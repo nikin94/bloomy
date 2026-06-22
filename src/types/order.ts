@@ -49,7 +49,12 @@ export type OrderItem = z.infer<typeof ORDER_ITEM_SCHEMA>
 // Only delivery is an independent input and is stored. This keeps the order a
 // live "notebook": editing items recomputes the totals, no stale snapshot.
 export const STORED_ORDER_SCHEMA = z.object({
-  number: z.number().int().positive(), // per-owner sequential number, assigned on create
+  // Per-owner sequential number. NULLABLE because an order can be created while
+  // OFFLINE, where the numbering transaction (which needs the server) can't run:
+  // such an order is written with `number: null` and gets its real number later,
+  // by reconcileOrderNumbers, once the client is back online. A synced order
+  // always has a positive int; `null` means "created offline, not yet numbered".
+  number: z.number().int().positive().nullable(),
   dateCreated: z.number(), // timestamp (ms)
   ownerId: z.string().min(1), // app user UID that owns this order (multi-tenancy)
   customerId: z.string().min(1), // link to Customer — the live source of the customer name
@@ -81,6 +86,12 @@ export const STORED_ORDER_SCHEMA = z.object({
 // A single order for potted plants and flowers = one table row. The doc id is
 // added to the stored shape.
 export type Order = z.infer<typeof STORED_ORDER_SCHEMA> & { id: string }
+
+// Display label for an order's number. An order created offline has no number
+// yet (null) until it syncs and reconcileOrderNumbers assigns one; show an em
+// dash for that transient state so the UI never prints "№null".
+export const formatOrderNumber = (number: number | null): string =>
+  number === null ? '—' : String(number)
 
 // Derived money selectors. All amounts are integers in minor units (kopecks).
 // Subtotal = sum of item line totals; total = subtotal + delivery.
@@ -227,7 +238,15 @@ export function buildOrderColumns(
   getCustomerName: (customerId: string) => string,
 ): OrderColumn[] {
   return [
-    { id: 'number', header: '№', format: (o) => String(o.number), sortValue: (o) => o.number, width: 'w-20' },
+    {
+      id: 'number',
+      header: '№',
+      format: (o) => formatOrderNumber(o.number),
+      // Not-yet-numbered (offline) orders are the most recent, so sort them as
+      // the highest number rather than 0 — they sit with the newest, not first.
+      sortValue: (o) => o.number ?? Number.MAX_SAFE_INTEGER,
+      width: 'w-20',
+    },
     {
       id: 'dateCreated',
       header: 'Дата',
@@ -335,6 +354,10 @@ export const filterOrders = (
     if (filter.maxPriceMinor !== null && total > filter.maxPriceMinor) return false
     if (q === '') return true
     const plantNames = o.plants.map((p) => p.name).join(' ')
-    return `${o.number} ${getCustomerName(o.customerId)} ${plantNames}`.toLowerCase().includes(q)
+    // `number ?? ''` so an unsynced order (number null) isn't searchable as the
+    // literal "null"; it still matches by customer/plant.
+    return `${o.number ?? ''} ${getCustomerName(o.customerId)} ${plantNames}`
+      .toLowerCase()
+      .includes(q)
   })
 }

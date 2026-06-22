@@ -1,17 +1,18 @@
 import {
-  addDoc,
   collection,
   deleteField,
   doc,
   getDoc,
   getDocs,
   query,
+  setDoc,
   updateDoc,
   where,
 } from 'firebase/firestore'
 import { db } from './client'
 import { STORED_CUSTOMER_SCHEMA } from '../types/customer'
 import type { Customer, NewCustomer } from '../types/customer'
+import { reportError } from '../observability/reportError'
 
 // The user-editable fields of a customer. `ownerId`, `createdAt` and `isDeleted`
 // are managed by the app, not edited through the form.
@@ -50,9 +51,15 @@ export async function fetchCustomer(id: string): Promise<Customer | null> {
   return snapshot.exists() ? parseCustomer(snapshot.id, snapshot.data()) : null
 }
 
-// Create a customer document and return its generated id.
-export async function createCustomer(customer: NewCustomer): Promise<string> {
-  const ref = await addDoc(collection(db, CUSTOMERS_COLLECTION), customer)
+// Create a customer document and return its generated id IMMEDIATELY, without
+// waiting for the server. Like createOrder, this makes it work OFFLINE: the id
+// is generated locally (no network) and the write is queued in the local cache,
+// flushed on reconnect. New customers are created as part of an offline order,
+// so the order can reference this id at once. The write promise is not awaited
+// (it would hang offline); a genuine failure is routed to reportError (Sentry).
+export function createCustomer(customer: NewCustomer): string {
+  const ref = doc(collection(db, CUSTOMERS_COLLECTION))
+  void setDoc(ref, customer).catch((err) => reportError(err, 'createCustomer'))
   return ref.id
 }
 

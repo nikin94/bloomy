@@ -19,6 +19,7 @@ import {
   fetchDeletedOrders,
   fetchOrder,
   fetchOrders,
+  reconcileOrderNumbers,
   restoreOrder,
   softDeleteOrder,
   updateOrder,
@@ -73,42 +74,82 @@ const newOrder: NewOrder = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // createOrder/createCustomer fire-and-forget the write and attach a `.catch`,
+  // so the mocked setDoc must return a promise.
+  vi.mocked(setDoc).mockResolvedValue(undefined)
 })
 
 describe('createOrder', () => {
-  it('issues the next per-owner number and stamps it onto the order', async () => {
-    const tx = {
-      get: vi.fn().mockResolvedValue({ data: () => ({ lastOrderNumber: 5 }) }),
-      set: vi.fn(),
-    }
-    vi.mocked(runTransaction).mockImplementation(async (_db, fn) => {
-      // @ts-expect-error — the fake tx only implements the bits createOrder uses
-      await fn(tx)
-    })
-
-    const id = await createOrder(newOrder)
-
+  it('writes the order with number=null and returns the id synchronously, with no transaction', () => {
+    // Returns the generated doc id at once (offline-safe: no await on the write).
+    const id = createOrder(newOrder)
     expect(id).toBe('generated-id')
-    // Counter bumped 5 -> 6 with a merge write.
-    expect(tx.set).toHaveBeenCalledWith(expect.anything(), { lastOrderNumber: 6 }, { merge: true })
-    // Order stamped with that number.
-    expect(tx.set).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ number: 6 }))
+
+    // The order is stored unnumbered; reconcileOrderNumbers assigns the real
+    // number later. No counter transaction runs at create time.
+    expect(setDoc).toHaveBeenCalledTimes(1)
+    expect(setDoc).toHaveBeenCalledWith(expect.anything(), { ...newOrder, number: null })
+    expect(runTransaction).not.toHaveBeenCalled()
+  })
+})
+
+describe('reconcileOrderNumbers', () => {
+  // Build a getDocs snapshot of order docs (id + data) for the owner query.
+  const snapshotOf = (docs: { id: string; data: Record<string, unknown> }[]) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ({ docs: docs.map((d) => ({ id: d.id, data: () => d.data })) }) as any
+
+  // Fake the counter transaction: within each tx, the first get() is the order
+  // (always unnumbered here) and the second is the owner counter; the counter
+  // persists across transactions, so successive orders get 1, 2, 3…
+  const fakeCounterTransactions = (records: number[]) => {
+    let counter = 0
+    vi.mocked(runTransaction).mockImplementation(async (_db, fn) => {
+      let getCall = 0
+      const tx = {
+        get: vi.fn(async () => {
+          getCall += 1
+          return getCall === 1
+            ? { exists: () => true, data: () => ({ number: null }) }
+            : { data: () => ({ lastOrderNumber: counter }) }
+        }),
+        set: vi.fn((_ref: unknown, data: { lastOrderNumber?: number }) => {
+          if (typeof data?.lastOrderNumber === 'number') counter = data.lastOrderNumber
+        }),
+        update: vi.fn((_ref: unknown, data: { number: number }) => records.push(data.number)),
+      }
+      // @ts-expect-error — minimal fake tx
+      return fn(tx)
+    })
+  }
+
+  it('numbers only the unnumbered orders, oldest first, with a serial counter', async () => {
+    vi.mocked(getDocs).mockResolvedValue(
+      snapshotOf([
+        { id: 'b', data: storedOrder({ number: null, dateCreated: 2000 }) },
+        { id: 'a', data: storedOrder({ number: null, dateCreated: 1000 }) },
+        { id: 'c', data: storedOrder({ number: 3, dateCreated: 3000 }) }, // already numbered — skipped
+      ]),
+    )
+    const assigned: number[] = []
+    fakeCounterTransactions(assigned)
+
+    const numbered = await reconcileOrderNumbers('owner-1')
+
+    expect(numbered).toBe(true)
+    // Two transactions (one per unnumbered order), assigning 1 then 2 — the
+    // already-numbered 'c' is filtered out and never enters a transaction.
+    expect(runTransaction).toHaveBeenCalledTimes(2)
+    expect(assigned).toEqual([1, 2])
   })
 
-  it('starts numbering at 1 when the owner has no counter yet', async () => {
-    const tx = {
-      get: vi.fn().mockResolvedValue({ data: () => undefined }),
-      set: vi.fn(),
-    }
-    vi.mocked(runTransaction).mockImplementation(async (_db, fn) => {
-      // @ts-expect-error — minimal fake tx
-      await fn(tx)
-    })
+  it('returns false and runs no transaction when every order is already numbered', async () => {
+    vi.mocked(getDocs).mockResolvedValue(snapshotOf([{ id: 'a', data: storedOrder({ number: 1 }) }]))
 
-    await createOrder(newOrder)
+    const numbered = await reconcileOrderNumbers('owner-1')
 
-    expect(tx.set).toHaveBeenCalledWith(expect.anything(), { lastOrderNumber: 1 }, { merge: true })
-    expect(tx.set).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ number: 1 }))
+    expect(numbered).toBe(false)
+    expect(runTransaction).not.toHaveBeenCalled()
   })
 })
 

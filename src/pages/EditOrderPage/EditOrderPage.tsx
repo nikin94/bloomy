@@ -4,6 +4,7 @@ import OrderForm from '../../components/OrderForm/OrderForm'
 import Spinner from '../../components/Spinner/Spinner'
 import { fetchOrder, updateOrder } from '../../firebase/orders'
 import { useAuth } from '../../context/authContext'
+import { formatOrderNumber } from '../../types/order'
 import type { Order } from '../../types/order'
 
 // Edit-order screen: loads the order, then hands it to the shared OrderForm
@@ -54,7 +55,7 @@ const EditOrderPage = () => {
 
   return (
     <OrderForm
-      heading={`Редактирование заказа №${order.number}`}
+      heading={`Редактирование заказа №${formatOrderNumber(order.number)}`}
       initialOrder={order}
       onCancel={() => navigate(`/orders/${order.id}`)}
       onSubmit={async (fields) => {

@@ -2,7 +2,7 @@
 // these check OUR code: the owner-scoped query, the mapping of docs to validated
 // Customers, and the not-found path.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { addDoc, doc, getDoc, getDocs, updateDoc, where } from 'firebase/firestore'
+import { doc, getDoc, getDocs, setDoc, updateDoc, where } from 'firebase/firestore'
 import {
   createCustomer,
   fetchCustomer,
@@ -14,7 +14,6 @@ import type { NewCustomer } from '../types/customer'
 
 vi.mock('./client', () => ({ db: {} }))
 vi.mock('firebase/firestore', () => ({
-  addDoc: vi.fn(),
   collection: vi.fn(() => ({})),
   // A distinct sentinel so tests can assert a field is removed (deleteField)
   // rather than written.
@@ -23,6 +22,7 @@ vi.mock('firebase/firestore', () => ({
   getDoc: vi.fn(),
   getDocs: vi.fn(),
   query: vi.fn(() => ({})),
+  setDoc: vi.fn(),
   updateDoc: vi.fn(),
   where: vi.fn(() => ({})),
 }))
@@ -36,6 +36,9 @@ const storedCustomer = (overrides: Partial<Record<string, unknown>> = {}) => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // createCustomer fire-and-forgets the write and attaches a `.catch`, so the
+  // mocked setDoc must return a promise.
+  vi.mocked(setDoc).mockResolvedValue(undefined)
 })
 
 describe('fetchCustomers', () => {
@@ -138,12 +141,14 @@ describe('fetchCustomer', () => {
 })
 
 describe('createCustomer', () => {
-  it('writes the customer and returns the generated id', async () => {
+  it('writes the customer and returns the generated id synchronously', () => {
+    // The id comes from a locally-generated doc ref (offline-safe: no network),
+    // returned at once; the write is fire-and-forget so it isn't awaited.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(addDoc).mockResolvedValue({ id: 'new-id' } as any)
+    vi.mocked(doc).mockReturnValueOnce({ id: 'new-id' } as any)
     const customer: NewCustomer = { ownerId: 'owner-1', name: 'Anna', createdAt: 1000 }
 
-    expect(await createCustomer(customer)).toBe('new-id')
-    expect(addDoc).toHaveBeenCalledWith(expect.anything(), customer)
+    expect(createCustomer(customer)).toBe('new-id')
+    expect(setDoc).toHaveBeenCalledWith({ id: 'new-id' }, customer)
   })
 })

@@ -7,7 +7,10 @@ import type { AuthState } from './context/authContext'
 
 // Firebase-touching modules are mocked so rendering a lazy route never spins up
 // the real SDK. We test the routing/Suspense wiring, not the pages' internals.
-vi.mock('./firebase/orders', () => ({ fetchOrders: vi.fn().mockResolvedValue([]) }))
+vi.mock('./firebase/orders', () => ({
+  fetchOrders: vi.fn().mockResolvedValue([]),
+  reconcileOrderNumbers: vi.fn().mockResolvedValue(false),
+}))
 vi.mock('./firebase/customers', () => ({ fetchCustomers: vi.fn().mockResolvedValue([]) }))
 vi.mock('./firebase/auth', () => ({ signInWithGoogle: vi.fn(), signOutUser: vi.fn() }))
 
