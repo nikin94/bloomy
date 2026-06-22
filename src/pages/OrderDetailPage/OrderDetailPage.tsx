@@ -14,6 +14,7 @@ import {
   PAYMENT_STATUS_OPTIONS,
   SHIPMENT_STATUS_OPTIONS,
   resolveCompletedAt,
+  formatOrderNumber,
 } from '../../types/order'
 import { useAuth } from '../../context/authContext'
 import Spinner from '../../components/Spinner/Spinner'
@@ -170,7 +171,12 @@ const OrderDetailPage = () => {
         <div className="mx-auto flex max-w-2xl flex-col gap-6">
           <header className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="m-0 text-2xl font-semibold text-heading">
-              Заказ №{order.number}
+              Заказ №{formatOrderNumber(order.number)}
+              {order.number === null && (
+                <span className="ml-2 align-middle text-sm font-normal text-text">
+                  не синхронизирован
+                </span>
+              )}
             </h1>
             <div className="flex items-center gap-3">
               <span className="text-sm text-text">{formatDate(order.dateCreated)}</span>
@@ -302,7 +308,10 @@ const OrderDetailPage = () => {
       )}
 
       {confirmingDelete && order && (
-        <Modal title={`Удалить заказ №${order.number}?`} onClose={() => setConfirmingDelete(false)}>
+        <Modal
+          title={`Удалить заказ №${formatOrderNumber(order.number)}?`}
+          onClose={() => setConfirmingDelete(false)}
+        >
           <p className="m-0 text-text">Заказ исчезнет из списка.</p>
           {deleteError && (
             <p role="alert" className="m-0 text-danger">

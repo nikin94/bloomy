@@ -13,6 +13,7 @@ import {
 import { db } from './client'
 import { STORED_ORDER_SCHEMA } from '../types/order'
 import type { Order } from '../types/order'
+import { reportError } from '../observability/reportError'
 
 const ORDERS_COLLECTION = 'orders'
 // Per-owner counters: counters/{ownerId}.lastOrderNumber holds the highest
@@ -21,7 +22,7 @@ const ORDERS_COLLECTION = 'orders'
 const COUNTERS_COLLECTION = 'counters'
 
 // Data needed to create an order. `id` is assigned by Firestore on write and
-// `number` is assigned by the create transaction, so the caller provides neither.
+// `number` is assigned by reconcileOrderNumbers, so the caller provides neither.
 export type NewOrder = Omit<Order, 'id' | 'number'>
 
 // Firestore document -> validated Order. Throws on schema mismatch — surfacing
@@ -69,25 +70,70 @@ export async function fetchOrder(id: string, ownerId: string): Promise<Order | n
   return order
 }
 
-// Create a new order and return its generated document id.
+// Create a new order and return its generated document id IMMEDIATELY, without
+// waiting for the server to acknowledge the write.
 //
-// Firestore has no auto-increment, so the human-readable `number` is issued by
-// a transaction: read the owner's counter, bump it by one, and stamp the order
-// with that value — all atomically, so two concurrent creates can never get the
-// same number. The URL key stays the random doc id; `number` is display-only.
-export async function createOrder(order: NewOrder): Promise<string> {
+// This is what makes order creation work OFFLINE. The human-readable `number`
+// can't be issued here: it needs a transaction on the owner's counter, and
+// Firestore transactions require the server (they can't run offline). So the
+// order is written with `number: null` and gets a real number later, from
+// reconcileOrderNumbers, once the client is online. The doc id is generated
+// locally (no network), so we return it at once; the write is queued in the
+// local cache and flushed on reconnect.
+//
+// The write promise is deliberately NOT awaited: awaiting it would hang offline
+// (the promise only resolves once the server confirms). So the create never
+// blocks the UI. A genuinely failed write (e.g. an online permission-denied)
+// has no caller to catch it, so it is routed to reportError (Sentry).
+export function createOrder(order: NewOrder): string {
   const orderRef = doc(collection(db, ORDERS_COLLECTION))
-  const counterRef = doc(db, COUNTERS_COLLECTION, order.ownerId)
-
-  await runTransaction(db, async (tx) => {
-    const counterSnap = await tx.get(counterRef)
-    const lastNumber = (counterSnap.data()?.lastOrderNumber as number | undefined) ?? 0
-    const nextNumber = lastNumber + 1
-    tx.set(counterRef, { lastOrderNumber: nextNumber }, { merge: true })
-    tx.set(orderRef, { ...order, number: nextNumber })
-  })
-
+  void setDoc(orderRef, { ...order, number: null }).catch((err) =>
+    reportError(err, 'createOrder'),
+  )
   return orderRef.id
+}
+
+// Assign real per-owner numbers to any of the owner's orders still created
+// offline (number === null). Runs online (it uses transactions). For each
+// unnumbered order, in creation order, a transaction reads the owner's counter,
+// bumps it by one and stamps the order — atomically, so the counter is never
+// double-issued even if two devices reconcile at the same time. The transaction
+// re-reads the order inside itself and skips if another device already numbered
+// it, so reconciling twice is safe and idempotent.
+//
+// Returns true if it numbered at least one order (the caller can then refetch).
+// Best-effort: if a transaction fails (offline / Firebase unreachable), it stops
+// and leaves the rest unnumbered for the next online reconcile — never throws.
+export async function reconcileOrderNumbers(ownerId: string): Promise<boolean> {
+  const q = query(collection(db, ORDERS_COLLECTION), where('ownerId', '==', ownerId))
+  const snapshot = await getDocs(q)
+  const unnumbered = snapshot.docs
+    .filter((d) => d.data().number === null)
+    .sort((a, b) => ((a.data().dateCreated as number) ?? 0) - ((b.data().dateCreated as number) ?? 0))
+
+  let numberedAny = false
+  const counterRef = doc(db, COUNTERS_COLLECTION, ownerId)
+  for (const docSnap of unnumbered) {
+    const orderRef = doc(db, ORDERS_COLLECTION, docSnap.id)
+    try {
+      await runTransaction(db, async (tx) => {
+        const orderSnap = await tx.get(orderRef)
+        // Gone, or already numbered by another device since we listed — skip.
+        if (!orderSnap.exists() || orderSnap.data()?.number !== null) return
+        const counterSnap = await tx.get(counterRef)
+        const lastNumber = (counterSnap.data()?.lastOrderNumber as number | undefined) ?? 0
+        const nextNumber = lastNumber + 1
+        tx.set(counterRef, { lastOrderNumber: nextNumber }, { merge: true })
+        tx.update(orderRef, { number: nextNumber })
+      })
+      numberedAny = true
+    } catch {
+      // Offline / Firebase blocked: the remaining orders would fail the same
+      // way, so stop and try again on the next online load.
+      break
+    }
+  }
+  return numberedAny
 }
 
 // Overwrite an existing order in place (used by the edit screen). Unlike

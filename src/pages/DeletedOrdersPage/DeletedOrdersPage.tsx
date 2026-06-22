@@ -6,7 +6,7 @@ import { fetchDeletedOrders, restoreOrder } from '../../firebase/orders'
 import { fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
 import { formatDate, formatMoney } from '../../utils/format'
-import { getTotalMinor } from '../../types/order'
+import { getTotalMinor, formatOrderNumber } from '../../types/order'
 import type { Order } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
@@ -41,7 +41,7 @@ const DeletedOrderRow = ({
     <li className="flex items-center gap-3 border-b border-border py-3">
       <div className="min-w-0 flex-1">
         <p className="m-0 truncate text-heading">
-          Заказ №{order.number} · {customerName}
+          Заказ №{formatOrderNumber(order.number)} · {customerName}
         </p>
         <p className="m-0 truncate text-sm text-text">
           {formatDate(order.dateCreated)} · {formatMoney(getTotalMinor(order))}

@@ -10,9 +10,13 @@ import type { Customer } from '../../types/customer'
 // Firebase-touching modules are mocked so the page never initializes the real
 // SDK. We test the filter behaviour (search + status) over an in-memory list.
 const fetchOrders = vi.fn()
+const reconcileOrderNumbers = vi.fn()
 const fetchCustomers = vi.fn()
 
-vi.mock('../../firebase/orders', () => ({ fetchOrders: (...a: unknown[]) => fetchOrders(...a) }))
+vi.mock('../../firebase/orders', () => ({
+  fetchOrders: (...a: unknown[]) => fetchOrders(...a),
+  reconcileOrderNumbers: (...a: unknown[]) => reconcileOrderNumbers(...a),
+}))
 vi.mock('../../firebase/customers', () => ({ fetchCustomers: (...a: unknown[]) => fetchCustomers(...a) }))
 // AppHeader imports signOutUser from here; stub it so firebase stays untouched.
 vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
@@ -70,6 +74,8 @@ const openSearch = async (user: ReturnType<typeof userEvent.setup>) => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // No offline orders to number by default — the page reconciles before fetching.
+  reconcileOrderNumbers.mockResolvedValue(false)
   fetchCustomers.mockResolvedValue([
     customer({ id: 'c-anna', name: 'Анна' }),
     customer({ id: 'c-boris', name: 'Борис' }),

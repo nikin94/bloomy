@@ -8,7 +8,7 @@ import Button from '../../components/Button/Button'
 import Modal from '../../components/Modal/Modal'
 import RangeSliderImport from 'react-range-slider-input'
 import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
-import { fetchOrders } from '../../firebase/orders'
+import { fetchOrders, reconcileOrderNumbers } from '../../firebase/orders'
 import { fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
 import { formatMoney } from '../../utils/format'
@@ -234,11 +234,17 @@ const OrdersPage = () => {
   useEffect(() => {
     if (!ownerId) return
     let active = true
-    // Two queries (orders + customers) instead of N+1: customers are loaded
-    // once and the table resolves each order's name from this list in memory.
-    // `includeDeleted` so an order whose customer was soft-deleted still shows
-    // the name in the list, not "—".
-    Promise.all([fetchOrders(ownerId), fetchCustomers(ownerId, { includeDeleted: true })])
+    // First assign real numbers to any orders created offline (no-op when there
+    // are none, or best-effort skip when still offline), THEN load the list — so
+    // a freshly-synced order shows its number instead of "—". Two queries
+    // (orders + customers) instead of N+1: customers are loaded once and the
+    // table resolves each order's name from this list in memory. `includeDeleted`
+    // so an order whose customer was soft-deleted still shows the name, not "—".
+    reconcileOrderNumbers(ownerId)
+      .catch(() => false)
+      .then(() =>
+        Promise.all([fetchOrders(ownerId), fetchCustomers(ownerId, { includeDeleted: true })]),
+      )
       .then(([orderData, customerData]) => {
         if (!active) return
         setOrders(orderData)

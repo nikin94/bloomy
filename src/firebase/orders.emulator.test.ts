@@ -4,11 +4,14 @@
 // including atomicity when many orders are created concurrently. Run with
 // `yarn test:emulator` (starts the emulator via `firebase emulators:exec`).
 import { describe, expect, it } from 'vitest'
+import { waitForPendingWrites } from 'firebase/firestore'
+import { db } from './client'
 import {
   createOrder,
   fetchDeletedOrders,
   fetchOrder,
   fetchOrders,
+  reconcileOrderNumbers,
   restoreOrder,
   softDeleteOrder,
   updateOrder,
@@ -31,12 +34,48 @@ const makeOrder = (ownerId: string): NewOrder => ({
   shipmentStatus: 'new',
 })
 
+// Create an order AND give it its real number, the way the app does across a
+// create→sync→reconcile cycle. Used by tests that assert on numbers or counter
+// behaviour, so they read as before despite numbering now being a two-step
+// (offline-safe create, then online reconcile). Tests of the offline/null/
+// reconcile semantics themselves call createOrder + reconcileOrderNumbers raw.
+async function createNumbered(order: NewOrder): Promise<string> {
+  const id = createOrder(order)
+  await waitForPendingWrites(db)
+  await reconcileOrderNumbers(order.ownerId)
+  return id
+}
+
 describe('createOrder (emulator)', () => {
-  it('assigns sequential per-owner numbers across successive creates', async () => {
+  it('creates an order with NO number (offline-safe), then waitForPendingWrites commits it', async () => {
+    const owner = 'owner-create-null'
+    const id = await createOrder(makeOrder(owner))
+    // createOrder returns the id synchronously and queues the write; the order
+    // is stored with number === null until a reconcile assigns one.
+    await waitForPendingWrites(db)
+    const order = await fetchOrder(id, owner)
+    expect(order).not.toBeNull()
+    expect(order?.number).toBeNull()
+  })
+
+  it('hides an order from a different owner (owner re-check)', async () => {
+    const id = await createOrder(makeOrder('owner-real'))
+    await waitForPendingWrites(db)
+    expect(await fetchOrder(id, 'owner-real')).not.toBeNull()
+    expect(await fetchOrder(id, 'owner-intruder')).toBeNull()
+  })
+})
+
+describe('reconcileOrderNumbers (emulator)', () => {
+  it('assigns sequential per-owner numbers in creation order', async () => {
     const owner = 'owner-sequential'
-    const id1 = await createOrder(makeOrder(owner))
-    const id2 = await createOrder(makeOrder(owner))
-    const id3 = await createOrder(makeOrder(owner))
+    const id1 = await createOrder({ ...makeOrder(owner), dateCreated: 1000 })
+    const id2 = await createOrder({ ...makeOrder(owner), dateCreated: 2000 })
+    const id3 = await createOrder({ ...makeOrder(owner), dateCreated: 3000 })
+    await waitForPendingWrites(db)
+
+    const numbered = await reconcileOrderNumbers(owner)
+    expect(numbered).toBe(true)
 
     const byId = new Map((await fetchOrders(owner)).map((o) => [o.id, o.number]))
     expect(byId.get(id1)).toBe(1)
@@ -44,29 +83,45 @@ describe('createOrder (emulator)', () => {
     expect(byId.get(id3)).toBe(3)
   })
 
-  it('never issues duplicate numbers under concurrent creates (real transaction)', async () => {
-    const owner = 'owner-concurrent'
-    const count = 8
-    await Promise.all(Array.from({ length: count }, () => createOrder(makeOrder(owner))))
-
-    const numbers = (await fetchOrders(owner)).map((o) => o.number).sort((a, b) => a - b)
-    // A correct transaction serializes the counter: exactly 1..count, no gaps,
-    // no duplicates. A non-atomic read-modify-write would collide and repeat.
-    expect(numbers).toEqual(Array.from({ length: count }, (_, i) => i + 1))
-  })
-
   it('numbers each owner independently, starting at 1', async () => {
     await createOrder(makeOrder('owner-a'))
     const id = await createOrder(makeOrder('owner-b'))
+    await waitForPendingWrites(db)
+    await reconcileOrderNumbers('owner-a')
+    await reconcileOrderNumbers('owner-b')
 
-    const order = await fetchOrder(id, 'owner-b')
-    expect(order?.number).toBe(1)
+    expect((await fetchOrder(id, 'owner-b'))?.number).toBe(1)
   })
 
-  it('hides an order from a different owner (owner re-check)', async () => {
-    const id = await createOrder(makeOrder('owner-real'))
-    expect(await fetchOrder(id, 'owner-real')).not.toBeNull()
-    expect(await fetchOrder(id, 'owner-intruder')).toBeNull()
+  it('is idempotent — a second reconcile re-numbers nothing and leaves numbers intact', async () => {
+    const owner = 'owner-idempotent'
+    await createOrder(makeOrder(owner))
+    await createOrder(makeOrder(owner))
+    await waitForPendingWrites(db)
+
+    expect(await reconcileOrderNumbers(owner)).toBe(true)
+    const first = (await fetchOrders(owner)).map((o) => o.number).sort()
+    // Nothing left unnumbered, so the second pass assigns nobody.
+    expect(await reconcileOrderNumbers(owner)).toBe(false)
+    const second = (await fetchOrders(owner)).map((o) => o.number).sort()
+    expect(second).toEqual(first)
+  })
+
+  it('never issues duplicate numbers when two reconciles race (real transaction)', async () => {
+    const owner = 'owner-concurrent'
+    const count = 8
+    await Promise.all(Array.from({ length: count }, () => createOrder(makeOrder(owner))))
+    await waitForPendingWrites(db)
+
+    // Two clients reconciling at once: the counter transaction serializes the
+    // increments and the in-transaction re-check skips an already-numbered order,
+    // so the result is exactly 1..count — no gaps, no duplicates.
+    await Promise.all([reconcileOrderNumbers(owner), reconcileOrderNumbers(owner)])
+
+    const numbers = (await fetchOrders(owner))
+      .map((o) => o.number)
+      .sort((a, b) => (a ?? 0) - (b ?? 0))
+    expect(numbers).toEqual(Array.from({ length: count }, (_, i) => i + 1))
   })
 })
 
@@ -75,8 +130,8 @@ describe('updateOrder (emulator)', () => {
     const owner = 'owner-edit'
     // Two creates so the edited order has a non-trivial number (2), proving the
     // update keeps it rather than re-deriving from the counter.
-    await createOrder(makeOrder(owner))
-    const id = await createOrder(makeOrder(owner))
+    await createNumbered(makeOrder(owner))
+    const id = await createNumbered(makeOrder(owner))
     const original = await fetchOrder(id, owner)
     expect(original?.number).toBe(2)
 
@@ -97,7 +152,7 @@ describe('updateOrder (emulator)', () => {
 
   it('round-trips the optional completedAt stamp', async () => {
     const owner = 'owner-completed-at'
-    const id = await createOrder(makeOrder(owner))
+    const id = await createNumbered(makeOrder(owner))
     const original = await fetchOrder(id, owner)
 
     await updateOrder(id, { ...original!, shipmentStatus: 'delivered', completedAt: 1700 })
@@ -108,13 +163,13 @@ describe('updateOrder (emulator)', () => {
 
   it('does not bump the owner counter (a later create still increments by one)', async () => {
     const owner = 'owner-edit-counter'
-    const id = await createOrder(makeOrder(owner)) // number 1
+    const id = await createNumbered(makeOrder(owner)) // number 1
     const original = await fetchOrder(id, owner)
 
     await updateOrder(id, { ...original!, address: 'New St 2' })
 
     // If the edit had touched the counter, the next create would skip a number.
-    const nextId = await createOrder(makeOrder(owner))
+    const nextId = await createNumbered(makeOrder(owner))
     const next = await fetchOrder(nextId, owner)
     expect(next?.number).toBe(2)
   })
@@ -123,8 +178,8 @@ describe('updateOrder (emulator)', () => {
 describe('softDeleteOrder (emulator)', () => {
   it('hides the order from the list and the detail fetch without touching the counter', async () => {
     const owner = 'owner-soft-delete'
-    const keepId = await createOrder(makeOrder(owner)) // number 1
-    const dropId = await createOrder(makeOrder(owner)) // number 2
+    const keepId = await createNumbered(makeOrder(owner)) // number 1
+    const dropId = await createNumbered(makeOrder(owner)) // number 2
 
     await softDeleteOrder(dropId)
 
@@ -134,13 +189,13 @@ describe('softDeleteOrder (emulator)', () => {
     expect(await fetchOrder(dropId, owner)).toBeNull()
 
     // …but the counter is untouched: the next create is number 3, not a reused 2.
-    const nextId = await createOrder(makeOrder(owner))
+    const nextId = await createNumbered(makeOrder(owner))
     expect((await fetchOrder(nextId, owner))?.number).toBe(3)
   })
 
   it('preserves every other field on the kept document', async () => {
     const owner = 'owner-soft-delete-fields'
-    const id = await createOrder(makeOrder(owner))
+    const id = await createNumbered(makeOrder(owner))
 
     await softDeleteOrder(id)
 
@@ -148,7 +203,7 @@ describe('softDeleteOrder (emulator)', () => {
     // possible (it filters deleted), so assert through the data the delete left:
     // a subsequent create still numbers 2, proving the doc (and its number 1) was
     // kept rather than removed.
-    const nextId = await createOrder(makeOrder(owner))
+    const nextId = await createNumbered(makeOrder(owner))
     expect((await fetchOrder(nextId, owner))?.number).toBe(2)
   })
 })
@@ -156,8 +211,8 @@ describe('softDeleteOrder (emulator)', () => {
 describe('fetchDeletedOrders + restoreOrder (emulator)', () => {
   it('lists soft-deleted orders, and restore returns one to the active list', async () => {
     const owner = 'owner-trash'
-    const keepId = await createOrder(makeOrder(owner)) // stays active
-    const dropId = await createOrder(makeOrder(owner)) // deleted then restored
+    const keepId = await createNumbered(makeOrder(owner)) // stays active
+    const dropId = await createNumbered(makeOrder(owner)) // deleted then restored
 
     await softDeleteOrder(dropId)
 
