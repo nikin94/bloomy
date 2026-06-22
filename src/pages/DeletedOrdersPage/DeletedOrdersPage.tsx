@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
+import Loader from '../../components/Loader/Loader'
 import { fetchDeletedOrders, restoreOrder } from '../../firebase/orders'
 import { fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
@@ -48,7 +49,7 @@ const DeletedOrderRow = ({
         </p>
       </div>
       <Button variant="secondary" size="sm" onClick={restore} disabled={restoring} className="shrink-0">
-        {restoring ? 'Восстановление…' : 'Восстановить'}
+        {restoring ? <Loader size="sm" /> : 'Восстановить'}
       </Button>
     </li>
   )

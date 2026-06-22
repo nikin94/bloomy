@@ -4,6 +4,7 @@ import { useAuth } from '../../context/authContext'
 import { signInWithGoogle } from '../../firebase/auth'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
+import Loader from '../../components/Loader/Loader'
 
 // Map a sign-in failure to a message the user can act on. Firebase throws a
 // FirebaseError carrying a string `code`; the raw code/message (e.g.
@@ -76,7 +77,7 @@ const LoginPage = () => {
       )}
 
       <Button variant="primary" onClick={handleSignIn} disabled={signingIn}>
-        {signingIn ? 'Вход…' : 'Войти через Google'}
+        {signingIn ? <Loader size="sm" /> : 'Войти через Google'}
       </Button>
       {error && (
         <p role="alert" className="m-0 text-danger">

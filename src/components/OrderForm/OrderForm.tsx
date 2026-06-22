@@ -14,6 +14,7 @@ import {
 import Spinner from '../Spinner/Spinner'
 import Select from '../Select/Select'
 import Button from '../Button/Button'
+import Loader from '../Loader/Loader'
 import Input from '../Input/Input'
 import Textarea from '../Textarea/Textarea'
 import type { NewOrder } from '../../firebase/orders'
@@ -643,7 +644,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                   disabled={saving}
                   className="w-full sm:w-auto"
                 >
-                  {saving ? 'Сохранение…' : 'Сохранить'}
+                  {saving ? <Loader size="sm" /> : 'Сохранить'}
                 </Button>
                 <Button variant="secondary" onClick={onCancel} className="w-full sm:w-auto">
                   Отмена

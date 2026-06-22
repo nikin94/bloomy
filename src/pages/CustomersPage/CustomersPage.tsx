@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
+import Loader from '../../components/Loader/Loader'
 import Modal from '../../components/Modal/Modal'
 import CustomerForm from '../../components/CustomerForm/CustomerForm'
 import { fetchCustomers, softDeleteCustomer, updateCustomer } from '../../firebase/customers'
@@ -242,7 +243,7 @@ const CustomersPage = () => {
           )}
           <div className="flex justify-end gap-2">
             <Button variant="danger" onClick={handleDelete} disabled={deleteBusy}>
-              {deleteBusy ? 'Удаление…' : 'Удалить'}
+              {deleteBusy ? <Loader size="sm" /> : 'Удалить'}
             </Button>
             <Button
               variant="secondary"
