@@ -12,6 +12,36 @@ import Input from '../../components/Input/Input'
 // register a new one. A toggle below the form switches between the two.
 type AuthMode = 'signin' | 'register'
 
+// Show/hide-password icon: a plain eye when the password is masked (click to
+// reveal), a struck-through eye when it's visible (click to hide). Drawn from
+// `currentColor` so it inherits the button's text colour in both themes.
+const EyeIcon = ({ crossed }: { crossed: boolean }) => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="size-5"
+  >
+    {crossed ? (
+      <>
+        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+        <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+        <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+        <line x1="2" x2="22" y1="2" y2="22" />
+      </>
+    ) : (
+      <>
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    )}
+  </svg>
+)
+
 // Map an auth failure (sign-in OR registration) to a message the user can act
 // on. Firebase throws a FirebaseError carrying a string `code`; the raw
 // code/message (e.g. "auth/network-request-failed") is meaningless to a user, so
@@ -58,6 +88,10 @@ const LoginPage = () => {
   const [error, setError] = useState<string | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  // Confirmation field, shown only when registering — guards against a typo in a
+  // brand-new password the user can't see by default.
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [mode, setMode] = useState<AuthMode>('signin')
 
   if (loading) return <Spinner />
@@ -91,16 +125,23 @@ const LoginPage = () => {
     e.preventDefault()
     const trimmed = email.trim()
     if (mode === 'register') {
+      // Catch a mistyped confirmation before hitting the network — a client-side
+      // check, so no Sentry report.
+      if (password !== confirmPassword) {
+        setError('Пароли не совпадают.')
+        return
+      }
       run(() => registerWithEmail(trimmed, password), 'registerEmail', 'register')
     } else {
       run(() => signInWithEmail(trimmed, password), 'signInEmail', 'signin')
     }
   }
 
-  // Flip between sign-in and registration, clearing any stale error so the new
-  // mode starts clean.
+  // Flip between sign-in and registration, clearing any stale error and the
+  // confirmation field so the new mode starts clean.
   const toggleMode = () => {
     setError(null)
+    setConfirmPassword('')
     setMode((m) => (m === 'signin' ? 'register' : 'signin'))
   }
 
@@ -155,7 +196,8 @@ const LoginPage = () => {
           required
         />
         <Input
-          type="password"
+          // Reveal/mask is controlled by the eye toggle in the suffix below.
+          type={showPassword ? 'text' : 'password'}
           // A new account needs a fresh password; an existing one offers the
           // saved credential — hint the right autofill for each mode.
           autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
@@ -164,9 +206,33 @@ const LoginPage = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
+          suffix={
+            <button
+              type="button"
+              onClick={() => setShowPassword((s) => !s)}
+              aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+              aria-pressed={showPassword}
+              className="flex items-center rounded p-1 text-text hover:text-heading focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <EyeIcon crossed={showPassword} />
+            </button>
+          }
         />
+        {/* Confirmation — registration only. Shares the eye toggle's reveal state
+            so both password fields show/hide together. */}
+        {mode === 'register' && (
+          <Input
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="new-password"
+            aria-label="Подтверждение пароля"
+            placeholder="Повторите пароль"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+          />
+        )}
         <Button type="submit" variant="secondary" isLoading={signingIn}>
-          {mode === 'register' ? 'Зарегистрироваться' : 'Войти по паролю'}
+          {mode === 'register' ? 'Зарегистрироваться' : 'Войти'}
         </Button>
       </form>
 

@@ -94,7 +94,7 @@ describe('LoginPage', () => {
 
     await user.type(screen.getByLabelText('Почта'), '  user@example.com  ')
     await user.type(screen.getByLabelText('Пароль'), 'secret')
-    await user.click(screen.getByRole('button', { name: 'Войти по паролю' }))
+    await user.click(screen.getByRole('button', { name: 'Войти' }))
 
     // The email is trimmed before it reaches the SDK; the password is sent as-is.
     await waitFor(() => expect(signInWithEmail).toHaveBeenCalledWith('user@example.com', 'secret'))
@@ -107,7 +107,7 @@ describe('LoginPage', () => {
 
     await user.type(screen.getByLabelText('Почта'), 'user@example.com')
     await user.type(screen.getByLabelText('Пароль'), 'wrong')
-    await user.click(screen.getByRole('button', { name: 'Войти по паролю' }))
+    await user.click(screen.getByRole('button', { name: 'Войти' }))
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('Неверная почта или пароль.')
@@ -125,6 +125,7 @@ describe('LoginPage', () => {
 
     await user.type(screen.getByLabelText('Почта'), '  new@example.com  ')
     await user.type(screen.getByLabelText('Пароль'), 'secret123')
+    await user.type(screen.getByLabelText('Подтверждение пароля'), 'secret123')
     await user.click(screen.getByRole('button', { name: 'Зарегистрироваться' }))
 
     // Registers via the SDK (not sign-in), with the email trimmed.
@@ -140,6 +141,7 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Нет аккаунта? Зарегистрироваться' }))
     await user.type(screen.getByLabelText('Почта'), 'taken@example.com')
     await user.type(screen.getByLabelText('Пароль'), 'secret123')
+    await user.type(screen.getByLabelText('Подтверждение пароля'), 'secret123')
     await user.click(screen.getByRole('button', { name: 'Зарегистрироваться' }))
 
     const alert = await screen.findByRole('alert')
@@ -159,9 +161,41 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Нет аккаунта? Зарегистрироваться' }))
     await user.type(screen.getByLabelText('Почта'), 'new@example.com')
     await user.type(screen.getByLabelText('Пароль'), '123')
+    await user.type(screen.getByLabelText('Подтверждение пароля'), '123')
     await user.click(screen.getByRole('button', { name: 'Зарегистрироваться' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/минимум 6 символов/i)
+  })
+
+  it('blocks registration when the confirmation does not match (no SDK call)', async () => {
+    const user = userEvent.setup()
+    renderLogin()
+
+    await user.click(screen.getByRole('button', { name: 'Нет аккаунта? Зарегистрироваться' }))
+    await user.type(screen.getByLabelText('Почта'), 'new@example.com')
+    await user.type(screen.getByLabelText('Пароль'), 'secret123')
+    await user.type(screen.getByLabelText('Подтверждение пароля'), 'secret124')
+    await user.click(screen.getByRole('button', { name: 'Зарегистрироваться' }))
+
+    // A client-side mismatch is caught before any network call.
+    expect(await screen.findByRole('alert')).toHaveTextContent('Пароли не совпадают.')
+    expect(registerWithEmail).not.toHaveBeenCalled()
+  })
+
+  it('reveals and re-hides the password via the eye toggle', async () => {
+    const user = userEvent.setup()
+    renderLogin()
+
+    const password = screen.getByLabelText('Пароль')
+    // Masked by default.
+    expect(password).toHaveAttribute('type', 'password')
+
+    await user.click(screen.getByRole('button', { name: 'Показать пароль' }))
+    expect(password).toHaveAttribute('type', 'text')
+
+    // The toggle flips its accessible name; clicking again re-masks.
+    await user.click(screen.getByRole('button', { name: 'Скрыть пароль' }))
+    expect(password).toHaveAttribute('type', 'password')
   })
 
   it('explains an unexpected session drop so the user can screenshot the cause', () => {

@@ -68,4 +68,24 @@ describe('Input', () => {
     // A decimal separator can't enter an integer field.
     expect(onChange.mock.calls.at(-1)![0].target.value).toBe('3')
   })
+
+  it('renders a suffix node (e.g. an eye toggle) alongside the field, still typeable', async () => {
+    const onChange = vi.fn()
+    render(
+      <Input
+        placeholder="Пароль"
+        value=""
+        onChange={onChange}
+        suffix={<button type="button">глаз</button>}
+      />,
+    )
+    const input = screen.getByPlaceholderText('Пароль')
+    // The base styling survives the wrapped (suffixed) layout.
+    expect(input).toHaveClass('rounded-md')
+    // The suffix is interactive (rendered above the input, not just decorative).
+    expect(screen.getByRole('button', { name: 'глаз' })).toBeInTheDocument()
+    // Typing still reaches onChange through the wrapper.
+    await userEvent.type(input, 'a')
+    expect(onChange).toHaveBeenCalled()
+  })
 })
