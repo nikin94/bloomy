@@ -5,10 +5,12 @@ import { MemoryRouter } from 'react-router-dom'
 import { AuthContext } from '../../context/authContext'
 
 // Stub the auth module so signing in never touches the real Firebase SDK. Each
-// test controls what signInWithGoogle rejects with to exercise the error mapping.
+// test controls what the sign-in fns resolve/reject with to exercise the flow.
 const signInWithGoogle = vi.fn()
+const signInWithEmail = vi.fn()
 vi.mock('../../firebase/auth', () => ({
   signInWithGoogle: (...args: unknown[]) => signInWithGoogle(...args),
+  signInWithEmail: (...args: unknown[]) => signInWithEmail(...args),
 }))
 // Spy on the telemetry helper so a test can assert the raw failure is reported.
 const reportError = vi.fn()
@@ -81,6 +83,34 @@ describe('LoginPage', () => {
 
     await screen.findByRole('alert')
     await waitFor(() => expect(button).toBeEnabled())
+  })
+
+  it('signs in with the entered email and password', async () => {
+    const user = userEvent.setup()
+    signInWithEmail.mockResolvedValue({})
+    renderLogin()
+
+    await user.type(screen.getByLabelText('Почта'), '  user@example.com  ')
+    await user.type(screen.getByLabelText('Пароль'), 'secret')
+    await user.click(screen.getByRole('button', { name: 'Войти по паролю' }))
+
+    // The email is trimmed before it reaches the SDK; the password is sent as-is.
+    await waitFor(() => expect(signInWithEmail).toHaveBeenCalledWith('user@example.com', 'secret'))
+  })
+
+  it('shows one vague message for bad credentials (no account enumeration)', async () => {
+    const user = userEvent.setup()
+    signInWithEmail.mockRejectedValue(authError('auth/invalid-credential'))
+    renderLogin()
+
+    await user.type(screen.getByLabelText('Почта'), 'user@example.com')
+    await user.type(screen.getByLabelText('Пароль'), 'wrong')
+    await user.click(screen.getByRole('button', { name: 'Войти по паролю' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Неверная почта или пароль.')
+    // The raw failure still reaches Sentry under its own context.
+    expect(reportError).toHaveBeenCalledWith(expect.objectContaining({ code: 'auth/invalid-credential' }), 'signInEmail')
   })
 
   it('explains an unexpected session drop so the user can screenshot the cause', () => {

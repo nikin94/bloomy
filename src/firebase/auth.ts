@@ -1,4 +1,9 @@
-import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth'
+import {
+  GoogleAuthProvider,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+} from 'firebase/auth'
 import { auth } from './client'
 
 // Google sign-in for the web app. We use signInWithPopup rather than
@@ -19,6 +24,15 @@ export const clearIntentionalSignOut = () => {
 }
 
 export const signInWithGoogle = () => signInWithPopup(auth, provider)
+
+// Email/password sign-in. Added as an ALTERNATIVE to the Google popup for the
+// Crimea user, whose machine blocks the Google OAuth flow (accounts.google.com).
+// Note this still talks to identitytoolkit.googleapis.com — the same Auth backend
+// the popup uses — so it only helps if the block is specific to the OAuth flow,
+// not the whole Firebase Auth domain. Accounts are created admin-side (Firebase
+// console) — there is no open sign-up.
+export const signInWithEmail = (email: string, password: string) =>
+  signInWithEmailAndPassword(auth, email, password)
 
 export const signOutUser = () => {
   intentionalSignOut = true

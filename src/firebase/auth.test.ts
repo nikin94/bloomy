@@ -9,7 +9,7 @@
 // NEXT genuine session drop would be misread as "intentional" and the login
 // screen would stay silent instead of explaining what happened.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { signOut, signInWithPopup } from 'firebase/auth'
+import { signOut, signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth'
 
 vi.mock('./client', () => ({ auth: {} }))
 vi.mock('firebase/auth', () => ({
@@ -17,12 +17,14 @@ vi.mock('firebase/auth', () => ({
   // works — arrow functions can't be constructed.
   GoogleAuthProvider: vi.fn(),
   signInWithPopup: vi.fn(),
+  signInWithEmailAndPassword: vi.fn(),
   signOut: vi.fn(),
 }))
 
 // Imported after the mocks above are registered.
 import {
   signInWithGoogle,
+  signInWithEmail,
   signOutUser,
   wasSignOutIntentional,
   clearIntentionalSignOut,
@@ -78,5 +80,17 @@ describe('signInWithGoogle', () => {
     vi.mocked(signInWithPopup).mockResolvedValue({} as never)
     signInWithGoogle()
     expect(signInWithPopup).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('signInWithEmail', () => {
+  it('delegates to the SDK email/password sign-in with the given credentials', () => {
+    vi.mocked(signInWithEmailAndPassword).mockResolvedValue({} as never)
+    signInWithEmail('user@example.com', 'secret')
+    expect(signInWithEmailAndPassword).toHaveBeenCalledWith(
+      expect.anything(),
+      'user@example.com',
+      'secret',
+    )
   })
 })

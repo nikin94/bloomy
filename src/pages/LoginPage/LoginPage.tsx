@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import type { FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../context/authContext'
-import { signInWithGoogle } from '../../firebase/auth'
+import { signInWithEmail, signInWithGoogle } from '../../firebase/auth'
 import { reportError } from '../../observability/reportError'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
+import Input from '../../components/Input/Input'
 
 // Map a sign-in failure to a message the user can act on. Firebase throws a
 // FirebaseError carrying a string `code`; the raw code/message (e.g.
@@ -23,6 +25,16 @@ const signInErrorMessage = (err: unknown): string => {
     case 'auth/popup-closed-by-user':
     case 'auth/cancelled-popup-request':
       return 'Окно входа закрылось до завершения. Попробуйте войти ещё раз.'
+    // Email/password failures: Firebase collapses wrong-email and wrong-password
+    // into one code, so the message stays deliberately vague (no account
+    // enumeration) — "почта или пароль неверны".
+    case 'auth/invalid-credential':
+    case 'auth/invalid-login-credentials':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+      return 'Неверная почта или пароль.'
+    case 'auth/invalid-email':
+      return 'Неверный формат почты.'
     default:
       return 'Не удалось войти. Попробуйте снова.'
   }
@@ -32,29 +44,36 @@ const LoginPage = () => {
   const { user, loading, sessionLost } = useAuth()
   const [signingIn, setSigningIn] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
   if (loading) return <Spinner />
   // Already signed in (or just signed in) → go straight to the orders list.
   if (user) return <Navigate to="/orders" replace />
 
-  const handleSignIn = async () => {
+  // Shared runner for both sign-in methods: clears the prior error, flips the
+  // busy flag, and on failure reports the raw FirebaseError to Sentry (so we see
+  // the real `code` rather than guessing from screenshots) before showing the
+  // friendly message. `context` distinguishes the two paths in Sentry. On success
+  // onAuthStateChanged flips `user`, which triggers the redirect above.
+  const run = async (fn: () => Promise<unknown>, context: string) => {
     if (signingIn) return
     setError(null)
     setSigningIn(true)
     try {
-      await signInWithGoogle()
-      // onAuthStateChanged flips `user`, which triggers the redirect above.
+      await fn()
     } catch (err: unknown) {
-      // Report the raw failure to Sentry so we can see the real FirebaseError
-      // `code` instead of guessing from screenshots — the friendly message below
-      // collapses several codes (and the generic fallback) into one line, hiding
-      // WHICH failure it was. The main user is in a sanctions-restricted region
-      // where Google may reject the OAuth exchange itself, so the exact code is
-      // what tells us whether it's a geo block vs a real bug.
-      reportError(err, 'signIn')
+      reportError(err, context)
       setError(signInErrorMessage(err))
       setSigningIn(false)
     }
+  }
+
+  const handleSignIn = () => run(signInWithGoogle, 'signIn')
+
+  const handleEmailSignIn = (e: FormEvent) => {
+    e.preventDefault()
+    run(() => signInWithEmail(email.trim(), password), 'signInEmail')
   }
 
   return (
@@ -86,6 +105,41 @@ const LoginPage = () => {
       <Button variant="primary" onClick={handleSignIn} isLoading={signingIn}>
         Войти через Google
       </Button>
+
+      {/* Divider between the two sign-in methods. */}
+      <div className="flex w-full max-w-xs items-center gap-3" aria-hidden="true">
+        <span className="h-px flex-1 bg-border" />
+        <span className="text-sm text-text">или</span>
+        <span className="h-px flex-1 bg-border" />
+      </div>
+
+      {/* Email/password sign-in — an alternative that skips the Google OAuth
+          popup (which is blocked on the main user's machine). Accounts are
+          created admin-side; there is no open sign-up here. */}
+      <form onSubmit={handleEmailSignIn} className="flex w-full max-w-xs flex-col gap-3 text-left">
+        <Input
+          type="email"
+          autoComplete="email"
+          aria-label="Почта"
+          placeholder="Почта"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <Input
+          type="password"
+          autoComplete="current-password"
+          aria-label="Пароль"
+          placeholder="Пароль"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        <Button type="submit" variant="secondary" isLoading={signingIn}>
+          Войти по паролю
+        </Button>
+      </form>
+
       {error && (
         <p role="alert" className="m-0 text-danger">
           {error}
