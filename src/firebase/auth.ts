@@ -1,5 +1,6 @@
 import {
   GoogleAuthProvider,
+  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -33,6 +34,16 @@ export const signInWithGoogle = () => signInWithPopup(auth, provider)
 // console) — there is no open sign-up.
 export const signInWithEmail = (email: string, password: string) =>
   signInWithEmailAndPassword(auth, email, password)
+
+// Email/password REGISTRATION (open self-sign-up). createUserWithEmailAndPassword
+// creates the account AND signs the new user straight in, so onAuthStateChanged
+// fires and the app redirects exactly like a sign-in — no separate confirm step.
+// Same identitytoolkit.googleapis.com backend as sign-in (so the Crimea domain
+// block hits this too). Firebase enforces a 6-character minimum password
+// (auth/weak-password) and rejects a taken address (auth/email-already-in-use);
+// both are surfaced to the user on the login screen.
+export const registerWithEmail = (email: string, password: string) =>
+  createUserWithEmailAndPassword(auth, email, password)
 
 export const signOutUser = () => {
   intentionalSignOut = true

@@ -2,20 +2,25 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../context/authContext'
-import { signInWithEmail, signInWithGoogle } from '../../firebase/auth'
+import { registerWithEmail, signInWithEmail, signInWithGoogle } from '../../firebase/auth'
 import { reportError } from '../../observability/reportError'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
 import Input from '../../components/Input/Input'
 
-// Map a sign-in failure to a message the user can act on. Firebase throws a
-// FirebaseError carrying a string `code`; the raw code/message (e.g.
-// "auth/network-request-failed") is meaningless to a user, so the common cases
-// get a plain-Russian explanation. A network failure almost always means the
-// auth servers are unreachable from this machine — an ad blocker, VPN, firewall
-// or antivirus HTTPS inspection — not a problem with the app, so the message
-// points there. Anything unrecognized falls back to a generic line.
-const signInErrorMessage = (err: unknown): string => {
+// Which action the email form performs: sign in to an existing account, or
+// register a new one. A toggle below the form switches between the two.
+type AuthMode = 'signin' | 'register'
+
+// Map an auth failure (sign-in OR registration) to a message the user can act
+// on. Firebase throws a FirebaseError carrying a string `code`; the raw
+// code/message (e.g. "auth/network-request-failed") is meaningless to a user, so
+// the common cases get a plain-Russian explanation. A network failure almost
+// always means the auth servers are unreachable from this machine — an ad
+// blocker, VPN, firewall or antivirus HTTPS inspection — not a problem with the
+// app, so the message points there. Anything unrecognized falls back to a
+// generic line that depends on which action failed.
+const authErrorMessage = (err: unknown, mode: AuthMode): string => {
   const code = typeof err === 'object' && err !== null && 'code' in err ? err.code : undefined
   switch (code) {
     case 'auth/network-request-failed':
@@ -25,8 +30,8 @@ const signInErrorMessage = (err: unknown): string => {
     case 'auth/popup-closed-by-user':
     case 'auth/cancelled-popup-request':
       return 'Окно входа закрылось до завершения. Попробуйте войти ещё раз.'
-    // Email/password failures: Firebase collapses wrong-email and wrong-password
-    // into one code, so the message stays deliberately vague (no account
+    // Sign-in failures: Firebase collapses wrong-email and wrong-password into
+    // one code, so the message stays deliberately vague (no account
     // enumeration) — "почта или пароль неверны".
     case 'auth/invalid-credential':
     case 'auth/invalid-login-credentials':
@@ -35,8 +40,15 @@ const signInErrorMessage = (err: unknown): string => {
       return 'Неверная почта или пароль.'
     case 'auth/invalid-email':
       return 'Неверный формат почты.'
+    // Registration failures.
+    case 'auth/email-already-in-use':
+      return 'Этот адрес почты уже зарегистрирован. Войдите вместо регистрации.'
+    case 'auth/weak-password':
+      return 'Пароль слишком короткий — минимум 6 символов.'
     default:
-      return 'Не удалось войти. Попробуйте снова.'
+      return mode === 'register'
+        ? 'Не удалось зарегистрироваться. Попробуйте снова.'
+        : 'Не удалось войти. Попробуйте снова.'
   }
 }
 
@@ -46,17 +58,19 @@ const LoginPage = () => {
   const [error, setError] = useState<string | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [mode, setMode] = useState<AuthMode>('signin')
 
   if (loading) return <Spinner />
   // Already signed in (or just signed in) → go straight to the orders list.
   if (user) return <Navigate to="/orders" replace />
 
-  // Shared runner for both sign-in methods: clears the prior error, flips the
-  // busy flag, and on failure reports the raw FirebaseError to Sentry (so we see
-  // the real `code` rather than guessing from screenshots) before showing the
-  // friendly message. `context` distinguishes the two paths in Sentry. On success
+  // Shared runner for every auth method: clears the prior error, flips the busy
+  // flag, and on failure reports the raw FirebaseError to Sentry (so we see the
+  // real `code` rather than guessing from screenshots) before showing the
+  // friendly message. `context` distinguishes the paths in Sentry; `errorMode`
+  // picks the right generic fallback (вход vs регистрация). On success
   // onAuthStateChanged flips `user`, which triggers the redirect above.
-  const run = async (fn: () => Promise<unknown>, context: string) => {
+  const run = async (fn: () => Promise<unknown>, context: string, errorMode: AuthMode = 'signin') => {
     if (signingIn) return
     setError(null)
     setSigningIn(true)
@@ -64,16 +78,30 @@ const LoginPage = () => {
       await fn()
     } catch (err: unknown) {
       reportError(err, context)
-      setError(signInErrorMessage(err))
+      setError(authErrorMessage(err, errorMode))
       setSigningIn(false)
     }
   }
 
   const handleSignIn = () => run(signInWithGoogle, 'signIn')
 
-  const handleEmailSignIn = (e: FormEvent) => {
+  // The email form does double duty: sign in to an existing account, or register
+  // a new one, depending on the current mode.
+  const handleEmailSubmit = (e: FormEvent) => {
     e.preventDefault()
-    run(() => signInWithEmail(email.trim(), password), 'signInEmail')
+    const trimmed = email.trim()
+    if (mode === 'register') {
+      run(() => registerWithEmail(trimmed, password), 'registerEmail', 'register')
+    } else {
+      run(() => signInWithEmail(trimmed, password), 'signInEmail', 'signin')
+    }
+  }
+
+  // Flip between sign-in and registration, clearing any stale error so the new
+  // mode starts clean.
+  const toggleMode = () => {
+    setError(null)
+    setMode((m) => (m === 'signin' ? 'register' : 'signin'))
   }
 
   return (
@@ -113,10 +141,10 @@ const LoginPage = () => {
         <span className="h-px flex-1 bg-border" />
       </div>
 
-      {/* Email/password sign-in — an alternative that skips the Google OAuth
-          popup (which is blocked on the main user's machine). Accounts are
-          created admin-side; there is no open sign-up here. */}
-      <form onSubmit={handleEmailSignIn} className="flex w-full max-w-xs flex-col gap-3 text-left">
+      {/* Email/password — an alternative that skips the Google OAuth popup (which
+          is blocked on the main user's machine). The same form signs in to an
+          existing account or registers a new one, toggled below. */}
+      <form onSubmit={handleEmailSubmit} className="flex w-full max-w-xs flex-col gap-3 text-left">
         <Input
           type="email"
           autoComplete="email"
@@ -128,17 +156,28 @@ const LoginPage = () => {
         />
         <Input
           type="password"
-          autoComplete="current-password"
+          // A new account needs a fresh password; an existing one offers the
+          // saved credential — hint the right autofill for each mode.
+          autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
           aria-label="Пароль"
-          placeholder="Пароль"
+          placeholder={mode === 'register' ? 'Пароль (минимум 6 символов)' : 'Пароль'}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
         <Button type="submit" variant="secondary" isLoading={signingIn}>
-          Войти по паролю
+          {mode === 'register' ? 'Зарегистрироваться' : 'Войти по паролю'}
         </Button>
       </form>
+
+      {/* Switch between sign-in and registration. */}
+      <button
+        type="button"
+        onClick={toggleMode}
+        className="text-sm text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        {mode === 'register' ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
+      </button>
 
       {error && (
         <p role="alert" className="m-0 text-danger">

@@ -8,9 +8,11 @@ import { AuthContext } from '../../context/authContext'
 // test controls what the sign-in fns resolve/reject with to exercise the flow.
 const signInWithGoogle = vi.fn()
 const signInWithEmail = vi.fn()
+const registerWithEmail = vi.fn()
 vi.mock('../../firebase/auth', () => ({
   signInWithGoogle: (...args: unknown[]) => signInWithGoogle(...args),
   signInWithEmail: (...args: unknown[]) => signInWithEmail(...args),
+  registerWithEmail: (...args: unknown[]) => registerWithEmail(...args),
 }))
 // Spy on the telemetry helper so a test can assert the raw failure is reported.
 const reportError = vi.fn()
@@ -111,6 +113,55 @@ describe('LoginPage', () => {
     expect(alert).toHaveTextContent('Неверная почта или пароль.')
     // The raw failure still reaches Sentry under its own context.
     expect(reportError).toHaveBeenCalledWith(expect.objectContaining({ code: 'auth/invalid-credential' }), 'signInEmail')
+  })
+
+  it('registers a new account with the entered email and password after toggling to sign-up', async () => {
+    const user = userEvent.setup()
+    registerWithEmail.mockResolvedValue({})
+    renderLogin()
+
+    // Switch from the default sign-in mode to registration.
+    await user.click(screen.getByRole('button', { name: 'Нет аккаунта? Зарегистрироваться' }))
+
+    await user.type(screen.getByLabelText('Почта'), '  new@example.com  ')
+    await user.type(screen.getByLabelText('Пароль'), 'secret123')
+    await user.click(screen.getByRole('button', { name: 'Зарегистрироваться' }))
+
+    // Registers via the SDK (not sign-in), with the email trimmed.
+    await waitFor(() => expect(registerWithEmail).toHaveBeenCalledWith('new@example.com', 'secret123'))
+    expect(signInWithEmail).not.toHaveBeenCalled()
+  })
+
+  it('explains a taken email on registration and points the user to sign in', async () => {
+    const user = userEvent.setup()
+    registerWithEmail.mockRejectedValue(authError('auth/email-already-in-use'))
+    renderLogin()
+
+    await user.click(screen.getByRole('button', { name: 'Нет аккаунта? Зарегистрироваться' }))
+    await user.type(screen.getByLabelText('Почта'), 'taken@example.com')
+    await user.type(screen.getByLabelText('Пароль'), 'secret123')
+    await user.click(screen.getByRole('button', { name: 'Зарегистрироваться' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(/уже зарегистрирован/i)
+    // The raw failure reaches Sentry under the registration context.
+    expect(reportError).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'auth/email-already-in-use' }),
+      'registerEmail',
+    )
+  })
+
+  it('explains a too-short password on registration', async () => {
+    const user = userEvent.setup()
+    registerWithEmail.mockRejectedValue(authError('auth/weak-password'))
+    renderLogin()
+
+    await user.click(screen.getByRole('button', { name: 'Нет аккаунта? Зарегистрироваться' }))
+    await user.type(screen.getByLabelText('Почта'), 'new@example.com')
+    await user.type(screen.getByLabelText('Пароль'), '123')
+    await user.click(screen.getByRole('button', { name: 'Зарегистрироваться' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/минимум 6 символов/i)
   })
 
   it('explains an unexpected session drop so the user can screenshot the cause', () => {
