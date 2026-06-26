@@ -182,6 +182,32 @@ describe('LoginPage', () => {
     expect(registerWithEmail).not.toHaveBeenCalled()
   })
 
+  it('clears the entered fields when switching between sign-in and registration', async () => {
+    const user = userEvent.setup()
+    renderLogin()
+
+    // Type into the sign-in form, reveal the password, then switch to register.
+    await user.type(screen.getByLabelText('Почта'), 'someone@example.com')
+    await user.type(screen.getByLabelText('Пароль'), 'secret123')
+    await user.click(screen.getByRole('button', { name: 'Показать пароль' }))
+    await user.click(screen.getByRole('button', { name: 'Нет аккаунта? Зарегистрироваться' }))
+
+    // Both shared fields are blank in the new mode, and the reveal is re-masked.
+    expect(screen.getByLabelText('Почта')).toHaveValue('')
+    const password = screen.getByLabelText('Пароль')
+    expect(password).toHaveValue('')
+    expect(password).toHaveAttribute('type', 'password')
+    expect(screen.getByLabelText('Подтверждение пароля')).toHaveValue('')
+
+    // Fill the register form, then switch back — those fields clear too.
+    await user.type(screen.getByLabelText('Почта'), 'new@example.com')
+    await user.type(screen.getByLabelText('Пароль'), 'fresh123')
+    await user.click(screen.getByRole('button', { name: 'Уже есть аккаунт? Войти' }))
+
+    expect(screen.getByLabelText('Почта')).toHaveValue('')
+    expect(screen.getByLabelText('Пароль')).toHaveValue('')
+  })
+
   it('reveals and re-hides the password via the eye toggle', async () => {
     const user = userEvent.setup()
     renderLogin()

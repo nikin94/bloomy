@@ -137,11 +137,17 @@ const LoginPage = () => {
     }
   }
 
-  // Flip between sign-in and registration, clearing any stale error and the
-  // confirmation field so the new mode starts clean.
+  // Flip between sign-in and registration, resetting the form so the new mode
+  // starts on a clean slate: clear the stale error, empty every field, and
+  // re-mask the password (don't carry a revealed-password state into the fresh
+  // form). Clearing the password on a mode switch is also the safer default —
+  // a register password never lingers into a sign-in attempt.
   const toggleMode = () => {
     setError(null)
+    setEmail('')
+    setPassword('')
     setConfirmPassword('')
+    setShowPassword(false)
     setMode((m) => (m === 'signin' ? 'register' : 'signin'))
   }
 
