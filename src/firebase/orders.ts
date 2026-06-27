@@ -181,6 +181,10 @@ export type OrderPatch = Partial<{
   paymentStatus: PaymentStatus
   shipmentStatus: ShipmentStatus
   completedAt: number | null
+  // The full new list of photo storage paths (read-modify-write on the client).
+  // Written as a single field so a photo add/remove merges cleanly with a
+  // concurrent status change on another device.
+  photos: string[]
 }>
 
 // Fire-and-forget, like updateOrder — the inline toggle never blocks and works

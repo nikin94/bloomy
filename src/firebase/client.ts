@@ -7,6 +7,7 @@ import {
   persistentSingleTabManager,
 } from 'firebase/firestore'
 import type { Firestore } from 'firebase/firestore'
+import { getStorage } from 'firebase/storage'
 
 // Config is read from Vite environment variables (.env, see .env.example).
 // This keeps keys out of the repository and lets us separate dev/prod projects.
@@ -49,3 +50,10 @@ export const db: Firestore = supportsPersistence
       localCache: persistentLocalCache({ tabManager: persistentSingleTabManager(undefined) }),
     })
   : getFirestore(app)
+
+// Cloud Storage — holds order photos under `orders/{ownerId}/{orderId}/...`.
+// Owner-scoped by the path prefix and enforced by storage.rules (mirroring
+// firestore.rules). Unlike Firestore there is no offline queue here, so uploads
+// require a live connection; reads of already-cached images are served by the
+// browser/HTTP cache.
+export const storage = getStorage(app)

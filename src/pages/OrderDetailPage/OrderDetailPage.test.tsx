@@ -25,6 +25,13 @@ vi.mock('../../firebase/customers', () => ({
   fetchCustomer: (...args: unknown[]) => fetchCustomer(...args),
   updateCustomer: (...args: unknown[]) => updateCustomer(...args),
 }))
+// The photo gallery's storage layer is stubbed so the page never loads the
+// Storage SDK; getPhotoUrl never resolves here (orders under test have no photos).
+vi.mock('../../firebase/photos', () => ({
+  getPhotoUrl: vi.fn(() => new Promise(() => {})),
+  uploadOrderPhoto: vi.fn(() => Promise.resolve('orders/owner-1/o1/new.jpg')),
+  deleteOrderPhoto: vi.fn(() => Promise.resolve()),
+}))
 vi.mock('react-router-dom', async (importOriginal) => ({
   ...(await importOriginal<typeof import('react-router-dom')>()),
   useParams: () => ({ id: 'o1' }),
@@ -196,5 +203,21 @@ describe('OrderDetailPage', () => {
     )
     expect(await screen.findByText('Анна Петрова')).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('persists a photo removal as a per-field patch of the new list', async () => {
+    const user = userEvent.setup()
+    fetchOrder.mockResolvedValue(order({ photos: ['orders/owner-1/o1/a.jpg'] }))
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+
+    await user.click(screen.getByRole('button', { name: 'Удалить фото' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Удалить фото?' })
+    await user.click(within(dialog).getByRole('button', { name: 'Удалить' }))
+
+    // The page writes ONLY the new photos array (per-field merge), and the order
+    // is NOT soft-deleted by a photo removal.
+    await waitFor(() => expect(patchOrder).toHaveBeenCalledWith('o1', { photos: [] }))
+    expect(softDeleteOrder).not.toHaveBeenCalled()
   })
 })

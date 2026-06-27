@@ -84,15 +84,31 @@ Data-layer tests come in two flavours:
   transaction stays atomic under concurrent creates. These need Java and the
   Firebase CLI; run them with `yarn test:emulator` (starts and stops the
   emulator automatically). They are excluded from the default `yarn test`.
-- **Security-rules tests** (`src/test/firestore.rules.test.ts`) — run the
-  production `firestore.rules` against the emulator via
-  `@firebase/rules-unit-testing` to prove the multi-tenant boundary (a user can
-  only touch their own documents). Run with `yarn test:rules`.
+- **Security-rules tests** (`src/test/firestore.rules.test.ts`,
+  `src/test/storage.rules.test.ts`) — run the production `firestore.rules` and
+  `storage.rules` against the emulators via `@firebase/rules-unit-testing` to
+  prove the multi-tenant boundary (a user can only touch their own documents and
+  their own photo files). Run with `yarn test:rules` (starts both the Firestore
+  and Storage emulators).
 
-The emulator runs from `firebase.emulator.json` (no rules — open access) so the
-multi-tenant data-layer tests work; the rules tests load `firestore.rules`
-themselves. Production rules live in `firestore.rules` and deploy via
-`yarn deploy:rules`.
+The emulator runs from `firebase.emulator.json` (Firestore open; Storage gets
+`storage.rules` because it can't boot without one) so the multi-tenant
+data-layer tests work; the rules tests load the rules files themselves.
+Production rules live in `firestore.rules` / `storage.rules` and deploy together
+via `yarn deploy:rules`.
+
+## Order photos
+
+Orders can carry photos (e.g. a snapshot of the prepared bouquet), managed on
+the order detail page. Files are stored in Cloud Storage under
+`orders/{ownerId}/{orderId}/{photoId}.jpg`, so `storage.rules` authorizes purely
+from the path (uid == ownerId), mirroring the Firestore owner boundary. The
+order document stores the storage **paths** (`STORED_ORDER_SCHEMA.photos`), not
+download URLs — URLs are resolved lazily and cached for the session. Images are
+downscaled client-side (long edge ≤ 1600 px, JPEG) before upload to keep bytes
+small on a slow/filtered connection. Note: Cloud Storage has no offline write
+queue, so uploads need a live connection (it's Google-hosted, like Auth and
+Firestore — see the Crimea-access caveat).
 
 ## Deployment
 
