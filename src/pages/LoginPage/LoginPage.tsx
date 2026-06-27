@@ -156,7 +156,7 @@ const LoginPage = () => {
         try {
           await sendPasswordReset(trimmed)
           setNotice(
-            `Этот адрес уже зарегистрирован. Письмо для установки пароля отправлено на ${trimmed} — откройте его (можно на телефоне), задайте пароль и войдите по паролю.`,
+            `Этот адрес уже зарегистрирован. Письмо для установки пароля отправлено на ${trimmed}.`,
           )
         } catch (resetErr: unknown) {
           reportError(resetErr, 'registerSetPassword')
