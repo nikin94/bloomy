@@ -23,6 +23,7 @@ import Select from '../../components/Select/Select'
 import Button from '../../components/Button/Button'
 import Modal from '../../components/Modal/Modal'
 import CustomerForm from '../../components/CustomerForm/CustomerForm'
+import OrderPhotos from '../../components/OrderPhotos/OrderPhotos'
 import type { Order } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
@@ -131,6 +132,16 @@ const OrderDetailPage = () => {
       note: trimmed(edits.note),
     })
     setEditingCustomer(false)
+  }
+
+  // Update the order's photo list: reflect it locally at once, then persist the
+  // new full list via patchOrder (fire-and-forget, per-field merge — offline-safe
+  // and won't clobber a concurrent status change). The actual upload/delete of
+  // the image bytes is handled inside OrderPhotos.
+  const handlePhotosChange = (photos: string[]) => {
+    if (!order) return
+    setOrder({ ...order, photos })
+    patchOrder(order.id, { photos })
   }
 
   // Soft-delete the order, then return to the list (where it no longer appears).
@@ -268,6 +279,17 @@ const OrderDetailPage = () => {
               <span className="tabular-nums">{formatMoney(getTotalMinor(order))}</span>
             </div>
           </section>
+
+          {/* Order photos — owner-scoped, stored under orders/{uid}/{orderId}/.
+              ownerId is guaranteed here (ProtectedRoute), but read defensively. */}
+          {ownerId && (
+            <OrderPhotos
+              ownerId={ownerId}
+              orderId={order.id}
+              photos={order.photos ?? []}
+              onChange={handlePhotosChange}
+            />
+          )}
         </div>
       )}
 

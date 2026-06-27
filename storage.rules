@@ -1,0 +1,32 @@
+rules_version = '2';
+
+// Cloud Storage security rules — the server-side boundary for order photos,
+// mirroring firestore.rules. A user may only touch files under their own uid
+// prefix (orders/{ownerId}/...), so isolation is enforced from the PATH and
+// needs no Firestore lookup. Tested in src/test/storage.rules.test.ts.
+service firebase.storage {
+  match /b/{bucket}/o {
+    // True when the request is authenticated and acting as the given owner.
+    function isOwner(ownerId) {
+      return request.auth != null && request.auth.uid == ownerId;
+    }
+
+    // On write, the upload must be an image under 10 MB. The client compresses
+    // well below this; the server still rejects oversized or non-image uploads.
+    function isValidImage() {
+      return request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Order photos, owner-scoped by the path prefix.
+    match /orders/{ownerId}/{orderId}/{fileName} {
+      allow read, delete: if isOwner(ownerId);
+      allow write: if isOwner(ownerId) && isValidImage(); // create + update
+    }
+
+    // Deny everything else by default (matches the Firestore tail rule).
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

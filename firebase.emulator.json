@@ -1,7 +1,9 @@
 {
-  "_comment": "Test-only Firebase config. Runs the Firestore emulator WITHOUT a rules file (open access) so the multi-tenant, unauthenticated data-layer transaction tests (vitest.emulator.config.ts) and the rules tests (which upload firestore.rules themselves via @firebase/rules-unit-testing) share one open emulator. Production rules live in firebase.json and are exercised by the rules tests, not enforced here.",
+  "_comment": "Test-only Firebase config. Runs the Firestore emulator WITHOUT a rules file (open access) so the multi-tenant, unauthenticated data-layer transaction tests (vitest.emulator.config.ts) and the rules tests (which upload firestore.rules themselves via @firebase/rules-unit-testing) share one open emulator. The Storage emulator IS given storage.rules (it can't boot without a rules file); the storage rules test uploads its own copy via @firebase/rules-unit-testing anyway. Production rules live in firebase.json.",
+  "storage": { "rules": "storage.rules" },
   "emulators": {
     "firestore": { "port": 8080 },
+    "storage": { "port": 9199 },
     "ui": { "enabled": false },
     "singleProjectMode": true
   }

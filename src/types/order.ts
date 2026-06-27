@@ -81,6 +81,13 @@ export const STORED_ORDER_SCHEMA = z.object({
   // counter). Optional so orders written before this field stay valid. Distinct
   // from "cancelled", which is a shipment status that keeps the order visible.
   isDeleted: z.boolean().optional(),
+  // Storage paths of attached order photos, in display order. Each entry is a
+  // PATH under `orders/{ownerId}/{orderId}/{photoId}.jpg` in Firebase Storage —
+  // NOT a download URL (URLs are resolved lazily and their tokens can rotate, so
+  // a stored URL would go stale). Optional and added after orders already
+  // existed, so pre-existing orders stay valid without a migration (widening the
+  // schema is safe; narrowing is not — see the `packing` lesson).
+  photos: z.array(z.string()).optional(),
 })
 
 // A single order for potted plants and flowers = one table row. The doc id is
