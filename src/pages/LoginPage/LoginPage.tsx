@@ -75,12 +75,9 @@ const authErrorMessage = (err: unknown, mode: AuthMode): string => {
       return 'Неверная почта или пароль.'
     case 'auth/invalid-email':
       return 'Неверный формат почты.'
-    // Registration failures. A taken address is OFTEN an account created via
-    // Google that has no password yet — so we point at «Установить пароль»
-    // (sends a reset email that adds a password to that same account), not just
-    // "sign in instead".
-    case 'auth/email-already-in-use':
-      return 'Этот адрес уже зарегистрирован (возможно, через Google). Нажмите «Установить пароль», чтобы задать пароль для этого аккаунта.'
+    // Registration failure: too-short password. A taken address is NOT mapped
+    // here — registration intercepts `email-already-in-use` itself and falls
+    // back to sending a set-password email (see handleRegister).
     case 'auth/weak-password':
       return 'Пароль слишком короткий — минимум 6 символов.'
     default:
@@ -131,35 +128,46 @@ const LoginPage = () => {
 
   const handleSignIn = () => run(signInWithGoogle, 'signIn')
 
-  // Send a "set / reset password" email. Doubles as a "forgot password" action
-  // AND the fix for an account that only has Google (no password yet) — clicking
-  // the emailed link adds a password to that same account, so the user keeps
-  // their data. Needs an email in the field. Firebase resolves it even for an
-  // unknown address (anti-enumeration), so on success we just confirm it was
-  // sent. The emailed link opens a Firebase page — if this machine blocks Google
-  // domains, the user can open the email on a phone that works.
-  const handlePasswordReset = async () => {
+  // Registration adapts to the account's actual state, so the one button covers
+  // both cases the user can be in:
+  //  • brand-new email → create the account and sign the user straight in
+  //    (onAuthStateChanged then redirects).
+  //  • email already exists but has no password — typically an account created
+  //    via Google sign-in — so createUserWithEmailAndPassword fails with
+  //    `email-already-in-use`. Instead of a dead end, send a "set password"
+  //    email that adds a password to that SAME account (the user keeps all their
+  //    data), then tell them to open it (a phone works if this machine blocks
+  //    Google domains) and sign in with the new password.
+  const handleRegister = async (trimmed: string) => {
     if (signingIn) return
-    const trimmed = email.trim()
-    if (!trimmed) {
-      setNotice(null)
-      setError('Введите почту, чтобы отправить письмо для установки пароля.')
-      return
-    }
     setError(null)
     setNotice(null)
     setSigningIn(true)
     try {
-      await sendPasswordReset(trimmed)
-      setNotice(
-        `Письмо для установки пароля отправлено на ${trimmed}. Откройте его (можно на телефоне), задайте пароль — и войдите по паролю.`,
-      )
+      await registerWithEmail(trimmed, password)
+      // Success → keep the button busy until the auth-state redirect fires.
+      return
     } catch (err: unknown) {
-      reportError(err, 'passwordReset')
-      setError(authErrorMessage(err, 'signin'))
-    } finally {
-      setSigningIn(false)
+      const code =
+        typeof err === 'object' && err !== null && 'code' in err ? err.code : undefined
+      if (code === 'auth/email-already-in-use') {
+        // Existing (password-less) account → set a password on it rather than
+        // failing. Not a bug, so not reported to Sentry under the register path.
+        try {
+          await sendPasswordReset(trimmed)
+          setNotice(
+            `Этот адрес уже зарегистрирован. Письмо для установки пароля отправлено на ${trimmed} — откройте его (можно на телефоне), задайте пароль и войдите по паролю.`,
+          )
+        } catch (resetErr: unknown) {
+          reportError(resetErr, 'registerSetPassword')
+          setError(authErrorMessage(resetErr, 'signin'))
+        }
+      } else {
+        reportError(err, 'registerEmail')
+        setError(authErrorMessage(err, 'register'))
+      }
     }
+    setSigningIn(false)
   }
 
   // The email form does double duty: sign in to an existing account, or register
@@ -175,7 +183,7 @@ const LoginPage = () => {
         setError('Пароли не совпадают.')
         return
       }
-      run(() => registerWithEmail(trimmed, password), 'registerEmail', 'register')
+      void handleRegister(trimmed)
     } else {
       run(() => signInWithEmail(trimmed, password), 'signInEmail', 'signin')
     }
@@ -287,26 +295,16 @@ const LoginPage = () => {
         </Button>
       </form>
 
-      {/* Secondary actions: switch sign-in/registration, and a "set / reset
-          password" link. The latter is both a forgot-password action and the fix
-          for a Google-only account with no password yet (the reset email adds a
-          password to that same account). */}
-      <div className="flex flex-col items-center gap-2">
-        <button
-          type="button"
-          onClick={toggleMode}
-          className="text-sm text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          {mode === 'register' ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
-        </button>
-        <button
-          type="button"
-          onClick={handlePasswordReset}
-          className="text-sm text-text underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          Установить или сбросить пароль
-        </button>
-      </div>
+      {/* Switch between sign-in and registration. Registration itself handles
+          the "account exists but has no password" case (sends a set-password
+          email), so no separate reset button is needed. */}
+      <button
+        type="button"
+        onClick={toggleMode}
+        className="text-sm text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        {mode === 'register' ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
+      </button>
 
       {error && (
         <p role="alert" className="m-0 max-w-xs text-danger">

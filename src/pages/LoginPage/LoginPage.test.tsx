@@ -135,26 +135,29 @@ describe('LoginPage', () => {
     expect(signInWithEmail).not.toHaveBeenCalled()
   })
 
-  it('points a taken email at "set password" (the Google-only-account fix)', async () => {
+  it('on a taken email, registration auto-sends a set-password email to that same account', async () => {
     const user = userEvent.setup()
+    // The account exists but has no password (e.g. created via Google), so
+    // creation fails — registration then falls back to a set-password email.
     registerWithEmail.mockRejectedValue(authError('auth/email-already-in-use'))
+    sendPasswordReset.mockResolvedValue(undefined)
     renderLogin()
 
     await user.click(screen.getByRole('button', { name: 'Нет аккаунта? Зарегистрироваться' }))
-    await user.type(screen.getByLabelText('Почта'), 'taken@example.com')
+    await user.type(screen.getByLabelText('Почта'), '  taken@example.com  ')
     await user.type(screen.getByLabelText('Пароль'), 'secret123')
     await user.type(screen.getByLabelText('Подтверждение пароля'), 'secret123')
     await user.click(screen.getByRole('button', { name: 'Зарегистрироваться' }))
 
-    const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent(/уже зарегистрирован/i)
-    // Guides the user to the set-password action rather than a dead "sign in".
-    expect(alert).toHaveTextContent(/Установить пароль/i)
-    // The raw failure reaches Sentry under the registration context.
-    expect(reportError).toHaveBeenCalledWith(
-      expect.objectContaining({ code: 'auth/email-already-in-use' }),
-      'registerEmail',
-    )
+    // The one button resolves the Google-only-account case by emailing a
+    // set-password link to that address (trimmed).
+    await waitFor(() => expect(sendPasswordReset).toHaveBeenCalledWith('taken@example.com'))
+    // A positive confirmation (status, not error) explains what to do next.
+    const status = await screen.findByRole('status')
+    expect(status).toHaveTextContent(/уже зарегистрирован/i)
+    expect(status).toHaveTextContent(/установки пароля отправлено/i)
+    // This is an expected branch, not a bug → NOT reported as a register failure.
+    expect(reportError).not.toHaveBeenCalled()
   })
 
   it('explains a too-short password on registration', async () => {
@@ -210,30 +213,6 @@ describe('LoginPage', () => {
 
     expect(screen.getByLabelText('Почта')).toHaveValue('someone@example.com')
     expect(screen.getByLabelText('Пароль')).toHaveValue('')
-  })
-
-  it('sends a set/reset-password email for the entered address and confirms it', async () => {
-    const user = userEvent.setup()
-    sendPasswordReset.mockResolvedValue(undefined)
-    renderLogin()
-
-    await user.type(screen.getByLabelText('Почта'), '  user@example.com  ')
-    await user.click(screen.getByRole('button', { name: 'Установить или сбросить пароль' }))
-
-    // The email is trimmed before it reaches the SDK.
-    await waitFor(() => expect(sendPasswordReset).toHaveBeenCalledWith('user@example.com'))
-    // A positive confirmation (status, not error) tells the user to check mail.
-    expect(await screen.findByRole('status')).toHaveTextContent(/установки пароля отправлено/i)
-  })
-
-  it('asks for an email before sending a reset when the field is empty', async () => {
-    const user = userEvent.setup()
-    renderLogin()
-
-    await user.click(screen.getByRole('button', { name: 'Установить или сбросить пароль' }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(/введите почту/i)
-    expect(sendPasswordReset).not.toHaveBeenCalled()
   })
 
   it('reveals and re-hides the password via the eye toggle', async () => {
