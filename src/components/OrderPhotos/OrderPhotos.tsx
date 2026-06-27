@@ -33,12 +33,10 @@ const CameraIcon = () => (
 // photos layer) and shows a loader until then. The image opens the viewer; the
 // × requests deletion.
 const Thumb = ({
-  path,
   url,
   onOpen,
   onDelete,
 }: {
-  path: string
   url: string | undefined
   onOpen: () => void
   onDelete: () => void
@@ -69,8 +67,6 @@ const Thumb = ({
         ✕
       </span>
     </button>
-    {/* keep `path` referenced for keying upstream; no visual output */}
-    <span className="sr-only">{path}</span>
   </div>
 )
 
@@ -82,7 +78,7 @@ const PhotoViewer = ({
   startIndex,
   onClose,
 }: {
-  urls: string[]
+  urls: (string | undefined)[]
   startIndex: number
   onClose: () => void
 }) => {
@@ -135,7 +131,13 @@ const PhotoViewer = ({
       >
         {urls.map((url, i) => (
           <div key={i} className="flex w-full shrink-0 snap-center items-center justify-center p-4">
-            <img src={url} alt="Фото заказа" className="max-h-full max-w-full object-contain" />
+            {url ? (
+              <img src={url} alt="Фото заказа" className="max-h-full max-w-full object-contain" />
+            ) : (
+              <span className="text-white">
+                <Loader size="md" />
+              </span>
+            )}
           </div>
         ))}
       </div>
@@ -181,42 +183,65 @@ const OrderPhotos = ({
   const [viewerIndex, setViewerIndex] = useState<number | null>(null)
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // Paths we've already kicked off a URL request for — guards the resolve effect
+  // so a resolved URL (state change) doesn't re-trigger it for every thumbnail.
+  const requestedRef = useRef<Set<string>>(new Set())
+  // Always-current photo list for async callbacks, so a slow upload doesn't
+  // restore a concurrently-removed photo when it finally calls onChange.
+  const photosRef = useRef(photos)
+  useEffect(() => {
+    photosRef.current = photos
+  }, [photos])
 
-  // Resolve a download URL for every path we don't have yet. Re-runs when the
-  // photo list changes (an added path gets resolved, a removed one is ignored).
+  // Resolve a download URL for every path we haven't requested yet. Keyed off
+  // `photos` only — `requestedRef` (not the `urls` state) tracks in-flight ones.
   useEffect(() => {
     let active = true
     for (const path of photos) {
-      if (urls[path]) continue
+      if (requestedRef.current.has(path)) continue
+      requestedRef.current.add(path)
       getPhotoUrl(path)
         .then((url) => {
           if (active) setUrls((prev) => ({ ...prev, [path]: url }))
         })
-        .catch((err: unknown) => reportError(err, 'getPhotoUrl'))
+        .catch((err: unknown) => {
+          // Allow a retry on the next render once the connection is back.
+          requestedRef.current.delete(path)
+          reportError(err, 'getPhotoUrl')
+        })
     }
     return () => {
       active = false
     }
-  }, [photos, urls])
+  }, [photos])
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return
     setUploadError(null)
     setUploading(true)
-    try {
-      const added: string[] = []
-      for (const file of Array.from(files)) {
-        added.push(await uploadOrderPhoto(ownerId, orderId, file))
+    // Upload in parallel — on a slow/filtered link a sequential await would
+    // stack the waits. allSettled keeps every success even if one file fails.
+    const results = await Promise.allSettled(
+      Array.from(files).map((file) => uploadOrderPhoto(ownerId, orderId, file)),
+    )
+    const added: string[] = []
+    let failed = false
+    for (const result of results) {
+      if (result.status === 'fulfilled') added.push(result.value)
+      else {
+        failed = true
+        reportError(result.reason, 'uploadOrderPhoto')
       }
-      onChange([...photos, ...added])
-    } catch (err: unknown) {
-      reportError(err, 'uploadOrderPhoto')
-      setUploadError('Не удалось загрузить фото. Нужно подключение к интернету — попробуйте снова.')
-    } finally {
-      setUploading(false)
-      // Reset so picking the same file again still fires onChange.
-      if (fileInputRef.current) fileInputRef.current.value = ''
     }
+    // Persist whatever uploaded (read the live list, not the closure) so a
+    // partial failure leaves no orphan blob the user can't see or delete.
+    if (added.length > 0) onChange([...photosRef.current, ...added])
+    if (failed) {
+      setUploadError('Не удалось загрузить некоторые фото. Нужно подключение к интернету — попробуйте снова.')
+    }
+    setUploading(false)
+    // Reset so picking the same file again still fires onChange.
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   // Remove a photo: drop it from the list at once (so the UI updates and the
@@ -238,7 +263,6 @@ const OrderPhotos = ({
         {photos.map((path, index) => (
           <Thumb
             key={path}
-            path={path}
             url={urls[path]}
             onOpen={() => setViewerIndex(index)}
             onDelete={() => setPendingDelete(path)}
@@ -277,7 +301,7 @@ const OrderPhotos = ({
 
       {viewerIndex !== null && (
         <PhotoViewer
-          urls={photos.map((p) => urls[p]).filter((u): u is string => Boolean(u))}
+          urls={photos.map((p) => urls[p])}
           startIndex={viewerIndex}
           onClose={() => setViewerIndex(null)}
         />

@@ -57,8 +57,46 @@ describe('OrderPhotos', () => {
 
     await user.upload(fileInput(), new File(['x'], 'snap.jpg', { type: 'image/jpeg' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/Не удалось загрузить фото/i)
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Не удалось загрузить/i)
     expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('keeps photos that uploaded when one of several files fails', async () => {
+    const user = userEvent.setup()
+    uploadOrderPhoto
+      .mockResolvedValueOnce('orders/owner-1/o1/ok.jpg')
+      .mockRejectedValueOnce(new Error('offline'))
+    const onChange = renderGallery([])
+
+    await user.upload(fileInput(), [
+      new File(['x'], 'one.jpg', { type: 'image/jpeg' }),
+      new File(['y'], 'two.jpg', { type: 'image/jpeg' }),
+    ])
+
+    // The succeeded upload is persisted (no orphan blob), the error still shows.
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith(['orders/owner-1/o1/ok.jpg']))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Не удалось загрузить/i)
+  })
+
+  it('opens the viewer at the clicked index even while a thumbnail is still loading', async () => {
+    const user = userEvent.setup()
+    // First photo's URL never resolves; the second does. The viewer must still
+    // open the second photo (index stays aligned with the full photo list).
+    getPhotoUrl.mockImplementation((path: string) =>
+      path.endsWith('b.jpg') ? Promise.resolve(`https://cdn/${path}`) : new Promise(() => {}),
+    )
+    renderGallery(['orders/owner-1/o1/a.jpg', 'orders/owner-1/o1/b.jpg'])
+
+    const openButtons = await screen.findAllByRole('button', { name: 'Открыть фото' })
+    await user.click(openButtons[1])
+
+    const dialog = await screen.findByRole('dialog', { name: 'Просмотр фото' })
+    await waitFor(() =>
+      expect(within(dialog).getByRole('img')).toHaveAttribute(
+        'src',
+        'https://cdn/orders/owner-1/o1/b.jpg',
+      ),
+    )
   })
 
   it('deletes a photo only after confirming, dropping it from the list', async () => {
