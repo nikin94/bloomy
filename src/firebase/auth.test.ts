@@ -9,7 +9,13 @@
 // NEXT genuine session drop would be misread as "intentional" and the login
 // screen would stay silent instead of explaining what happened.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { signOut, signInWithPopup } from 'firebase/auth'
+import {
+  signOut,
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+} from 'firebase/auth'
 
 vi.mock('./client', () => ({ auth: {} }))
 vi.mock('firebase/auth', () => ({
@@ -17,12 +23,18 @@ vi.mock('firebase/auth', () => ({
   // works — arrow functions can't be constructed.
   GoogleAuthProvider: vi.fn(),
   signInWithPopup: vi.fn(),
+  signInWithEmailAndPassword: vi.fn(),
+  createUserWithEmailAndPassword: vi.fn(),
+  sendPasswordResetEmail: vi.fn(),
   signOut: vi.fn(),
 }))
 
 // Imported after the mocks above are registered.
 import {
   signInWithGoogle,
+  signInWithEmail,
+  registerWithEmail,
+  sendPasswordReset,
   signOutUser,
   wasSignOutIntentional,
   clearIntentionalSignOut,
@@ -78,5 +90,37 @@ describe('signInWithGoogle', () => {
     vi.mocked(signInWithPopup).mockResolvedValue({} as never)
     signInWithGoogle()
     expect(signInWithPopup).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('signInWithEmail', () => {
+  it('delegates to the SDK email/password sign-in with the given credentials', () => {
+    vi.mocked(signInWithEmailAndPassword).mockResolvedValue({} as never)
+    signInWithEmail('user@example.com', 'secret')
+    expect(signInWithEmailAndPassword).toHaveBeenCalledWith(
+      expect.anything(),
+      'user@example.com',
+      'secret',
+    )
+  })
+})
+
+describe('registerWithEmail', () => {
+  it('delegates to the SDK account creation with the given credentials', () => {
+    vi.mocked(createUserWithEmailAndPassword).mockResolvedValue({} as never)
+    registerWithEmail('new@example.com', 'secret123')
+    expect(createUserWithEmailAndPassword).toHaveBeenCalledWith(
+      expect.anything(),
+      'new@example.com',
+      'secret123',
+    )
+  })
+})
+
+describe('sendPasswordReset', () => {
+  it('delegates to the SDK reset-email send for the given address', () => {
+    vi.mocked(sendPasswordResetEmail).mockResolvedValue(undefined)
+    sendPasswordReset('user@example.com')
+    expect(sendPasswordResetEmail).toHaveBeenCalledWith(expect.anything(), 'user@example.com')
   })
 })
