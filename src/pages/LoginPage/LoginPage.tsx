@@ -2,7 +2,12 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../context/authContext'
-import { registerWithEmail, signInWithEmail, signInWithGoogle } from '../../firebase/auth'
+import {
+  registerWithEmail,
+  sendPasswordReset,
+  signInWithEmail,
+  signInWithGoogle,
+} from '../../firebase/auth'
 import { reportError } from '../../observability/reportError'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
@@ -70,9 +75,12 @@ const authErrorMessage = (err: unknown, mode: AuthMode): string => {
       return 'Неверная почта или пароль.'
     case 'auth/invalid-email':
       return 'Неверный формат почты.'
-    // Registration failures.
+    // Registration failures. A taken address is OFTEN an account created via
+    // Google that has no password yet — so we point at «Установить пароль»
+    // (sends a reset email that adds a password to that same account), not just
+    // "sign in instead".
     case 'auth/email-already-in-use':
-      return 'Этот адрес почты уже зарегистрирован. Войдите вместо регистрации.'
+      return 'Этот адрес уже зарегистрирован (возможно, через Google). Нажмите «Установить пароль», чтобы задать пароль для этого аккаунта.'
     case 'auth/weak-password':
       return 'Пароль слишком короткий — минимум 6 символов.'
     default:
@@ -86,6 +94,9 @@ const LoginPage = () => {
   const { user, loading, sessionLost } = useAuth()
   const [signingIn, setSigningIn] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // A success message (not an error) — e.g. "set-password email sent". Kept
+  // separate from `error` so it renders in a neutral/positive style.
+  const [notice, setNotice] = useState<string | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   // Confirmation field, shown only when registering — guards against a typo in a
@@ -107,6 +118,7 @@ const LoginPage = () => {
   const run = async (fn: () => Promise<unknown>, context: string, errorMode: AuthMode = 'signin') => {
     if (signingIn) return
     setError(null)
+    setNotice(null)
     setSigningIn(true)
     try {
       await fn()
@@ -119,6 +131,37 @@ const LoginPage = () => {
 
   const handleSignIn = () => run(signInWithGoogle, 'signIn')
 
+  // Send a "set / reset password" email. Doubles as a "forgot password" action
+  // AND the fix for an account that only has Google (no password yet) — clicking
+  // the emailed link adds a password to that same account, so the user keeps
+  // their data. Needs an email in the field. Firebase resolves it even for an
+  // unknown address (anti-enumeration), so on success we just confirm it was
+  // sent. The emailed link opens a Firebase page — if this machine blocks Google
+  // domains, the user can open the email on a phone that works.
+  const handlePasswordReset = async () => {
+    if (signingIn) return
+    const trimmed = email.trim()
+    if (!trimmed) {
+      setNotice(null)
+      setError('Введите почту, чтобы отправить письмо для установки пароля.')
+      return
+    }
+    setError(null)
+    setNotice(null)
+    setSigningIn(true)
+    try {
+      await sendPasswordReset(trimmed)
+      setNotice(
+        `Письмо для установки пароля отправлено на ${trimmed}. Откройте его (можно на телефоне), задайте пароль — и войдите по паролю.`,
+      )
+    } catch (err: unknown) {
+      reportError(err, 'passwordReset')
+      setError(authErrorMessage(err, 'signin'))
+    } finally {
+      setSigningIn(false)
+    }
+  }
+
   // The email form does double duty: sign in to an existing account, or register
   // a new one, depending on the current mode.
   const handleEmailSubmit = (e: FormEvent) => {
@@ -128,6 +171,7 @@ const LoginPage = () => {
       // Catch a mistyped confirmation before hitting the network — a client-side
       // check, so no Sentry report.
       if (password !== confirmPassword) {
+        setNotice(null)
         setError('Пароли не совпадают.')
         return
       }
@@ -137,14 +181,15 @@ const LoginPage = () => {
     }
   }
 
-  // Flip between sign-in and registration, resetting the form so the new mode
-  // starts on a clean slate: clear the stale error, empty every field, and
-  // re-mask the password (don't carry a revealed-password state into the fresh
-  // form). Clearing the password on a mode switch is also the safer default —
-  // a register password never lingers into a sign-in attempt.
+  // Flip between sign-in and registration. KEEP the email (the common path is
+  // "tried to sign in → no account → switch to register"; retyping the address
+  // is needless friction), but clear the passwords + confirmation and re-mask —
+  // a register password should never linger into a sign-in attempt, and a
+  // revealed-password state shouldn't carry into the fresh form. Clear any stale
+  // error/notice so the new mode starts clean.
   const toggleMode = () => {
     setError(null)
-    setEmail('')
+    setNotice(null)
     setPassword('')
     setConfirmPassword('')
     setShowPassword(false)
@@ -242,18 +287,35 @@ const LoginPage = () => {
         </Button>
       </form>
 
-      {/* Switch between sign-in and registration. */}
-      <button
-        type="button"
-        onClick={toggleMode}
-        className="text-sm text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-      >
-        {mode === 'register' ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
-      </button>
+      {/* Secondary actions: switch sign-in/registration, and a "set / reset
+          password" link. The latter is both a forgot-password action and the fix
+          for a Google-only account with no password yet (the reset email adds a
+          password to that same account). */}
+      <div className="flex flex-col items-center gap-2">
+        <button
+          type="button"
+          onClick={toggleMode}
+          className="text-sm text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          {mode === 'register' ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
+        </button>
+        <button
+          type="button"
+          onClick={handlePasswordReset}
+          className="text-sm text-text underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+          Установить или сбросить пароль
+        </button>
+      </div>
 
       {error && (
-        <p role="alert" className="m-0 text-danger">
+        <p role="alert" className="m-0 max-w-xs text-danger">
           {error}
+        </p>
+      )}
+      {notice && (
+        <p role="status" className="m-0 max-w-xs text-accent">
+          {notice}
         </p>
       )}
     </div>

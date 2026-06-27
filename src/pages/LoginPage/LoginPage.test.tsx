@@ -9,10 +9,12 @@ import { AuthContext } from '../../context/authContext'
 const signInWithGoogle = vi.fn()
 const signInWithEmail = vi.fn()
 const registerWithEmail = vi.fn()
+const sendPasswordReset = vi.fn()
 vi.mock('../../firebase/auth', () => ({
   signInWithGoogle: (...args: unknown[]) => signInWithGoogle(...args),
   signInWithEmail: (...args: unknown[]) => signInWithEmail(...args),
   registerWithEmail: (...args: unknown[]) => registerWithEmail(...args),
+  sendPasswordReset: (...args: unknown[]) => sendPasswordReset(...args),
 }))
 // Spy on the telemetry helper so a test can assert the raw failure is reported.
 const reportError = vi.fn()
@@ -133,7 +135,7 @@ describe('LoginPage', () => {
     expect(signInWithEmail).not.toHaveBeenCalled()
   })
 
-  it('explains a taken email on registration and points the user to sign in', async () => {
+  it('points a taken email at "set password" (the Google-only-account fix)', async () => {
     const user = userEvent.setup()
     registerWithEmail.mockRejectedValue(authError('auth/email-already-in-use'))
     renderLogin()
@@ -146,6 +148,8 @@ describe('LoginPage', () => {
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent(/уже зарегистрирован/i)
+    // Guides the user to the set-password action rather than a dead "sign in".
+    expect(alert).toHaveTextContent(/Установить пароль/i)
     // The raw failure reaches Sentry under the registration context.
     expect(reportError).toHaveBeenCalledWith(
       expect.objectContaining({ code: 'auth/email-already-in-use' }),
@@ -182,7 +186,7 @@ describe('LoginPage', () => {
     expect(registerWithEmail).not.toHaveBeenCalled()
   })
 
-  it('clears the entered fields when switching between sign-in and registration', async () => {
+  it('keeps the email but clears the passwords when switching sign-in/registration', async () => {
     const user = userEvent.setup()
     renderLogin()
 
@@ -192,20 +196,44 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Показать пароль' }))
     await user.click(screen.getByRole('button', { name: 'Нет аккаунта? Зарегистрироваться' }))
 
-    // Both shared fields are blank in the new mode, and the reveal is re-masked.
-    expect(screen.getByLabelText('Почта')).toHaveValue('')
+    // The email carries over (no needless retyping); the password clears and
+    // re-masks, and the fresh confirmation field is blank.
+    expect(screen.getByLabelText('Почта')).toHaveValue('someone@example.com')
     const password = screen.getByLabelText('Пароль')
     expect(password).toHaveValue('')
     expect(password).toHaveAttribute('type', 'password')
     expect(screen.getByLabelText('Подтверждение пароля')).toHaveValue('')
 
-    // Fill the register form, then switch back — those fields clear too.
-    await user.type(screen.getByLabelText('Почта'), 'new@example.com')
+    // Fill the register passwords, then switch back — email stays, passwords clear.
     await user.type(screen.getByLabelText('Пароль'), 'fresh123')
     await user.click(screen.getByRole('button', { name: 'Уже есть аккаунт? Войти' }))
 
-    expect(screen.getByLabelText('Почта')).toHaveValue('')
+    expect(screen.getByLabelText('Почта')).toHaveValue('someone@example.com')
     expect(screen.getByLabelText('Пароль')).toHaveValue('')
+  })
+
+  it('sends a set/reset-password email for the entered address and confirms it', async () => {
+    const user = userEvent.setup()
+    sendPasswordReset.mockResolvedValue(undefined)
+    renderLogin()
+
+    await user.type(screen.getByLabelText('Почта'), '  user@example.com  ')
+    await user.click(screen.getByRole('button', { name: 'Установить или сбросить пароль' }))
+
+    // The email is trimmed before it reaches the SDK.
+    await waitFor(() => expect(sendPasswordReset).toHaveBeenCalledWith('user@example.com'))
+    // A positive confirmation (status, not error) tells the user to check mail.
+    expect(await screen.findByRole('status')).toHaveTextContent(/установки пароля отправлено/i)
+  })
+
+  it('asks for an email before sending a reset when the field is empty', async () => {
+    const user = userEvent.setup()
+    renderLogin()
+
+    await user.click(screen.getByRole('button', { name: 'Установить или сбросить пароль' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/введите почту/i)
+    expect(sendPasswordReset).not.toHaveBeenCalled()
   })
 
   it('reveals and re-hides the password via the eye toggle', async () => {

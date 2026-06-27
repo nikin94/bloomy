@@ -14,6 +14,7 @@ import {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
 } from 'firebase/auth'
 
 vi.mock('./client', () => ({ auth: {} }))
@@ -24,6 +25,7 @@ vi.mock('firebase/auth', () => ({
   signInWithPopup: vi.fn(),
   signInWithEmailAndPassword: vi.fn(),
   createUserWithEmailAndPassword: vi.fn(),
+  sendPasswordResetEmail: vi.fn(),
   signOut: vi.fn(),
 }))
 
@@ -32,6 +34,7 @@ import {
   signInWithGoogle,
   signInWithEmail,
   registerWithEmail,
+  sendPasswordReset,
   signOutUser,
   wasSignOutIntentional,
   clearIntentionalSignOut,
@@ -111,5 +114,13 @@ describe('registerWithEmail', () => {
       'new@example.com',
       'secret123',
     )
+  })
+})
+
+describe('sendPasswordReset', () => {
+  it('delegates to the SDK reset-email send for the given address', () => {
+    vi.mocked(sendPasswordResetEmail).mockResolvedValue(undefined)
+    sendPasswordReset('user@example.com')
+    expect(sendPasswordResetEmail).toHaveBeenCalledWith(expect.anything(), 'user@example.com')
   })
 })

@@ -1,6 +1,7 @@
 import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -44,6 +45,17 @@ export const signInWithEmail = (email: string, password: string) =>
 // both are surfaced to the user on the login screen.
 export const registerWithEmail = (email: string, password: string) =>
   createUserWithEmailAndPassword(auth, email, password)
+
+// Send a "set / reset password" email. This is the fix for an account that
+// already exists with ONLY the Google provider and no password (registration
+// fails it with auth/email-already-in-use): clicking the emailed link sets a
+// password and LINKS the password provider onto that SAME account — same uid,
+// so all the user's owner-scoped orders/customers stay attached. It needs no
+// prior sign-in, so a user whose Google sign-in is geo-blocked can still get a
+// working email/password login. Firebase always resolves this (even for an
+// unknown address) to avoid leaking which emails are registered, so the UI just
+// confirms the email was sent rather than whether the account existed.
+export const sendPasswordReset = (email: string) => sendPasswordResetEmail(auth, email)
 
 export const signOutUser = () => {
   intentionalSignOut = true
