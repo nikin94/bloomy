@@ -3,10 +3,12 @@ import AppHeader from '../../components/AppHeader/AppHeader'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
 import Modal from '../../components/Modal/Modal'
+import SearchControl from '../../components/SearchControl/SearchControl'
 import CustomerForm from '../../components/CustomerForm/CustomerForm'
 import { fetchCustomers, softDeleteCustomer, updateCustomer } from '../../firebase/customers'
 import type { CustomerEdits } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
+import { filterCustomers } from '../../types/customer'
 import type { Customer } from '../../types/customer'
 
 // One customer row: name/details with edit and delete actions. Both buttons ask
@@ -97,6 +99,8 @@ const CustomersPage = () => {
   const [loading, setLoading] = useState(true)
   // A load failure means there is no list to show, so it replaces the content.
   const [loadError, setLoadError] = useState<string | null>(null)
+  // Inline search over the address book (name / phone).
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     if (!ownerId) return
@@ -155,9 +159,16 @@ const CustomersPage = () => {
     setDeletingCustomer(null)
   }
 
+  // Filtering is in memory: the whole address book is loaded, the dataset is
+  // small, and it keeps search instant with no extra reads.
+  const visibleCustomers = filterCustomers(customers, query)
+  const searchActive = query.trim() !== ''
+
   return (
     <div className="flex h-full flex-col">
-      <AppHeader />
+      <AppHeader
+        actions={<SearchControl value={query} onChange={setQuery} label="Поиск клиентов" />}
+      />
 
       {loading && <Spinner />}
       {loadError && (
@@ -169,11 +180,13 @@ const CustomersPage = () => {
       {!loading && !loadError && (
         <div className="min-h-0 flex-1 overflow-auto p-6">
           <div className="mx-auto flex max-w-2xl flex-col gap-3">
-            {customers.length === 0 ? (
-              <p className="m-0 text-text">Клиентов пока нет</p>
+            {visibleCustomers.length === 0 ? (
+              <p className="m-0 text-text">
+                {searchActive ? 'Ничего не найдено' : 'Клиентов пока нет'}
+              </p>
             ) : (
               <ul className="m-0 flex list-none flex-col p-0">
-                {customers.map((customer) => (
+                {visibleCustomers.map((customer) => (
                   <CustomerRow
                     key={customer.id}
                     customer={customer}

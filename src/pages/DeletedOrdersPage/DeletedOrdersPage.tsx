@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
+import SearchControl from '../../components/SearchControl/SearchControl'
 import { fetchDeletedOrders, restoreOrder } from '../../firebase/orders'
 import { fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
 import { formatDate, formatMoney } from '../../utils/format'
-import { getTotalMinor, formatOrderNumber } from '../../types/order'
+import { getTotalMinor, formatOrderNumber, filterOrders, EMPTY_ORDER_FILTER } from '../../types/order'
 import type { Order } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
@@ -57,6 +58,8 @@ const DeletedOrdersPage = () => {
   const [loading, setLoading] = useState(true)
   // A load failure means there is no list to show, so it replaces the content.
   const [loadError, setLoadError] = useState<string | null>(null)
+  // Inline search over the trash (order number / customer name).
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     if (!ownerId) return
@@ -90,9 +93,17 @@ const DeletedOrdersPage = () => {
     setOrders((prev) => prev.filter((o) => o.id !== id))
   }
 
+  // Reuse the orders predicate with a query-only filter (status/price are empty
+  // in EMPTY_ORDER_FILTER, so it matches purely by number / customer / plants) —
+  // the same matching as the main list, no extra logic.
+  const visibleOrders = filterOrders(orders, { ...EMPTY_ORDER_FILTER, query }, getCustomerName)
+  const searchActive = query.trim() !== ''
+
   return (
     <div className="flex h-full flex-col">
-      <AppHeader />
+      <AppHeader
+        actions={<SearchControl value={query} onChange={setQuery} label="Поиск в корзине" />}
+      />
 
       {/* Flex column so the empty state can center itself (m-auto) in the whole
           available area, while the list keeps its constrained max-w-2xl column. */}
@@ -102,12 +113,12 @@ const DeletedOrdersPage = () => {
 
         {!loading &&
           !loadError &&
-          (orders.length === 0 ? (
+          (visibleOrders.length === 0 ? (
             // m-auto in a flex container centers on both axes.
-            <p className="m-auto text-text">Корзина пуста</p>
+            <p className="m-auto text-text">{searchActive ? 'Ничего не найдено' : 'Корзина пуста'}</p>
           ) : (
             <ul className="mx-auto m-0 w-full max-w-2xl list-none p-0">
-              {orders.map((order) => (
+              {visibleOrders.map((order) => (
                 <DeletedOrderRow
                   key={order.id}
                   order={order}
