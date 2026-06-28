@@ -114,6 +114,19 @@ describe('SettingsProvider', () => {
     expect(htmlLang()).toBe('ru')
   })
 
+  it('keeps the cached language while settings load (no default clobber / flash)', async () => {
+    // A signed-in user with English saved: the cache + first paint are already en.
+    localStorage.setItem('bloomy-lang', 'en')
+    // Never resolves → the provider stays in the loading window.
+    fetchSettings.mockReturnValue(new Promise<never>(() => {}))
+    renderProvider()
+    // Context surfaces the fallback default while loading, but the mount effect
+    // must NOT apply it: doing so would flip i18next to ru and stomp the cache,
+    // then flip back to en once Firestore resolves (the en→ru→en flash).
+    await screen.findByText('lang:ru')
+    expect(localStorage.getItem('bloomy-lang')).toBe('en')
+  })
+
   it('loads the saved order defaults (delivery + payment)', async () => {
     fetchSettings.mockResolvedValue({ defaultDeliveryMethod: 'taxi', defaultPaymentMethod: 'bank' })
     renderProvider()

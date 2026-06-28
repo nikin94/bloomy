@@ -298,7 +298,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                   aria-label={t('settings:fontSize')}
                   // Screen readers announce a human-readable label (e.g.
                   // "увеличен") instead of the raw scale number (0.875, 1.25).
-                  aria-valuetext={t(`settings:fontScale.${fontScaleLabelKey(fontDraft)}`)}
+                  aria-valuetext={t(`settings:fontScale.${fontScaleLabelKey(fontDraft)}` as const)}
                   className={sliderClass}
                 />
               </div>

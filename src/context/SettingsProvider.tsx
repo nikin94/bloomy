@@ -116,9 +116,17 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     applyTheme(theme)
   }, [theme])
+  // Unlike theme/font (a CSS flicker at worst), re-applying the language here on
+  // mount would call i18n.changeLanguage and re-render every string. The cached
+  // language already painted the first render (config.ts + the inline script read
+  // it before React). So while a signed-in user's settings are still loading,
+  // skip: applying the fallback default would flip the UI to ru AND stomp the
+  // cache, then flip back once Firestore resolves — the en→ru→en flash. Apply
+  // only authoritative values: a loaded setting, or a true signed-out reset.
   useEffect(() => {
+    if (ownerId && !applies) return
     applyLanguage(language)
-  }, [language])
+  }, [applies, ownerId, language])
 
   // Live-preview a value on the document without persisting (slider/toggle/select).
   const previewFontScale = (scale: number) => applyFontScale(scale)
