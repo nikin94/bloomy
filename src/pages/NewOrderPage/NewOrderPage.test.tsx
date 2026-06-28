@@ -56,10 +56,12 @@ function deferred<T>() {
 const settingsState = (over: Partial<SettingsState> = {}): SettingsState => ({
   fontScale: 1,
   theme: 'dark',
+  language: 'ru',
   defaultDeliveryMethod: 'post',
   defaultPaymentMethod: 'cash',
   previewFontScale: vi.fn(),
   previewTheme: vi.fn(),
+  previewLanguage: vi.fn(),
   saveSettings: vi.fn(),
   ...over,
 })

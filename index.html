@@ -16,6 +16,15 @@
       } catch (e) {
         document.documentElement.setAttribute('data-theme', 'dark')
       }
+      // Restore the chosen language before React runs, so the document's `lang`
+      // is correct from first paint (the cache is written by SettingsProvider;
+      // the Firestore setting reconciles it once loaded). Defaults to ru.
+      try {
+        var l = localStorage.getItem('bloomy-lang')
+        document.documentElement.setAttribute('lang', l === 'en' ? 'en' : 'ru')
+      } catch (e) {
+        document.documentElement.setAttribute('lang', 'ru')
+      }
     </script>
   </head>
   <body>

@@ -1,0 +1,11 @@
+{
+  "orders": "Orders",
+  "customers": "Customers",
+  "trash": "Trash",
+  "newOrder": "New order",
+  "addOrder": "Add order",
+  "settings": "Settings",
+  "menu": "Menu",
+  "openMenu": "Open menu",
+  "closeMenu": "Close menu"
+}

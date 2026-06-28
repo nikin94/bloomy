@@ -22,6 +22,13 @@ export const THEME_MODES = ['light', 'dark'] as const
 export type ThemeMode = (typeof THEME_MODES)[number]
 export const DEFAULT_THEME: ThemeMode = 'dark'
 
+// UI language. Russian is the default (the current users); English is the
+// alternate. Stored per-user like the theme; the i18n layer (src/i18n) maps the
+// code to its dictionaries and to `Intl` locale formatting.
+export const LANGUAGES = ['ru', 'en'] as const
+export type Language = (typeof LANGUAGES)[number]
+export const DEFAULT_LANGUAGE: Language = 'ru'
+
 // Defaults used to prefill a NEW order's delivery/payment method when the user
 // has not set a preference: post (Почта) for delivery, card (Карта) for payment.
 export const DEFAULT_DELIVERY_METHOD: DeliveryMethod = 'post'
@@ -33,6 +40,9 @@ export const DEFAULT_PAYMENT_METHOD: PaymentMethod = 'card'
 export const STORED_SETTINGS_SCHEMA = z.object({
   fontScale: z.number().optional(),
   theme: z.enum(THEME_MODES).optional(),
+  // UI language. Optional so settings written before it existed stay valid;
+  // SettingsProvider falls back to DEFAULT_LANGUAGE when unset.
+  language: z.enum(LANGUAGES).optional(),
   // New-order prefill preferences. Optional so settings written before they
   // existed stay valid; OrderForm falls back to the constants above when unset.
   defaultDeliveryMethod: DELIVERY_METHOD_SCHEMA.optional(),

@@ -1,0 +1,25 @@
+{
+  "title": "Настройки",
+  "appearance": "Внешний вид",
+  "theme": "Тема",
+  "themeToggle": "Тёмная тема",
+  "fontSize": "Размер шрифта",
+  "fontScale": {
+    "decreased": "уменьшен",
+    "default": "по умолчанию",
+    "increased": "увеличен"
+  },
+  "language": "Язык",
+  "languageAria": "Язык интерфейса",
+  "lang": {
+    "ru": "Русский",
+    "en": "English"
+  },
+  "orderDefaults": "Заказы по умолчанию",
+  "deliveryMethod": "Способ доставки",
+  "deliveryMethodAria": "Способ доставки по умолчанию",
+  "paymentMethod": "Способ оплаты",
+  "paymentMethodAria": "Способ оплаты по умолчанию",
+  "saveError": "Не удалось сохранить настройки",
+  "signOutError": "Не удалось выйти. Попробуйте снова."
+}

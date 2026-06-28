@@ -1,17 +1,19 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import Button from '../Button/Button'
 import SettingsModal from '../SettingsModal/SettingsModal'
 import SyncStatus from '../SyncStatus/SyncStatus'
 
 // Navigation destinations, defined once so a new section is added in ONE place
 // and appears in both the desktop bar and the mobile menu. `end` keeps "Заказы"
-// active only on the exact list route, not on /orders/new.
-const NAV_LINKS: { to: string; label: string; end?: boolean }[] = [
-  { to: '/orders', label: 'Заказы', end: true },
-  { to: '/customers', label: 'Клиенты' },
-  { to: '/orders/deleted', label: 'Корзина' },
+// active only on the exact list route, not on /orders/new. The label is a key
+// into the `nav` namespace, resolved per-render so it follows the active language.
+const NAV_LINKS: { to: string; labelKey: 'orders' | 'customers' | 'trash'; end?: boolean }[] = [
+  { to: '/orders', labelKey: 'orders', end: true },
+  { to: '/customers', labelKey: 'customers' },
+  { to: '/orders/deleted', labelKey: 'trash' },
 ]
 
 const PlusIcon = ({ className = 'size-4' }: { className?: string }) => (
@@ -110,6 +112,7 @@ const MenuDivider = () => <span aria-hidden="true" className="block h-px w-full 
 // search + filter icons), rendered in the right cluster just before the settings
 // gear so the page can add header controls without the header knowing about them.
 const AppHeader = ({ actions }: { actions?: ReactNode }) => {
+  const { t } = useTranslation('nav')
   const [menuOpen, setMenuOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
@@ -132,7 +135,7 @@ const AppHeader = ({ actions }: { actions?: ReactNode }) => {
         {/* Navigation group — destinations. */}
         {NAV_LINKS.map((link) => (
           <NavLink key={link.to} to={link.to} end={link.end} className={navButtonClass}>
-            {link.label}
+            {t(link.labelKey)}
           </NavLink>
         ))}
 
@@ -142,7 +145,7 @@ const AppHeader = ({ actions }: { actions?: ReactNode }) => {
         {/* Primary action: create an order. */}
         <NavLink to="/orders/new" className={actionButtonClass}>
           <PlusIcon />
-          Новый заказ
+          {t('newOrder')}
         </NavLink>
 
         {/* Right cluster: page actions (search/filter) then the settings gear
@@ -156,8 +159,8 @@ const AppHeader = ({ actions }: { actions?: ReactNode }) => {
             variant="secondary"
             size="icon"
             onClick={() => setSettingsOpen(true)}
-            aria-label="Настройки"
-            title="Настройки"
+            aria-label={t('settings')}
+            title={t('settings')}
           >
             <GearIcon />
           </Button>
@@ -172,7 +175,7 @@ const AppHeader = ({ actions }: { actions?: ReactNode }) => {
         {menuOpen ? (
           <NavLink to="/orders/new" className={actionButtonClass} onClick={closeMenu}>
             <PlusIcon />
-            Добавить заказ
+            {t('addOrder')}
           </NavLink>
         ) : (
           // Page actions (search/filter) sit on the left of the bar; hidden while
@@ -187,7 +190,7 @@ const AppHeader = ({ actions }: { actions?: ReactNode }) => {
             variant="secondary"
             size="icon"
             onClick={() => setMenuOpen((open) => !open)}
-            aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
+            aria-label={menuOpen ? t('closeMenu') : t('openMenu')}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
             className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border"
@@ -214,7 +217,7 @@ const AppHeader = ({ actions }: { actions?: ReactNode }) => {
           accessibility tree. `md:hidden` so it never shows on the desktop layout. */}
       <nav
         id="mobile-menu"
-        aria-label="Меню"
+        aria-label={t('menu')}
         inert={!menuOpen}
         className={`absolute inset-x-0 top-full z-30 overflow-hidden border-b border-border bg-bg shadow-lg transition-[max-height] duration-300 ease-out motion-reduce:transition-none md:hidden ${
           menuOpen ? 'max-h-96' : 'max-h-0'
@@ -235,7 +238,7 @@ const AppHeader = ({ actions }: { actions?: ReactNode }) => {
               className={mobileNavLinkClass}
               onClick={closeMenu}
             >
-              {link.label}
+              {t(link.labelKey)}
             </NavLink>
           ))}
         </div>
@@ -251,8 +254,8 @@ const AppHeader = ({ actions }: { actions?: ReactNode }) => {
               closeMenu()
               setSettingsOpen(true)
             }}
-            aria-label="Настройки"
-            title="Настройки"
+            aria-label={t('settings')}
+            title={t('settings')}
           >
             <GearIcon />
           </Button>

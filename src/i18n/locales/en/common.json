@@ -1,0 +1,7 @@
+{
+  "save": "Save",
+  "cancel": "Cancel",
+  "signOut": "Sign out",
+  "days_one": "{{count}} day",
+  "days_other": "{{count}} days"
+}
