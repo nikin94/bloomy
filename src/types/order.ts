@@ -25,8 +25,8 @@ export const PAYMENT_METHOD_SCHEMA = z.enum(['cash', 'card', 'bank'])
 export type PaymentMethod = z.infer<typeof PAYMENT_METHOD_SCHEMA>
 
 // How the order is delivered. Keys are latin (stable storage values); the
-// Russian labels live in DELIVERY_METHOD_LABELS and the display order is set in
-// DELIVERY_METHOD_OPTIONS (alphabetical, with the "other" catch-all pinned last).
+// localized labels live in the `order` i18n ns and the display order is built in
+// deliveryMethodOptions (alphabetical by label, with the "other" catch-all pinned last).
 export const DELIVERY_METHOD_SCHEMA = z.enum(['bus', 'post', 'pickup', 'cdek', 'taxi', 'other'])
 export type DeliveryMethod = z.infer<typeof DELIVERY_METHOD_SCHEMA>
 
