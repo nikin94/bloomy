@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AppHeader from '../AppHeader/AppHeader'
 import { createCustomer, fetchCustomer, fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
 import { useSettings } from '../../context/settingsContext'
 import { formatMinorToInput, formatMoney, parseRublesToMinor } from '../../utils/format'
 import {
-  DELIVERY_METHOD_OPTIONS,
-  PAYMENT_METHOD_OPTIONS,
-  PAYMENT_STATUS_OPTIONS,
-  SHIPMENT_STATUS_OPTIONS,
+  deliveryMethodOptions,
+  paymentMethodOptions,
+  paymentStatusOptions,
+  shipmentStatusOptions,
   resolveCompletedAt,
 } from '../../types/order'
 import Spinner from '../Spinner/Spinner'
@@ -154,6 +155,7 @@ interface OrderFormProps {
 // state and validation; the caller supplies the heading and how a finished order
 // is persisted (see OrderFormProps).
 const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps) => {
+  const { t } = useTranslation('order')
   // Owner of every record created here. Guaranteed non-null under ProtectedRoute.
   const { user } = useAuth()
   const ownerId = user?.uid
@@ -542,7 +544,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                 value={deliveryMethod}
                 onChange={(e) => setDeliveryMethod(e.target.value as DeliveryMethod)}
               >
-                {DELIVERY_METHOD_OPTIONS.map((o) => (
+                {deliveryMethodOptions(t).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -569,7 +571,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
               >
-                {PAYMENT_METHOD_OPTIONS.map((o) => (
+                {paymentMethodOptions(t).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -583,7 +585,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                 value={paymentStatus}
                 onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}
               >
-                {PAYMENT_STATUS_OPTIONS.map((o) => (
+                {paymentStatusOptions(t).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -597,7 +599,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                 value={shipmentStatus}
                 onChange={(e) => setShipmentStatus(e.target.value as ShipmentStatus)}
               >
-                {SHIPMENT_STATUS_OPTIONS.map((o) => (
+                {shipmentStatusOptions(t).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>

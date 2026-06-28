@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { fetchOrder, patchOrder, softDeleteOrder } from '../../firebase/orders'
 import type { OrderPatch } from '../../firebase/orders'
@@ -10,10 +11,10 @@ import {
   getSubtotalMinor,
   getTotalMinor,
   plantsByValueDesc,
-  DELIVERY_METHOD_LABELS,
-  PAYMENT_METHOD_LABELS,
-  PAYMENT_STATUS_OPTIONS,
-  SHIPMENT_STATUS_OPTIONS,
+  deliveryMethodLabel,
+  paymentMethodLabel,
+  paymentStatusOptions,
+  shipmentStatusOptions,
   resolveCompletedAt,
   formatOrderNumber,
 } from '../../types/order'
@@ -44,6 +45,7 @@ const EditIcon = () => (
 )
 
 const OrderDetailPage = () => {
+  const { t } = useTranslation('order')
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -221,18 +223,18 @@ const OrderDetailPage = () => {
             />
             {customer?.phone && <Field label="Телефон" value={customer.phone} />}
             <Field label="Адрес доставки" value={order.address || '—'} />
-            <Field label="Способ доставки" value={DELIVERY_METHOD_LABELS[order.deliveryMethod]} />
-            <Field label="Способ оплаты" value={PAYMENT_METHOD_LABELS[order.paymentMethod]} />
+            <Field label="Способ доставки" value={deliveryMethodLabel(t, order.deliveryMethod)} />
+            <Field label="Способ оплаты" value={paymentMethodLabel(t, order.paymentMethod)} />
             <InlineStatusField
               label="Статус оплаты"
               value={order.paymentStatus}
-              options={PAYMENT_STATUS_OPTIONS}
+              options={paymentStatusOptions(t)}
               onChange={(value) => saveStatus({ paymentStatus: value as Order['paymentStatus'] })}
             />
             <InlineStatusField
               label="Статус отправки"
               value={order.shipmentStatus}
-              options={SHIPMENT_STATUS_OPTIONS}
+              options={shipmentStatusOptions(t)}
               onChange={(value) => saveStatus({ shipmentStatus: value as Order['shipmentStatus'] })}
             />
             {order.completedAt && <Field label="Завершён" value={formatDate(order.completedAt)} />}

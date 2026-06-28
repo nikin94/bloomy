@@ -6,7 +6,7 @@ import { useSettings } from '../../context/settingsContext'
 import { signOutUser } from '../../firebase/auth'
 import { FONT_SCALE_MAX, FONT_SCALE_MIN, FONT_SCALE_STEP, LANGUAGES } from '../../types/settings'
 import type { Language, ThemeMode } from '../../types/settings'
-import { DELIVERY_METHOD_OPTIONS, PAYMENT_METHOD_OPTIONS } from '../../types/order'
+import { deliveryMethodOptions, paymentMethodOptions } from '../../types/order'
 import type { DeliveryMethod, PaymentMethod } from '../../types/order'
 import Button from '../Button/Button'
 import Select from '../Select/Select'
@@ -169,6 +169,9 @@ const SettingsModal = ({ open, onClose }: { open: boolean; onClose: () => void }
 // values.
 const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation(['settings', 'common'])
+  // The default-method pickers show order-domain labels (delivery/payment
+  // methods), which live in the `order` namespace — a separate bound `t`.
+  const { t: tOrder } = useTranslation('order')
   const { user } = useAuth()
   const {
     fontScale,
@@ -344,7 +347,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                 value={deliveryDraft}
                 onChange={(e) => setDeliveryDraft(e.target.value as DeliveryMethod)}
               >
-                {DELIVERY_METHOD_OPTIONS.map((o) => (
+                {deliveryMethodOptions(tOrder).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -359,7 +362,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                 value={paymentDraft}
                 onChange={(e) => setPaymentDraft(e.target.value as PaymentMethod)}
               >
-                {PAYMENT_METHOD_OPTIONS.map((o) => (
+                {paymentMethodOptions(tOrder).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>

@@ -1,0 +1,37 @@
+{
+  "columns": {
+    "number": "№",
+    "dateCreated": "Добавлен",
+    "customer": "Клиент",
+    "address": "Адрес",
+    "plants": "Растения",
+    "total": "Сумма",
+    "paymentStatus": "Оплата",
+    "shipmentStatus": "Отправка"
+  },
+  "paymentStatus": {
+    "pending": "Ожидает",
+    "paid": "Оплачен",
+    "refunded": "Возврат"
+  },
+  "shipmentStatus": {
+    "new": "Новый",
+    "packing": "Сборка",
+    "shipped": "Отправлен",
+    "delivered": "Доставлен",
+    "cancelled": "Отменён"
+  },
+  "paymentMethod": {
+    "cash": "Наличные",
+    "card": "Карта",
+    "bank": "Перевод"
+  },
+  "deliveryMethod": {
+    "bus": "Автобус",
+    "post": "Почта",
+    "pickup": "Самовывоз",
+    "cdek": "СДЭК",
+    "taxi": "Такси",
+    "other": "Другое"
+  }
+}

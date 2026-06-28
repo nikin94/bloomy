@@ -111,7 +111,10 @@ describe('SettingsProvider', () => {
   it('defaults to Russian when no language is saved', async () => {
     renderProvider()
     await screen.findByText('lang:ru')
-    expect(htmlLang()).toBe('ru')
+    // `lang:ru` is also the loading-state default, so it renders before settings
+    // resolve; the <html lang> apply runs once they do — wait for that side effect
+    // rather than racing it.
+    await waitFor(() => expect(htmlLang()).toBe('ru'))
   })
 
   it('keeps the cached language while settings load (no default clobber / flash)', async () => {

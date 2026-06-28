@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import DataTable from '../../components/DataTable/DataTable'
@@ -19,8 +20,8 @@ import {
   isOrderFilterActive,
   isModalFilterActive,
   EMPTY_ORDER_FILTER,
-  PAYMENT_STATUS_OPTIONS,
-  SHIPMENT_STATUS_OPTIONS,
+  paymentStatusOptions,
+  shipmentStatusOptions,
 } from '../../types/order'
 import type { Order, OrderFilter, PaymentStatus, ShipmentStatus } from '../../types/order'
 import type { Customer } from '../../types/customer'
@@ -55,6 +56,7 @@ const FilterIcon = () => (
 )
 
 const OrdersPage = () => {
+  const { t } = useTranslation('order')
   const navigate = useNavigate()
   const location = useLocation()
   // Guaranteed non-null here (rendered under ProtectedRoute), but typed as
@@ -137,7 +139,7 @@ const OrdersPage = () => {
 
   const customerNameById = new Map(customers.map((c) => [c.id, c.name]))
   const getCustomerName = (id: string) => customerNameById.get(id) ?? '—'
-  const columns = buildOrderColumns(getCustomerName)
+  const columns = buildOrderColumns(getCustomerName, t)
 
   // Filtering is in memory: the whole list is already loaded, the dataset is
   // small, and it keeps search instant with no extra reads.
@@ -215,7 +217,7 @@ const OrdersPage = () => {
                 }
               >
                 <option value="">Все</option>
-                {PAYMENT_STATUS_OPTIONS.map((o) => (
+                {paymentStatusOptions(t).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -233,7 +235,7 @@ const OrdersPage = () => {
                 }
               >
                 <option value="">Все</option>
-                {SHIPMENT_STATUS_OPTIONS.map((o) => (
+                {shipmentStatusOptions(t).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>

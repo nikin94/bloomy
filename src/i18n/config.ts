@@ -5,9 +5,11 @@ import type { Language } from '../types/settings'
 import ruCommon from './locales/ru/common.json'
 import ruNav from './locales/ru/nav.json'
 import ruSettings from './locales/ru/settings.json'
+import ruOrder from './locales/ru/order.json'
 import enCommon from './locales/en/common.json'
 import enNav from './locales/en/nav.json'
 import enSettings from './locales/en/settings.json'
+import enOrder from './locales/en/order.json'
 
 // localStorage key shared by the index.html no-flash script and SettingsProvider
 // so the chosen language is restored BEFORE React runs — mirrors the theme cache.
@@ -19,8 +21,8 @@ export const LANGUAGE_CACHE_KEY = 'bloomy-lang'
 // keeps each dictionary small and reviewable. Russian is the complete set
 // (English may omit plural forms a locale doesn't need — i18next falls back).
 export const resources = {
-  ru: { common: ruCommon, nav: ruNav, settings: ruSettings },
-  en: { common: enCommon, nav: enNav, settings: enSettings },
+  ru: { common: ruCommon, nav: ruNav, settings: ruSettings, order: ruOrder },
+  en: { common: enCommon, nav: enNav, settings: enSettings, order: enOrder },
 } as const
 
 export const defaultNS = 'common'
@@ -45,7 +47,7 @@ void i18n.use(initReactI18next).init({
   lng: cachedLanguage,
   fallbackLng: DEFAULT_LANGUAGE,
   defaultNS,
-  ns: ['common', 'nav', 'settings'],
+  ns: ['common', 'nav', 'settings', 'order'],
   // React already escapes interpolated values; don't let i18next double-escape.
   interpolation: { escapeValue: false },
   react: { useSuspense: false },

@@ -4,10 +4,15 @@ import userEvent from '@testing-library/user-event'
 import DataTable from './DataTable'
 import { buildOrderColumns } from '../../types/order'
 import type { Order } from '../../types/order'
+import i18n from '../../i18n/config'
+
+// Headers come from the `order` namespace; the shared test i18n defaults to ru,
+// so they resolve to the Russian text the assertions below expect.
+const t = i18n.getFixedT(null, 'order')
 
 // Real column config (resolving the customer name via a lookup, as OrdersPage
 // does) so the test exercises the same OrderColumn → TanStack adapter the app uses.
-const columns = buildOrderColumns((id) => (id === 'c1' ? 'Анна' : '—'))
+const columns = buildOrderColumns((id) => (id === 'c1' ? 'Анна' : '—'), t)
 
 const order = (over: Partial<Order> = {}): Order => ({
   id: 'o1',
@@ -108,8 +113,9 @@ describe('DataTable (table layout)', () => {
 })
 
 describe('DataTable (sorting)', () => {
-  const sortColumns = buildOrderColumns((id) =>
-    id === 'c-anna' ? 'Анна' : id === 'c-boris' ? 'Борис' : '—',
+  const sortColumns = buildOrderColumns(
+    (id) => (id === 'c-anna' ? 'Анна' : id === 'c-boris' ? 'Борис' : '—'),
+    t,
   )
   const renderOrders = (list: Order[]) =>
     render(<DataTable orders={list} columns={sortColumns} onRowClick={vi.fn()} />)

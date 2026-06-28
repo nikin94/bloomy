@@ -1,0 +1,37 @@
+{
+  "columns": {
+    "number": "#",
+    "dateCreated": "Added",
+    "customer": "Customer",
+    "address": "Address",
+    "plants": "Plants",
+    "total": "Total",
+    "paymentStatus": "Payment",
+    "shipmentStatus": "Shipping"
+  },
+  "paymentStatus": {
+    "pending": "Pending",
+    "paid": "Paid",
+    "refunded": "Refunded"
+  },
+  "shipmentStatus": {
+    "new": "New",
+    "packing": "Packing",
+    "shipped": "Shipped",
+    "delivered": "Delivered",
+    "cancelled": "Cancelled"
+  },
+  "paymentMethod": {
+    "cash": "Cash",
+    "card": "Card",
+    "bank": "Transfer"
+  },
+  "deliveryMethod": {
+    "bus": "Bus",
+    "post": "Mail",
+    "pickup": "Pickup",
+    "cdek": "CDEK",
+    "taxi": "Taxi",
+    "other": "Other"
+  }
+}

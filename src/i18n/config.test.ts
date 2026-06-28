@@ -53,7 +53,9 @@ describe('i18n', () => {
   // fallbackLng is the Russian default, so a key present in ru but missing in en
   // would silently render a Russian string inside the English UI. CustomTypeOptions
   // only type-checks against ru, so TS can't catch this — this test does.
-  it.each(['common', 'nav', 'settings'] as const)(
+  // Derived from the resources (not a hardcoded list) so a newly added namespace
+  // is parity-checked automatically instead of slipping through untested.
+  it.each(Object.keys(resources.ru) as (keyof (typeof resources)['ru'])[])(
     'en defines every key ru has in "%s" (plural forms aside)',
     (ns) => {
       const ru = baseKeys(resources.ru[ns])
@@ -68,6 +70,10 @@ describe('i18n', () => {
       expect(i18n.t('nav:orders')).toBe('Orders')
       expect(i18n.t('common:days', { count: 1 })).toBe('1 day')
       expect(i18n.t('common:days', { count: 5 })).toBe('5 days')
+      // Order-domain labels (table headers + status/method values) switch too.
+      expect(i18n.t('order:columns.customer')).toBe('Customer')
+      expect(i18n.t('order:paymentStatus.paid')).toBe('Paid')
+      expect(i18n.t('order:deliveryMethod.cdek')).toBe('CDEK')
     } finally {
       // Restore the default so any later assertion in this file sees Russian.
       await i18n.changeLanguage('ru')
