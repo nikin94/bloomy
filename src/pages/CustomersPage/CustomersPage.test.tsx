@@ -167,4 +167,38 @@ describe('CustomersPage', () => {
     expect(softDeleteCustomer).not.toHaveBeenCalled()
     expect(screen.getByText('Анна')).toBeInTheDocument()
   })
+
+  it('narrows the list to customers matching the search (by name or phone)', async () => {
+    const user = userEvent.setup()
+    fetchCustomers.mockResolvedValue([
+      customer({ id: 'c1', name: 'Анна', phone: '+700' }),
+      customer({ id: 'c2', name: 'Борис', phone: '+711' }),
+    ])
+    renderPage()
+    await screen.findByText('Анна')
+
+    // The header renders both layouts (desktop + mobile) in jsdom, so scope the
+    // search to the desktop bar to act on a single copy. It's collapsed behind a
+    // loupe; click it to reveal the input.
+    const header = within(screen.getByTestId('header-desktop'))
+    await user.click(header.getByRole('button', { name: 'Поиск' }))
+    await user.type(header.getByRole('textbox', { name: 'Поиск клиентов' }), 'Борис')
+
+    expect(screen.getByText('Борис')).toBeInTheDocument()
+    expect(screen.queryByText('Анна')).not.toBeInTheDocument()
+  })
+
+  it('shows a "nothing found" message when the search matches no customer', async () => {
+    const user = userEvent.setup()
+    fetchCustomers.mockResolvedValue([customer({ name: 'Анна' })])
+    renderPage()
+    await screen.findByText('Анна')
+
+    const header = within(screen.getByTestId('header-desktop'))
+    await user.click(header.getByRole('button', { name: 'Поиск' }))
+    await user.type(header.getByRole('textbox', { name: 'Поиск клиентов' }), 'нет такого')
+
+    expect(screen.getByText('Ничего не найдено')).toBeInTheDocument()
+    expect(screen.queryByText('Анна')).not.toBeInTheDocument()
+  })
 })

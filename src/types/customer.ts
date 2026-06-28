@@ -29,3 +29,14 @@ export type Customer = z.infer<typeof STORED_CUSTOMER_SCHEMA> & { id: string }
 
 // Shape for creating a customer; `id` is assigned by Firestore on write.
 export type NewCustomer = Omit<Customer, 'id'>
+
+// Filter the address book by a search query, matching the customer's name OR
+// phone, case- and whitespace-insensitive. An empty query matches everything.
+// In memory, like filterOrders — the list is small and already loaded, so the
+// search stays instant with no extra reads. Each list page keeps its own
+// predicate (orders search number/customer/plants; this is the customers one).
+export const filterCustomers = (customers: Customer[], query: string): Customer[] => {
+  const q = query.trim().toLowerCase()
+  if (q === '') return customers
+  return customers.filter((c) => `${c.name} ${c.phone ?? ''}`.toLowerCase().includes(q))
+}

@@ -100,4 +100,42 @@ describe('DeletedOrdersPage', () => {
     // On success the row leaves the list; with no others left, the empty state shows.
     await waitFor(() => expect(screen.getByText('Корзина пуста')).toBeInTheDocument())
   })
+
+  it('narrows the trash to orders matching the search (by number or customer)', async () => {
+    const user = userEvent.setup()
+    fetchDeletedOrders.mockResolvedValue([
+      order({ id: 'o1', number: 5, customerId: 'c1' }),
+      order({ id: 'o2', number: 6, customerId: 'c2' }),
+    ])
+    fetchCustomers.mockResolvedValue([
+      customer({ id: 'c1', name: 'Анна' }),
+      customer({ id: 'c2', name: 'Борис' }),
+    ])
+    renderPage()
+    await screen.findByText(/Заказ №5/)
+
+    // The header renders both layouts (desktop + mobile) in jsdom, so scope the
+    // search to the desktop bar to act on a single copy. It's collapsed behind a
+    // loupe; click it to reveal the input.
+    const header = within(screen.getByTestId('header-desktop'))
+    await user.click(header.getByRole('button', { name: 'Поиск' }))
+    await user.type(header.getByRole('textbox', { name: 'Поиск в корзине' }), 'Борис')
+
+    expect(screen.getByText(/Заказ №6/)).toBeInTheDocument()
+    expect(screen.queryByText(/Заказ №5/)).not.toBeInTheDocument()
+  })
+
+  it('shows a "nothing found" message when the search matches no trashed order', async () => {
+    const user = userEvent.setup()
+    fetchDeletedOrders.mockResolvedValue([order({ id: 'o1', number: 5 })])
+    renderPage()
+    await screen.findByText(/Заказ №5/)
+
+    const header = within(screen.getByTestId('header-desktop'))
+    await user.click(header.getByRole('button', { name: 'Поиск' }))
+    await user.type(header.getByRole('textbox', { name: 'Поиск в корзине' }), 'нет такого')
+
+    expect(screen.getByText('Ничего не найдено')).toBeInTheDocument()
+    expect(screen.queryByText(/Заказ №5/)).not.toBeInTheDocument()
+  })
 })
