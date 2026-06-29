@@ -6,11 +6,13 @@ import {
   clampFontScale,
   DEFAULT_DELIVERY_METHOD,
   DEFAULT_FONT_SCALE,
+  DEFAULT_LANGUAGE,
   DEFAULT_PAYMENT_METHOD,
   DEFAULT_THEME,
 } from '../types/settings'
-import type { ThemeMode } from '../types/settings'
+import type { Language, ThemeMode } from '../types/settings'
 import type { DeliveryMethod, PaymentMethod } from '../types/order'
+import i18n, { LANGUAGE_CACHE_KEY } from '../i18n/config'
 import { SettingsContext } from './settingsContext'
 import type { SettingsDraft } from './settingsContext'
 
@@ -39,6 +41,20 @@ const applyTheme = (theme: ThemeMode) => {
   }
 }
 
+// Switches the active UI language: tells i18next (re-rendering every translated
+// component), sets <html lang> for the document, and mirrors it to the cache so
+// the next load starts in the right language before React runs (see the inline
+// script in index.html). Same shape as applyTheme so language previews live too.
+const applyLanguage = (language: Language) => {
+  void i18n.changeLanguage(language)
+  document.documentElement.setAttribute('lang', language)
+  try {
+    localStorage.setItem(LANGUAGE_CACHE_KEY, language)
+  } catch {
+    // Private mode / storage disabled: applies for this session, just not cached.
+  }
+}
+
 // Loads the signed-in user's settings, applies them app-wide, and exposes the
 // preview/save controls the settings dialog uses. Sits under AuthProvider so it
 // can scope settings to the current uid.
@@ -54,12 +70,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     ownerId: string
     scale: number
     theme: ThemeMode
+    language: Language
     defaultDeliveryMethod: DeliveryMethod
     defaultPaymentMethod: PaymentMethod
   } | null>(null)
   const applies = loaded && loaded.ownerId === ownerId
   const fontScale = applies ? loaded.scale : DEFAULT_FONT_SCALE
   const theme = applies ? loaded.theme : DEFAULT_THEME
+  const language = applies ? loaded.language : DEFAULT_LANGUAGE
   const defaultDeliveryMethod = applies ? loaded.defaultDeliveryMethod : DEFAULT_DELIVERY_METHOD
   const defaultPaymentMethod = applies ? loaded.defaultPaymentMethod : DEFAULT_PAYMENT_METHOD
 
@@ -75,6 +93,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           ownerId,
           scale: clampFontScale(settings.fontScale ?? DEFAULT_FONT_SCALE),
           theme: settings.theme ?? DEFAULT_THEME,
+          language: settings.language ?? DEFAULT_LANGUAGE,
           defaultDeliveryMethod: settings.defaultDeliveryMethod ?? DEFAULT_DELIVERY_METHOD,
           defaultPaymentMethod: settings.defaultPaymentMethod ?? DEFAULT_PAYMENT_METHOD,
         })
@@ -97,10 +116,22 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     applyTheme(theme)
   }, [theme])
+  // Unlike theme/font (a CSS flicker at worst), re-applying the language here on
+  // mount would call i18n.changeLanguage and re-render every string. The cached
+  // language already painted the first render (config.ts + the inline script read
+  // it before React). So while a signed-in user's settings are still loading,
+  // skip: applying the fallback default would flip the UI to ru AND stomp the
+  // cache, then flip back once Firestore resolves — the en→ru→en flash. Apply
+  // only authoritative values: a loaded setting, or a true signed-out reset.
+  useEffect(() => {
+    if (ownerId && !applies) return
+    applyLanguage(language)
+  }, [applies, ownerId, language])
 
-  // Live-preview a value on the document without persisting (slider/toggle).
+  // Live-preview a value on the document without persisting (slider/toggle/select).
   const previewFontScale = (scale: number) => applyFontScale(scale)
   const previewTheme = (next: ThemeMode) => applyTheme(next)
+  const previewLanguage = (next: Language) => applyLanguage(next)
 
   // Persist to Firebase, then commit as the applied values. Throwing surfaces
   // the error to the dialog; the live preview already reflects the attempt.
@@ -110,6 +141,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     await persistSettings(ownerId, {
       fontScale: scale,
       theme: next.theme,
+      language: next.language,
       defaultDeliveryMethod: next.defaultDeliveryMethod,
       defaultPaymentMethod: next.defaultPaymentMethod,
     })
@@ -117,6 +149,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       ownerId,
       scale,
       theme: next.theme,
+      language: next.language,
       defaultDeliveryMethod: next.defaultDeliveryMethod,
       defaultPaymentMethod: next.defaultPaymentMethod,
     })
@@ -127,10 +160,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       value={{
         fontScale,
         theme,
+        language,
         defaultDeliveryMethod,
         defaultPaymentMethod,
         previewFontScale,
         previewTheme,
+        previewLanguage,
         saveSettings,
       }}
     >

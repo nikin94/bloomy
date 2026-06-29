@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/authContext'
 import { useSettings } from '../../context/settingsContext'
 import { signOutUser } from '../../firebase/auth'
-import { FONT_SCALE_MAX, FONT_SCALE_MIN, FONT_SCALE_STEP } from '../../types/settings'
-import type { ThemeMode } from '../../types/settings'
-import { DELIVERY_METHOD_OPTIONS, PAYMENT_METHOD_OPTIONS } from '../../types/order'
+import { FONT_SCALE_MAX, FONT_SCALE_MIN, FONT_SCALE_STEP, LANGUAGES } from '../../types/settings'
+import type { Language, ThemeMode } from '../../types/settings'
+import { deliveryMethodOptions, paymentMethodOptions } from '../../types/order'
 import type { DeliveryMethod, PaymentMethod } from '../../types/order'
 import Button from '../Button/Button'
 import Select from '../Select/Select'
@@ -31,12 +32,13 @@ const sliderClass =
   '[&::-webkit-slider-thumb]:relative [&::-webkit-slider-thumb]:z-10 [&::-webkit-slider-thumb]:-mt-2.5 [&::-webkit-slider-thumb]:size-6 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-bg [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow ' +
   '[&::-moz-range-thumb]:size-6 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-bg [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:shadow'
 
-// Human-readable description of the current scale for screen readers, so the
-// slider announces "уменьшен"/"по умолчанию"/"увеличен" rather than a raw number.
-const fontScaleLabel = (scale: number) => {
-  if (scale < 1) return 'уменьшен'
-  if (scale > 1) return 'увеличен'
-  return 'по умолчанию'
+// Translation key (under settings:fontScale) describing the current scale for
+// screen readers, so the slider announces "уменьшен"/"по умолчанию"/"увеличен"
+// (localised) rather than a raw number.
+const fontScaleLabelKey = (scale: number): 'decreased' | 'default' | 'increased' => {
+  if (scale < 1) return 'decreased'
+  if (scale > 1) return 'increased'
+  return 'default'
 }
 
 const SunIcon = () => (
@@ -74,14 +76,22 @@ const MoonIcon = () => (
 // its ends; the sliding knob carries the ACTIVE theme's icon, so the visible
 // track icon is the other option. A real `role="switch"` (checked = dark) so it
 // is keyboard- and screen-reader-operable.
-const ThemeToggle = ({ value, onChange }: { value: ThemeMode; onChange: (next: ThemeMode) => void }) => {
+const ThemeToggle = ({
+  value,
+  label,
+  onChange,
+}: {
+  value: ThemeMode
+  label: string
+  onChange: (next: ThemeMode) => void
+}) => {
   const isDark = value === 'dark'
   return (
     <button
       type="button"
       role="switch"
       aria-checked={isDark}
-      aria-label="Тёмная тема"
+      aria-label={label}
       onClick={() => onChange(isDark ? 'light' : 'dark')}
       className="relative inline-flex h-9 w-[4.5rem] shrink-0 items-center rounded-full border border-border bg-primary-bg p-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
     >
@@ -158,18 +168,25 @@ const SettingsModal = ({ open, onClose }: { open: boolean; onClose: () => void }
 // to Firebase on "Сохранить"; dismissing reverts the live preview to the saved
 // values.
 const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
+  const { t } = useTranslation(['settings', 'common'])
+  // The default-method pickers show order-domain labels (delivery/payment
+  // methods), which live in the `order` namespace — a separate bound `t`.
+  const { t: tOrder } = useTranslation('order')
   const { user } = useAuth()
   const {
     fontScale,
     theme,
+    language,
     defaultDeliveryMethod,
     defaultPaymentMethod,
     previewFontScale,
     previewTheme,
+    previewLanguage,
     saveSettings,
   } = useSettings()
   const [fontDraft, setFontDraft] = useState(fontScale)
   const [themeDraft, setThemeDraft] = useState(theme)
+  const [languageDraft, setLanguageDraft] = useState(language)
   // The order defaults don't change the live app, so they have no preview —
   // they apply on Save. Kept as drafts so Cancel discards an unsaved change.
   const [deliveryDraft, setDeliveryDraft] = useState(defaultDeliveryMethod)
@@ -182,6 +199,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
   const handleClose = () => {
     previewFontScale(fontScale)
     previewTheme(theme)
+    previewLanguage(language)
     onClose()
   }
 
@@ -196,6 +214,11 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
     previewTheme(next) // live page update; not persisted until "Сохранить"
   }
 
+  const handleLanguage = (next: Language) => {
+    setLanguageDraft(next)
+    previewLanguage(next) // re-renders the whole app live; persisted on Save
+  }
+
   const handleSave = async () => {
     setSaving(true)
     setError(null)
@@ -203,12 +226,13 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
       await saveSettings({
         fontScale: fontDraft,
         theme: themeDraft,
+        language: languageDraft,
         defaultDeliveryMethod: deliveryDraft,
         defaultPaymentMethod: paymentDraft,
       })
       onClose()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Не удалось сохранить настройки')
+      setError(err instanceof Error ? err.message : t('settings:saveError'))
       setSaving(false)
     }
   }
@@ -225,32 +249,37 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
       await signOutUser()
       onClose()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Не удалось выйти. Попробуйте снова.')
+      setError(err instanceof Error ? err.message : t('settings:signOutError'))
     }
   }
 
   return (
-    <Modal title="Настройки" onClose={handleClose}>
-      {/* Appearance: theme + font size, as an iOS-style grouped list. */}
+    <Modal title={t('settings:title')} onClose={handleClose}>
+      {/* Appearance: theme + font size + language, as an iOS-style grouped list. */}
       <section className="flex flex-col gap-2">
-        <SectionLabel>Внешний вид</SectionLabel>
+        <SectionLabel>{t('settings:appearance')}</SectionLabel>
         <Group>
           {/* Theme: a sun/moon switch on the right. The icons are
               self-explanatory, so the row's text label carries the name; the
               switch's accessible name lives on the control for screen readers.
               The whole app re-themes live. */}
-          <Row label="Тема">
-            <ThemeToggle value={themeDraft} onChange={handleTheme} />
+          <Row label={t('settings:theme')}>
+            <ThemeToggle value={themeDraft} label={t('settings:themeToggle')} onChange={handleTheme} />
           </Row>
 
           {/* Font size: label on the left, the iOS-style slider (flanked by
-              small/large "А") taking the rest of the row after a fixed gap. The
-              whole app scales live, so the dialog previews the chosen size. */}
+              small/large "А") on the right. The slider cluster has a FIXED width
+              (matching the language/delivery/payment control rows) so its length
+              stays constant regardless of how long the translated label is —
+              otherwise "Размер шрифта" vs "Font size" would resize the slider.
+              The label takes the remaining space and may shrink/wrap on narrow
+              screens, so a fixed-width control never breaks the mobile layout.
+              The whole app scales live, so the dialog previews the chosen size. */}
           <div className="flex items-center gap-4 px-4 py-3">
-            <span className="shrink-0 whitespace-nowrap text-sm font-medium text-heading">
-              Размер шрифта
+            <span className="min-w-0 flex-1 text-sm font-medium text-heading">
+              {t('settings:fontSize')}
             </span>
-            <div className="flex flex-1 items-center gap-3">
+            <div className="flex w-36 shrink-0 items-center gap-3">
               <span aria-hidden="true" className="shrink-0 text-sm text-text">
                 А
               </span>
@@ -274,10 +303,10 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                   step={FONT_SCALE_STEP}
                   value={fontDraft}
                   onChange={handleSlider}
-                  aria-label="Размер шрифта"
+                  aria-label={t('settings:fontSize')}
                   // Screen readers announce a human-readable label (e.g.
                   // "увеличен") instead of the raw scale number (0.875, 1.25).
-                  aria-valuetext={fontScaleLabel(fontDraft)}
+                  aria-valuetext={t(`settings:fontScale.${fontScaleLabelKey(fontDraft)}` as const)}
                   className={sliderClass}
                 />
               </div>
@@ -286,26 +315,44 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
               </span>
             </div>
           </div>
+
+          {/* Language: a Select on the right. Changing it re-renders the whole
+              app live (preview); persisted on Save like theme/font. */}
+          <Row label={t('settings:language')}>
+            <div className="w-36 shrink-0">
+              <Select
+                aria-label={t('settings:languageAria')}
+                value={languageDraft}
+                onChange={(e) => handleLanguage(e.target.value as Language)}
+              >
+                {LANGUAGES.map((l) => (
+                  <option key={l} value={l}>
+                    {t(`settings:lang.${l}` as const)}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </Row>
         </Group>
       </section>
 
       {/* New-order defaults: prefill the order form's delivery/payment method.
           These don't change the live app, only the next new order. */}
       <section className="flex flex-col gap-2">
-        <SectionLabel>Заказы по умолчанию</SectionLabel>
+        <SectionLabel>{t('settings:orderDefaults')}</SectionLabel>
         <Group>
-          <Row label="Способ доставки">
+          <Row label={t('settings:deliveryMethod')}>
             {/* Fixed-width wrapper: Select's own ROOT is `w-full`, so a width on
                 the Select itself is ignored — the box around it sets the size.
                 Both pickers share `w-36` so they're identical and line up, wide
                 enough that the longest option ("Самовывоз") isn't clipped. */}
             <div className="w-36 shrink-0">
               <Select
-                aria-label="Способ доставки по умолчанию"
+                aria-label={t('settings:deliveryMethodAria')}
                 value={deliveryDraft}
                 onChange={(e) => setDeliveryDraft(e.target.value as DeliveryMethod)}
               >
-                {DELIVERY_METHOD_OPTIONS.map((o) => (
+                {deliveryMethodOptions(tOrder).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -313,14 +360,14 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
               </Select>
             </div>
           </Row>
-          <Row label="Способ оплаты">
+          <Row label={t('settings:paymentMethod')}>
             <div className="w-36 shrink-0">
               <Select
-                aria-label="Способ оплаты по умолчанию"
+                aria-label={t('settings:paymentMethodAria')}
                 value={paymentDraft}
                 onChange={(e) => setPaymentDraft(e.target.value as PaymentMethod)}
               >
-                {PAYMENT_METHOD_OPTIONS.map((o) => (
+                {paymentMethodOptions(tOrder).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -339,10 +386,10 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
 
       <div className="flex justify-end gap-2">
         <Button variant="primary" onClick={handleSave} isLoading={saving}>
-          Сохранить
+          {t('common:save')}
         </Button>
         <Button variant="secondary" onClick={handleClose} disabled={saving}>
-          Отмена
+          {t('common:cancel')}
         </Button>
       </div>
 
@@ -358,7 +405,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
         )}
         <Button variant="secondary" onClick={handleLogout} className="shrink-0 gap-1.5">
           <LogoutIcon />
-          Выйти
+          {t('common:signOut')}
         </Button>
       </div>
 

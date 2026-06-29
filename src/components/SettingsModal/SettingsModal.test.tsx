@@ -16,16 +16,19 @@ import SettingsModal from './SettingsModal'
 
 const previewFontScale = vi.fn()
 const previewTheme = vi.fn()
+const previewLanguage = vi.fn()
 const saveSettings = vi.fn()
 const onClose = vi.fn()
 
 const settings = (over: Partial<SettingsState> = {}): SettingsState => ({
   fontScale: 1,
   theme: 'dark',
+  language: 'ru',
   defaultDeliveryMethod: 'post',
   defaultPaymentMethod: 'cash',
   previewFontScale,
   previewTheme,
+  previewLanguage,
   saveSettings,
   ...over,
 })
@@ -97,10 +100,26 @@ describe('SettingsModal', () => {
     expect(saveSettings).toHaveBeenCalledWith({
       fontScale: 1.25,
       theme: 'light',
+      language: 'ru',
       defaultDeliveryMethod: 'post',
       defaultPaymentMethod: 'cash',
     })
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('previews the chosen language live and persists it on Save', async () => {
+    const user = userEvent.setup()
+    renderModal(true, settings({ language: 'ru' }))
+    // Switching the language picker re-renders the app immediately (preview)…
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Язык интерфейса' }),
+      'en',
+    )
+    expect(previewLanguage).toHaveBeenCalledWith('en')
+    expect(saveSettings).not.toHaveBeenCalled()
+    // …and Save persists it alongside the other settings.
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(saveSettings).toHaveBeenCalledWith(expect.objectContaining({ language: 'en' }))
   })
 
   it('saves the chosen order defaults (delivery + payment)', async () => {
@@ -127,10 +146,12 @@ describe('SettingsModal', () => {
     await user.click(themeSwitch()) // preview light
     previewFontScale.mockClear()
     previewTheme.mockClear()
+    previewLanguage.mockClear()
     await user.click(screen.getByRole('button', { name: 'Отмена' }))
-    // Both previews revert to the persisted values.
+    // Every live preview reverts to the persisted values.
     expect(previewFontScale).toHaveBeenLastCalledWith(1)
     expect(previewTheme).toHaveBeenLastCalledWith('dark')
+    expect(previewLanguage).toHaveBeenLastCalledWith('ru')
     expect(saveSettings).not.toHaveBeenCalled()
     expect(onClose).toHaveBeenCalledTimes(1)
   })

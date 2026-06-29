@@ -10,10 +10,17 @@ import {
   isTerminalShipmentStatus,
   resolveCompletedAt,
   EMPTY_ORDER_FILTER,
-  DELIVERY_METHOD_OPTIONS,
+  deliveryMethodOptions,
+  paymentStatusOptions,
+  paymentMethodOptions,
   STORED_ORDER_SCHEMA,
 } from './order'
 import type { Order } from './order'
+import i18n from '../i18n/config'
+
+// Label/header lookups need a translate fn bound to the `order` namespace; the
+// shared test i18n instance defaults to ru, so labels resolve to Russian.
+const t = i18n.getFixedT(null, 'order')
 
 // A valid Order with sensible defaults; pass overrides per test.
 const makeOrder = (overrides: Partial<Order> = {}): Order => ({
@@ -90,13 +97,13 @@ describe('resolveCompletedAt', () => {
 
 describe('buildOrderColumns', () => {
   it('resolves the customer column via the provided lookup', () => {
-    const columns = buildOrderColumns((id) => (id === 'customer-1' ? 'Анна' : '—'))
+    const columns = buildOrderColumns((id) => (id === 'customer-1' ? 'Анна' : '—'), t)
     const customerColumn = columns.find((c) => c.id === 'customer')
     expect(customerColumn?.format?.(makeOrder())).toBe('Анна')
   })
 
   it('formats the total column from the derived money model', () => {
-    const columns = buildOrderColumns(() => 'Анна')
+    const columns = buildOrderColumns(() => 'Анна', t)
     const totalColumn = columns.find((c) => c.id === 'total')
     const order = makeOrder({
       plants: [{ name: 'Роза', quantity: 1, unitPriceMinor: 9900 }],
@@ -106,7 +113,7 @@ describe('buildOrderColumns', () => {
   })
 
   it('builds every column with exactly one of field or format (discriminated union)', () => {
-    const columns = buildOrderColumns(() => 'Анна')
+    const columns = buildOrderColumns(() => 'Анна', t)
     for (const column of columns) {
       // The type forbids a column with neither (compile-time); assert the data
       // honours it at runtime too — each renders via a field OR a formatter.
@@ -131,7 +138,7 @@ describe('plantsByValueDesc', () => {
 })
 
 describe('the plants column', () => {
-  const plantsColumn = buildOrderColumns(() => 'Анна').find((c) => c.id === 'plants')
+  const plantsColumn = buildOrderColumns(() => 'Анна', t).find((c) => c.id === 'plants')
 
   it('stacks plants priciest-first with the quantity as ×N, omitting it when 1', () => {
     const order = makeOrder({
@@ -237,9 +244,9 @@ describe('filterOrders', () => {
   })
 })
 
-describe('DELIVERY_METHOD_OPTIONS', () => {
-  it('is alphabetical by Russian label with "Другое" pinned last', () => {
-    expect(DELIVERY_METHOD_OPTIONS.map((o) => o.label)).toEqual([
+describe('deliveryMethodOptions', () => {
+  it('is alphabetical by translated label with "Другое" pinned last', () => {
+    expect(deliveryMethodOptions(t).map((o) => o.label)).toEqual([
       'Автобус',
       'Почта',
       'Самовывоз',
@@ -247,6 +254,26 @@ describe('DELIVERY_METHOD_OPTIONS', () => {
       'Такси',
       'Другое',
     ])
+  })
+})
+
+describe('status/method option + label helpers', () => {
+  it('builds value→label options resolved from the order namespace', () => {
+    expect(paymentStatusOptions(t)).toEqual([
+      { value: 'pending', label: 'Ожидает' },
+      { value: 'paid', label: 'Оплачен' },
+      { value: 'refunded', label: 'Возврат' },
+    ])
+    expect(paymentMethodOptions(t).map((o) => o.label)).toEqual(['Наличные', 'Карта', 'Перевод'])
+  })
+
+  it('translates the table headers and the status cells', () => {
+    const columns = buildOrderColumns(() => 'Анна', t)
+    expect(columns.find((c) => c.id === 'customer')?.header).toBe('Клиент')
+    expect(columns.find((c) => c.id === 'paymentStatus')?.header).toBe('Оплата')
+    // The payment-status cell renders the translated label, not the raw value.
+    const payColumn = columns.find((c) => c.id === 'paymentStatus')
+    expect(payColumn?.format?.(makeOrder({ paymentStatus: 'paid' }))).toBe('Оплачен')
   })
 })
 

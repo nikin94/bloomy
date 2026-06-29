@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import AppHeader from '../AppHeader/AppHeader'
 import { createCustomer, fetchCustomer, fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
 import { useSettings } from '../../context/settingsContext'
 import { formatMinorToInput, formatMoney, parseRublesToMinor } from '../../utils/format'
 import {
-  DELIVERY_METHOD_OPTIONS,
-  PAYMENT_METHOD_OPTIONS,
-  PAYMENT_STATUS_OPTIONS,
-  SHIPMENT_STATUS_OPTIONS,
+  deliveryMethodOptions,
+  paymentMethodOptions,
+  paymentStatusOptions,
+  shipmentStatusOptions,
   resolveCompletedAt,
 } from '../../types/order'
 import Spinner from '../Spinner/Spinner'
@@ -57,10 +59,6 @@ const initialItems = (order: Order | undefined): ItemInput[] =>
 // Pick an existing customer from the address book, or enter a new one.
 type CustomerMode = 'existing' | 'new'
 
-// Validation message shown when no existing customer is picked. Kept as a
-// constant so selecting a customer can clear exactly this error and nothing else.
-const SELECT_CUSTOMER_ERROR = 'Выберите клиента'
-
 // One editable plant line, prefixed with its 1-based position. Four controls
 // (name, quantity, price, delete) don't fit a phone width in a single row, so on
 // narrow screens the number+name take their own line and quantity/price/delete
@@ -74,6 +72,7 @@ const PlantItemRow = ({
   priceMissing,
   canRemove,
   autoFocus,
+  t,
   onChange,
   onRemove,
 }: {
@@ -81,12 +80,16 @@ const PlantItemRow = ({
   item: ItemInput
   priceMissing: boolean
   canRemove: boolean
+  // Passed from the parent (single i18next subscription) so each plant row
+  // doesn't open its own useTranslation.
+  t: TFunction<['order', 'common']>
   // Focus the name input on mount — set only for a row just added via the
   // "+ Добавить растение" button, so the user can type the name right away.
   autoFocus: boolean
   onChange: (patch: Partial<ItemInput>) => void
   onRemove: () => void
-}) => (
+}) => {
+  return (
   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
     <div className="flex min-w-0 items-center gap-2 sm:flex-[4]">
       <span aria-hidden="true" className="w-5 shrink-0 text-right text-sm text-text">
@@ -94,7 +97,7 @@ const PlantItemRow = ({
       </span>
       <Input
         className="min-w-0 flex-1"
-        placeholder="Название"
+        placeholder={t('form.plantName')}
         autoFocus={autoFocus}
         value={item.name}
         onChange={(e) => onChange({ name: e.target.value })}
@@ -104,14 +107,14 @@ const PlantItemRow = ({
       <Input
         className="min-w-0 flex-[2]"
         numeric="integer"
-        placeholder="Кол-во"
+        placeholder={t('form.quantity')}
         value={item.quantity}
         onChange={(e) => onChange({ quantity: e.target.value })}
       />
       <Input
         className="min-w-0 flex-[3]"
         numeric="decimal"
-        placeholder="Цена, ₽"
+        placeholder={t('form.price')}
         invalid={priceMissing}
         value={item.price}
         onChange={(e) => onChange({ price: e.target.value })}
@@ -121,14 +124,15 @@ const PlantItemRow = ({
         size="icon"
         onClick={onRemove}
         disabled={!canRemove}
-        aria-label="Удалить растение"
+        aria-label={t('form.removePlant')}
         className="shrink-0"
       >
         ✕
       </Button>
     </div>
   </div>
-)
+  )
+}
 
 interface OrderFormProps {
   // Screen heading, e.g. "Новый заказ" / "Редактирование заказа".
@@ -154,6 +158,9 @@ interface OrderFormProps {
 // state and validation; the caller supplies the heading and how a finished order
 // is persisted (see OrderFormProps).
 const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps) => {
+  const { t } = useTranslation(['order', 'common'])
+  // Order-bound t for the option helpers (typed TFunction<'order'>).
+  const { t: tOrder } = useTranslation('order')
   // Owner of every record created here. Guaranteed non-null under ProtectedRoute.
   const { user } = useAuth()
   const ownerId = user?.uid
@@ -282,7 +289,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
     // pick (or the "— выберите клиента —" placeholder, id === '') lacks it.
     applyCustomerToForm(customers.find((c) => c.id === id))
     // Picking a real customer clears the "select a customer" validation error.
-    if (id !== '') setError((prev) => (prev === SELECT_CUSTOMER_ERROR ? null : prev))
+    if (id !== '') setError((prev) => (prev === t('form.errors.selectCustomer') ? null : prev))
   }
 
   const selectMode = (mode: CustomerMode) => {
@@ -310,7 +317,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
     setError(null)
 
     if (!ownerId) {
-      setError('Сессия истекла — войдите снова')
+      setError(t('form.errors.session'))
       return
     }
 
@@ -323,21 +330,21 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
       }))
 
     if (customerMode === 'existing' && selectedCustomerId === '') {
-      setError(SELECT_CUSTOMER_ERROR)
+      setError(t('form.errors.selectCustomer'))
       return
     }
     if (customerMode === 'new' && newName.trim() === '') {
-      setError('Укажите имя клиента')
+      setError(t('form.errors.customerName'))
       return
     }
     if (plants.length === 0) {
-      setError('Добавьте хотя бы одно растение')
+      setError(t('form.errors.noPlants'))
       return
     }
     // A named plant with no price is incomplete — block the save (the matching
     // price input is already flagged red via isPriceMissing).
     if (items.some((item) => item.name.trim() !== '' && item.price.trim() === '')) {
-      setError('Укажите цену для каждого растения')
+      setError(t('form.errors.plantPrice'))
       return
     }
 
@@ -388,7 +395,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
       // The caller persists the order (create vs update) and navigates.
       await onSubmit(order)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Не удалось сохранить заказ')
+      setError(err instanceof Error ? err.message : t('form.errors.saveFailed'))
       setSaving(false)
     }
   }
@@ -408,14 +415,14 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
             <h1 className="m-0 text-[1.2222rem] font-semibold text-heading">{heading}</h1>
 
           <fieldset className="flex min-w-0 flex-col gap-3 border-0 p-0">
-            <legend className="mb-1 p-0 text-sm text-text">Клиент</legend>
+            <legend className="mb-1 p-0 text-sm text-text">{t('form.customer')}</legend>
 
             {/* Segmented slider toggle. Native radios stay as the source of
                 truth (keyboard + form semantics) but are visually hidden; the
                 sliding pill is positioned from `customerMode`. */}
             <div
               role="radiogroup"
-              aria-label="Тип клиента"
+              aria-label={t('form.customerType')}
               className="relative grid w-full max-w-xs grid-cols-2 rounded-full border border-border bg-primary-bg p-1 text-sm font-medium"
             >
               {/* Sliding pill behind the active segment. */}
@@ -440,7 +447,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                 />
                 {/* truncate (with min-w-0 on the label) keeps a long label like
                     "Существующий" inside its segment instead of overflowing. */}
-                <span className="min-w-0 truncate">Существующий</span>
+                <span className="min-w-0 truncate">{t('form.existing')}</span>
               </label>
               <label
                 className={`relative z-10 flex min-w-0 cursor-pointer items-center justify-center rounded-full px-2 py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary ${
@@ -454,26 +461,24 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                   checked={customerMode === 'new'}
                   onChange={() => selectMode('new')}
                 />
-                <span className="min-w-0 truncate">Новый</span>
+                <span className="min-w-0 truncate">{t('form.new')}</span>
               </label>
             </div>
 
             {customerMode === 'existing' ? (
               customers.length === 0 ? (
-                <p className="m-0 text-sm text-text">
-                  Нет сохранённых клиентов — добавьте нового.
-                </p>
+                <p className="m-0 text-sm text-text">{t('form.noCustomers')}</p>
               ) : (
                 <Select
-                  aria-label="Существующий клиент"
+                  aria-label={t('form.existingCustomer')}
                   value={selectedCustomerId}
                   onChange={(e) => selectCustomer(e.target.value)}
                 >
-                  <option value="">— выберите клиента —</option>
+                  <option value="">{t('form.selectCustomer')}</option>
                   {customers.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.phone ? `${c.name} (${c.phone})` : c.name}
-                      {c.isDeleted ? ' (удалён)' : ''}
+                      {c.isDeleted ? t('form.deletedSuffix') : ''}
                     </option>
                   ))}
                 </Select>
@@ -482,15 +487,15 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
               <div className="flex flex-col gap-3">
                 <Input
                   className="w-full"
-                  aria-label="Имя клиента"
-                  placeholder="Имя*"
+                  aria-label={t('form.customerName')}
+                  placeholder={t('form.namePlaceholder')}
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                 />
                 <Input
                   className="w-full"
-                  aria-label="Телефон"
-                  placeholder="Телефон"
+                  aria-label={t('form.phone')}
+                  placeholder={t('form.phonePlaceholder')}
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
                 />
@@ -499,7 +504,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
           </fieldset>
 
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-text">Адрес доставки</span>
+            <span className="text-sm text-text">{t('form.deliveryAddress')}</span>
             <Input
               className="w-full"
               value={address}
@@ -511,7 +516,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
               which otherwise stops the element from shrinking to its flex parent
               and lets a tight row (numbered plant line) overflow to the right. */}
           <fieldset className="flex min-w-0 flex-col gap-2 border-0 p-0">
-            <legend className="mb-1 p-0 text-sm text-text">Растения</legend>
+            <legend className="mb-1 p-0 text-sm text-text">{t('form.plants')}</legend>
             {items.map((item, index) => (
               <PlantItemRow
                 key={item.id}
@@ -520,6 +525,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                 priceMissing={isPriceMissing(item)}
                 canRemove={items.length > 1}
                 autoFocus={item.id === focusItemId}
+                t={t}
                 onChange={(patch) => updateItem(index, patch)}
                 onRemove={() => removeItem(index)}
               />
@@ -531,18 +537,18 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
               disabled={!canAddItem}
               className="self-start"
             >
-              + Добавить растение
+              {t('form.addPlant')}
             </Button>
           </fieldset>
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-text">Способ доставки</span>
+              <span className="text-sm text-text">{t('form.deliveryMethod')}</span>
               <Select
                 value={deliveryMethod}
                 onChange={(e) => setDeliveryMethod(e.target.value as DeliveryMethod)}
               >
-                {DELIVERY_METHOD_OPTIONS.map((o) => (
+                {deliveryMethodOptions(tOrder).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -551,7 +557,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-text">Стоимость доставки, ₽</span>
+              <span className="text-sm text-text">{t('form.deliveryPrice')}</span>
               <Input
                 className="w-full"
                 numeric="decimal"
@@ -564,12 +570,12 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-text">Тип оплаты</span>
+              <span className="text-sm text-text">{t('form.paymentMethod')}</span>
               <Select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
               >
-                {PAYMENT_METHOD_OPTIONS.map((o) => (
+                {paymentMethodOptions(tOrder).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -578,12 +584,12 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-text">Статус оплаты</span>
+              <span className="text-sm text-text">{t('form.paymentStatus')}</span>
               <Select
                 value={paymentStatus}
                 onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}
               >
-                {PAYMENT_STATUS_OPTIONS.map((o) => (
+                {paymentStatusOptions(tOrder).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -592,12 +598,12 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-text">Статус заказа</span>
+              <span className="text-sm text-text">{t('form.shipmentStatus')}</span>
               <Select
                 value={shipmentStatus}
                 onChange={(e) => setShipmentStatus(e.target.value as ShipmentStatus)}
               >
-                {SHIPMENT_STATUS_OPTIONS.map((o) => (
+                {shipmentStatusOptions(tOrder).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -607,7 +613,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
           </div>
 
           <label className="flex flex-col gap-1">
-            <span className="text-sm text-text">Комментарий</span>
+            <span className="text-sm text-text">{t('form.comment')}</span>
             <Textarea
               className="min-h-20 w-full"
               value={comment}
@@ -629,7 +635,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
             )}
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-baseline gap-2">
-                <span className="text-sm text-text">Итого</span>
+                <span className="text-sm text-text">{t('form.total')}</span>
                 <span className="text-lg font-semibold text-heading">
                   {formatMoney(totalMinor)}
                 </span>
@@ -643,10 +649,10 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                   isLoading={saving}
                   className="w-full sm:w-auto"
                 >
-                  Сохранить
+                  {t('common:save')}
                 </Button>
                 <Button variant="secondary" onClick={onCancel} className="w-full sm:w-auto">
-                  Отмена
+                  {t('common:cancel')}
                 </Button>
               </div>
             </div>

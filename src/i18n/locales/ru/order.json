@@ -1,0 +1,143 @@
+{
+  "columns": {
+    "number": "№",
+    "dateCreated": "Добавлен",
+    "customer": "Клиент",
+    "address": "Адрес",
+    "plants": "Растения",
+    "total": "Сумма",
+    "paymentStatus": "Оплата",
+    "shipmentStatus": "Отправка"
+  },
+  "paymentStatus": {
+    "pending": "Ожидает",
+    "paid": "Оплачен",
+    "refunded": "Возврат"
+  },
+  "shipmentStatus": {
+    "new": "Новый",
+    "packing": "Сборка",
+    "shipped": "Отправлен",
+    "delivered": "Доставлен",
+    "cancelled": "Отменён"
+  },
+  "paymentMethod": {
+    "cash": "Наличные",
+    "card": "Карта",
+    "bank": "Перевод"
+  },
+  "deliveryMethod": {
+    "bus": "Автобус",
+    "post": "Почта",
+    "pickup": "Самовывоз",
+    "cdek": "СДЭК",
+    "taxi": "Такси",
+    "other": "Другое"
+  },
+  "list": {
+    "empty": "Заказов пока нет",
+    "search": "Поиск заказов",
+    "loadError": "Не удалось загрузить заказы"
+  },
+  "filters": {
+    "title": "Фильтры",
+    "open": "Фильтры",
+    "paymentStatus": "Статус оплаты",
+    "paymentStatusAria": "Фильтр по статусу оплаты",
+    "shipmentStatus": "Статус отправки",
+    "shipmentStatusAria": "Фильтр по статусу отправки",
+    "all": "Все",
+    "priceRange": "Сумма заказа",
+    "minPrice": "Минимальная сумма",
+    "maxPrice": "Максимальная сумма",
+    "reset": "Сбросить",
+    "done": "Готово"
+  },
+  "trash": {
+    "row": "Заказ №{{number}} · {{customer}}",
+    "empty": "Корзина пуста",
+    "loadError": "Не удалось загрузить корзину",
+    "search": "Поиск в корзине"
+  },
+  "detail": {
+    "back": "← К списку заказов",
+    "notFound": "Заказ не найден",
+    "loadError": "Не удалось загрузить заказ",
+    "title": "Заказ №{{number}}",
+    "unsynced": "не синхронизирован",
+    "edit": "Редактировать",
+    "delete": "Удалить",
+    "deleteTitle": "Удалить заказ №{{number}}?",
+    "deleteBody": "Заказ переместится в корзину — его можно будет восстановить.",
+    "editCustomer": "Редактировать клиента",
+    "editCustomerTitle": "Редактирование клиента",
+    "customer": "Клиент",
+    "phone": "Телефон",
+    "deliveryAddress": "Адрес доставки",
+    "deliveryMethod": "Способ доставки",
+    "paymentMethod": "Способ оплаты",
+    "paymentStatus": "Статус оплаты",
+    "shipmentStatus": "Статус отправки",
+    "completed": "Завершён",
+    "comment": "Комментарий",
+    "plantsTitle": "Растения",
+    "plantName": "Название",
+    "quantity": "Кол-во",
+    "price": "Цена",
+    "lineTotal": "Сумма",
+    "subtotal": "Сумма растений",
+    "delivery": "Доставка",
+    "total": "Итого"
+  },
+  "photos": {
+    "title": "Фото",
+    "open": "Открыть фото",
+    "alt": "Фото заказа",
+    "delete": "Удалить фото",
+    "add": "Добавить фото",
+    "view": "Просмотр фото",
+    "prev": "Предыдущее фото",
+    "next": "Следующее фото",
+    "uploadError": "Не удалось загрузить некоторые фото. Нужно подключение к интернету — попробуйте снова.",
+    "deleteTitle": "Удалить фото?",
+    "deleteBody": "Фото будет удалено без возможности восстановления."
+  },
+  "form": {
+    "newHeading": "Новый заказ",
+    "editHeading": "Редактирование заказа №{{number}}",
+    "customer": "Клиент",
+    "customerType": "Тип клиента",
+    "existing": "Существующий",
+    "new": "Новый",
+    "noCustomers": "Нет сохранённых клиентов — добавьте нового.",
+    "existingCustomer": "Существующий клиент",
+    "selectCustomer": "— выберите клиента —",
+    "deletedSuffix": " (удалён)",
+    "customerName": "Имя клиента",
+    "namePlaceholder": "Имя*",
+    "phone": "Телефон",
+    "phonePlaceholder": "+7 900 000-00-00",
+    "deliveryAddress": "Адрес доставки",
+    "plants": "Растения",
+    "addPlant": "+ Добавить растение",
+    "plantName": "Название",
+    "quantity": "Кол-во",
+    "price": "Цена, ₽",
+    "removePlant": "Удалить растение",
+    "deliveryMethod": "Способ доставки",
+    "deliveryPrice": "Стоимость доставки, ₽",
+    "paymentMethod": "Тип оплаты",
+    "paymentStatus": "Статус оплаты",
+    "shipmentStatus": "Статус заказа",
+    "comment": "Комментарий",
+    "total": "Итого",
+    "errors": {
+      "session": "Сессия истекла — войдите снова",
+      "selectCustomer": "Выберите клиента",
+      "customerName": "Укажите имя клиента",
+      "noPlants": "Добавьте хотя бы одно растение",
+      "plantPrice": "Укажите цену для каждого растения",
+      "saveFailed": "Не удалось сохранить заказ"
+    }
+  }
+}

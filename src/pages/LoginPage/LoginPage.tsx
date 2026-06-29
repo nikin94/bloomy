@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../../context/authContext'
 import {
@@ -55,16 +57,16 @@ const EyeIcon = ({ crossed }: { crossed: boolean }) => (
 // blocker, VPN, firewall or antivirus HTTPS inspection — not a problem with the
 // app, so the message points there. Anything unrecognized falls back to a
 // generic line that depends on which action failed.
-const authErrorMessage = (err: unknown, mode: AuthMode): string => {
+const authErrorMessage = (t: TFunction<'auth'>, err: unknown, mode: AuthMode): string => {
   const code = typeof err === 'object' && err !== null && 'code' in err ? err.code : undefined
   switch (code) {
     case 'auth/network-request-failed':
-      return 'Не удалось связаться с сервером входа. Проверьте интернет, VPN, блокировщик рекламы или антивирус и попробуйте снова.'
+      return t('errors.network')
     case 'auth/popup-blocked':
-      return 'Браузер заблокировал окно входа. Разрешите всплывающие окна для этого сайта и попробуйте снова.'
+      return t('errors.popupBlocked')
     case 'auth/popup-closed-by-user':
     case 'auth/cancelled-popup-request':
-      return 'Окно входа закрылось до завершения. Попробуйте войти ещё раз.'
+      return t('errors.popupClosed')
     // Sign-in failures: Firebase collapses wrong-email and wrong-password into
     // one code, so the message stays deliberately vague (no account
     // enumeration) — "почта или пароль неверны".
@@ -72,22 +74,21 @@ const authErrorMessage = (err: unknown, mode: AuthMode): string => {
     case 'auth/invalid-login-credentials':
     case 'auth/wrong-password':
     case 'auth/user-not-found':
-      return 'Неверная почта или пароль.'
+      return t('errors.invalidCredential')
     case 'auth/invalid-email':
-      return 'Неверный формат почты.'
+      return t('errors.invalidEmail')
     // Registration failure: too-short password. A taken address is NOT mapped
     // here — registration intercepts `email-already-in-use` itself and falls
     // back to sending a set-password email (see handleRegister).
     case 'auth/weak-password':
-      return 'Пароль слишком короткий — минимум 6 символов.'
+      return t('errors.weakPassword')
     default:
-      return mode === 'register'
-        ? 'Не удалось зарегистрироваться. Попробуйте снова.'
-        : 'Не удалось войти. Попробуйте снова.'
+      return mode === 'register' ? t('errors.registerFailed') : t('errors.signInFailed')
   }
 }
 
 const LoginPage = () => {
+  const { t } = useTranslation('auth')
   const { user, loading, sessionLost } = useAuth()
   const [signingIn, setSigningIn] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -121,7 +122,7 @@ const LoginPage = () => {
       await fn()
     } catch (err: unknown) {
       reportError(err, context)
-      setError(authErrorMessage(err, errorMode))
+      setError(authErrorMessage(t, err, errorMode))
       setSigningIn(false)
     }
   }
@@ -155,16 +156,14 @@ const LoginPage = () => {
         // failing. Not a bug, so not reported to Sentry under the register path.
         try {
           await sendPasswordReset(trimmed)
-          setNotice(
-            `Этот адрес уже зарегистрирован. Письмо для установки пароля отправлено на ${trimmed}.`,
-          )
+          setNotice(t('setPasswordSent', { email: trimmed }))
         } catch (resetErr: unknown) {
           reportError(resetErr, 'registerSetPassword')
-          setError(authErrorMessage(resetErr, 'signin'))
+          setError(authErrorMessage(t, resetErr, 'signin'))
         }
       } else {
         reportError(err, 'registerEmail')
-        setError(authErrorMessage(err, 'register'))
+        setError(authErrorMessage(t, err, 'register'))
       }
     }
     setSigningIn(false)
@@ -180,7 +179,7 @@ const LoginPage = () => {
       // check, so no Sentry report.
       if (password !== confirmPassword) {
         setNotice(null)
-        setError('Пароли не совпадают.')
+        setError(t('passwordMismatch'))
         return
       }
       void handleRegister(trimmed)
@@ -207,7 +206,7 @@ const LoginPage = () => {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-6 p-6 text-center">
       <h1 className="m-0 text-4xl font-semibold text-heading">Bloomy</h1>
-      <p className="m-0 text-text">Войдите, чтобы управлять заказами</p>
+      <p className="m-0 text-text">{t('tagline')}</p>
 
       {/* Session dropped unexpectedly (not a deliberate sign-out). We can't read
           the browser console on the user's machine, so we put a screenshottable
@@ -218,26 +217,22 @@ const LoginPage = () => {
           role="alert"
           className="max-w-md rounded-lg border border-danger bg-danger-bg p-4 text-left text-sm text-text"
         >
-          <p className="m-0 font-medium text-heading">Сессия прервалась</p>
-          <p className="m-0 mt-1">
-            Сессия завершилась автоматически. Чаще всего это значит, что VPN,
-            блокировщик рекламы или антивирус блокирует серверы входа Google.
-            Отключите их или смените сеть и войдите снова.
-          </p>
+          <p className="m-0 font-medium text-heading">{t('sessionLostTitle')}</p>
+          <p className="m-0 mt-1">{t('sessionLostBody')}</p>
           <p className="m-0 mt-2 text-text/80">
-            Соединение: {navigator.onLine ? 'есть (онлайн)' : 'нет (офлайн)'}.
+            {t('connection', { state: navigator.onLine ? t('online') : t('offline') })}
           </p>
         </div>
       )}
 
       <Button variant="primary" onClick={handleSignIn} isLoading={signingIn}>
-        Войти через Google
+        {t('googleSignIn')}
       </Button>
 
       {/* Divider between the two sign-in methods. */}
       <div className="flex w-full max-w-xs items-center gap-3" aria-hidden="true">
         <span className="h-px flex-1 bg-border" />
-        <span className="text-sm text-text">или</span>
+        <span className="text-sm text-text">{t('or')}</span>
         <span className="h-px flex-1 bg-border" />
       </div>
 
@@ -248,8 +243,8 @@ const LoginPage = () => {
         <Input
           type="email"
           autoComplete="email"
-          aria-label="Почта"
-          placeholder="Почта"
+          aria-label={t('email')}
+          placeholder={t('email')}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -260,8 +255,8 @@ const LoginPage = () => {
           // A new account needs a fresh password; an existing one offers the
           // saved credential — hint the right autofill for each mode.
           autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-          aria-label="Пароль"
-          placeholder={mode === 'register' ? 'Пароль (минимум 6 символов)' : 'Пароль'}
+          aria-label={t('password')}
+          placeholder={mode === 'register' ? t('passwordHint') : t('password')}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -269,7 +264,7 @@ const LoginPage = () => {
             <button
               type="button"
               onClick={() => setShowPassword((s) => !s)}
-              aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+              aria-label={showPassword ? t('hidePassword') : t('showPassword')}
               aria-pressed={showPassword}
               className="flex items-center rounded p-1 text-text hover:text-heading focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
@@ -283,15 +278,15 @@ const LoginPage = () => {
           <Input
             type={showPassword ? 'text' : 'password'}
             autoComplete="new-password"
-            aria-label="Подтверждение пароля"
-            placeholder="Повторите пароль"
+            aria-label={t('confirmPassword')}
+            placeholder={t('confirmPasswordPlaceholder')}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
           />
         )}
         <Button type="submit" variant="secondary" isLoading={signingIn}>
-          {mode === 'register' ? 'Зарегистрироваться' : 'Войти'}
+          {mode === 'register' ? t('register') : t('signIn')}
         </Button>
       </form>
 
@@ -303,7 +298,7 @@ const LoginPage = () => {
         onClick={toggleMode}
         className="text-sm text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
-        {mode === 'register' ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
+        {mode === 'register' ? t('toSignIn') : t('toRegister')}
       </button>
 
       {error && (

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import i18next, { type TFunction } from 'i18next'
 import { formatDate, formatTime, formatMoney } from '../utils/format'
 
 // Status/method unions are defined as Zod enums so the runtime validator (used
@@ -24,8 +25,8 @@ export const PAYMENT_METHOD_SCHEMA = z.enum(['cash', 'card', 'bank'])
 export type PaymentMethod = z.infer<typeof PAYMENT_METHOD_SCHEMA>
 
 // How the order is delivered. Keys are latin (stable storage values); the
-// Russian labels live in DELIVERY_METHOD_LABELS and the display order is set in
-// DELIVERY_METHOD_OPTIONS (alphabetical, with the "other" catch-all pinned last).
+// localized labels live in the `order` i18n ns and the display order is built in
+// deliveryMethodOptions (alphabetical by label, with the "other" catch-all pinned last).
 export const DELIVERY_METHOD_SCHEMA = z.enum(['bus', 'post', 'pickup', 'cdek', 'taxi', 'other'])
 export type DeliveryMethod = z.infer<typeof DELIVERY_METHOD_SCHEMA>
 
@@ -185,55 +186,54 @@ interface FormatOrderColumn extends OrderColumnBase {
 
 export type OrderColumn = FieldOrderColumn | FormatOrderColumn
 
-export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
-  pending: 'Ожидает',
-  paid: 'Оплачен',
-  refunded: 'Возврат',
-}
+// Canonical option values, in display order. Status/method values keep their
+// workflow order (e.g. new → shipped → delivered). Labels are NOT stored here:
+// they are resolved per render from the `order` i18n namespace, so the UI follows
+// the chosen language (the latin value IS the translation key, so a value can
+// never drift apart from its label).
+export const PAYMENT_STATUS_VALUES = PAYMENT_STATUS_SCHEMA.options
+export const SHIPMENT_STATUS_VALUES = SHIPMENT_STATUS_SCHEMA.options
+export const PAYMENT_METHOD_VALUES = PAYMENT_METHOD_SCHEMA.options
+export const DELIVERY_METHOD_VALUES = DELIVERY_METHOD_SCHEMA.options
 
-export const SHIPMENT_STATUS_LABELS: Record<ShipmentStatus, string> = {
-  new: 'Новый',
-  packing: 'Сборка',
-  shipped: 'Отправлен',
-  delivered: 'Доставлен',
-  cancelled: 'Отменён',
-}
+// A translate function bound to the `order` namespace (from
+// `useTranslation('order')`). Typed this way so the keys below are checked
+// against order.json at compile time, not just at runtime.
+type OrderT = TFunction<'order'>
 
-export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  cash: 'Наличные',
-  card: 'Карта',
-  bank: 'Перевод',
-}
+// Translated label for a single status/method value. The latin value IS the
+// key's leaf, so the union of values maps to a union of valid keys (type-safe).
+export const paymentStatusLabel = (t: OrderT, value: PaymentStatus): string =>
+  t(`paymentStatus.${value}`)
+export const shipmentStatusLabel = (t: OrderT, value: ShipmentStatus): string =>
+  t(`shipmentStatus.${value}`)
+export const paymentMethodLabel = (t: OrderT, value: PaymentMethod): string =>
+  t(`paymentMethod.${value}`)
+export const deliveryMethodLabel = (t: OrderT, value: DeliveryMethod): string =>
+  t(`deliveryMethod.${value}`)
 
-export const DELIVERY_METHOD_LABELS: Record<DeliveryMethod, string> = {
-  bus: 'Автобус',
-  post: 'Почта',
-  pickup: 'Самовывоз',
-  cdek: 'СДЭК',
-  taxi: 'Такси',
-  other: 'Другое',
-}
-
-// Build typed { value, label } options from a label record for native <select>.
-// Keys originate from a Record<Union, string>, so casting them back to the
-// union is safe.
-function toOptions<K extends string>(labels: Record<K, string>): { value: K; label: string }[] {
-  return (Object.keys(labels) as K[]).map((value) => ({ value, label: labels[value] }))
-}
-
-export const PAYMENT_STATUS_OPTIONS = toOptions(PAYMENT_STATUS_LABELS)
-export const SHIPMENT_STATUS_OPTIONS = toOptions(SHIPMENT_STATUS_LABELS)
-export const PAYMENT_METHOD_OPTIONS = toOptions(PAYMENT_METHOD_LABELS)
-// Status/method selects above keep their workflow order (e.g. new → shipped →
-// delivered), so toOptions preserves insertion order by design. Delivery methods
-// have no natural order, so sort them alphabetically in code rather than relying
-// on the order of keys in the label literal. The "other" catch-all is pinned
-// last, after the alphabetical names, regardless of its label.
-export const DELIVERY_METHOD_OPTIONS = toOptions(DELIVERY_METHOD_LABELS).sort((a, b) => {
-  if (a.value === 'other') return 1
-  if (b.value === 'other') return -1
-  return a.label.localeCompare(b.label, 'ru')
-})
+// { value, label } option lists for native <select>, built per render in the
+// active language. Functions (not constants) because the label is locale-
+// dependent; the consuming component re-renders on a language change (via its own
+// useTranslation), so the options rebuild with the new labels.
+export const paymentStatusOptions = (t: OrderT) =>
+  PAYMENT_STATUS_VALUES.map((value) => ({ value, label: paymentStatusLabel(t, value) }))
+export const shipmentStatusOptions = (t: OrderT) =>
+  SHIPMENT_STATUS_VALUES.map((value) => ({ value, label: shipmentStatusLabel(t, value) }))
+export const paymentMethodOptions = (t: OrderT) =>
+  PAYMENT_METHOD_VALUES.map((value) => ({ value, label: paymentMethodLabel(t, value) }))
+// Delivery methods have no natural order, so sort by the TRANSLATED label (the
+// order the user reads), with the "other" catch-all pinned last regardless.
+export const deliveryMethodOptions = (t: OrderT) =>
+  DELIVERY_METHOD_VALUES.map((value) => ({ value, label: deliveryMethodLabel(t, value) })).sort(
+    (a, b) => {
+      if (a.value === 'other') return 1
+      if (b.value === 'other') return -1
+      // Sort by the active UI locale so the alphabetical order is right for the
+      // language the labels are in (i18next is the same singleton config inits).
+      return a.label.localeCompare(b.label, i18next.language)
+    },
+  )
 
 // Columns shown in the list table. This is a factory rather than a constant
 // because the customer name is NOT stored on the order — it is resolved live
@@ -243,11 +243,12 @@ export const DELIVERY_METHOD_OPTIONS = toOptions(DELIVERY_METHOD_LABELS).sort((a
 // whatever the lookup returns (e.g. "—"), so a dangling customerId never crashes.
 export function buildOrderColumns(
   getCustomerName: (customerId: string) => string,
+  t: OrderT,
 ): OrderColumn[] {
   return [
     {
       id: 'number',
-      header: '№',
+      header: t('columns.number'),
       format: (o) => formatOrderNumber(o.number),
       // Not-yet-numbered (offline) orders are the most recent, so sort them as
       // the highest number rather than 0 — they sit with the newest, not first.
@@ -258,7 +259,7 @@ export function buildOrderColumns(
       id: 'dateCreated',
       // Date AND time of creation, on two lines (the date prominent, the time as
       // a muted second line below) — see DataTable's newline-splitting renderer.
-      header: 'Добавлен',
+      header: t('columns.dateCreated'),
       format: (o) => `${formatDate(o.dateCreated)}\n${formatTime(o.dateCreated)}`,
       // Sort by the raw timestamp, not the formatted strings.
       sortValue: (o) => o.dateCreated,
@@ -266,11 +267,11 @@ export function buildOrderColumns(
     },
     {
       id: 'customer',
-      header: 'Клиент',
+      header: t('columns.customer'),
       format: (o) => getCustomerName(o.customerId),
       sortValue: (o) => getCustomerName(o.customerId),
     },
-    { id: 'address', header: 'Адрес', field: 'address', sortValue: (o) => o.address },
+    { id: 'address', header: t('columns.address'), field: 'address', sortValue: (o) => o.address },
     // One plant per line, most valuable first. Rendered richly by DataTable
     // (the name in bold, the quantity as a plain number) keyed off this id —
     // bold-name-plus-quantity can't be expressed as a plain format string.
@@ -281,12 +282,12 @@ export function buildOrderColumns(
       // A stacked, multi-line list — no single key to sort by, so it stays
       // non-sortable (no sortValue).
       id: 'plants',
-      header: 'Растения',
+      header: t('columns.plants'),
       format: (o) => plantsByValueDesc(o.plants).map(plantLineLabel).join('\n'),
     },
     {
       id: 'total',
-      header: 'Сумма',
+      header: t('columns.total'),
       format: (o) => formatMoney(getTotalMinor(o)),
       // Sort by the numeric total (minor units), not the formatted money string.
       sortValue: (o) => getTotalMinor(o),
@@ -294,17 +295,17 @@ export function buildOrderColumns(
     },
     {
       id: 'paymentStatus',
-      header: 'Оплата',
-      format: (o) => PAYMENT_STATUS_LABELS[o.paymentStatus],
+      header: t('columns.paymentStatus'),
+      format: (o) => paymentStatusLabel(t, o.paymentStatus),
       // Sort by the displayed label so the order matches what the user reads.
-      sortValue: (o) => PAYMENT_STATUS_LABELS[o.paymentStatus],
+      sortValue: (o) => paymentStatusLabel(t, o.paymentStatus),
       width: 'w-28',
     },
     {
       id: 'shipmentStatus',
-      header: 'Отправка',
-      format: (o) => SHIPMENT_STATUS_LABELS[o.shipmentStatus],
-      sortValue: (o) => SHIPMENT_STATUS_LABELS[o.shipmentStatus],
+      header: t('columns.shipmentStatus'),
+      format: (o) => shipmentStatusLabel(t, o.shipmentStatus),
+      sortValue: (o) => shipmentStatusLabel(t, o.shipmentStatus),
       width: 'w-28',
     },
   ]

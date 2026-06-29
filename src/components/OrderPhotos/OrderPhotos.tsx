@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { deleteOrderPhoto, getPhotoUrl, uploadOrderPhoto } from '../../firebase/photos'
 import { reportError } from '../../observability/reportError'
 import Button from '../Button/Button'
@@ -34,22 +36,27 @@ const CameraIcon = () => (
 // × requests deletion.
 const Thumb = ({
   url,
+  t,
   onOpen,
   onDelete,
 }: {
   url: string | undefined
+  // Passed from the parent (which subscribes to i18next once) so each thumbnail
+  // row doesn't open its own useTranslation subscription.
+  t: TFunction<['order', 'common']>
   onOpen: () => void
   onDelete: () => void
-}) => (
+}) => {
+  return (
   <div className="relative size-20 shrink-0">
     <button
       type="button"
       onClick={onOpen}
       className="size-full overflow-hidden rounded-md border border-border bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-      aria-label="Открыть фото"
+      aria-label={t('photos.open')}
     >
       {url ? (
-        <img src={url} alt="Фото заказа" className="size-full object-cover" />
+        <img src={url} alt={t('photos.alt')} className="size-full object-cover" />
       ) : (
         <span className="flex size-full items-center justify-center text-text">
           <Loader size="sm" />
@@ -59,8 +66,8 @@ const Thumb = ({
     <button
       type="button"
       onClick={onDelete}
-      aria-label="Удалить фото"
-      title="Удалить фото"
+      aria-label={t('photos.delete')}
+      title={t('photos.delete')}
       className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full border border-border bg-bg text-text shadow-sm hover:text-danger focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
     >
       <span aria-hidden="true" className="text-sm leading-none">
@@ -68,7 +75,8 @@ const Thumb = ({
       </span>
     </button>
   </div>
-)
+  )
+}
 
 // Full-screen swiper. A horizontal scroll-snap track of full images; Esc closes,
 // arrows step. `pointer-events` stay on the controls so a tap on the backdrop
@@ -82,6 +90,7 @@ const PhotoViewer = ({
   startIndex: number
   onClose: () => void
 }) => {
+  const { t } = useTranslation(['order', 'common'])
   const trackRef = useRef<HTMLDivElement>(null)
 
   // Jump to the opened photo on mount (no smooth scroll — it should appear there).
@@ -112,14 +121,14 @@ const PhotoViewer = ({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Просмотр фото"
+      aria-label={t('photos.view')}
       className="fixed inset-0 z-50 flex flex-col bg-black/90"
     >
       <div className="flex justify-end p-3">
         <button
           type="button"
           onClick={onClose}
-          aria-label="Закрыть"
+          aria-label={t('common:close')}
           className="flex size-10 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
           <span aria-hidden="true">✕</span>
@@ -132,7 +141,7 @@ const PhotoViewer = ({
         {urls.map((url, i) => (
           <div key={i} className="flex w-full shrink-0 snap-center items-center justify-center p-4">
             {url ? (
-              <img src={url} alt="Фото заказа" className="max-h-full max-w-full object-contain" />
+              <img src={url} alt={t('photos.alt')} className="max-h-full max-w-full object-contain" />
             ) : (
               <span className="text-white">
                 <Loader size="md" />
@@ -146,7 +155,7 @@ const PhotoViewer = ({
           <button
             type="button"
             onClick={() => step(-1)}
-            aria-label="Предыдущее фото"
+            aria-label={t('photos.prev')}
             className="flex size-11 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             <span aria-hidden="true">‹</span>
@@ -154,7 +163,7 @@ const PhotoViewer = ({
           <button
             type="button"
             onClick={() => step(1)}
-            aria-label="Следующее фото"
+            aria-label={t('photos.next')}
             className="flex size-11 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             <span aria-hidden="true">›</span>
@@ -176,6 +185,7 @@ const OrderPhotos = ({
   photos: string[]
   onChange: (photos: string[]) => void
 }) => {
+  const { t } = useTranslation(['order', 'common'])
   // Resolved download URLs keyed by storage path.
   const [urls, setUrls] = useState<Record<string, string>>({})
   const [uploading, setUploading] = useState(false)
@@ -237,7 +247,7 @@ const OrderPhotos = ({
     // partial failure leaves no orphan blob the user can't see or delete.
     if (added.length > 0) onChange([...photosRef.current, ...added])
     if (failed) {
-      setUploadError('Не удалось загрузить некоторые фото. Нужно подключение к интернету — попробуйте снова.')
+      setUploadError(t('photos.uploadError'))
     }
     setUploading(false)
     // Reset so picking the same file again still fires onChange.
@@ -257,13 +267,14 @@ const OrderPhotos = ({
 
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="m-0 text-lg font-semibold text-heading">Фото</h2>
+      <h2 className="m-0 text-lg font-semibold text-heading">{t('photos.title')}</h2>
 
       <div className="flex flex-wrap gap-3">
         {photos.map((path, index) => (
           <Thumb
             key={path}
             url={urls[path]}
+            t={t}
             onOpen={() => setViewerIndex(index)}
             onDelete={() => setPendingDelete(path)}
           />
@@ -274,7 +285,7 @@ const OrderPhotos = ({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
-          aria-label="Добавить фото"
+          aria-label={t('photos.add')}
           className="flex size-20 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-text hover:bg-primary-bg disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           {uploading ? <Loader size="md" /> : <CameraIcon />}
@@ -308,14 +319,14 @@ const OrderPhotos = ({
       )}
 
       {pendingDelete && (
-        <Modal title="Удалить фото?" onClose={() => setPendingDelete(null)}>
-          <p className="m-0 text-text">Фото будет удалено без возможности восстановления.</p>
+        <Modal title={t('photos.deleteTitle')} onClose={() => setPendingDelete(null)}>
+          <p className="m-0 text-text">{t('photos.deleteBody')}</p>
           <div className="flex justify-end gap-2">
             <Button variant="danger" onClick={confirmDelete}>
-              Удалить
+              {t('common:delete')}
             </Button>
             <Button variant="secondary" onClick={() => setPendingDelete(null)}>
-              Отмена
+              {t('common:cancel')}
             </Button>
           </div>
         </Modal>

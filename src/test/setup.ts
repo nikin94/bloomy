@@ -7,7 +7,16 @@
 import '@testing-library/jest-dom/vitest'
 import { afterEach } from 'vitest'
 import { cleanup } from '@testing-library/react'
+// Initialise i18next once for the whole suite so components that call
+// `useTranslation` render real strings (defaults to ru — no localStorage cache
+// in jsdom), matching the Russian text the component tests assert on.
+import i18n from '../i18n/config.ts'
+import { DEFAULT_LANGUAGE } from '../types/settings'
 
 afterEach(() => {
   cleanup()
+  // i18next state is global; a test that switches language (via the provider or
+  // config) would otherwise leak `en` into the next suite and break assertions
+  // on Russian strings. Reset to the default after every test.
+  void i18n.changeLanguage(DEFAULT_LANGUAGE)
 })

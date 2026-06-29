@@ -9,7 +9,9 @@
 //
 // `size` covers the three places it's needed: `sm` inside buttons (replacing the
 // "Сохранение…" text), `lg` as the full-page overlay (see Spinner). Carries the
-// `status` role + a Russian label so a button in its loading state announces it.
+// `status` role + a translated label so a button in its loading state announces it.
+import { useTranslation } from 'react-i18next'
+
 type LoaderSize = 'sm' | 'md' | 'lg'
 
 const sizeClass: Record<LoaderSize, string> = {
@@ -18,12 +20,15 @@ const sizeClass: Record<LoaderSize, string> = {
   lg: 'size-16 border-4',
 }
 
-const Loader = ({ size = 'md', className = '' }: { size?: LoaderSize; className?: string }) => (
-  <span
-    role="status"
-    aria-label="Загрузка"
-    className={`inline-block shrink-0 animate-spin rounded-full border-transparent border-t-current ${sizeClass[size]} ${className}`}
-  />
-)
+const Loader = ({ size = 'md', className = '' }: { size?: LoaderSize; className?: string }) => {
+  const { t } = useTranslation()
+  return (
+    <span
+      role="status"
+      aria-label={t('loading')}
+      className={`inline-block shrink-0 animate-spin rounded-full border-transparent border-t-current ${sizeClass[size]} ${className}`}
+    />
+  )
+}
 
 export default Loader

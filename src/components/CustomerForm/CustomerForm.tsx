@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Input from '../Input/Input'
 import Textarea from '../Textarea/Textarea'
 import Button from '../Button/Button'
@@ -19,6 +20,7 @@ interface CustomerFormProps {
 // caller decides how the result is persisted (see CustomerFormProps). Used for
 // inline editing on the customers page.
 const CustomerForm = ({ initial, onSubmit, onCancel }: CustomerFormProps) => {
+  const { t } = useTranslation(['customer', 'common'])
   const [name, setName] = useState(initial?.name ?? '')
   const [phone, setPhone] = useState(initial?.phone ?? '')
   const [address, setAddress] = useState(initial?.address ?? '')
@@ -41,7 +43,7 @@ const CustomerForm = ({ initial, onSubmit, onCancel }: CustomerFormProps) => {
     try {
       await onSubmit({ name, phone, address, note })
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Не удалось сохранить клиента')
+      setError(err instanceof Error ? err.message : t('form.saveError'))
       setSaving(false)
     }
   }
@@ -50,30 +52,30 @@ const CustomerForm = ({ initial, onSubmit, onCancel }: CustomerFormProps) => {
     <form onSubmit={handleSubmit} className="flex min-w-0 flex-1 flex-col gap-2">
       <Input
         className="w-full"
-        aria-label="Имя клиента"
-        placeholder="Имя*"
+        aria-label={t('form.name')}
+        placeholder={t('form.namePlaceholder')}
         invalid={nameMissing}
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
       <Input
         className="w-full"
-        aria-label="Телефон"
-        placeholder="Телефон"
+        aria-label={t('form.phone')}
+        placeholder={t('form.phonePlaceholder')}
         value={phone}
         onChange={(e) => setPhone(e.target.value)}
       />
       <Input
         className="w-full"
-        aria-label="Адрес"
-        placeholder="Адрес"
+        aria-label={t('form.address')}
+        placeholder={t('form.addressPlaceholder')}
         value={address}
         onChange={(e) => setAddress(e.target.value)}
       />
       <Textarea
         className="min-h-16 w-full"
-        aria-label="Заметка о клиенте"
-        placeholder="Заметка"
+        aria-label={t('form.note')}
+        placeholder={t('form.notePlaceholder')}
         value={note}
         onChange={(e) => setNote(e.target.value)}
       />
@@ -86,10 +88,10 @@ const CustomerForm = ({ initial, onSubmit, onCancel }: CustomerFormProps) => {
 
       <div className="flex gap-2">
         <Button type="submit" variant="primary" size="sm" isLoading={saving}>
-          Сохранить
+          {t('common:save')}
         </Button>
         <Button type="button" variant="secondary" size="sm" onClick={onCancel} disabled={saving}>
-          Отмена
+          {t('common:cancel')}
         </Button>
       </div>
     </form>

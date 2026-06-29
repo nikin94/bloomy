@@ -1,0 +1,34 @@
+{
+  "title": "Settings",
+  "appearance": "Appearance",
+  "theme": "Theme",
+  "themeToggle": "Dark theme",
+  "fontSize": "Font size",
+  "fontScale": {
+    "decreased": "decreased",
+    "default": "default",
+    "increased": "increased"
+  },
+  "language": "Language",
+  "languageAria": "Interface language",
+  "lang": {
+    "ru": "Русский",
+    "en": "English"
+  },
+  "orderDefaults": "Order defaults",
+  "deliveryMethod": "Delivery method",
+  "deliveryMethodAria": "Default delivery method",
+  "paymentMethod": "Payment method",
+  "paymentMethodAria": "Default payment method",
+  "saveError": "Couldn't save settings",
+  "signOutError": "Couldn't sign out. Please try again.",
+  "admin": {
+    "title": "Test data (admin)",
+    "resetLabel": "Delete old data before seeding",
+    "seed": "Seed test data",
+    "confirmReset": "Delete ALL current orders and customers of this account and seed test data?",
+    "result": "Done: +{{customers}} customers, +{{orders}} orders ({{trashed}} in trash). Reload the page to see the changes.",
+    "resultReset": "Done: +{{customers}} customers, +{{orders}} orders ({{trashed}} in trash); removed {{removedOrders}} orders, {{removedCustomers}} customers. Reload the page to see the changes.",
+    "error": "Couldn't seed data"
+  }
+}

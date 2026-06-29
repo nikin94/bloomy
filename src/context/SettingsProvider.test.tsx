@@ -21,8 +21,14 @@ const USER = { uid: 'owner-1' } as User
 // Reads the applied values and offers a save trigger, so a test can observe the
 // provider's state and the document side effects.
 const Probe = () => {
-  const { fontScale, theme, defaultDeliveryMethod, defaultPaymentMethod, saveSettings: save } =
-    useSettings()
+  const {
+    fontScale,
+    theme,
+    language,
+    defaultDeliveryMethod,
+    defaultPaymentMethod,
+    saveSettings: save,
+  } = useSettings()
   return (
     <>
       <button
@@ -30,6 +36,7 @@ const Probe = () => {
           save({
             fontScale: 1.25,
             theme: 'light',
+            language: 'en',
             defaultDeliveryMethod: 'cdek',
             defaultPaymentMethod: 'card',
           })
@@ -39,6 +46,7 @@ const Probe = () => {
       </button>
       <span>scale:{fontScale}</span>
       <span>theme:{theme}</span>
+      <span>lang:{language}</span>
       <span>delivery:{defaultDeliveryMethod}</span>
       <span>payment:{defaultPaymentMethod}</span>
     </>
@@ -57,6 +65,7 @@ const renderProvider = (user: User | null = USER) => render(tree(user))
 
 const cssScale = () => document.documentElement.style.getPropertyValue('--font-scale')
 const dataTheme = () => document.documentElement.getAttribute('data-theme')
+const htmlLang = () => document.documentElement.getAttribute('lang')
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -64,6 +73,7 @@ beforeEach(() => {
   saveSettings.mockResolvedValue(undefined)
   document.documentElement.style.removeProperty('--font-scale')
   document.documentElement.removeAttribute('data-theme')
+  document.documentElement.removeAttribute('lang')
   localStorage.clear()
 })
 
@@ -90,6 +100,36 @@ describe('SettingsProvider', () => {
     expect(dataTheme()).toBe('dark')
   })
 
+  it('loads the saved language and applies it to <html lang> + cache', async () => {
+    fetchSettings.mockResolvedValue({ language: 'en' })
+    renderProvider()
+    await screen.findByText('lang:en')
+    expect(htmlLang()).toBe('en')
+    expect(localStorage.getItem('bloomy-lang')).toBe('en')
+  })
+
+  it('defaults to Russian when no language is saved', async () => {
+    renderProvider()
+    await screen.findByText('lang:ru')
+    // `lang:ru` is also the loading-state default, so it renders before settings
+    // resolve; the <html lang> apply runs once they do — wait for that side effect
+    // rather than racing it.
+    await waitFor(() => expect(htmlLang()).toBe('ru'))
+  })
+
+  it('keeps the cached language while settings load (no default clobber / flash)', async () => {
+    // A signed-in user with English saved: the cache + first paint are already en.
+    localStorage.setItem('bloomy-lang', 'en')
+    // Never resolves → the provider stays in the loading window.
+    fetchSettings.mockReturnValue(new Promise<never>(() => {}))
+    renderProvider()
+    // Context surfaces the fallback default while loading, but the mount effect
+    // must NOT apply it: doing so would flip i18next to ru and stomp the cache,
+    // then flip back to en once Firestore resolves (the en→ru→en flash).
+    await screen.findByText('lang:ru')
+    expect(localStorage.getItem('bloomy-lang')).toBe('en')
+  })
+
   it('loads the saved order defaults (delivery + payment)', async () => {
     fetchSettings.mockResolvedValue({ defaultDeliveryMethod: 'taxi', defaultPaymentMethod: 'bank' })
     renderProvider()
@@ -112,16 +152,19 @@ describe('SettingsProvider', () => {
       expect(saveSettings).toHaveBeenCalledWith('owner-1', {
         fontScale: 1.25,
         theme: 'light',
+        language: 'en',
         defaultDeliveryMethod: 'cdek',
         defaultPaymentMethod: 'card',
       }),
     )
     await screen.findByText('scale:1.25')
     await screen.findByText('theme:light')
+    await screen.findByText('lang:en')
     await screen.findByText('delivery:cdek')
     await screen.findByText('payment:card')
     expect(cssScale()).toBe('1.25')
     expect(dataTheme()).toBe('light')
+    expect(htmlLang()).toBe('en')
   })
 
   it('falls back to the defaults when signed out and never fetches', async () => {

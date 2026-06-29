@@ -1,0 +1,31 @@
+{
+  "save": "Save",
+  "cancel": "Cancel",
+  "signOut": "Sign out",
+  "edit": "Edit",
+  "delete": "Delete",
+  "restore": "Restore",
+  "close": "Close",
+  "loading": "Loading",
+  "nothingFound": "Nothing found",
+  "search": "Search",
+  "searchClear": "Clear and close search",
+  "days_one": "{{count}} day",
+  "days_other": "{{count}} days",
+  "sync": {
+    "syncing": "Syncing…",
+    "offline": "Offline",
+    "lastSynced": "Last synced: {{time}}"
+  },
+  "update": {
+    "title": "A new version is available",
+    "body": "Reload the page to get the latest changes.",
+    "later": "Later",
+    "reload": "Reload"
+  },
+  "crash": {
+    "title": "Something went wrong",
+    "body": "An unexpected error occurred. We've already received a report. Try reloading the page.",
+    "reload": "Reload"
+  }
+}

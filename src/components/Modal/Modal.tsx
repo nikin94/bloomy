@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react'
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '../Button/Button'
 
 const CloseIcon = () => (
@@ -38,6 +39,7 @@ interface ModalProps {
 // button), and a focus trap that moves focus in on open, cycles Tab/Shift+Tab
 // inside, and restores focus to the opener on close. The body is just children.
 const Modal = ({ title, onClose, children, widthClassName = 'max-w-md' }: ModalProps) => {
+  const { t } = useTranslation()
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -118,8 +120,8 @@ const Modal = ({ title, onClose, children, widthClassName = 'max-w-md' }: ModalP
             variant="secondary"
             size="icon"
             onClick={onClose}
-            aria-label="Закрыть"
-            title="Закрыть"
+            aria-label={t('close')}
+            title={t('close')}
           >
             <CloseIcon />
           </Button>

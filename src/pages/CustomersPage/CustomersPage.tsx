@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
@@ -17,13 +19,18 @@ import type { Customer } from '../../types/customer'
 // Extracted from the map so the loop body is its own component.
 const CustomerRow = ({
   customer,
+  t,
   onEdit,
   onRequestDelete,
 }: {
   customer: Customer
+  // Passed from the parent (single i18next subscription) so each customer row
+  // doesn't open its own useTranslation.
+  t: TFunction<['customer', 'common']>
   onEdit: (customer: Customer) => void
   onRequestDelete: (customer: Customer) => void
-}) => (
+}) => {
+  return (
   <li className="flex items-center gap-3 border-b border-border py-3">
     <div className="min-w-0 flex-1">
       <p className="m-0 truncate text-heading">{customer.name}</p>
@@ -40,8 +47,8 @@ const CustomerRow = ({
         variant="secondary"
         size="icon"
         onClick={() => onEdit(customer)}
-        aria-label={`Редактировать клиента ${customer.name}`}
-        title="Редактировать"
+        aria-label={t('editAria', { name: customer.name })}
+        title={t('edit')}
       >
         <svg
           aria-hidden="true"
@@ -61,8 +68,8 @@ const CustomerRow = ({
         variant="secondary"
         size="icon"
         onClick={() => onRequestDelete(customer)}
-        aria-label={`Удалить клиента ${customer.name}`}
-        title="Удалить"
+        aria-label={t('deleteAria', { name: customer.name })}
+        title={t('delete')}
       >
         <svg
           aria-hidden="true"
@@ -82,11 +89,13 @@ const CustomerRow = ({
       </Button>
     </div>
   </li>
-)
+  )
+}
 
 // Address-book screen: lists the signed-in user's active customers and lets each
 // be edited (in a modal, one at a time) or removed (soft delete — see softDeleteCustomer).
 const CustomersPage = () => {
+  const { t } = useTranslation(['customer', 'common'])
   // Guaranteed non-null under ProtectedRoute, but read defensively and gate on it.
   const { user } = useAuth()
   const ownerId = user?.uid
@@ -113,7 +122,7 @@ const CustomersPage = () => {
       })
       .catch((err: unknown) => {
         if (active)
-          setLoadError(err instanceof Error ? err.message : 'Не удалось загрузить клиентов')
+          setLoadError(err instanceof Error ? err.message : t('list.loadError'))
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -121,6 +130,9 @@ const CustomersPage = () => {
     return () => {
       active = false
     }
+    // `t` is only read in the error fallback; depending on it would refetch on a
+    // language switch, so it's intentionally excluded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerId])
 
   // Persist an edit, then update the in-memory list. Optional fields that came
@@ -167,7 +179,7 @@ const CustomersPage = () => {
   return (
     <div className="flex h-full flex-col">
       <AppHeader
-        actions={<SearchControl value={query} onChange={setQuery} label="Поиск клиентов" />}
+        actions={<SearchControl value={query} onChange={setQuery} label={t('list.search')} />}
       />
 
       {loading && <Spinner />}
@@ -182,7 +194,7 @@ const CustomersPage = () => {
           <div className="mx-auto flex max-w-2xl flex-col gap-3">
             {visibleCustomers.length === 0 ? (
               <p className="m-0 text-text">
-                {searchActive ? 'Ничего не найдено' : 'Клиентов пока нет'}
+                {searchActive ? t('common:nothingFound') : t('list.empty')}
               </p>
             ) : (
               <ul className="m-0 flex list-none flex-col p-0">
@@ -190,6 +202,7 @@ const CustomersPage = () => {
                   <CustomerRow
                     key={customer.id}
                     customer={customer}
+                    t={t}
                     onEdit={setEditing}
                     onRequestDelete={setDeletingCustomer}
                   />
@@ -203,7 +216,7 @@ const CustomersPage = () => {
       {/* Edit dialog — one customer at a time. Mounted only while editing, so
           the form seeds fresh from the chosen customer each time. */}
       {editing && (
-        <Modal key={editing.id} title="Редактирование клиента" onClose={() => setEditing(null)}>
+        <Modal key={editing.id} title={t('editTitle')} onClose={() => setEditing(null)}>
           <CustomerForm
             initial={{
               name: editing.name,
@@ -226,16 +239,16 @@ const CustomersPage = () => {
           destructive action takes an explicit second step. */}
       {deletingCustomer && (
         <Modal
-          title={`Удалить клиента ${deletingCustomer.name}?`}
+          title={t('deleteTitle', { name: deletingCustomer.name })}
           onClose={() => setDeletingCustomer(null)}
         >
-          <p className="m-0 text-text">Клиент исчезнет из списка.</p>
+          <p className="m-0 text-text">{t('deleteBody')}</p>
           <div className="flex justify-end gap-2">
             <Button variant="danger" onClick={handleDelete}>
-              Удалить
+              {t('common:delete')}
             </Button>
             <Button variant="secondary" onClick={() => setDeletingCustomer(null)}>
-              Отмена
+              {t('common:cancel')}
             </Button>
           </div>
         </Modal>

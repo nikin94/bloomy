@@ -1,0 +1,143 @@
+{
+  "columns": {
+    "number": "#",
+    "dateCreated": "Added",
+    "customer": "Customer",
+    "address": "Address",
+    "plants": "Plants",
+    "total": "Total",
+    "paymentStatus": "Payment",
+    "shipmentStatus": "Shipment"
+  },
+  "paymentStatus": {
+    "pending": "Pending",
+    "paid": "Paid",
+    "refunded": "Refunded"
+  },
+  "shipmentStatus": {
+    "new": "New",
+    "packing": "Packing",
+    "shipped": "Shipped",
+    "delivered": "Delivered",
+    "cancelled": "Cancelled"
+  },
+  "paymentMethod": {
+    "cash": "Cash",
+    "card": "Card",
+    "bank": "Transfer"
+  },
+  "deliveryMethod": {
+    "bus": "Bus",
+    "post": "Post",
+    "pickup": "Pickup",
+    "cdek": "CDEK",
+    "taxi": "Taxi",
+    "other": "Other"
+  },
+  "list": {
+    "empty": "No orders yet",
+    "search": "Search orders",
+    "loadError": "Couldn't load orders"
+  },
+  "filters": {
+    "title": "Filters",
+    "open": "Filters",
+    "paymentStatus": "Payment status",
+    "paymentStatusAria": "Filter by payment status",
+    "shipmentStatus": "Shipment status",
+    "shipmentStatusAria": "Filter by shipment status",
+    "all": "All",
+    "priceRange": "Order total",
+    "minPrice": "Minimum amount",
+    "maxPrice": "Maximum amount",
+    "reset": "Reset",
+    "done": "Done"
+  },
+  "trash": {
+    "row": "Order #{{number}} · {{customer}}",
+    "empty": "Trash is empty",
+    "loadError": "Couldn't load the trash",
+    "search": "Search the trash"
+  },
+  "detail": {
+    "back": "← Back to orders",
+    "notFound": "Order not found",
+    "loadError": "Couldn't load the order",
+    "title": "Order #{{number}}",
+    "unsynced": "not synced",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteTitle": "Delete order #{{number}}?",
+    "deleteBody": "The order will move to the trash — you can restore it.",
+    "editCustomer": "Edit customer",
+    "editCustomerTitle": "Edit customer",
+    "customer": "Customer",
+    "phone": "Phone",
+    "deliveryAddress": "Delivery address",
+    "deliveryMethod": "Delivery method",
+    "paymentMethod": "Payment method",
+    "paymentStatus": "Payment status",
+    "shipmentStatus": "Shipment status",
+    "completed": "Completed",
+    "comment": "Comment",
+    "plantsTitle": "Plants",
+    "plantName": "Name",
+    "quantity": "Qty",
+    "price": "Price",
+    "lineTotal": "Total",
+    "subtotal": "Plants total",
+    "delivery": "Delivery",
+    "total": "Total"
+  },
+  "photos": {
+    "title": "Photos",
+    "open": "Open photo",
+    "alt": "Order photo",
+    "delete": "Delete photo",
+    "add": "Add photo",
+    "view": "View photo",
+    "prev": "Previous photo",
+    "next": "Next photo",
+    "uploadError": "Couldn't upload some photos. An internet connection is required — try again.",
+    "deleteTitle": "Delete photo?",
+    "deleteBody": "The photo will be deleted permanently."
+  },
+  "form": {
+    "newHeading": "New order",
+    "editHeading": "Edit order #{{number}}",
+    "customer": "Customer",
+    "customerType": "Customer type",
+    "existing": "Existing",
+    "new": "New",
+    "noCustomers": "No saved customers — add a new one.",
+    "existingCustomer": "Existing customer",
+    "selectCustomer": "— select a customer —",
+    "deletedSuffix": " (deleted)",
+    "customerName": "Customer name",
+    "namePlaceholder": "Name*",
+    "phone": "Phone",
+    "phonePlaceholder": "+7 900 000-00-00",
+    "deliveryAddress": "Delivery address",
+    "plants": "Plants",
+    "addPlant": "+ Add plant",
+    "plantName": "Name",
+    "quantity": "Qty",
+    "price": "Price, ₽",
+    "removePlant": "Remove plant",
+    "deliveryMethod": "Delivery method",
+    "deliveryPrice": "Delivery cost, ₽",
+    "paymentMethod": "Payment type",
+    "paymentStatus": "Payment status",
+    "shipmentStatus": "Order status",
+    "comment": "Comment",
+    "total": "Total",
+    "errors": {
+      "session": "Session expired — sign in again",
+      "selectCustomer": "Select a customer",
+      "customerName": "Enter the customer's name",
+      "noPlants": "Add at least one plant",
+      "plantPrice": "Enter a price for each plant",
+      "saveFailed": "Couldn't save the order"
+    }
+  }
+}
