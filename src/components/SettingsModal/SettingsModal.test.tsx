@@ -26,6 +26,7 @@ const settings = (over: Partial<SettingsState> = {}): SettingsState => ({
   language: 'ru',
   defaultDeliveryMethod: 'post',
   defaultPaymentMethod: 'cash',
+  defaultCurrency: 'RUB',
   previewFontScale,
   previewTheme,
   previewLanguage,
@@ -103,6 +104,7 @@ describe('SettingsModal', () => {
       language: 'ru',
       defaultDeliveryMethod: 'post',
       defaultPaymentMethod: 'cash',
+      defaultCurrency: 'RUB',
     })
     expect(onClose).toHaveBeenCalledTimes(1)
   })
@@ -137,6 +139,14 @@ describe('SettingsModal', () => {
     expect(saveSettings).toHaveBeenCalledWith(
       expect.objectContaining({ defaultDeliveryMethod: 'cdek', defaultPaymentMethod: 'card' }),
     )
+  })
+
+  it('saves the chosen default currency', async () => {
+    const user = userEvent.setup()
+    renderModal()
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Валюта по умолчанию' }), 'USD')
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(saveSettings).toHaveBeenCalledWith(expect.objectContaining({ defaultCurrency: 'USD' }))
   })
 
   it('reverts the live preview to the saved values on cancel, without saving', async () => {

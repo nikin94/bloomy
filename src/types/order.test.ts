@@ -13,6 +13,7 @@ import {
   deliveryMethodOptions,
   paymentStatusOptions,
   paymentMethodOptions,
+  currencyOptions,
   STORED_ORDER_SCHEMA,
 } from './order'
 import type { Order } from './order'
@@ -177,6 +178,7 @@ describe('isModalFilterActive', () => {
     expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, query: 'роза' })).toBe(false)
     expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, paymentStatus: 'paid' })).toBe(true)
     expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, shipmentStatus: 'shipped' })).toBe(true)
+    expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, currency: 'USD' })).toBe(true)
     expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, minPriceMinor: 5000 })).toBe(true)
     expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, maxPriceMinor: 5000 })).toBe(true)
   })
@@ -220,6 +222,23 @@ describe('filterOrders', () => {
     expect(filterOrders(orders, { ...EMPTY_ORDER_FILTER, query: 'нет такого' }, getName)).toEqual([])
   })
 
+  it('filters by the order currency', () => {
+    const mixed = [
+      makeOrder({ id: 'rub', currency: 'RUB' }),
+      makeOrder({ id: 'usd', currency: 'USD' }),
+      makeOrder({ id: 'eur', currency: 'EUR' }),
+    ]
+    expect(
+      filterOrders(mixed, { ...EMPTY_ORDER_FILTER, currency: 'USD' }, getName).map((o) => o.id),
+    ).toEqual(['usd'])
+    // The empty currency matches every order.
+    expect(filterOrders(mixed, EMPTY_ORDER_FILTER, getName).map((o) => o.id)).toEqual([
+      'rub',
+      'usd',
+      'eur',
+    ])
+  })
+
   it('filters by the price range (order total in minor units)', () => {
     // Three orders with distinct totals (plant subtotal + delivery).
     const priced = [
@@ -253,6 +272,17 @@ describe('deliveryMethodOptions', () => {
       'СДЭК',
       'Такси',
       'Другое',
+    ])
+  })
+})
+
+describe('currencyOptions', () => {
+  it('labels each currency with its localized name and symbol glyph', () => {
+    // ru labels (the shared test i18n defaults to ru); the symbol comes from Intl.
+    expect(currencyOptions(t)).toEqual([
+      { value: 'RUB', label: 'Рубли (₽)' },
+      { value: 'USD', label: 'Доллары ($)' },
+      { value: 'EUR', label: 'Евро (€)' },
     ])
   })
 })
@@ -320,7 +350,13 @@ describe('STORED_ORDER_SCHEMA', () => {
     expect(STORED_ORDER_SCHEMA.safeParse(doc).success).toBe(false)
   })
 
-  it('rejects a currency other than RUB', () => {
-    expect(STORED_ORDER_SCHEMA.safeParse({ ...validDoc(), currency: 'USD' }).success).toBe(false)
+  it('accepts every supported currency (RUB/USD/EUR)', () => {
+    for (const currency of ['RUB', 'USD', 'EUR']) {
+      expect(STORED_ORDER_SCHEMA.safeParse({ ...validDoc(), currency }).success).toBe(true)
+    }
+  })
+
+  it('rejects an unsupported currency', () => {
+    expect(STORED_ORDER_SCHEMA.safeParse({ ...validDoc(), currency: 'GBP' }).success).toBe(false)
   })
 })

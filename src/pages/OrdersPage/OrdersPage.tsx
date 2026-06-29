@@ -12,9 +12,11 @@ import RangeSliderImport from 'react-range-slider-input'
 import { fetchOrders, reconcileOrderNumbers } from '../../firebase/orders'
 import { fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
+import { useSettings } from '../../context/settingsContext'
 import { formatMoney } from '../../utils/format'
 import {
   buildOrderColumns,
+  currencyOptions,
   filterOrders,
   getTotalMinor,
   isOrderFilterActive,
@@ -23,7 +25,7 @@ import {
   paymentStatusOptions,
   shipmentStatusOptions,
 } from '../../types/order'
-import type { Order, OrderFilter, PaymentStatus, ShipmentStatus } from '../../types/order'
+import type { Currency, Order, OrderFilter, PaymentStatus, ShipmentStatus } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
 // react-range-slider-input ships CommonJS (`exports.default = Component`).
@@ -65,6 +67,9 @@ const OrdersPage = () => {
   // optional, so we read the uid defensively and gate the fetch on it.
   const { user } = useAuth()
   const ownerId = user?.uid
+  // The price-filter range is not tied to one order, so it shows in the user's
+  // default currency (a display label for the numeric bounds).
+  const { defaultCurrency } = useSettings()
   const [orders, setOrders] = useState<Order[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
@@ -152,9 +157,15 @@ const OrdersPage = () => {
   const filterActive = isOrderFilterActive(filter)
   const modalFilterActive = isModalFilterActive(filter)
 
-  // Price slider bounds: 0 to the highest order total in the list. The max thumb
-  // sits at the ceiling when there is no upper bound (maxPriceMinor === null).
-  const priceCeilingMinor = orders.reduce((max, o) => Math.max(max, getTotalMinor(o)), 0)
+  // The price slider is single-currency: minor units are only comparable within
+  // one currency (100 000 ₽ and $200 are not on the same scale). When a currency
+  // filter is active, scope the ceiling — and the label's symbol — to it; with no
+  // currency picked the bound spans every order and the label shows the default.
+  const priceCurrency = filter.currency || defaultCurrency
+  const priceScopeOrders = filter.currency
+    ? orders.filter((o) => o.currency === filter.currency)
+    : orders
+  const priceCeilingMinor = priceScopeOrders.reduce((max, o) => Math.max(max, getTotalMinor(o)), 0)
   const maxThumb = filter.maxPriceMinor ?? priceCeilingMinor
   // The range slider keeps its two thumbs ordered internally, so we just store
   // the pair it reports. An upper thumb at the ceiling means "no upper bound"
@@ -248,6 +259,33 @@ const OrdersPage = () => {
               </Select>
             </label>
 
+            {/* Currency filter — each order keeps its own currency, so this
+                narrows the list to orders priced in the chosen one. */}
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-heading">{t('filters.currency')}</span>
+              <Select
+                aria-label={t('filters.currencyAria')}
+                value={filter.currency}
+                onChange={(e) =>
+                  // Reset the price bounds: they were set on the previous
+                  // currency's minor-unit scale, so they don't carry over.
+                  setFilter((f) => ({
+                    ...f,
+                    currency: e.target.value as Currency | '',
+                    minPriceMinor: 0,
+                    maxPriceMinor: null,
+                  }))
+                }
+              >
+                <option value="">{t('filters.all')}</option>
+                {currencyOptions(tOrder).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+
             {/* Price range: one track with two thumbs (from / to) over the
                 0…ceiling scale. Hidden when every order costs the same (or there
                 are none) — there is no range to pick. */}
@@ -256,7 +294,8 @@ const OrdersPage = () => {
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="text-sm font-medium text-heading">{t('filters.priceRange')}</span>
                   <span className="text-sm text-text">
-                    {formatMoney(filter.minPriceMinor)} – {formatMoney(maxThumb)}
+                    {formatMoney(filter.minPriceMinor, priceCurrency)} –{' '}
+                    {formatMoney(maxThumb, priceCurrency)}
                   </span>
                 </div>
                 <RangeSlider
@@ -278,6 +317,7 @@ const OrdersPage = () => {
                     ...f,
                     paymentStatus: '',
                     shipmentStatus: '',
+                    currency: '',
                     minPriceMinor: 0,
                     maxPriceMinor: null,
                   }))

@@ -25,7 +25,7 @@ import Button from '../../components/Button/Button'
 import Modal from '../../components/Modal/Modal'
 import CustomerForm from '../../components/CustomerForm/CustomerForm'
 import OrderPhotos from '../../components/OrderPhotos/OrderPhotos'
-import type { Order } from '../../types/order'
+import type { Currency, Order } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
 const EditIcon = () => (
@@ -266,10 +266,10 @@ const OrderDetailPage = () => {
                     <td className="py-2 pr-3 text-heading">{item.name}</td>
                     <td className="py-2 px-3 text-right text-text tabular-nums">{item.quantity}</td>
                     <td className="py-2 px-3 text-right text-text tabular-nums">
-                      {formatMoney(item.unitPriceMinor)}
+                      {formatMoney(item.unitPriceMinor, order.currency)}
                     </td>
                     <td className="py-2 pl-3 text-right text-heading tabular-nums">
-                      {formatMoney(item.unitPriceMinor * item.quantity)}
+                      {formatMoney(item.unitPriceMinor * item.quantity, order.currency)}
                     </td>
                   </tr>
                 ))}
@@ -279,11 +279,11 @@ const OrderDetailPage = () => {
 
           {/* Money breakdown */}
           <section className="flex flex-col gap-1 self-end text-[0.8333rem]">
-            <Total label={t('detail.subtotal')} value={getSubtotalMinor(order)} />
-            <Total label={t('detail.delivery')} value={order.deliveryPriceMinor} />
+            <Total label={t('detail.subtotal')} value={getSubtotalMinor(order)} currency={order.currency} />
+            <Total label={t('detail.delivery')} value={order.deliveryPriceMinor} currency={order.currency} />
             <div className="mt-1 flex justify-between gap-8 border-t border-border pt-2 font-semibold text-heading">
               <span>{t('detail.total')}</span>
-              <span className="tabular-nums">{formatMoney(getTotalMinor(order))}</span>
+              <span className="tabular-nums">{formatMoney(getTotalMinor(order), order.currency)}</span>
             </div>
           </section>
 
@@ -382,10 +382,18 @@ const InlineStatusField = ({
   </div>
 )
 
-const Total = ({ label, value }: { label: string; value: number }) => (
+const Total = ({
+  label,
+  value,
+  currency,
+}: {
+  label: string
+  value: number
+  currency: Currency
+}) => (
   <div className="flex justify-between gap-8 text-text">
     <span>{label}</span>
-    <span className="text-heading tabular-nums">{formatMoney(value)}</span>
+    <span className="text-heading tabular-nums">{formatMoney(value, currency)}</span>
   </div>
 )
 

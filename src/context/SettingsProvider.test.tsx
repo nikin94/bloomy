@@ -27,6 +27,7 @@ const Probe = () => {
     language,
     defaultDeliveryMethod,
     defaultPaymentMethod,
+    defaultCurrency,
     saveSettings: save,
   } = useSettings()
   return (
@@ -39,6 +40,7 @@ const Probe = () => {
             language: 'en',
             defaultDeliveryMethod: 'cdek',
             defaultPaymentMethod: 'card',
+            defaultCurrency: 'EUR',
           })
         }
       >
@@ -49,6 +51,7 @@ const Probe = () => {
       <span>lang:{language}</span>
       <span>delivery:{defaultDeliveryMethod}</span>
       <span>payment:{defaultPaymentMethod}</span>
+      <span>currency:{defaultCurrency}</span>
     </>
   )
 }
@@ -143,6 +146,17 @@ describe('SettingsProvider', () => {
     await screen.findByText('payment:card')
   })
 
+  it('loads the saved default currency', async () => {
+    fetchSettings.mockResolvedValue({ defaultCurrency: 'USD' })
+    renderProvider()
+    await screen.findByText('currency:USD')
+  })
+
+  it('defaults the currency to RUB when none is saved', async () => {
+    renderProvider()
+    await screen.findByText('currency:RUB')
+  })
+
   it('persists and applies new values on save', async () => {
     const user = userEvent.setup()
     renderProvider()
@@ -155,6 +169,7 @@ describe('SettingsProvider', () => {
         language: 'en',
         defaultDeliveryMethod: 'cdek',
         defaultPaymentMethod: 'card',
+        defaultCurrency: 'EUR',
       }),
     )
     await screen.findByText('scale:1.25')
@@ -162,6 +177,7 @@ describe('SettingsProvider', () => {
     await screen.findByText('lang:en')
     await screen.findByText('delivery:cdek')
     await screen.findByText('payment:card')
+    await screen.findByText('currency:EUR')
     expect(cssScale()).toBe('1.25')
     expect(dataTheme()).toBe('light')
     expect(htmlLang()).toBe('en')

@@ -1,4 +1,9 @@
 {
+  "currency": {
+    "RUB": "Rubles",
+    "USD": "Dollars",
+    "EUR": "Euros"
+  },
   "columns": {
     "number": "#",
     "dateCreated": "Added",
@@ -46,6 +51,8 @@
     "paymentStatusAria": "Filter by payment status",
     "shipmentStatus": "Shipment status",
     "shipmentStatusAria": "Filter by shipment status",
+    "currency": "Currency",
+    "currencyAria": "Filter by currency",
     "all": "All",
     "priceRange": "Order total",
     "minPrice": "Minimum amount",
@@ -122,10 +129,11 @@
     "addPlant": "+ Add plant",
     "plantName": "Name",
     "quantity": "Qty",
-    "price": "Price, ₽",
+    "price": "Price",
     "removePlant": "Remove plant",
     "deliveryMethod": "Delivery method",
-    "deliveryPrice": "Delivery cost, ₽",
+    "deliveryPrice": "Delivery cost",
+    "currency": "Currency",
     "paymentMethod": "Payment type",
     "paymentStatus": "Payment status",
     "shipmentStatus": "Order status",

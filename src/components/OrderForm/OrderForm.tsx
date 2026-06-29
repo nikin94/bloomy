@@ -7,6 +7,7 @@ import { useAuth } from '../../context/authContext'
 import { useSettings } from '../../context/settingsContext'
 import { formatMinorToInput, formatMoney, parseRublesToMinor } from '../../utils/format'
 import {
+  currencyOptions,
   deliveryMethodOptions,
   paymentMethodOptions,
   paymentStatusOptions,
@@ -20,6 +21,7 @@ import Input from '../Input/Input'
 import Textarea from '../Textarea/Textarea'
 import type { NewOrder } from '../../firebase/orders'
 import type {
+  Currency,
   DeliveryMethod,
   Order,
   OrderItem,
@@ -166,7 +168,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
   const ownerId = user?.uid
   // A new order's delivery/payment method starts from the user's saved defaults
   // (set in Settings); an edited order keeps its own stored values.
-  const { defaultDeliveryMethod, defaultPaymentMethod } = useSettings()
+  const { defaultDeliveryMethod, defaultPaymentMethod, defaultCurrency } = useSettings()
 
   // Customer selection. New orders default to "new"; an edited order already has
   // a customer, so it starts in "existing" mode with that customer selected.
@@ -204,6 +206,9 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
     initialOrder?.paymentMethod ?? defaultPaymentMethod,
   )
+  // A new order starts in the user's default currency; an edited order keeps the
+  // currency it was created with (it is fixed per order — no conversion).
+  const [currency, setCurrency] = useState<Currency>(initialOrder?.currency ?? defaultCurrency)
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(
     initialOrder?.paymentStatus ?? 'pending',
   )
@@ -385,7 +390,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
         paymentMethod,
         deliveryMethod,
         deliveryPriceMinor: parseRublesToMinor(deliveryPrice),
-        currency: 'RUB',
+        currency,
         paymentStatus,
         shipmentStatus,
         ...(comment.trim() !== '' ? { comment: comment.trim() } : {}),
@@ -541,7 +546,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
             </Button>
           </fieldset>
 
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <label className="flex flex-col gap-1">
               <span className="text-sm text-text">{t('form.deliveryMethod')}</span>
               <Select
@@ -565,6 +570,19 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                 value={deliveryPrice}
                 onChange={(e) => setDeliveryPrice(e.target.value)}
               />
+            </label>
+
+            {/* Currency governs every amount in the order (plant prices, delivery,
+                total). Each option shows the localized name plus its symbol. */}
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-text">{t('form.currency')}</span>
+              <Select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)}>
+                {currencyOptions(tOrder).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
             </label>
           </div>
 
@@ -637,7 +655,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
               <div className="flex items-baseline gap-2">
                 <span className="text-sm text-text">{t('form.total')}</span>
                 <span className="text-lg font-semibold text-heading">
-                  {formatMoney(totalMinor)}
+                  {formatMoney(totalMinor, currency)}
                 </span>
               </div>
               {/* Stack the actions full-width on narrow screens; lay them out in

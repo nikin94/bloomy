@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   formatMoney,
+  currencySymbol,
   formatDate,
   formatDateTime,
   parseRublesToMinor,
@@ -82,7 +83,7 @@ describe('parseRublesToMinor', () => {
 
 describe('formatMoney', () => {
   it('renders kopecks as roubles with the currency symbol', () => {
-    const result = formatMoney(14990)
+    const result = formatMoney(14990, 'RUB')
     // Don't assert exact whitespace (it varies by ICU): the ru-RU locale uses a
     // comma decimal separator and the ₽ symbol.
     expect(result).toContain('149,90')
@@ -90,7 +91,22 @@ describe('formatMoney', () => {
   })
 
   it('divides by 100 — 100 kopecks is one rouble', () => {
-    expect(formatMoney(100)).toContain('1,00')
+    expect(formatMoney(100, 'RUB')).toContain('1,00')
+  })
+
+  it('renders the chosen currency symbol (USD/EUR), same minor-unit model', () => {
+    // 50000 minor = 500.00 in any 2-decimal currency.
+    expect(formatMoney(50000, 'USD')).toContain('$')
+    expect(formatMoney(50000, 'USD')).toContain('500')
+    expect(formatMoney(50000, 'EUR')).toContain('€')
+  })
+})
+
+describe('currencySymbol', () => {
+  it('returns the symbol glyph for each supported currency', () => {
+    expect(currencySymbol('RUB')).toBe('₽')
+    expect(currencySymbol('USD')).toBe('$')
+    expect(currencySymbol('EUR')).toBe('€')
   })
 })
 

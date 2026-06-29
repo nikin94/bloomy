@@ -6,8 +6,8 @@ import { useSettings } from '../../context/settingsContext'
 import { signOutUser } from '../../firebase/auth'
 import { FONT_SCALE_MAX, FONT_SCALE_MIN, FONT_SCALE_STEP, LANGUAGES } from '../../types/settings'
 import type { Language, ThemeMode } from '../../types/settings'
-import { deliveryMethodOptions, paymentMethodOptions } from '../../types/order'
-import type { DeliveryMethod, PaymentMethod } from '../../types/order'
+import { currencyOptions, deliveryMethodOptions, paymentMethodOptions } from '../../types/order'
+import type { Currency, DeliveryMethod, PaymentMethod } from '../../types/order'
 import Button from '../Button/Button'
 import Select from '../Select/Select'
 import Modal from '../Modal/Modal'
@@ -179,6 +179,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
     language,
     defaultDeliveryMethod,
     defaultPaymentMethod,
+    defaultCurrency,
     previewFontScale,
     previewTheme,
     previewLanguage,
@@ -191,6 +192,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
   // they apply on Save. Kept as drafts so Cancel discards an unsaved change.
   const [deliveryDraft, setDeliveryDraft] = useState(defaultDeliveryMethod)
   const [paymentDraft, setPaymentDraft] = useState(defaultPaymentMethod)
+  const [currencyDraft, setCurrencyDraft] = useState(defaultCurrency)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -229,6 +231,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
         language: languageDraft,
         defaultDeliveryMethod: deliveryDraft,
         defaultPaymentMethod: paymentDraft,
+        defaultCurrency: currencyDraft,
       })
       onClose()
     } catch (err: unknown) {
@@ -375,6 +378,23 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                 onChange={(e) => setPaymentDraft(e.target.value as PaymentMethod)}
               >
                 {paymentMethodOptions(tOrder).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </Row>
+          {/* Currency a NEW order starts in. Each option shows the localized
+              name plus its symbol, e.g. "Рубли (₽)". */}
+          <Row label={t('settings:currency')}>
+            <div className="w-36 shrink-0">
+              <Select
+                aria-label={t('settings:currencyAria')}
+                value={currencyDraft}
+                onChange={(e) => setCurrencyDraft(e.target.value as Currency)}
+              >
+                {currencyOptions(tOrder).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>

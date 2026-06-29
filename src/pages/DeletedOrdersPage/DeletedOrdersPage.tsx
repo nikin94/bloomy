@@ -38,7 +38,7 @@ const DeletedOrderRow = ({
         {t('trash.row', { number: formatOrderNumber(order.number), customer: customerName })}
       </p>
       <p className="m-0 truncate text-sm text-text">
-        {formatDate(order.dateCreated)} · {formatMoney(getTotalMinor(order))}
+        {formatDate(order.dateCreated)} · {formatMoney(getTotalMinor(order), order.currency)}
       </p>
     </div>
     <Button

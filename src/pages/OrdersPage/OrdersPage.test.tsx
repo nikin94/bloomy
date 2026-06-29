@@ -221,6 +221,29 @@ describe('OrdersPage filtering', () => {
     expect(screen.getByRole('slider', { name: 'Максимальная сумма' })).toBeInTheDocument()
   })
 
+  it('scopes the price slider summary to the filtered currency, not the default', async () => {
+    const user = userEvent.setup()
+    fetchOrders.mockResolvedValue([
+      // RUB order is huge in minor units (10 000 ₽); a USD order is small ($200).
+      // The slider must not mix the two scales: once USD is picked, the ceiling
+      // and the symbol both follow USD, never the (default) RUB.
+      order({ id: 'o1', currency: 'RUB', plants: [{ name: 'Роза', quantity: 1, unitPriceMinor: 1000000 }] }),
+      order({ id: 'o2', currency: 'USD', plants: [{ name: 'Пион', quantity: 1, unitPriceMinor: 20000 }] }),
+    ])
+    renderPage()
+    await screen.findByTestId('orders-table')
+
+    await user.click(header().getByRole('button', { name: 'Фильтры' }))
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Фильтр по валюте' }), 'USD')
+
+    // The "from – to" summary now reads in dollars, and its ceiling is the
+    // USD-only max ($200) — not the cross-currency RUB total.
+    const summary = screen.getByText((text) => text.includes('–'))
+    expect(summary.textContent).toContain('$')
+    expect(summary.textContent).toContain('200')
+    expect(summary.textContent).not.toContain('₽')
+  })
+
   it('hides the price slider when there is no range to pick (all totals zero)', async () => {
     const user = userEvent.setup()
     fetchOrders.mockResolvedValue([
