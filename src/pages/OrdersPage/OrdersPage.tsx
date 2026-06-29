@@ -56,7 +56,9 @@ const FilterIcon = () => (
 )
 
 const OrdersPage = () => {
-  const { t } = useTranslation('order')
+  const { t } = useTranslation(['order', 'common'])
+  // Order-bound t for the column/option helpers, which are typed TFunction<'order'>.
+  const { t: tOrder } = useTranslation('order')
   const navigate = useNavigate()
   const location = useLocation()
   // Guaranteed non-null here (rendered under ProtectedRoute), but typed as
@@ -106,7 +108,7 @@ const OrdersPage = () => {
           setCustomers(customerData)
         })
         .catch((err: unknown) => {
-          if (active) setError(err instanceof Error ? err.message : 'Не удалось загрузить заказы')
+          if (active) setError(err instanceof Error ? err.message : t('list.loadError'))
         })
 
     load().finally(() => {
@@ -135,11 +137,14 @@ const OrdersPage = () => {
       active = false
       window.removeEventListener('online', reconcile)
     }
+    // `t` is only read in the error fallback; depending on it would refetch on a
+    // language switch, so it's intentionally excluded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerId])
 
   const customerNameById = new Map(customers.map((c) => [c.id, c.name]))
   const getCustomerName = (id: string) => customerNameById.get(id) ?? '—'
-  const columns = buildOrderColumns(getCustomerName, t)
+  const columns = buildOrderColumns(getCustomerName, tOrder)
 
   // Filtering is in memory: the whole list is already loaded, the dataset is
   // small, and it keeps search instant with no extra reads.
@@ -168,7 +173,7 @@ const OrdersPage = () => {
       <SearchControl
         value={filter.query}
         onChange={(query) => setFilter((f) => ({ ...f, query }))}
-        label="Поиск заказов"
+        label={t('list.search')}
       />
       {/* When a dialog filter is active the whole button fills in (primary), the
           same language as an active nav button — far more legible than a small
@@ -177,8 +182,8 @@ const OrdersPage = () => {
         variant={modalFilterActive ? 'primary' : 'secondary'}
         size="icon"
         onClick={() => setFiltersOpen(true)}
-        aria-label="Фильтры"
-        title="Фильтры"
+        aria-label={t('filters.open')}
+        title={t('filters.open')}
         aria-pressed={modalFilterActive}
         className="shrink-0"
       >
@@ -200,24 +205,24 @@ const OrdersPage = () => {
           columns={columns}
           onRowClick={(order) => navigate(`/orders/${order.id}`)}
           highlightOrderId={highlightOrderId}
-          emptyMessage={filterActive ? 'Ничего не найдено' : 'Заказов пока нет'}
+          emptyMessage={filterActive ? t('common:nothingFound') : t('list.empty')}
         />
       )}
 
       {filtersOpen && (
-        <Modal title="Фильтры" onClose={() => setFiltersOpen(false)}>
+        <Modal title={t('filters.title')} onClose={() => setFiltersOpen(false)}>
           <div className="flex flex-col gap-4">
             <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-heading">Статус оплаты</span>
+              <span className="text-sm font-medium text-heading">{t('filters.paymentStatus')}</span>
               <Select
-                aria-label="Фильтр по статусу оплаты"
+                aria-label={t('filters.paymentStatusAria')}
                 value={filter.paymentStatus}
                 onChange={(e) =>
                   setFilter((f) => ({ ...f, paymentStatus: e.target.value as PaymentStatus | '' }))
                 }
               >
-                <option value="">Все</option>
-                {paymentStatusOptions(t).map((o) => (
+                <option value="">{t('filters.all')}</option>
+                {paymentStatusOptions(tOrder).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -226,16 +231,16 @@ const OrdersPage = () => {
             </label>
 
             <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-heading">Статус отправки</span>
+              <span className="text-sm font-medium text-heading">{t('filters.shipmentStatus')}</span>
               <Select
-                aria-label="Фильтр по статусу отправки"
+                aria-label={t('filters.shipmentStatusAria')}
                 value={filter.shipmentStatus}
                 onChange={(e) =>
                   setFilter((f) => ({ ...f, shipmentStatus: e.target.value as ShipmentStatus | '' }))
                 }
               >
-                <option value="">Все</option>
-                {shipmentStatusOptions(t).map((o) => (
+                <option value="">{t('filters.all')}</option>
+                {shipmentStatusOptions(tOrder).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -249,7 +254,7 @@ const OrdersPage = () => {
             {priceCeilingMinor > 0 && (
               <div className="flex flex-col gap-3">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm font-medium text-heading">Сумма заказа</span>
+                  <span className="text-sm font-medium text-heading">{t('filters.priceRange')}</span>
                   <span className="text-sm text-text">
                     {formatMoney(filter.minPriceMinor)} – {formatMoney(maxThumb)}
                   </span>
@@ -260,7 +265,7 @@ const OrdersPage = () => {
                   step={PRICE_STEP_MINOR}
                   value={[filter.minPriceMinor, maxThumb]}
                   onInput={setPriceRange}
-                  ariaLabel={['Минимальная сумма', 'Максимальная сумма']}
+                  ariaLabel={[t('filters.minPrice'), t('filters.maxPrice')]}
                 />
               </div>
             )}
@@ -279,10 +284,10 @@ const OrdersPage = () => {
                 }
                 disabled={!modalFilterActive}
               >
-                Сбросить
+                {t('filters.reset')}
               </Button>
               <Button variant="primary" onClick={() => setFiltersOpen(false)}>
-                Готово
+                {t('filters.done')}
               </Button>
             </div>
           </div>

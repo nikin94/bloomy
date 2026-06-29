@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '../Button/Button'
 import { useVersionCheck } from './useVersionCheck'
 
@@ -10,6 +11,7 @@ import { useVersionCheck } from './useVersionCheck'
 // fetches a fresh index.html and so the new hashed assets. `role="status"`
 // announces it politely to screen readers.
 const UpdatePrompt = () => {
+  const { t } = useTranslation()
   const updateAvailable = useVersionCheck()
   const [dismissed, setDismissed] = useState(false)
 
@@ -22,11 +24,11 @@ const UpdatePrompt = () => {
     >
       <div className="pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-lg border border-border bg-bg p-4 shadow-xl">
         <div className="min-w-0 flex-1">
-          <p className="m-0 font-medium text-heading">Доступна новая версия</p>
-          <p className="m-0 text-sm text-text">Обновите страницу, чтобы получить последние изменения.</p>
+          <p className="m-0 font-medium text-heading">{t('update.title')}</p>
+          <p className="m-0 text-sm text-text">{t('update.body')}</p>
         </div>
         <Button variant="secondary" size="sm" onClick={() => setDismissed(true)} className="shrink-0">
-          Позже
+          {t('update.later')}
         </Button>
         <Button
           variant="primary"
@@ -34,7 +36,7 @@ const UpdatePrompt = () => {
           onClick={() => window.location.reload()}
           className="shrink-0"
         >
-          Обновить
+          {t('update.reload')}
         </Button>
       </div>
     </div>

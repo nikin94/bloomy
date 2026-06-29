@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import OrderForm from '../../components/OrderForm/OrderForm'
 import { createOrder } from '../../firebase/orders'
 
@@ -7,10 +8,11 @@ import { createOrder } from '../../firebase/orders'
 // persisted (createOrder) and where to go afterwards.
 const NewOrderPage = () => {
   const navigate = useNavigate()
+  const { t } = useTranslation('order')
 
   return (
     <OrderForm
-      heading="Новый заказ"
+      heading={t('form.newHeading')}
       onCancel={() => navigate('/orders')}
       onSubmit={async (order) => {
         // Stamp the creation time here; the form leaves `dateCreated` to the

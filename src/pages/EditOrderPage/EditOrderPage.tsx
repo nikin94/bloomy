@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import OrderForm from '../../components/OrderForm/OrderForm'
 import Spinner from '../../components/Spinner/Spinner'
 import { fetchOrder, updateOrder } from '../../firebase/orders'
@@ -15,6 +16,7 @@ import type { Order } from '../../types/order'
 const EditOrderPage = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { t } = useTranslation('order')
   const { user } = useAuth()
   const ownerId = user?.uid
 
@@ -30,7 +32,7 @@ const EditOrderPage = () => {
         if (active) setOrder(data)
       })
       .catch((err: unknown) => {
-        if (active) setError(err instanceof Error ? err.message : 'Не удалось загрузить заказ')
+        if (active) setError(err instanceof Error ? err.message : t('detail.loadError'))
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -38,6 +40,9 @@ const EditOrderPage = () => {
     return () => {
       active = false
     }
+    // `t` is only read in the error fallback; depending on it would refetch on a
+    // language switch, so it's intentionally excluded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, ownerId])
 
   if (loading) return <Spinner />
@@ -46,16 +51,16 @@ const EditOrderPage = () => {
     return (
       <div className="p-6">
         <Link to="/orders" className="mb-4 inline-block text-primary no-underline hover:underline">
-          ← К списку заказов
+          {t('detail.back')}
         </Link>
-        <p className="text-text">{error ?? 'Заказ не найден'}</p>
+        <p className="text-text">{error ?? t('detail.notFound')}</p>
       </div>
     )
   }
 
   return (
     <OrderForm
-      heading={`Редактирование заказа №${formatOrderNumber(order.number)}`}
+      heading={t('form.editHeading', { number: formatOrderNumber(order.number) })}
       initialOrder={order}
       onCancel={() => navigate(`/orders/${order.id}`)}
       onSubmit={async (fields) => {

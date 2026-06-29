@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   flexRender,
   getCoreRowModel,
@@ -159,8 +160,9 @@ const DataTable = ({
   columns,
   onRowClick,
   highlightOrderId,
-  emptyMessage = 'Заказов пока нет',
+  emptyMessage,
 }: DataTableProps) => {
+  const { t } = useTranslation()
   // Memoize the column defs so the table instance keeps a stable reference
   // (TanStack recomputes its models when columns/data identity changes).
   const columnDefs = useMemo(() => columns.map(toColumnDef), [columns])
@@ -200,7 +202,7 @@ const DataTable = ({
   if (rows.length === 0) {
     return (
       <div className="min-h-0 flex-1 overflow-auto">
-        <p className="px-4 py-8 text-center text-text">{emptyMessage}</p>
+        <p className="px-4 py-8 text-center text-text">{emptyMessage ?? t('nothingFound')}</p>
       </div>
     )
   }

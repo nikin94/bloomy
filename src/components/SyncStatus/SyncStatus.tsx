@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { waitForPendingWrites } from 'firebase/firestore'
 import { db } from '../../firebase/client'
 import { formatDateTime } from '../../utils/format'
@@ -39,6 +40,7 @@ const writeLastSynced = (ms: number) => {
 // then writes never flush and the indicator keeps showing "Синхронизация…"
 // instead of falsely claiming a sync.
 const SyncStatus = () => {
+  const { t } = useTranslation()
   const [online, setOnline] = useState(() => navigator.onLine)
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(readLastSynced)
   // True while online but a flush is taking long enough to be worth surfacing
@@ -96,7 +98,7 @@ const SyncStatus = () => {
   // just "Не в сети" and the header stays compact.
   const lastSyncedHint =
     !online && lastSyncedAt !== null
-      ? `Последняя синхронизация: ${formatDateTime(lastSyncedAt)}`
+      ? t('sync.lastSynced', { time: formatDateTime(lastSyncedAt) })
       : null
 
   const badge = (
@@ -109,7 +111,7 @@ const SyncStatus = () => {
         aria-hidden="true"
         className={`size-2 shrink-0 rounded-full ${online ? 'animate-pulse bg-primary' : 'bg-text'}`}
       />
-      <span className="whitespace-nowrap">{online ? 'Синхронизация…' : 'Не в сети'}</span>
+      <span className="whitespace-nowrap">{online ? t('sync.syncing') : t('sync.offline')}</span>
     </div>
   )
 

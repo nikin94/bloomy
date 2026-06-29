@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
@@ -24,11 +25,13 @@ const DeletedOrderRow = ({
   order: Order
   customerName: string
   onRestore: (id: string) => void
-}) => (
+}) => {
+  const { t } = useTranslation(['order', 'common'])
+  return (
   <li className="flex items-center gap-3 border-b border-border py-3">
     <div className="min-w-0 flex-1">
       <p className="m-0 truncate text-heading">
-        Заказ №{formatOrderNumber(order.number)} · {customerName}
+        {t('trash.row', { number: formatOrderNumber(order.number), customer: customerName })}
       </p>
       <p className="m-0 truncate text-sm text-text">
         {formatDate(order.dateCreated)} · {formatMoney(getTotalMinor(order))}
@@ -40,16 +43,18 @@ const DeletedOrderRow = ({
       onClick={() => onRestore(order.id)}
       className="shrink-0"
     >
-      Восстановить
+      {t('common:restore')}
     </Button>
   </li>
-)
+  )
+}
 
 // Trash screen: lists the signed-in user's soft-deleted orders and lets each be
 // restored back into the active list. Reached from the "Корзина" nav link. The
 // customer name is resolved the same way the orders list does — load customers
 // once (including deleted ones) and look the name up in memory.
 const DeletedOrdersPage = () => {
+  const { t } = useTranslation(['order', 'common'])
   // Guaranteed non-null under ProtectedRoute, but read defensively and gate on it.
   const { user } = useAuth()
   const ownerId = user?.uid
@@ -73,7 +78,7 @@ const DeletedOrdersPage = () => {
         setCustomers(customerData)
       })
       .catch((err: unknown) => {
-        if (active) setLoadError(err instanceof Error ? err.message : 'Не удалось загрузить корзину')
+        if (active) setLoadError(err instanceof Error ? err.message : t('trash.loadError'))
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -81,6 +86,9 @@ const DeletedOrdersPage = () => {
     return () => {
       active = false
     }
+    // `t` is only read in the error fallback; depending on it would refetch on a
+    // language switch, so it's intentionally excluded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerId])
 
   const customerNameById = new Map(customers.map((c) => [c.id, c.name]))
@@ -102,7 +110,7 @@ const DeletedOrdersPage = () => {
   return (
     <div className="flex h-full flex-col">
       <AppHeader
-        actions={<SearchControl value={query} onChange={setQuery} label="Поиск в корзине" />}
+        actions={<SearchControl value={query} onChange={setQuery} label={t('trash.search')} />}
       />
 
       {/* Flex column so the empty state can center itself (m-auto) in the whole
@@ -115,7 +123,9 @@ const DeletedOrdersPage = () => {
           !loadError &&
           (visibleOrders.length === 0 ? (
             // m-auto in a flex container centers on both axes.
-            <p className="m-auto text-text">{searchActive ? 'Ничего не найдено' : 'Корзина пуста'}</p>
+            <p className="m-auto text-text">
+              {searchActive ? t('common:nothingFound') : t('trash.empty')}
+            </p>
           ) : (
             <ul className="mx-auto m-0 w-full max-w-2xl list-none p-0">
               {visibleOrders.map((order) => (

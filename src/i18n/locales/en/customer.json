@@ -1,0 +1,23 @@
+{
+  "editTitle": "Edit customer",
+  "deleteTitle": "Delete customer {{name}}?",
+  "deleteBody": "The customer will disappear from the list.",
+  "editAria": "Edit customer {{name}}",
+  "deleteAria": "Delete customer {{name}}",
+  "edit": "Edit",
+  "delete": "Delete",
+  "list": {
+    "empty": "No customers yet",
+    "search": "Search customers",
+    "loadError": "Couldn't load customers"
+  },
+  "form": {
+    "name": "Customer name",
+    "namePlaceholder": "Name*",
+    "phone": "Phone",
+    "address": "Address",
+    "note": "Customer note",
+    "notePlaceholder": "Note",
+    "saveError": "Couldn't save the customer"
+  }
+}

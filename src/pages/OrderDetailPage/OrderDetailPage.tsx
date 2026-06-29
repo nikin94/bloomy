@@ -45,7 +45,9 @@ const EditIcon = () => (
 )
 
 const OrderDetailPage = () => {
-  const { t } = useTranslation('order')
+  const { t } = useTranslation(['order', 'common'])
+  // Order-bound t for the option/label helpers (typed TFunction<'order'>).
+  const { t: tOrder } = useTranslation('order')
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -76,7 +78,7 @@ const OrderDetailPage = () => {
         }
       })
       .catch((err: unknown) => {
-        if (active) setError(err instanceof Error ? err.message : 'Не удалось загрузить заказ')
+        if (active) setError(err instanceof Error ? err.message : t('detail.loadError'))
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -84,6 +86,9 @@ const OrderDetailPage = () => {
     return () => {
       active = false
     }
+    // `t` is only read in the error fallback; depending on it would refetch on a
+    // language switch, so it's intentionally excluded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, ownerId])
 
   // Save a single status change inline, optimistically: update the local order
@@ -158,12 +163,12 @@ const OrderDetailPage = () => {
   return (
     <div className="overflow-auto p-6">
       <Link to="/orders" className="mb-4 inline-block text-primary no-underline hover:underline">
-        ← К списку заказов
+        {t('detail.back')}
       </Link>
 
       {loading && <Spinner />}
       {error && <p className="text-danger">{error}</p>}
-      {!loading && !error && !order && <p className="text-text">Заказ не найден</p>}
+      {!loading && !error && !order && <p className="text-text">{t('detail.notFound')}</p>}
 
       {/* Gate the body on `!loading`, not just `order`: the customer is fetched
           after the order (loading stays true until both resolve via .finally),
@@ -174,10 +179,10 @@ const OrderDetailPage = () => {
         <div className="mx-auto flex max-w-2xl flex-col gap-6">
           <header className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="m-0 text-2xl font-semibold text-heading">
-              Заказ №{formatOrderNumber(order.number)}
+              {t('detail.title', { number: formatOrderNumber(order.number) })}
               {order.number === null && (
                 <span className="ml-2 align-middle text-sm font-normal text-text">
-                  не синхронизирован
+                  {t('detail.unsynced')}
                 </span>
               )}
             </h1>
@@ -188,14 +193,14 @@ const OrderDetailPage = () => {
                 size="sm"
                 onClick={() => navigate(`/orders/${order.id}/edit`)}
               >
-                Редактировать
+                {t('detail.edit')}
               </Button>
               <Button
                 variant="danger"
                 size="sm"
                 onClick={() => setConfirmingDelete(true)}
               >
-                Удалить
+                {t('detail.delete')}
               </Button>
             </div>
           </header>
@@ -205,7 +210,7 @@ const OrderDetailPage = () => {
               the rest is read-only and changed via "Редактировать". */}
           <section className="flex flex-col">
             <Field
-              label="Клиент"
+              label={t('detail.customer')}
               value={customer?.name ?? '—'}
               action={
                 customer ? (
@@ -213,45 +218,45 @@ const OrderDetailPage = () => {
                     variant="secondary"
                     size="icon"
                     onClick={() => setEditingCustomer(true)}
-                    aria-label="Редактировать клиента"
-                    title="Редактировать клиента"
+                    aria-label={t('detail.editCustomer')}
+                    title={t('detail.editCustomer')}
                   >
                     <EditIcon />
                   </Button>
                 ) : undefined
               }
             />
-            {customer?.phone && <Field label="Телефон" value={customer.phone} />}
-            <Field label="Адрес доставки" value={order.address || '—'} />
-            <Field label="Способ доставки" value={deliveryMethodLabel(t, order.deliveryMethod)} />
-            <Field label="Способ оплаты" value={paymentMethodLabel(t, order.paymentMethod)} />
+            {customer?.phone && <Field label={t('detail.phone')} value={customer.phone} />}
+            <Field label={t('detail.deliveryAddress')} value={order.address || '—'} />
+            <Field label={t('detail.deliveryMethod')} value={deliveryMethodLabel(tOrder, order.deliveryMethod)} />
+            <Field label={t('detail.paymentMethod')} value={paymentMethodLabel(tOrder, order.paymentMethod)} />
             <InlineStatusField
-              label="Статус оплаты"
+              label={t('detail.paymentStatus')}
               value={order.paymentStatus}
-              options={paymentStatusOptions(t)}
+              options={paymentStatusOptions(tOrder)}
               onChange={(value) => saveStatus({ paymentStatus: value as Order['paymentStatus'] })}
             />
             <InlineStatusField
-              label="Статус отправки"
+              label={t('detail.shipmentStatus')}
               value={order.shipmentStatus}
-              options={shipmentStatusOptions(t)}
+              options={shipmentStatusOptions(tOrder)}
               onChange={(value) => saveStatus({ shipmentStatus: value as Order['shipmentStatus'] })}
             />
-            {order.completedAt && <Field label="Завершён" value={formatDate(order.completedAt)} />}
-            {order.comment && <Field label="Комментарий" value={order.comment} />}
+            {order.completedAt && <Field label={t('detail.completed')} value={formatDate(order.completedAt)} />}
+            {order.comment && <Field label={t('detail.comment')} value={order.comment} />}
           </section>
 
           {/* Itemized plant list */}
           <section className="flex flex-col gap-2">
-            <h2 className="m-0 text-lg font-semibold text-heading">Растения</h2>
+            <h2 className="m-0 text-lg font-semibold text-heading">{t('detail.plantsTitle')}</h2>
             <table className="w-full border-collapse text-[0.8333rem]">
               <thead>
                 <tr className="border-b border-border text-left text-sm text-text">
-                  <th className="w-8 py-2 pr-3 text-right font-medium tabular-nums">№</th>
-                  <th className="py-2 pr-3 font-medium">Название</th>
-                  <th className="py-2 px-3 text-right font-medium">Кол-во</th>
-                  <th className="py-2 px-3 text-right font-medium">Цена</th>
-                  <th className="py-2 pl-3 text-right font-medium">Сумма</th>
+                  <th className="w-8 py-2 pr-3 text-right font-medium tabular-nums">{t('columns.number')}</th>
+                  <th className="py-2 pr-3 font-medium">{t('detail.plantName')}</th>
+                  <th className="py-2 px-3 text-right font-medium">{t('detail.quantity')}</th>
+                  <th className="py-2 px-3 text-right font-medium">{t('detail.price')}</th>
+                  <th className="py-2 pl-3 text-right font-medium">{t('detail.lineTotal')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -274,10 +279,10 @@ const OrderDetailPage = () => {
 
           {/* Money breakdown */}
           <section className="flex flex-col gap-1 self-end text-[0.8333rem]">
-            <Total label="Сумма растений" value={getSubtotalMinor(order)} />
-            <Total label="Доставка" value={order.deliveryPriceMinor} />
+            <Total label={t('detail.subtotal')} value={getSubtotalMinor(order)} />
+            <Total label={t('detail.delivery')} value={order.deliveryPriceMinor} />
             <div className="mt-1 flex justify-between gap-8 border-t border-border pt-2 font-semibold text-heading">
-              <span>Итого</span>
+              <span>{t('detail.total')}</span>
               <span className="tabular-nums">{formatMoney(getTotalMinor(order))}</span>
             </div>
           </section>
@@ -296,7 +301,7 @@ const OrderDetailPage = () => {
       )}
 
       {editingCustomer && customer && (
-        <Modal title="Редактирование клиента" onClose={() => setEditingCustomer(false)}>
+        <Modal title={t('detail.editCustomerTitle')} onClose={() => setEditingCustomer(false)}>
           <CustomerForm
             initial={{
               name: customer.name,
@@ -312,16 +317,16 @@ const OrderDetailPage = () => {
 
       {confirmingDelete && order && (
         <Modal
-          title={`Удалить заказ №${formatOrderNumber(order.number)}?`}
+          title={t('detail.deleteTitle', { number: formatOrderNumber(order.number) })}
           onClose={() => setConfirmingDelete(false)}
         >
-          <p className="m-0 text-text">Заказ переместится в корзину — его можно будет восстановить.</p>
+          <p className="m-0 text-text">{t('detail.deleteBody')}</p>
           <div className="flex justify-end gap-2">
             <Button variant="danger" onClick={handleDelete}>
-              Удалить
+              {t('common:delete')}
             </Button>
             <Button variant="secondary" onClick={() => setConfirmingDelete(false)}>
-              Отмена
+              {t('common:cancel')}
             </Button>
           </div>
         </Modal>

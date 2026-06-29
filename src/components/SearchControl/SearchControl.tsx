@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
 import Button from '../Button/Button'
 
@@ -58,6 +59,7 @@ const SearchControl = ({
   onChange: (next: string) => void
   label: string
 }) => {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(value.trim() !== '')
   // The loupe shows only once the field is FULLY collapsed (not mid-animation),
   // so it appears calmly in its resting spot instead of riding the width
@@ -97,8 +99,8 @@ const SearchControl = ({
           variant="secondary"
           size="icon"
           onClick={expand}
-          aria-label="Поиск"
-          title="Поиск"
+          aria-label={t('search')}
+          title={t('search')}
           aria-expanded={false}
           className="shrink-0"
         >
@@ -120,7 +122,7 @@ const SearchControl = ({
           onKeyDown={(e) => {
             if (e.key === 'Escape') close()
           }}
-          placeholder="Поиск"
+          placeholder={t('search')}
           aria-label={label}
           // `inert` (not aria-hidden) when collapsed: it removes the field from
           // the a11y tree AND moves focus out, so closing via the X never leaves
@@ -143,8 +145,8 @@ const SearchControl = ({
             type="button"
             onMouseDown={(e) => e.preventDefault()}
             onClick={close}
-            aria-label="Очистить и закрыть поиск"
-            title="Закрыть"
+            aria-label={t('searchClear')}
+            title={t('close')}
             className="absolute inset-y-0 right-0 flex items-center px-1.5 text-text transition-colors hover:text-heading focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
           >
             <CloseIcon />

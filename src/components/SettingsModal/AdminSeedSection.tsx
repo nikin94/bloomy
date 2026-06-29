@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '../Button/Button'
 import type { SeedResult } from '../../firebase/seed'
 
@@ -10,6 +11,7 @@ import type { SeedResult } from '../../firebase/seed'
 // The reset toggle hard-deletes the account's existing orders/customers before
 // seeding; because that is destructive it asks for an explicit confirm first.
 const AdminSeedSection = ({ ownerId }: { ownerId: string }) => {
+  const { t } = useTranslation('settings')
   const [reset, setReset] = useState(false)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<SeedResult | null>(null)
@@ -17,7 +19,7 @@ const AdminSeedSection = ({ ownerId }: { ownerId: string }) => {
 
   const run = async () => {
     if (busy) return
-    if (reset && !window.confirm('Удалить ВСЕ текущие заказы и клиентов этого аккаунта и засеять тестовые данные?')) {
+    if (reset && !window.confirm(t('admin.confirmReset'))) {
       return
     }
     setBusy(true)
@@ -27,7 +29,7 @@ const AdminSeedSection = ({ ownerId }: { ownerId: string }) => {
       const { seedMockData } = await import('../../firebase/seed')
       setResult(await seedMockData(ownerId, { reset }))
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Не удалось засеять данные')
+      setError(err instanceof Error ? err.message : t('admin.error'))
     } finally {
       setBusy(false)
     }
@@ -37,7 +39,7 @@ const AdminSeedSection = ({ ownerId }: { ownerId: string }) => {
     <>
       <span aria-hidden="true" className="h-px w-full bg-border" />
       <section className="flex flex-col gap-2">
-        <p className="m-0 text-sm font-medium text-heading">Тестовые данные (админ)</p>
+        <p className="m-0 text-sm font-medium text-heading">{t('admin.title')}</p>
 
         <label className="flex items-center gap-2 text-sm text-text">
           <input
@@ -46,18 +48,26 @@ const AdminSeedSection = ({ ownerId }: { ownerId: string }) => {
             onChange={(e) => setReset(e.target.checked)}
             disabled={busy}
           />
-          Удалить старые данные перед сидом
+          {t('admin.resetLabel')}
         </label>
 
         <Button variant="secondary" onClick={run} isLoading={busy} className="self-start">
-          Засеять тестовые данные
+          {t('admin.seed')}
         </Button>
 
         {result && (
           <p role="status" className="m-0 text-sm text-text">
-            Готово: +{result.customers} клиентов, +{result.orders} заказов (в корзине {result.trashed})
-            {result.reset && `; удалено ${result.removedOrders} заказов, ${result.removedCustomers} клиентов`}.
-            Обновите страницу, чтобы увидеть изменения.
+            {t('admin.result', {
+              customers: result.customers,
+              orders: result.orders,
+              trashed: result.trashed,
+            })}
+            {result.reset &&
+              t('admin.resultReset', {
+                removedOrders: result.removedOrders,
+                removedCustomers: result.removedCustomers,
+              })}
+            {t('admin.resultReload')}
           </p>
         )}
         {error && (

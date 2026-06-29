@@ -21,5 +21,15 @@
   "paymentMethod": "Payment method",
   "paymentMethodAria": "Default payment method",
   "saveError": "Couldn't save settings",
-  "signOutError": "Couldn't sign out. Please try again."
+  "signOutError": "Couldn't sign out. Please try again.",
+  "admin": {
+    "title": "Test data (admin)",
+    "resetLabel": "Delete old data before seeding",
+    "seed": "Seed test data",
+    "confirmReset": "Delete ALL current orders and customers of this account and seed test data?",
+    "result": "Done: +{{customers}} customers, +{{orders}} orders (in trash {{trashed}})",
+    "resultReset": "; removed {{removedOrders}} orders, {{removedCustomers}} customers",
+    "resultReload": ". Reload the page to see the changes.",
+    "error": "Couldn't seed data"
+  }
 }

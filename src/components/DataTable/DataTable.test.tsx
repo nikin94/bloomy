@@ -213,8 +213,20 @@ describe('DataTable (mobile card layout)', () => {
 })
 
 describe('DataTable (shared)', () => {
-  it('shows a single empty state when there are no orders', () => {
-    render(<DataTable orders={[]} columns={columns} onRowClick={vi.fn()} />)
+  it('shows the empty-state message when there are no orders', () => {
+    render(
+      <DataTable
+        orders={[]}
+        columns={columns}
+        onRowClick={vi.fn()}
+        emptyMessage="Заказов пока нет"
+      />,
+    )
     expect(screen.getByText('Заказов пока нет')).toBeInTheDocument()
+  })
+
+  it('falls back to the generic empty message when none is provided', () => {
+    render(<DataTable orders={[]} columns={columns} onRowClick={vi.fn()} />)
+    expect(screen.getByText('Ничего не найдено')).toBeInTheDocument()
   })
 })
