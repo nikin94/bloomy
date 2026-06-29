@@ -157,7 +157,7 @@ const Row = ({
     // push the row wider than a phone viewport. ≥769px: the original label-left /
     // control-right row.
     className={`flex flex-col items-start gap-1.5 px-4 py-3 transition-colors min-[769px]:flex-row min-[769px]:items-center min-[769px]:justify-between min-[769px]:gap-3 ${
-      changed ? 'bg-accent-bg' : ''
+      changed ? 'bg-row-changed' : ''
     }`}
   >
     <span className="text-sm font-medium text-heading min-[769px]:shrink-0 min-[769px]:whitespace-nowrap">
@@ -456,7 +456,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                   The whole app scales live, so the dialog previews the chosen size. */}
               <div
                 className={`flex flex-col items-start gap-2 px-4 py-3 transition-colors min-[769px]:flex-row min-[769px]:items-center min-[769px]:gap-4 ${
-                  fontChanged ? 'bg-accent-bg' : ''
+                  fontChanged ? 'bg-row-changed' : ''
                 }`}
               >
                 <span className="text-sm font-medium text-heading min-[769px]:min-w-0 min-[769px]:flex-1">
