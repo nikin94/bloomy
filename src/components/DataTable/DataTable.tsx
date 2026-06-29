@@ -177,7 +177,7 @@ const OrderCard = ({
       {...activationProps(order, onActivate)}
     >
       {/* Header: order number on the left, creation date on the right. */}
-      <div className="flex items-baseline justify-between gap-3 border-b border-border pb-2">
+      <div className="flex items-baseline justify-between gap-3 border-b border-border pb-3">
         <span className="font-semibold text-heading">
           {label('number')} {value('number')}
         </span>
@@ -215,8 +215,8 @@ const OrderCard = ({
         />
       </div>
 
-      {/* Total at the bottom: label and amount on one line. */}
-      <div className="flex items-baseline justify-between gap-3">
+      {/* Total at the bottom, set off by a divider: label and amount on one line. */}
+      <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3">
         <span className="text-sm font-medium text-text">{label('total')}</span>
         <span className="font-semibold text-heading tabular-nums">{value('total')}</span>
       </div>
