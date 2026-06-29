@@ -85,9 +85,14 @@ jobs:
           url="https://bloomy-pot.web.app/version.json"
           echo "Deploy step outcome: ${{ steps.deploy.outcome }}"
           echo "Expecting /version.json -> \"$expected\""
+          # No curl -f and a `|| live=""` guard on purpose: the step runs under
+          # `bash -eo pipefail`, so a transient 4xx/5xx or network blip mid-poll
+          # would otherwise kill the job on the first attempt — defeating the very
+          # retry loop. We *want* to keep polling until the version matches, so any
+          # non-200 just yields an empty/old `live` and we try again.
           for attempt in $(seq 1 10); do
-            live="$(curl -fsS -H 'Cache-Control: no-cache' "$url?t=$(date +%s)" \
-              | sed -n 's/.*"version" *: *"\([^"]*\)".*/\1/p')"
+            live="$(curl -sS -H 'Cache-Control: no-cache' "$url?t=$(date +%s)" \
+              | sed -n 's/.*"version" *: *"\([^"]*\)".*/\1/p')" || live=""
             echo "Attempt $attempt: live=\"$live\""
             if [ "$live" = "$expected" ]; then
               echo "Live deployment serves $expected"
