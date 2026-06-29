@@ -203,25 +203,38 @@ const OrderPhotos = ({
     photosRef.current = photos
   }, [photos])
 
+  // True for the component's whole lifetime; flipped only on a REAL unmount.
+  // The resolve effect below must NOT use a per-run flag: `requestedRef`
+  // (a ref) survives a re-run, so under StrictMode's mount→cleanup→mount the
+  // second run skips the already-requested path while the first run's resolved
+  // URL would be discarded by a per-run `active=false` — leaving the thumbnail
+  // stuck on its loader forever (the bug seen on re-entering an order with
+  // existing photos). Gating on a mount-lifetime flag keeps the resolved URL.
+  const mountedRef = useRef(true)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+
   // Resolve a download URL for every path we haven't requested yet. Keyed off
   // `photos` only — `requestedRef` (not the `urls` state) tracks in-flight ones.
+  // setUrls is keyed by path (idempotent), so applying a late resolve is always
+  // safe; we only skip it once the component has truly unmounted.
   useEffect(() => {
-    let active = true
     for (const path of photos) {
       if (requestedRef.current.has(path)) continue
       requestedRef.current.add(path)
       getPhotoUrl(path)
         .then((url) => {
-          if (active) setUrls((prev) => ({ ...prev, [path]: url }))
+          if (mountedRef.current) setUrls((prev) => ({ ...prev, [path]: url }))
         })
         .catch((err: unknown) => {
           // Allow a retry on the next render once the connection is back.
           requestedRef.current.delete(path)
           reportError(err, 'getPhotoUrl')
         })
-    }
-    return () => {
-      active = false
     }
   }, [photos])
 
