@@ -103,11 +103,15 @@
   /* A muted grey surface (~#ccc), not pure white — far easier on the eyes. The
      darker bg forces every foreground token darker to keep WCAG AA: the muted
      body text drops below 4.5:1 on a grey this dark unless it's deepened too, and
-     the same goes for danger text. Measured on this bg: text 5.5:1, danger 4.9:1,
+     the same goes for danger text. `--text` is deepened past the AA floor (now
+     ~6.8:1, up from 5.5) because the orders table renders many rows of small
+     `text-text` numbers — at 5.5:1 they read washed-out on this grey; the bump
+     firms them up while staying well below the heading (12.8:1) so the
+     muted/heading hierarchy holds. Measured on this bg: text 6.8:1, danger 4.9:1,
      heading 12.8:1. The border and placeholder are likewise darkened so dividers
      and hints stay visible against the greyer surface. */
   --bg: #cdced3;
-  --text: #4f4860;
+  --text: #423b51;
   --text-h: #08060d;
   /* Tooltip surface — a grey deepened below the light `--bg` so the bubble stands
      apart from the page instead of merging into it (heading text on it = 11.3:1). */
