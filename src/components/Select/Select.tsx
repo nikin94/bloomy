@@ -48,7 +48,11 @@ function Select({ className = '', children, label, invalid = false, id, ...props
     <div className="relative w-full min-w-0">
       <select
         id={label ? selectId : id}
-        aria-invalid={invalid}
+        // Render the attribute only when actually invalid: `aria-invalid="false"`
+        // in the DOM can make some screen readers announce "invalid: false". The
+        // CSS hook `peer-aria-[invalid=true]` only matches the explicit-true case
+        // anyway, so dropping the false attribute changes nothing visually.
+        aria-invalid={invalid || undefined}
         // `peer` so the floating <label> can react to focus/invalid via peer-*.
         className={`${label ? 'peer ' : ''}${selectClass} ${borderClass} ${className}`}
         {...props}
