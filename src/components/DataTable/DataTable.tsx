@@ -171,7 +171,7 @@ const OrderCard = ({
   const plantLines = value('plants').split('\n').filter(Boolean)
   return (
     <div
-      className={`flex cursor-pointer flex-col gap-3 rounded-lg border border-border p-4 transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary${
+      className={`flex cursor-pointer flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary${
         highlighted ? ' row-highlight' : ''
       }`}
       {...activationProps(order, onActivate)}
@@ -204,24 +204,21 @@ const OrderCard = ({
         </ul>
       </div>
 
-      {/* Total: label and amount on one line. */}
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-sm font-medium text-text">{label('total')}</span>
-        <span className="font-semibold text-heading tabular-nums">{value('total')}</span>
-      </div>
-
-      {/* Payment + shipment status, side by side (label over value). */}
-      <div className="flex gap-4">
-        <CardField
-          label={label('paymentStatus')}
-          value={value('paymentStatus')}
-          className="flex-1"
-        />
+      {/* Payment status on the left, shipment pushed to the right edge
+          (right-aligned, label over value). */}
+      <div className="flex items-start justify-between gap-4">
+        <CardField label={label('paymentStatus')} value={value('paymentStatus')} />
         <CardField
           label={label('shipmentStatus')}
           value={value('shipmentStatus')}
-          className="flex-1"
+          className="items-end text-right"
         />
+      </div>
+
+      {/* Total at the bottom: label and amount on one line. */}
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-sm font-medium text-text">{label('total')}</span>
+        <span className="font-semibold text-heading tabular-nums">{value('total')}</span>
       </div>
     </div>
   )

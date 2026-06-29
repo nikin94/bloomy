@@ -50,6 +50,10 @@
 
   /* Neutrals. Muted text is the palette's grey-blue (#889491 = 5.8:1 on --bg). */
   --bg: #16171d;
+  /* Card/panel surface — lifted a touch off the very dark `--bg` so an order card
+     reads as its own layer instead of melting into the page. Subtle on purpose;
+     heading/body text on it keeps the same AA margin as on `--bg`. */
+  --surface: #1e1f28;
   --text: #889491;
   --text-h: #f3f4f6;
   --border: #2e303a;
@@ -111,6 +115,9 @@
      heading 12.8:1. The border and placeholder are likewise darkened so dividers
      and hints stay visible against the greyer surface. */
   --bg: #cdced3;
+  /* Card surface — lifted toward white (not down toward the grey `--bg`) so the
+     card "pops" off the muted light background the way a panel should. */
+  --surface: #dadbdf;
   --text: #423b51;
   --text-h: #08060d;
   /* Tooltip surface — a grey deepened below the light `--bg` so the bubble stands
@@ -136,6 +143,7 @@
   --color-accent: var(--accent);
   --color-accent-bg: var(--accent-bg);
   --color-bg: var(--bg);
+  --color-surface: var(--surface);
   --color-tooltip-bg: var(--tooltip-bg);
   --color-text: var(--text);
   --color-heading: var(--text-h);
