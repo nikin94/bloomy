@@ -207,6 +207,33 @@ describe('SettingsModal', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
+  it('returns focus to the editing control when the discard confirm is dismissed', async () => {
+    const user = userEvent.setup()
+    renderModal(true, settings({ fontScale: 1 }))
+    // Focus the slider, edit it, then dismiss via Escape (focus stays on the
+    // slider) to raise the confirm.
+    slider().focus()
+    fireEvent.change(slider(), { target: { value: '1.25' } })
+    await user.keyboard('{Escape}')
+    // The confirm is an alertdialog announcing its own title/body.
+    const confirm = screen.getByRole('alertdialog', { name: 'Несохранённые изменения' })
+    expect(confirm).toBeInTheDocument()
+    // Keep editing → focus returns to where the user was, not to document.body.
+    await user.click(screen.getByRole('button', { name: 'Продолжить редактирование' }))
+    expect(slider()).toHaveFocus()
+  })
+
+  it('disables sign-out while a save is in flight', async () => {
+    const user = userEvent.setup()
+    // Hold the save pending so `saving` stays true.
+    saveSettings.mockReturnValueOnce(new Promise(() => {}))
+    renderModal()
+    fireEvent.change(slider(), { target: { value: '1.25' } })
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await goToTab(user, 'Аккаунт')
+    expect(screen.getByRole('button', { name: 'Выйти' })).toBeDisabled()
+  })
+
   it('discards unsaved changes and reverts the preview on confirm', async () => {
     const user = userEvent.setup()
     renderModal(true, settings({ fontScale: 1 }))

@@ -218,10 +218,22 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
   // True while the "discard unsaved changes?" confirmation is shown.
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
   const confirmRef = useRef<HTMLDivElement>(null)
-  // When the confirmation appears, move focus to its first (safe) button so the
-  // keyboard lands on it rather than on a now-inert control behind the overlay.
+  // The control the user was on before the confirm opened, so dismissing the
+  // confirm ("keep editing") returns focus exactly there instead of dropping it
+  // to document.body (the focused button gets unmounted with the confirm card).
+  const lastFocusedRef = useRef<HTMLElement | null>(null)
+  // Drive focus across the confirm's appearance/dismissal. On open, move focus to
+  // its first (safe) button so the keyboard lands on it rather than on a now-inert
+  // control behind the overlay. On dismissal, restore focus to the remembered
+  // control — run from an effect (after commit) so the body's `inert` is already
+  // lifted and the target is focusable again.
   useEffect(() => {
-    if (confirmingDiscard) confirmRef.current?.querySelector('button')?.focus()
+    if (confirmingDiscard) {
+      confirmRef.current?.querySelector('button')?.focus()
+    } else if (lastFocusedRef.current) {
+      lastFocusedRef.current.focus()
+      lastFocusedRef.current = null
+    }
   }, [confirmingDiscard])
 
   // Drop the live preview back to the persisted values, then close.
@@ -243,6 +255,8 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
       return
     }
     if (isDirty) {
+      // Remember where focus was so "keep editing" can return it there.
+      lastFocusedRef.current = document.activeElement as HTMLElement | null
       setConfirmingDiscard(true)
       return
     }
@@ -315,7 +329,9 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
   }
 
   return (
-    <Modal title={t('settings:title')} onClose={requestClose}>
+    // Slightly wider than the default form dialog so the four-tab header (with the
+    // admin tab) fits each label on one line without truncating "Оформление".
+    <Modal title={t('settings:title')} onClose={requestClose} widthClassName="max-w-lg">
       {/* The settings body is made inert while the discard confirmation is up, so
           only the confirm card is interactive (and it visually dims behind it). */}
       <div inert={confirmingDiscard} className="flex flex-col gap-6">
@@ -510,6 +526,11 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
               <Button
                 variant="danger"
                 onClick={handleLogout}
+                // Save lives in the global footer (visible on every tab); disable
+                // sign-out while it's in flight so a tab-switch + click can't fire
+                // signOutUser() over a pending saveSettings (Cancel is likewise
+                // disabled). Consistent with the #99 follow-up.
+                disabled={saving}
                 className="gap-1.5 self-start"
               >
                 <LogoutIcon />
@@ -546,13 +567,22 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
         <div className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-black/40 p-4">
           <div
             ref={confirmRef}
+            // A nested alertdialog so AT announces the discard prompt's own title
+            // and body when focus enters it — the outer Modal's aria-labelledby
+            // still points at "Настройки", which would otherwise be re-read.
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="discard-title"
+            aria-describedby="discard-body"
             className="flex w-full max-w-xs flex-col gap-4 rounded-lg border border-border bg-bg p-5 shadow-xl"
           >
             <div className="flex flex-col gap-1">
-              <h3 className="m-0 text-base font-semibold text-heading">
+              <h3 id="discard-title" className="m-0 text-base font-semibold text-heading">
                 {t('settings:discardTitle')}
               </h3>
-              <p className="m-0 text-sm text-text">{t('settings:discardBody')}</p>
+              <p id="discard-body" className="m-0 text-sm text-text">
+                {t('settings:discardBody')}
+              </p>
             </div>
             <div className="flex flex-col gap-2">
               <Button variant="secondary" onClick={() => setConfirmingDiscard(false)}>
