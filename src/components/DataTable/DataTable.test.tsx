@@ -197,6 +197,29 @@ describe('DataTable (mobile card layout)', () => {
     expect(onRowClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'o1' }))
   })
 
+  it('renders each plant as its own block and groups the order details', () => {
+    const multi = order({
+      number: 7,
+      plants: [
+        { name: 'Роза', quantity: 2, unitPriceMinor: 15000 },
+        { name: 'Фикус', quantity: 1, unitPriceMinor: 50000 },
+      ],
+    })
+    render(<DataTable orders={[multi]} columns={columns} onRowClick={vi.fn()} />)
+    const card = cards().getByRole('link')
+    // Header carries the number; customer + address are stacked label/value pairs.
+    expect(within(card).getByText('Анна')).toBeInTheDocument()
+    expect(within(card).getByText('Main St 1')).toBeInTheDocument()
+    // Each plant line is its own list item (a bordered block), not one joined string.
+    const plantItems = within(card).getAllByRole('listitem')
+    expect(plantItems).toHaveLength(2)
+    expect(plantItems[0]).toHaveTextContent('Фикус') // priciest line first
+    expect(plantItems[1]).toHaveTextContent('Роза ×2')
+    // Payment and shipment statuses are both shown.
+    expect(within(card).getByText('Оплата')).toBeInTheDocument()
+    expect(within(card).getByText('Отправка')).toBeInTheDocument()
+  })
+
   it('highlights only the matching card for the new-order animation', () => {
     render(
       <DataTable
