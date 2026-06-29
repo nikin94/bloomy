@@ -148,10 +148,10 @@ describe('OrdersPage filtering', () => {
     await screen.findByTestId('orders-table')
 
     // The status filters live behind the filter icon, not inline.
-    expect(screen.queryByRole('combobox', { name: 'Фильтр по статусу отправки' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Статус отправки' })).not.toBeInTheDocument()
     await user.click(header().getByRole('button', { name: 'Фильтры' }))
     await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Фильтр по статусу отправки' }),
+      screen.getByRole('combobox', { name: 'Статус отправки' }),
       'shipped',
     )
     // Close the dialog to see the filtered list.
@@ -169,7 +169,7 @@ describe('OrdersPage filtering', () => {
 
     await user.click(header().getByRole('button', { name: 'Фильтры' }))
     await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Фильтр по статусу отправки' }),
+      screen.getByRole('combobox', { name: 'Статус отправки' }),
       'shipped',
     )
     await user.click(screen.getByRole('button', { name: 'Сбросить' }))
@@ -192,7 +192,7 @@ describe('OrdersPage filtering', () => {
 
     await user.click(filterBtn())
     await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Фильтр по статусу отправки' }),
+      screen.getByRole('combobox', { name: 'Статус отправки' }),
       'shipped',
     )
     await user.click(screen.getByRole('button', { name: 'Готово' }))
@@ -234,7 +234,7 @@ describe('OrdersPage filtering', () => {
     await screen.findByTestId('orders-table')
 
     await user.click(header().getByRole('button', { name: 'Фильтры' }))
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Фильтр по валюте' }), 'USD')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Валюта' }), 'USD')
 
     // The "from – to" summary now reads in dollars, and its ceiling is the
     // USD-only max ($200) — not the cross-currency RUB total.
@@ -256,7 +256,7 @@ describe('OrdersPage filtering', () => {
     // The ceiling is 0, so the price section is omitted — the status filters
     // remain.
     expect(screen.queryByText('Сумма заказа')).not.toBeInTheDocument()
-    expect(screen.getByRole('combobox', { name: 'Фильтр по статусу оплаты' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Статус оплаты' })).toBeInTheDocument()
   })
 
   it('shows a "nothing found" message when the filter matches no orders', async () => {

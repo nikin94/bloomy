@@ -475,7 +475,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                 <p className="m-0 text-sm text-text">{t('form.noCustomers')}</p>
               ) : (
                 <Select
-                  aria-label={t('form.existingCustomer')}
+                  label={t('form.existingCustomer')}
                   value={selectedCustomerId}
                   onChange={(e) => selectCustomer(e.target.value)}
                 >
@@ -513,11 +513,14 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
             onChange={(e) => setAddress(e.target.value)}
           />
 
-          {/* min-w-0 defeats the fieldset UA `min-inline-size: min-content`,
-              which otherwise stops the element from shrinking to its flex parent
-              and lets a tight row (numbered plant line) overflow to the right. */}
+          {/* The plant list is set off by a divider above and below instead of a
+              text heading. The legend is kept sr-only so the group still has an
+              accessible name. min-w-0 defeats the fieldset UA `min-inline-size:
+              min-content`, which otherwise stops the element from shrinking to its
+              flex parent and lets a tight row overflow to the right. */}
+          <span aria-hidden="true" className="h-px w-full bg-border" />
           <fieldset className="flex min-w-0 flex-col gap-2 border-0 p-0">
-            <legend className="mb-1 p-0 text-sm text-text">{t('form.plants')}</legend>
+            <legend className="sr-only">{t('form.plants')}</legend>
             {items.map((item, index) => (
               <PlantItemRow
                 key={item.id}
@@ -541,99 +544,88 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
               {t('form.addPlant')}
             </Button>
           </fieldset>
+          <span aria-hidden="true" className="h-px w-full bg-border" />
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-text">{t('form.deliveryMethod')}</span>
-              <Select
-                value={deliveryMethod}
-                onChange={(e) => setDeliveryMethod(e.target.value as DeliveryMethod)}
-              >
-                {deliveryMethodOptions(tOrder).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </label>
+            <Select
+              label={t('form.deliveryMethod')}
+              value={deliveryMethod}
+              onChange={(e) => setDeliveryMethod(e.target.value as DeliveryMethod)}
+            >
+              {deliveryMethodOptions(tOrder).map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
 
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-text">{t('form.deliveryPrice')}</span>
-              <Input
-                className="w-full"
-                numeric="decimal"
-                placeholder="0"
-                value={deliveryPrice}
-                onChange={(e) => setDeliveryPrice(e.target.value)}
-              />
-            </label>
+            <Input
+              className="w-full"
+              numeric="decimal"
+              label={t('form.deliveryPrice')}
+              value={deliveryPrice}
+              onChange={(e) => setDeliveryPrice(e.target.value)}
+            />
 
             {/* Currency governs every amount in the order (plant prices, delivery,
                 total). Each option shows the localized name plus its symbol. */}
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-text">{t('form.currency')}</span>
-              <Select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)}>
-                {currencyOptions(tOrder).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </label>
+            <Select
+              label={t('form.currency')}
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value as Currency)}
+            >
+              {currencyOptions(tOrder).map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
           </div>
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-text">{t('form.paymentMethod')}</span>
-              <Select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-              >
-                {paymentMethodOptions(tOrder).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </label>
+            <Select
+              label={t('form.paymentMethod')}
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+            >
+              {paymentMethodOptions(tOrder).map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
 
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-text">{t('form.paymentStatus')}</span>
-              <Select
-                value={paymentStatus}
-                onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}
-              >
-                {paymentStatusOptions(tOrder).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </label>
+            <Select
+              label={t('form.paymentStatus')}
+              value={paymentStatus}
+              onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}
+            >
+              {paymentStatusOptions(tOrder).map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
 
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-text">{t('form.shipmentStatus')}</span>
-              <Select
-                value={shipmentStatus}
-                onChange={(e) => setShipmentStatus(e.target.value as ShipmentStatus)}
-              >
-                {shipmentStatusOptions(tOrder).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </label>
+            <Select
+              label={t('form.shipmentStatus')}
+              value={shipmentStatus}
+              onChange={(e) => setShipmentStatus(e.target.value as ShipmentStatus)}
+            >
+              {shipmentStatusOptions(tOrder).map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
           </div>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-text">{t('form.comment')}</span>
-            <Textarea
-              className="min-h-20 w-full"
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-            />
-          </label>
+          <Textarea
+            className="min-h-20 w-full"
+            label={t('form.comment')}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+          />
 
           </div>
         </div>

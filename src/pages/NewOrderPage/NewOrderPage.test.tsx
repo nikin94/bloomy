@@ -214,7 +214,7 @@ describe('NewOrderPage', () => {
     await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
     await user.type(screen.getByLabelText('Название'), 'Роза')
     await user.type(screen.getByLabelText('Цена'), '149,90')
-    await user.type(screen.getByPlaceholderText('0'), '300') // delivery cost
+    await user.type(screen.getByLabelText('Стоимость доставки'), '300') // delivery cost
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
 
     await waitFor(() => expect(createOrder).toHaveBeenCalledTimes(1))
@@ -241,7 +241,7 @@ describe('NewOrderPage', () => {
     await screen.findByLabelText('Имя клиента')
     await user.type(screen.getByLabelText('Название'), 'Роза')
     await user.type(screen.getByLabelText('Цена'), '100')
-    await user.type(screen.getByPlaceholderText('0'), '50')
+    await user.type(screen.getByLabelText('Стоимость доставки'), '50')
     // 100 ₽ × 1 + 50 ₽ delivery = 150,00 ₽ (NBSP between number and symbol).
     expect(screen.getByText(/150,00/)).toBeInTheDocument()
   })
