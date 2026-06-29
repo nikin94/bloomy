@@ -30,6 +30,17 @@ export type PaymentMethod = z.infer<typeof PAYMENT_METHOD_SCHEMA>
 export const DELIVERY_METHOD_SCHEMA = z.enum(['bus', 'post', 'pickup', 'cdek', 'taxi', 'other'])
 export type DeliveryMethod = z.infer<typeof DELIVERY_METHOD_SCHEMA>
 
+// Currency an order is priced in. Per-order and FIXED: an order always shows in
+// the currency it was created with — there is NO conversion, the number is the
+// exact amount the operator entered (relabelling 1500₽ as $1500 would lie about
+// the value). The settings default seeds a NEW order; an existing order keeps
+// its own. All three are 2-decimal, so the integer minor-unit model (amount/100)
+// holds; a 0/3-decimal currency (JPY/KWD) would need a per-currency divisor —
+// none are offered. The code IS the value, so it doubles as the option label.
+export const CURRENCY_SCHEMA = z.enum(['RUB', 'USD', 'EUR'])
+export type Currency = z.infer<typeof CURRENCY_SCHEMA>
+export const CURRENCIES = CURRENCY_SCHEMA.options
+
 // A single line item in an order — a plant/flower.
 // Starts as plain text (the plant name); saved together with quantity and a
 // unit price. Amounts are integers in minor units (kopecks) to avoid float
@@ -66,7 +77,10 @@ export const STORED_ORDER_SCHEMA = z.object({
   // (which have no deliveryMethod) valid. New orders always set it from the form.
   deliveryMethod: DELIVERY_METHOD_SCHEMA.default('post'),
   deliveryPriceMinor: z.number().int().nonnegative(), // minor units (kopecks)
-  currency: z.literal('RUB'),
+  // Currency the order is priced in. Widened from a RUB-only literal to the
+  // supported set; existing documents (all 'RUB') stay valid, so this is a safe
+  // widening with no migration. New orders write the chosen currency.
+  currency: CURRENCY_SCHEMA,
   paymentStatus: PAYMENT_STATUS_SCHEMA,
   shipmentStatus: SHIPMENT_STATUS_SCHEMA,
   comment: z.string().optional(),
@@ -288,7 +302,7 @@ export function buildOrderColumns(
     {
       id: 'total',
       header: t('columns.total'),
-      format: (o) => formatMoney(getTotalMinor(o)),
+      format: (o) => formatMoney(getTotalMinor(o), o.currency),
       // Sort by the numeric total (minor units), not the formatted money string.
       sortValue: (o) => getTotalMinor(o),
       width: 'w-32',
@@ -319,6 +333,8 @@ export interface OrderFilter {
   query: string
   paymentStatus: PaymentStatus | ''
   shipmentStatus: ShipmentStatus | ''
+  // Empty string means "any currency"; otherwise the order's currency must match.
+  currency: Currency | ''
   minPriceMinor: number
   maxPriceMinor: number | null
 }
@@ -327,6 +343,7 @@ export const EMPTY_ORDER_FILTER: OrderFilter = {
   query: '',
   paymentStatus: '',
   shipmentStatus: '',
+  currency: '',
   minPriceMinor: 0,
   maxPriceMinor: null,
 }
@@ -342,6 +359,7 @@ export const isOrderFilterActive = (filter: OrderFilter): boolean =>
 export const isModalFilterActive = (filter: OrderFilter): boolean =>
   filter.paymentStatus !== '' ||
   filter.shipmentStatus !== '' ||
+  filter.currency !== '' ||
   filter.minPriceMinor > 0 ||
   filter.maxPriceMinor !== null
 
@@ -360,6 +378,7 @@ export const filterOrders = (
   return orders.filter((o) => {
     if (filter.paymentStatus !== '' && o.paymentStatus !== filter.paymentStatus) return false
     if (filter.shipmentStatus !== '' && o.shipmentStatus !== filter.shipmentStatus) return false
+    if (filter.currency !== '' && o.currency !== filter.currency) return false
     const total = getTotalMinor(o)
     if (total < filter.minPriceMinor) return false
     if (filter.maxPriceMinor !== null && total > filter.maxPriceMinor) return false

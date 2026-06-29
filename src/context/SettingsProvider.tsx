@@ -4,6 +4,7 @@ import { useAuth } from './authContext'
 import { fetchSettings, saveSettings as persistSettings } from '../firebase/settings'
 import {
   clampFontScale,
+  DEFAULT_CURRENCY,
   DEFAULT_DELIVERY_METHOD,
   DEFAULT_FONT_SCALE,
   DEFAULT_LANGUAGE,
@@ -11,7 +12,7 @@ import {
   DEFAULT_THEME,
 } from '../types/settings'
 import type { Language, ThemeMode } from '../types/settings'
-import type { DeliveryMethod, PaymentMethod } from '../types/order'
+import type { Currency, DeliveryMethod, PaymentMethod } from '../types/order'
 import i18n, { LANGUAGE_CACHE_KEY } from '../i18n/config'
 import { SettingsContext } from './settingsContext'
 import type { SettingsDraft } from './settingsContext'
@@ -73,6 +74,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     language: Language
     defaultDeliveryMethod: DeliveryMethod
     defaultPaymentMethod: PaymentMethod
+    defaultCurrency: Currency
   } | null>(null)
   const applies = loaded && loaded.ownerId === ownerId
   const fontScale = applies ? loaded.scale : DEFAULT_FONT_SCALE
@@ -80,6 +82,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const language = applies ? loaded.language : DEFAULT_LANGUAGE
   const defaultDeliveryMethod = applies ? loaded.defaultDeliveryMethod : DEFAULT_DELIVERY_METHOD
   const defaultPaymentMethod = applies ? loaded.defaultPaymentMethod : DEFAULT_PAYMENT_METHOD
+  const defaultCurrency = applies ? loaded.defaultCurrency : DEFAULT_CURRENCY
 
   // Fetch the signed-in user's saved settings. Tagging the result with ownerId
   // keeps a late response from a previous user from applying to the current one.
@@ -96,6 +99,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
           language: settings.language ?? DEFAULT_LANGUAGE,
           defaultDeliveryMethod: settings.defaultDeliveryMethod ?? DEFAULT_DELIVERY_METHOD,
           defaultPaymentMethod: settings.defaultPaymentMethod ?? DEFAULT_PAYMENT_METHOD,
+          defaultCurrency: settings.defaultCurrency ?? DEFAULT_CURRENCY,
         })
       })
       .catch(() => {
@@ -144,6 +148,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       language: next.language,
       defaultDeliveryMethod: next.defaultDeliveryMethod,
       defaultPaymentMethod: next.defaultPaymentMethod,
+      defaultCurrency: next.defaultCurrency,
     })
     setLoaded({
       ownerId,
@@ -152,6 +157,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       language: next.language,
       defaultDeliveryMethod: next.defaultDeliveryMethod,
       defaultPaymentMethod: next.defaultPaymentMethod,
+      defaultCurrency: next.defaultCurrency,
     })
   }
 
@@ -163,6 +169,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         language,
         defaultDeliveryMethod,
         defaultPaymentMethod,
+        defaultCurrency,
         previewFontScale,
         previewTheme,
         previewLanguage,

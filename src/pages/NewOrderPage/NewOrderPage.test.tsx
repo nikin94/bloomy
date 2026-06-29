@@ -59,6 +59,7 @@ const settingsState = (over: Partial<SettingsState> = {}): SettingsState => ({
   language: 'ru',
   defaultDeliveryMethod: 'post',
   defaultPaymentMethod: 'cash',
+  defaultCurrency: 'RUB',
   previewFontScale: vi.fn(),
   previewTheme: vi.fn(),
   previewLanguage: vi.fn(),
@@ -158,7 +159,7 @@ describe('NewOrderPage', () => {
     const user = userEvent.setup()
     renderForm()
     await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
-    const priceInput = screen.getByPlaceholderText('Цена, ₽')
+    const priceInput = screen.getByPlaceholderText('Цена')
 
     // Typing a name but no price must NOT flag the field while editing.
     await user.type(screen.getByPlaceholderText('Название'), 'Роза')
@@ -177,7 +178,7 @@ describe('NewOrderPage', () => {
     const user = userEvent.setup()
     renderForm()
     await screen.findByLabelText('Имя клиента')
-    const priceInput = screen.getByPlaceholderText('Цена, ₽')
+    const priceInput = screen.getByPlaceholderText('Цена')
 
     // Letters are dropped, a single decimal separator is kept.
     await user.type(priceInput, '1a2b,3c')
@@ -202,7 +203,7 @@ describe('NewOrderPage', () => {
     expect(navigate).not.toHaveBeenCalled()
 
     // Filling the price lets the save through.
-    await user.type(screen.getByPlaceholderText('Цена, ₽'), '149,90')
+    await user.type(screen.getByPlaceholderText('Цена'), '149,90')
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     await waitFor(() => expect(createOrder).toHaveBeenCalledTimes(1))
   })
@@ -212,7 +213,7 @@ describe('NewOrderPage', () => {
     renderForm()
     await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
     await user.type(screen.getByPlaceholderText('Название'), 'Роза')
-    await user.type(screen.getByPlaceholderText('Цена, ₽'), '149,90')
+    await user.type(screen.getByPlaceholderText('Цена'), '149,90')
     await user.type(screen.getByPlaceholderText('0'), '300') // delivery cost
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
 
@@ -239,7 +240,7 @@ describe('NewOrderPage', () => {
     renderForm()
     await screen.findByLabelText('Имя клиента')
     await user.type(screen.getByPlaceholderText('Название'), 'Роза')
-    await user.type(screen.getByPlaceholderText('Цена, ₽'), '100')
+    await user.type(screen.getByPlaceholderText('Цена'), '100')
     await user.type(screen.getByPlaceholderText('0'), '50')
     // 100 ₽ × 1 + 50 ₽ delivery = 150,00 ₽ (NBSP between number and symbol).
     expect(screen.getByText(/150,00/)).toBeInTheDocument()
@@ -268,7 +269,7 @@ describe('NewOrderPage', () => {
     renderForm()
     await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
     await user.type(screen.getByPlaceholderText('Название'), 'Роза')
-    await user.type(screen.getByPlaceholderText('Цена, ₽'), '100')
+    await user.type(screen.getByPlaceholderText('Цена'), '100')
 
     const form = screen.getByRole('button', { name: 'Сохранить' }).closest('form')!
     // First submit kicks off createCustomer and flips `saving` true.
@@ -290,7 +291,7 @@ describe('NewOrderPage', () => {
     renderForm()
     await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
     await user.type(screen.getByPlaceholderText('Название'), 'Роза')
-    await user.type(screen.getByPlaceholderText('Цена, ₽'), '100')
+    await user.type(screen.getByPlaceholderText('Цена'), '100')
 
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('network')
@@ -315,7 +316,7 @@ describe('NewOrderPage', () => {
     renderForm()
     await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
     await user.type(screen.getByPlaceholderText('Название'), 'Роза')
-    await user.type(screen.getByPlaceholderText('Цена, ₽'), '100')
+    await user.type(screen.getByPlaceholderText('Цена'), '100')
 
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось сохранить')

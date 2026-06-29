@@ -12,9 +12,11 @@ import RangeSliderImport from 'react-range-slider-input'
 import { fetchOrders, reconcileOrderNumbers } from '../../firebase/orders'
 import { fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
+import { useSettings } from '../../context/settingsContext'
 import { formatMoney } from '../../utils/format'
 import {
   buildOrderColumns,
+  CURRENCIES,
   filterOrders,
   getTotalMinor,
   isOrderFilterActive,
@@ -23,7 +25,7 @@ import {
   paymentStatusOptions,
   shipmentStatusOptions,
 } from '../../types/order'
-import type { Order, OrderFilter, PaymentStatus, ShipmentStatus } from '../../types/order'
+import type { Currency, Order, OrderFilter, PaymentStatus, ShipmentStatus } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
 // react-range-slider-input ships CommonJS (`exports.default = Component`).
@@ -65,6 +67,9 @@ const OrdersPage = () => {
   // optional, so we read the uid defensively and gate the fetch on it.
   const { user } = useAuth()
   const ownerId = user?.uid
+  // The price-filter range is not tied to one order, so it shows in the user's
+  // default currency (a display label for the numeric bounds).
+  const { defaultCurrency } = useSettings()
   const [orders, setOrders] = useState<Order[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
@@ -248,6 +253,26 @@ const OrdersPage = () => {
               </Select>
             </label>
 
+            {/* Currency filter — each order keeps its own currency, so this
+                narrows the list to orders priced in the chosen one. */}
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-medium text-heading">{t('filters.currency')}</span>
+              <Select
+                aria-label={t('filters.currencyAria')}
+                value={filter.currency}
+                onChange={(e) =>
+                  setFilter((f) => ({ ...f, currency: e.target.value as Currency | '' }))
+                }
+              >
+                <option value="">{t('filters.all')}</option>
+                {CURRENCIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </Select>
+            </label>
+
             {/* Price range: one track with two thumbs (from / to) over the
                 0…ceiling scale. Hidden when every order costs the same (or there
                 are none) — there is no range to pick. */}
@@ -256,7 +281,8 @@ const OrdersPage = () => {
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="text-sm font-medium text-heading">{t('filters.priceRange')}</span>
                   <span className="text-sm text-text">
-                    {formatMoney(filter.minPriceMinor)} – {formatMoney(maxThumb)}
+                    {formatMoney(filter.minPriceMinor, defaultCurrency)} –{' '}
+                    {formatMoney(maxThumb, defaultCurrency)}
                   </span>
                 </div>
                 <RangeSlider
@@ -278,6 +304,7 @@ const OrdersPage = () => {
                     ...f,
                     paymentStatus: '',
                     shipmentStatus: '',
+                    currency: '',
                     minPriceMinor: 0,
                     maxPriceMinor: null,
                   }))

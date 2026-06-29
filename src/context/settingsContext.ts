@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react'
 import {
+  DEFAULT_CURRENCY,
   DEFAULT_DELIVERY_METHOD,
   DEFAULT_FONT_SCALE,
   DEFAULT_LANGUAGE,
@@ -7,7 +8,7 @@ import {
   DEFAULT_THEME,
 } from '../types/settings'
 import type { Language, ThemeMode } from '../types/settings'
-import type { DeliveryMethod, PaymentMethod } from '../types/order'
+import type { Currency, DeliveryMethod, PaymentMethod } from '../types/order'
 
 // The settings persisted by the dialog's Save. Theme/font/language preview live
 // before they are saved; the order defaults don't change the live app (they only
@@ -18,6 +19,7 @@ export interface SettingsDraft {
   language: Language
   defaultDeliveryMethod: DeliveryMethod
   defaultPaymentMethod: PaymentMethod
+  defaultCurrency: Currency
 }
 
 // Per-user app settings exposed to the app. `fontScale`/`theme` are the
@@ -31,6 +33,7 @@ export interface SettingsState {
   language: Language
   defaultDeliveryMethod: DeliveryMethod
   defaultPaymentMethod: PaymentMethod
+  defaultCurrency: Currency
   previewFontScale: (scale: number) => void
   previewTheme: (theme: ThemeMode) => void
   previewLanguage: (language: Language) => void
@@ -43,6 +46,7 @@ export const SettingsContext = createContext<SettingsState>({
   language: DEFAULT_LANGUAGE,
   defaultDeliveryMethod: DEFAULT_DELIVERY_METHOD,
   defaultPaymentMethod: DEFAULT_PAYMENT_METHOD,
+  defaultCurrency: DEFAULT_CURRENCY,
   previewFontScale: () => {},
   previewTheme: () => {},
   previewLanguage: () => {},

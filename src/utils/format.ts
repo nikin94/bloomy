@@ -1,11 +1,22 @@
 // Shared formatters for displaying values in the UI.
 // Kept in one place so the table and the detail page use the same
 // format (currency, date).
+import i18next from 'i18next'
+import type { Currency } from '../types/order'
 
-// Amounts are stored as integers in minor units (kopecks). Convert to the
-// major unit (rubles) only here, at display time.
-export const formatMoney = (minor: number) =>
-  new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB' }).format(minor / 100)
+// BCP-47 locale for Intl number/currency formatting, derived from the active UI
+// language so the grouping and decimal separators follow the chosen language
+// (e.g. "1 500,00" in ru, "1,500.00" in en). i18next is the same singleton the
+// app inits; a type-only Currency import keeps this free of a runtime cycle.
+const intlLocale = (): string => (i18next.language === 'en' ? 'en-US' : 'ru-RU')
+
+// Amounts are stored as integers in minor units (kopecks/cents). Render in the
+// order's own currency — there is no conversion, the symbol just labels the
+// amount the operator entered. RUB/USD/EUR are all 2-decimal, so `/100` holds
+// for every supported currency. Defaults to RUB so a currency-less call site
+// (e.g. a price-filter range tied to no single order) still formats.
+export const formatMoney = (minor: number, currency: Currency = 'RUB') =>
+  new Intl.NumberFormat(intlLocale(), { style: 'currency', currency }).format(minor / 100)
 
 export const formatDate = (ms: number) =>
   new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short' }).format(new Date(ms))

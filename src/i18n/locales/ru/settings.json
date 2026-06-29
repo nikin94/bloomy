@@ -20,6 +20,8 @@
   "deliveryMethodAria": "Способ доставки по умолчанию",
   "paymentMethod": "Способ оплаты",
   "paymentMethodAria": "Способ оплаты по умолчанию",
+  "currency": "Валюта",
+  "currencyAria": "Валюта по умолчанию",
   "saveError": "Не удалось сохранить настройки",
   "signOutError": "Не удалось выйти. Попробуйте снова.",
   "admin": {

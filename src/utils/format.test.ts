@@ -92,6 +92,17 @@ describe('formatMoney', () => {
   it('divides by 100 — 100 kopecks is one rouble', () => {
     expect(formatMoney(100)).toContain('1,00')
   })
+
+  it('defaults to roubles when no currency is given', () => {
+    expect(formatMoney(5000)).toContain('₽')
+  })
+
+  it('renders the chosen currency symbol (USD/EUR), same minor-unit model', () => {
+    // 50000 minor = 500.00 in any 2-decimal currency.
+    expect(formatMoney(50000, 'USD')).toContain('$')
+    expect(formatMoney(50000, 'USD')).toContain('500')
+    expect(formatMoney(50000, 'EUR')).toContain('€')
+  })
 })
 
 describe('formatMinorToInput', () => {
