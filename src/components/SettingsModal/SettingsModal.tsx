@@ -141,8 +141,22 @@ const Group = ({ children }: { children: ReactNode }) => (
 
 // One settings row: label on the left, control on the right. The label stays on
 // one line (shrink-0 + nowrap) so a wide control can't squeeze it into a wrap.
-const Row = ({ label, children }: { label: string; children: ReactNode }) => (
-  <div className="flex items-center justify-between gap-3 px-4 py-3">
+// When `changed` is true (the draft differs from the saved value) the whole row
+// is tinted so an unsaved edit is visible at a glance before Save.
+const Row = ({
+  label,
+  changed,
+  children,
+}: {
+  label: string
+  changed?: boolean
+  children: ReactNode
+}) => (
+  <div
+    className={`flex items-center justify-between gap-3 px-4 py-3 transition-colors ${
+      changed ? 'bg-accent-bg' : ''
+    }`}
+  >
     <span className="shrink-0 whitespace-nowrap text-sm font-medium text-heading">{label}</span>
     {children}
   </div>
@@ -206,14 +220,22 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
   // newly-selected tab (roving tabindex: only the active tab is tabbable).
   const tabRefs = useRef<Partial<Record<SettingsTab, HTMLButtonElement | null>>>({})
 
-  // Any unsaved edit relative to the applied settings. Drives the discard guard.
+  // Per-setting dirty flags: each marks one row as edited-but-unsaved, so its row
+  // is tinted (see Row's `changed`). Their OR is the overall dirty state that
+  // drives the discard guard.
+  const fontChanged = fontDraft !== fontScale
+  const themeChanged = themeDraft !== theme
+  const languageChanged = languageDraft !== language
+  const deliveryChanged = deliveryDraft !== defaultDeliveryMethod
+  const paymentChanged = paymentDraft !== defaultPaymentMethod
+  const currencyChanged = currencyDraft !== defaultCurrency
   const isDirty =
-    fontDraft !== fontScale ||
-    themeDraft !== theme ||
-    languageDraft !== language ||
-    deliveryDraft !== defaultDeliveryMethod ||
-    paymentDraft !== defaultPaymentMethod ||
-    currencyDraft !== defaultCurrency
+    fontChanged ||
+    themeChanged ||
+    languageChanged ||
+    deliveryChanged ||
+    paymentChanged ||
+    currencyChanged
 
   // True while the "discard unsaved changes?" confirmation is shown.
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
@@ -368,11 +390,14 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
           })}
         </div>
 
+        {/* A fixed min-height sized to the tallest everyday tab (appearance /
+            orders, three rows each) so the dialog doesn't jump as the user switches
+            tabs — a shorter tab (account) just pads to the same height. */}
         <div
           role="tabpanel"
           id={`settings-panel-${tab}`}
           aria-labelledby={`settings-tab-${tab}`}
-          className="flex flex-col gap-2"
+          className="flex min-h-[12rem] flex-col gap-2"
         >
           {tab === 'appearance' && (
             <Group>
@@ -380,7 +405,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                   self-explanatory, so the row's text label carries the name; the
                   switch's accessible name lives on the control for screen readers.
                   The whole app re-themes live. */}
-              <Row label={t('settings:theme')}>
+              <Row label={t('settings:theme')} changed={themeChanged}>
                 <ThemeToggle
                   value={themeDraft}
                   label={t('settings:themeToggle')}
@@ -394,7 +419,11 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                   constant regardless of the translated label's length; the label
                   takes the remaining space and may shrink/wrap on narrow screens.
                   The whole app scales live, so the dialog previews the chosen size. */}
-              <div className="flex items-center gap-4 px-4 py-3">
+              <div
+                className={`flex items-center gap-4 px-4 py-3 transition-colors ${
+                  fontChanged ? 'bg-accent-bg' : ''
+                }`}
+              >
                 <span className="min-w-0 flex-1 text-sm font-medium text-heading">
                   {t('settings:fontSize')}
                 </span>
@@ -437,7 +466,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
 
               {/* Language: a Select on the right. Changing it re-renders the whole
                   app live (preview); persisted on Save like theme/font. */}
-              <Row label={t('settings:language')}>
+              <Row label={t('settings:language')} changed={languageChanged}>
                 <div className="w-36 shrink-0">
                   <Select
                     aria-label={t('settings:languageAria')}
@@ -457,7 +486,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
 
           {tab === 'orders' && (
             <Group>
-              <Row label={t('settings:deliveryMethod')}>
+              <Row label={t('settings:deliveryMethod')} changed={deliveryChanged}>
                 {/* Fixed-width wrapper: Select's own ROOT is `w-full`, so a width on
                     the Select itself is ignored — the box around it sets the size.
                     The pickers share `w-36` so they line up, wide enough that the
@@ -476,7 +505,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                   </Select>
                 </div>
               </Row>
-              <Row label={t('settings:paymentMethod')}>
+              <Row label={t('settings:paymentMethod')} changed={paymentChanged}>
                 <div className="w-36 shrink-0">
                   <Select
                     aria-label={t('settings:paymentMethodAria')}
@@ -493,7 +522,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
               </Row>
               {/* Currency a NEW order starts in. Each option shows the localized
                   name plus its symbol, e.g. "Рубли (₽)". */}
-              <Row label={t('settings:currency')}>
+              <Row label={t('settings:currency')} changed={currencyChanged}>
                 <div className="w-36 shrink-0">
                   <Select
                     aria-label={t('settings:currencyAria')}
@@ -549,8 +578,9 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
         )}
 
         {/* Global actions — save persists every tab's drafts; cancel discards
-            them outright (the explicit discard affordance, so no extra confirm). */}
-        <div className="flex justify-end gap-2">
+            them outright (the explicit discard affordance, so no extra confirm).
+            Extra top margin sets the actions a touch further from the content. */}
+        <div className="mt-2 flex justify-end gap-2">
           <Button variant="primary" onClick={handleSave} isLoading={saving}>
             {t('common:save')}
           </Button>
@@ -584,7 +614,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                 {t('settings:discardBody')}
               </p>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="mt-2 flex flex-col gap-2">
               <Button variant="secondary" onClick={() => setConfirmingDiscard(false)}>
                 {t('settings:keepEditing')}
               </Button>
