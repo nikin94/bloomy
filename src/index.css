@@ -5,6 +5,20 @@
    our tokens below. */
 @import 'react-range-slider-input/dist/style.css';
 
+/* Hide the native horizontal scrollbar on a scroll-snap swipe track (the
+   full-screen photo viewer). The swiper is driven by snap points + the arrow
+   buttons + keyboard, so the bar only flashes visual noise mid-drag without
+   adding any navigation. Scrolling itself (touch/wheel/keys) stays intact —
+   only the bar's chrome is hidden. Tailwind v4 has no built-in utility for this,
+   so we declare one. */
+@utility scrollbar-hidden {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge */
+  &::-webkit-scrollbar {
+    display: none; /* WebKit / Chrome / iOS Safari */
+  }
+}
+
 /* Base document styling, applied via the design tokens defined in theme.css. */
 :root {
   font-family: var(--sans);

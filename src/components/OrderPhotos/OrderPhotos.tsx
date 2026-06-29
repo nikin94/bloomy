@@ -136,7 +136,7 @@ const PhotoViewer = ({
       </div>
       <div
         ref={trackRef}
-        className="flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden"
+        className="scrollbar-hidden flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden"
       >
         {urls.map((url, i) => (
           <div key={i} className="flex w-full shrink-0 snap-center items-center justify-center p-4">
