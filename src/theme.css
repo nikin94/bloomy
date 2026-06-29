@@ -48,13 +48,6 @@
   --accent: #7ea467;
   --accent-bg: rgba(126, 164, 103, 0.2);
 
-  /* Changed-row tint in the settings dialog. NEUTRAL on purpose (a white lift,
-     not a hue): the accent is sage green, the same family as the slider track
-     and the primary thumb, so a green tint here drowns the font-size slider.
-     A low-alpha neutral marks the row as edited without competing with any
-     control's colour. */
-  --row-changed: rgba(255, 255, 255, 0.06);
-
   /* Neutrals. Muted text is the palette's grey-blue (#889491 = 5.8:1 on --bg). */
   --bg: #16171d;
   --text: #889491;
@@ -107,10 +100,6 @@
   --accent: #5d7c39;
   --accent-bg: rgba(93, 124, 57, 0.18);
 
-  /* Changed-row tint — neutral darken on the grey light surface (see the dark
-     theme note for why this is hue-less rather than the accent green). */
-  --row-changed: rgba(0, 0, 0, 0.05);
-
   /* A muted grey surface (~#ccc), not pure white — far easier on the eyes. The
      darker bg forces every foreground token darker to keep WCAG AA: the muted
      body text drops below 4.5:1 on a grey this dark unless it's deepened too, and
@@ -146,7 +135,6 @@
   --color-primary-bg: var(--primary-bg);
   --color-accent: var(--accent);
   --color-accent-bg: var(--accent-bg);
-  --color-row-changed: var(--row-changed);
   --color-bg: var(--bg);
   --color-tooltip-bg: var(--tooltip-bg);
   --color-text: var(--text);

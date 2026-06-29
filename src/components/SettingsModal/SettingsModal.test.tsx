@@ -128,19 +128,6 @@ describe('SettingsModal', () => {
     expect(saveSettings).not.toHaveBeenCalled()
   })
 
-  it('tints only the row whose draft differs from the saved value', async () => {
-    const user = userEvent.setup()
-    renderModal(true, settings({ theme: 'dark' }))
-    // The theme row's container holds the switch; untouched, it carries no tint.
-    const themeRow = themeSwitch().parentElement as HTMLElement
-    expect(themeRow.className).not.toContain('bg-row-changed')
-    // Editing the theme tints its row, leaving the others (e.g. language) untinted.
-    await user.click(themeSwitch())
-    expect(themeRow.className).toContain('bg-row-changed')
-    const languageRow = screen.getByRole('combobox', { name: 'Язык интерфейса' }).closest('.flex')
-    expect(languageRow?.className).not.toContain('bg-row-changed')
-  })
-
   it('persists the chosen size and theme only on Save, then closes', async () => {
     const user = userEvent.setup()
     renderModal(true, settings({ fontScale: 1, theme: 'dark' }))

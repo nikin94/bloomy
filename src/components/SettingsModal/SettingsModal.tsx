@@ -141,24 +141,12 @@ const Group = ({ children }: { children: ReactNode }) => (
 
 // One settings row: label on the left, control on the right. The label stays on
 // one line (shrink-0 + nowrap) so a wide control can't squeeze it into a wrap.
-// When `changed` is true (the draft differs from the saved value) the whole row
-// is tinted so an unsaved edit is visible at a glance before Save.
-const Row = ({
-  label,
-  changed,
-  children,
-}: {
-  label: string
-  changed?: boolean
-  children: ReactNode
-}) => (
+const Row = ({ label, children }: { label: string; children: ReactNode }) => (
   <div
     // ≤768px: stack label over control (two lines) so a fixed-width control can't
     // push the row wider than a phone viewport. ≥769px: the original label-left /
     // control-right row.
-    className={`flex flex-col items-start gap-1.5 px-4 py-3 transition-colors min-[769px]:flex-row min-[769px]:items-center min-[769px]:justify-between min-[769px]:gap-3 ${
-      changed ? 'bg-row-changed' : ''
-    }`}
+    className="flex flex-col items-start gap-1.5 px-4 py-3 min-[769px]:flex-row min-[769px]:items-center min-[769px]:justify-between min-[769px]:gap-3"
   >
     <span className="text-sm font-medium text-heading min-[769px]:shrink-0 min-[769px]:whitespace-nowrap">
       {label}
@@ -225,22 +213,15 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
   // newly-selected tab (roving tabindex: only the active tab is tabbable).
   const tabRefs = useRef<Partial<Record<SettingsTab, HTMLButtonElement | null>>>({})
 
-  // Per-setting dirty flags: each marks one row as edited-but-unsaved, so its row
-  // is tinted (see Row's `changed`). Their OR is the overall dirty state that
-  // drives the discard guard.
-  const fontChanged = fontDraft !== fontScale
-  const themeChanged = themeDraft !== theme
-  const languageChanged = languageDraft !== language
-  const deliveryChanged = deliveryDraft !== defaultDeliveryMethod
-  const paymentChanged = paymentDraft !== defaultPaymentMethod
-  const currencyChanged = currencyDraft !== defaultCurrency
+  // Any draft differing from its saved value means there are unsaved changes —
+  // drives the discard guard when the user dismisses the dialog.
   const isDirty =
-    fontChanged ||
-    themeChanged ||
-    languageChanged ||
-    deliveryChanged ||
-    paymentChanged ||
-    currencyChanged
+    fontDraft !== fontScale ||
+    themeDraft !== theme ||
+    languageDraft !== language ||
+    deliveryDraft !== defaultDeliveryMethod ||
+    paymentDraft !== defaultPaymentMethod ||
+    currencyDraft !== defaultCurrency
 
   // True while the "discard unsaved changes?" confirmation is shown.
   const [confirmingDiscard, setConfirmingDiscard] = useState(false)
@@ -440,7 +421,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                   self-explanatory, so the row's text label carries the name; the
                   switch's accessible name lives on the control for screen readers.
                   The whole app re-themes live. */}
-              <Row label={t('settings:theme')} changed={themeChanged}>
+              <Row label={t('settings:theme')}>
                 <ThemeToggle
                   value={themeDraft}
                   label={t('settings:themeToggle')}
@@ -454,11 +435,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                   constant regardless of the translated label's length; the label
                   takes the remaining space and may shrink/wrap on narrow screens.
                   The whole app scales live, so the dialog previews the chosen size. */}
-              <div
-                className={`flex flex-col items-start gap-2 px-4 py-3 transition-colors min-[769px]:flex-row min-[769px]:items-center min-[769px]:gap-4 ${
-                  fontChanged ? 'bg-row-changed' : ''
-                }`}
-              >
+              <div className="flex flex-col items-start gap-2 px-4 py-3 min-[769px]:flex-row min-[769px]:items-center min-[769px]:gap-4">
                 <span className="text-sm font-medium text-heading min-[769px]:min-w-0 min-[769px]:flex-1">
                   {t('settings:fontSize')}
                 </span>
@@ -511,7 +488,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
 
               {/* Language: a Select on the right. Changing it re-renders the whole
                   app live (preview); persisted on Save like theme/font. */}
-              <Row label={t('settings:language')} changed={languageChanged}>
+              <Row label={t('settings:language')}>
                 <div className="w-36 shrink-0">
                   <Select
                     aria-label={t('settings:languageAria')}
@@ -531,7 +508,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
 
           {tab === 'orders' && (
             <Group>
-              <Row label={t('settings:deliveryMethod')} changed={deliveryChanged}>
+              <Row label={t('settings:deliveryMethod')}>
                 {/* Fixed-width wrapper: Select's own ROOT is `w-full`, so a width on
                     the Select itself is ignored — the box around it sets the size.
                     The pickers share `w-36` so they line up, wide enough that the
@@ -550,7 +527,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                   </Select>
                 </div>
               </Row>
-              <Row label={t('settings:paymentMethod')} changed={paymentChanged}>
+              <Row label={t('settings:paymentMethod')}>
                 <div className="w-36 shrink-0">
                   <Select
                     aria-label={t('settings:paymentMethodAria')}
@@ -567,7 +544,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
               </Row>
               {/* Currency a NEW order starts in. Each option shows the localized
                   name plus its symbol, e.g. "Рубли (₽)". */}
-              <Row label={t('settings:currency')} changed={currencyChanged}>
+              <Row label={t('settings:currency')}>
                 <div className="w-36 shrink-0">
                   <Select
                     aria-label={t('settings:currencyAria')}
