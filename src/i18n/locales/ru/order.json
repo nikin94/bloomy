@@ -1,4 +1,9 @@
 {
+  "currency": {
+    "RUB": "Рубли",
+    "USD": "Доллары",
+    "EUR": "Евро"
+  },
   "columns": {
     "number": "№",
     "dateCreated": "Добавлен",

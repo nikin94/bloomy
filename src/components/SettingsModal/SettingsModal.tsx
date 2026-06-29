@@ -6,7 +6,7 @@ import { useSettings } from '../../context/settingsContext'
 import { signOutUser } from '../../firebase/auth'
 import { FONT_SCALE_MAX, FONT_SCALE_MIN, FONT_SCALE_STEP, LANGUAGES } from '../../types/settings'
 import type { Language, ThemeMode } from '../../types/settings'
-import { CURRENCIES, deliveryMethodOptions, paymentMethodOptions } from '../../types/order'
+import { currencyOptions, deliveryMethodOptions, paymentMethodOptions } from '../../types/order'
 import type { Currency, DeliveryMethod, PaymentMethod } from '../../types/order'
 import Button from '../Button/Button'
 import Select from '../Select/Select'
@@ -385,8 +385,8 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
               </Select>
             </div>
           </Row>
-          {/* Currency a NEW order starts in. The code IS the label (RUB/USD/EUR);
-              the symbol is rendered per-order at display time via Intl. */}
+          {/* Currency a NEW order starts in. Each option shows the localized
+              name plus its symbol, e.g. "Рубли (₽)". */}
           <Row label={t('settings:currency')}>
             <div className="w-36 shrink-0">
               <Select
@@ -394,9 +394,9 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                 value={currencyDraft}
                 onChange={(e) => setCurrencyDraft(e.target.value as Currency)}
               >
-                {CURRENCIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
+                {currencyOptions(tOrder).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
                   </option>
                 ))}
               </Select>

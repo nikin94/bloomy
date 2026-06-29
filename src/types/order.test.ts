@@ -13,6 +13,7 @@ import {
   deliveryMethodOptions,
   paymentStatusOptions,
   paymentMethodOptions,
+  currencyOptions,
   STORED_ORDER_SCHEMA,
 } from './order'
 import type { Order } from './order'
@@ -271,6 +272,17 @@ describe('deliveryMethodOptions', () => {
       'СДЭК',
       'Такси',
       'Другое',
+    ])
+  })
+})
+
+describe('currencyOptions', () => {
+  it('labels each currency with its localized name and symbol glyph', () => {
+    // ru labels (the shared test i18n defaults to ru); the symbol comes from Intl.
+    expect(currencyOptions(t)).toEqual([
+      { value: 'RUB', label: 'Рубли (₽)' },
+      { value: 'USD', label: 'Доллары ($)' },
+      { value: 'EUR', label: 'Евро (€)' },
     ])
   })
 })

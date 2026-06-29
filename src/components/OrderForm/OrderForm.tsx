@@ -7,7 +7,7 @@ import { useAuth } from '../../context/authContext'
 import { useSettings } from '../../context/settingsContext'
 import { formatMinorToInput, formatMoney, parseRublesToMinor } from '../../utils/format'
 import {
-  CURRENCIES,
+  currencyOptions,
   deliveryMethodOptions,
   paymentMethodOptions,
   paymentStatusOptions,
@@ -573,13 +573,13 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
             </label>
 
             {/* Currency governs every amount in the order (plant prices, delivery,
-                total). The code IS the label; the symbol is rendered via Intl. */}
+                total). Each option shows the localized name plus its symbol. */}
             <label className="flex flex-col gap-1">
               <span className="text-sm text-text">{t('form.currency')}</span>
               <Select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)}>
-                {CURRENCIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
+                {currencyOptions(tOrder).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
                   </option>
                 ))}
               </Select>

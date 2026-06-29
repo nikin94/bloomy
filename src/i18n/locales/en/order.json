@@ -1,4 +1,9 @@
 {
+  "currency": {
+    "RUB": "Rubles",
+    "USD": "Dollars",
+    "EUR": "Euros"
+  },
   "columns": {
     "number": "#",
     "dateCreated": "Added",

@@ -16,7 +16,7 @@ import { useSettings } from '../../context/settingsContext'
 import { formatMoney } from '../../utils/format'
 import {
   buildOrderColumns,
-  CURRENCIES,
+  currencyOptions,
   filterOrders,
   getTotalMinor,
   isOrderFilterActive,
@@ -278,9 +278,9 @@ const OrdersPage = () => {
                 }
               >
                 <option value="">{t('filters.all')}</option>
-                {CURRENCIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
+                {currencyOptions(tOrder).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
                   </option>
                 ))}
               </Select>

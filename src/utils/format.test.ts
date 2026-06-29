@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   formatMoney,
+  currencySymbol,
   formatDate,
   formatDateTime,
   parseRublesToMinor,
@@ -98,6 +99,14 @@ describe('formatMoney', () => {
     expect(formatMoney(50000, 'USD')).toContain('$')
     expect(formatMoney(50000, 'USD')).toContain('500')
     expect(formatMoney(50000, 'EUR')).toContain('€')
+  })
+})
+
+describe('currencySymbol', () => {
+  it('returns the symbol glyph for each supported currency', () => {
+    expect(currencySymbol('RUB')).toBe('₽')
+    expect(currencySymbol('USD')).toBe('$')
+    expect(currencySymbol('EUR')).toBe('€')
   })
 })
 

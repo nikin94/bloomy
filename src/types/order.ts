@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import i18next, { type TFunction } from 'i18next'
-import { formatDate, formatTime, formatMoney } from '../utils/format'
+import { formatDate, formatTime, formatMoney, currencySymbol } from '../utils/format'
 
 // Status/method unions are defined as Zod enums so the runtime validator (used
 // when reading Firestore documents) and the TypeScript types share a single
@@ -225,6 +225,12 @@ export const paymentMethodLabel = (t: OrderT, value: PaymentMethod): string =>
   t(`paymentMethod.${value}`)
 export const deliveryMethodLabel = (t: OrderT, value: DeliveryMethod): string =>
   t(`deliveryMethod.${value}`)
+// Currency option label: the localized NAME plus the universal symbol glyph, e.g.
+// "Рубли (₽)" / "Dollars ($)". The name is translated (order ns); the symbol
+// comes from currencySymbol (the same Intl source formatMoney uses) so the value
+// in the dropdown and a formatted amount can never disagree on the symbol.
+export const currencyLabel = (t: OrderT, value: Currency): string =>
+  `${t(`currency.${value}`)} (${currencySymbol(value)})`
 
 // { value, label } option lists for native <select>, built per render in the
 // active language. Functions (not constants) because the label is locale-
@@ -236,6 +242,8 @@ export const shipmentStatusOptions = (t: OrderT) =>
   SHIPMENT_STATUS_VALUES.map((value) => ({ value, label: shipmentStatusLabel(t, value) }))
 export const paymentMethodOptions = (t: OrderT) =>
   PAYMENT_METHOD_VALUES.map((value) => ({ value, label: paymentMethodLabel(t, value) }))
+export const currencyOptions = (t: OrderT) =>
+  CURRENCIES.map((value) => ({ value, label: currencyLabel(t, value) }))
 // Delivery methods have no natural order, so sort by the TRANSLATED label (the
 // order the user reads), with the "other" catch-all pinned last regardless.
 export const deliveryMethodOptions = (t: OrderT) =>
