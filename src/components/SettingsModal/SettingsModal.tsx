@@ -153,11 +153,16 @@ const Row = ({
   children: ReactNode
 }) => (
   <div
-    className={`flex items-center justify-between gap-3 px-4 py-3 transition-colors ${
+    // ≤768px: stack label over control (two lines) so a fixed-width control can't
+    // push the row wider than a phone viewport. ≥769px: the original label-left /
+    // control-right row.
+    className={`flex flex-col items-start gap-1.5 px-4 py-3 transition-colors min-[769px]:flex-row min-[769px]:items-center min-[769px]:justify-between min-[769px]:gap-3 ${
       changed ? 'bg-accent-bg' : ''
     }`}
   >
-    <span className="shrink-0 whitespace-nowrap text-sm font-medium text-heading">{label}</span>
+    <span className="text-sm font-medium text-heading min-[769px]:shrink-0 min-[769px]:whitespace-nowrap">
+      {label}
+    </span>
     {children}
   </div>
 )
@@ -386,7 +391,11 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
         <div
           role="tablist"
           aria-label={t('settings:tabsAria')}
-          className={`grid ${tabs.length === 4 ? 'grid-cols-4' : 'grid-cols-3'} gap-1 rounded-lg border border-border bg-primary-bg p-1`}
+          // A horizontal strip rather than a wrapping/squishing grid: each tab keeps
+          // its full label on one line. ≤768px the strip scrolls sideways (bar
+          // hidden) if the labels don't all fit; ≥769px the tabs flex to equal
+          // segments (`min-[769px]:flex-1` on each), so it reads as one control.
+          className="flex gap-1 overflow-x-auto scrollbar-hidden rounded-lg border border-border bg-primary-bg p-1"
         >
           {tabs.map((key) => {
             const selected = key === tab
@@ -404,7 +413,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                 tabIndex={selected ? 0 : -1}
                 onClick={() => setTab(key)}
                 onKeyDown={(e) => onTabKeyDown(e, key)}
-                className={`truncate rounded-md px-2 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary min-[769px]:flex-1 ${
                   selected ? 'bg-bg text-heading shadow-sm' : 'text-text hover:text-heading'
                 }`}
               >
@@ -446,14 +455,17 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                   takes the remaining space and may shrink/wrap on narrow screens.
                   The whole app scales live, so the dialog previews the chosen size. */}
               <div
-                className={`flex items-center gap-4 px-4 py-3 transition-colors ${
+                className={`flex flex-col items-start gap-2 px-4 py-3 transition-colors min-[769px]:flex-row min-[769px]:items-center min-[769px]:gap-4 ${
                   fontChanged ? 'bg-accent-bg' : ''
                 }`}
               >
-                <span className="min-w-0 flex-1 text-sm font-medium text-heading">
+                <span className="text-sm font-medium text-heading min-[769px]:min-w-0 min-[769px]:flex-1">
                   {t('settings:fontSize')}
                 </span>
-                <div className="flex w-36 shrink-0 items-center gap-3">
+                {/* ≤768px the slider cluster takes the full second line (easier to
+                    drag); ≥769px it keeps the fixed width that lines up with the
+                    other control rows. */}
+                <div className="flex w-full items-center gap-3 min-[769px]:w-36 min-[769px]:shrink-0">
                   <span aria-hidden="true" className="shrink-0 text-sm text-text">
                     А
                   </span>
@@ -613,7 +625,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
         {/* Global actions — save persists every tab's drafts; cancel discards
             them outright (the explicit discard affordance, so no extra confirm).
             Extra top margin sets the actions a touch further from the content. */}
-        <div className="mt-2 flex justify-end gap-2">
+        <div className="mt-2 flex flex-col gap-2 min-[769px]:flex-row min-[769px]:justify-end">
           <Button variant="primary" onClick={handleSave} isLoading={saving}>
             {t('common:save')}
           </Button>
