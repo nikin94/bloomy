@@ -392,12 +392,14 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
 
         {/* A fixed min-height sized to the tallest everyday tab (appearance /
             orders, three rows each) so the dialog doesn't jump as the user switches
-            tabs — a shorter tab (account) just pads to the same height. */}
+            tabs — a shorter tab (account) just pads to the same height. BUMP THIS
+            whenever a tab gains rows and grows past it: the value must stay ≥ the
+            tallest everyday tab, otherwise that tab nudges the dialog height again. */}
         <div
           role="tabpanel"
           id={`settings-panel-${tab}`}
           aria-labelledby={`settings-tab-${tab}`}
-          className="flex min-h-[12rem] flex-col gap-2"
+          className="flex min-h-[14rem] flex-col gap-2"
         >
           {tab === 'appearance' && (
             <Group>
