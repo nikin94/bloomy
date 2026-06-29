@@ -54,10 +54,51 @@ jobs:
           # it configurable and consistent with the Firebase config above.
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
 
+      # continue-on-error: the action wraps a floating firebase-tools whose apiv2
+      # layer retries the (non-idempotent) "release to live" POST after a
+      # "premature close" socket error. The first attempt has usually already
+      # applied the release, so the retry comes back 400 FAILED_PRECONDITION
+      # ("supplied version is the current active version") and the action exits 1 —
+      # even though the deploy SUCCEEDED. We therefore do NOT gate the job on this
+      # step's exit code; the "Verify live deployment" step below is the authority.
       - name: Deploy to Firebase Hosting
+        id: deploy
+        continue-on-error: true
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BLOOMY_B69DF }}
           channelId: live
           projectId: bloomy-b69df
+
+      # The deploy is only "green" if prod actually serves THIS commit's bundle.
+      # vite.config.ts stamps the first 12 chars of GITHUB_SHA into /version.json,
+      # so we poll the live file and pass iff it matches. This makes the real
+      # production state — not the flaky action exit code — the source of truth:
+      #   - false-RED  (action 400'd on its retry but the release applied)  -> green
+      #   - false-GREEN (action exited 0 but prod isn't serving the bundle) -> red
+      # version.json is served no-cache (see firebase.json), so it reflects the
+      # release within seconds; we still poll to ride out CDN propagation.
+      - name: Verify live deployment
+        run: |
+          expected="${GITHUB_SHA:0:12}"
+          url="https://bloomy-pot.web.app/version.json"
+          echo "Deploy step outcome: ${{ steps.deploy.outcome }}"
+          echo "Expecting /version.json -> \"$expected\""
+          # No curl -f and a `|| live=""` guard on purpose: the step runs under
+          # `bash -eo pipefail`, so a transient 4xx/5xx or network blip mid-poll
+          # would otherwise kill the job on the first attempt — defeating the very
+          # retry loop. We *want* to keep polling until the version matches, so any
+          # non-200 just yields an empty/old `live` and we try again.
+          for attempt in $(seq 1 10); do
+            live="$(curl -sS -H 'Cache-Control: no-cache' "$url?t=$(date +%s)" \
+              | sed -n 's/.*"version" *: *"\([^"]*\)".*/\1/p')" || live=""
+            echo "Attempt $attempt: live=\"$live\""
+            if [ "$live" = "$expected" ]; then
+              echo "Live deployment serves $expected"
+              exit 0
+            fi
+            sleep 6
+          done
+          echo "Live /version.json never became \"$expected\" - deploy did not reach prod"
+          exit 1
