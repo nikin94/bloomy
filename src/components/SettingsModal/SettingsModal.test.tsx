@@ -67,7 +67,7 @@ describe('SettingsModal', () => {
     expect(screen.getByRole('button', { name: 'Выйти' })).toBeInTheDocument()
   })
 
-  it('shows the signed-in user name alongside sign-out (moved out of the header)', () => {
+  it('shows the signed-in user name in the dialog (moved out of the header)', () => {
     renderModal()
     expect(screen.getByText('Tester')).toBeInTheDocument()
   })
@@ -195,7 +195,8 @@ describe('SettingsModal', () => {
     const user = userEvent.setup()
     renderModal()
     const first = screen.getByRole('button', { name: 'Закрыть' })
-    const last = screen.getByRole('button', { name: 'Выйти' })
+    // Sign-out moved up into the action row, so Cancel is now the last focusable.
+    const last = screen.getByRole('button', { name: 'Отмена' })
 
     // Tab from the last focusable wraps back to the first.
     last.focus()

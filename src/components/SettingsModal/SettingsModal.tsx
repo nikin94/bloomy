@@ -255,6 +255,13 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <Modal title={t('settings:title')} onClose={handleClose}>
+      {/* Signed-in user — a quiet line at the top so the dialog says whose
+          settings these are. Moves to an Account tab when settings are
+          reorganised (backlog). */}
+      {user && (
+        <p className="m-0 truncate text-sm text-text">{user.displayName ?? user.email}</p>
+      )}
+
       {/* Appearance: theme + font size + language, as an iOS-style grouped list. */}
       <section className="flex flex-col gap-2">
         <SectionLabel>{t('settings:appearance')}</SectionLabel>
@@ -384,28 +391,25 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
         </p>
       )}
 
-      <div className="flex justify-end gap-2">
-        <Button variant="primary" onClick={handleSave} isLoading={saving}>
+      {/* Footer actions. Sign-out is an icon-only danger button pinned to the
+          left edge; Save/Cancel sit at the right (ml-auto on Save splits the
+          row). Icon-only, so the accessible name lives on aria-label/title. */}
+      <div className="flex items-center gap-2">
+        <Button
+          variant="danger"
+          size="icon"
+          onClick={handleLogout}
+          aria-label={t('common:signOut')}
+          title={t('common:signOut')}
+          className="shrink-0"
+        >
+          <LogoutIcon />
+        </Button>
+        <Button variant="primary" onClick={handleSave} isLoading={saving} className="ml-auto">
           {t('common:save')}
         </Button>
         <Button variant="secondary" onClick={handleClose} disabled={saving}>
           {t('common:cancel')}
-        </Button>
-      </div>
-
-      <span aria-hidden="true" className="h-px w-full bg-border" />
-
-      {/* Account row: the signed-in user's name (moved out of the header) next
-          to sign-out. */}
-      <div className="flex items-center justify-between gap-3">
-        {user && (
-          <span className="min-w-0 truncate text-sm text-text">
-            {user.displayName ?? user.email}
-          </span>
-        )}
-        <Button variant="secondary" onClick={handleLogout} className="shrink-0 gap-1.5">
-          <LogoutIcon />
-          {t('common:signOut')}
         </Button>
       </div>
 
