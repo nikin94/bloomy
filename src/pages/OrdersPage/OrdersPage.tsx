@@ -157,9 +157,15 @@ const OrdersPage = () => {
   const filterActive = isOrderFilterActive(filter)
   const modalFilterActive = isModalFilterActive(filter)
 
-  // Price slider bounds: 0 to the highest order total in the list. The max thumb
-  // sits at the ceiling when there is no upper bound (maxPriceMinor === null).
-  const priceCeilingMinor = orders.reduce((max, o) => Math.max(max, getTotalMinor(o)), 0)
+  // The price slider is single-currency: minor units are only comparable within
+  // one currency (100 000 ₽ and $200 are not on the same scale). When a currency
+  // filter is active, scope the ceiling — and the label's symbol — to it; with no
+  // currency picked the bound spans every order and the label shows the default.
+  const priceCurrency = filter.currency || defaultCurrency
+  const priceScopeOrders = filter.currency
+    ? orders.filter((o) => o.currency === filter.currency)
+    : orders
+  const priceCeilingMinor = priceScopeOrders.reduce((max, o) => Math.max(max, getTotalMinor(o)), 0)
   const maxThumb = filter.maxPriceMinor ?? priceCeilingMinor
   // The range slider keeps its two thumbs ordered internally, so we just store
   // the pair it reports. An upper thumb at the ceiling means "no upper bound"
@@ -261,7 +267,14 @@ const OrdersPage = () => {
                 aria-label={t('filters.currencyAria')}
                 value={filter.currency}
                 onChange={(e) =>
-                  setFilter((f) => ({ ...f, currency: e.target.value as Currency | '' }))
+                  // Reset the price bounds: they were set on the previous
+                  // currency's minor-unit scale, so they don't carry over.
+                  setFilter((f) => ({
+                    ...f,
+                    currency: e.target.value as Currency | '',
+                    minPriceMinor: 0,
+                    maxPriceMinor: null,
+                  }))
                 }
               >
                 <option value="">{t('filters.all')}</option>
@@ -281,8 +294,8 @@ const OrdersPage = () => {
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="text-sm font-medium text-heading">{t('filters.priceRange')}</span>
                   <span className="text-sm text-text">
-                    {formatMoney(filter.minPriceMinor, defaultCurrency)} –{' '}
-                    {formatMoney(maxThumb, defaultCurrency)}
+                    {formatMoney(filter.minPriceMinor, priceCurrency)} –{' '}
+                    {formatMoney(maxThumb, priceCurrency)}
                   </span>
                 </div>
                 <RangeSlider

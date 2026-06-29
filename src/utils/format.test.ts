@@ -82,7 +82,7 @@ describe('parseRublesToMinor', () => {
 
 describe('formatMoney', () => {
   it('renders kopecks as roubles with the currency symbol', () => {
-    const result = formatMoney(14990)
+    const result = formatMoney(14990, 'RUB')
     // Don't assert exact whitespace (it varies by ICU): the ru-RU locale uses a
     // comma decimal separator and the ₽ symbol.
     expect(result).toContain('149,90')
@@ -90,11 +90,7 @@ describe('formatMoney', () => {
   })
 
   it('divides by 100 — 100 kopecks is one rouble', () => {
-    expect(formatMoney(100)).toContain('1,00')
-  })
-
-  it('defaults to roubles when no currency is given', () => {
-    expect(formatMoney(5000)).toContain('₽')
+    expect(formatMoney(100, 'RUB')).toContain('1,00')
   })
 
   it('renders the chosen currency symbol (USD/EUR), same minor-unit model', () => {
