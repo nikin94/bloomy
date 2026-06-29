@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -33,6 +34,28 @@ const renderGallery = (photos: string[], onChange = vi.fn()) => {
 describe('OrderPhotos', () => {
   it('resolves and shows a thumbnail for each stored photo path', async () => {
     renderGallery(['orders/owner-1/o1/a.jpg', 'orders/owner-1/o1/b.jpg'])
+
+    await waitFor(() => expect(screen.getAllByRole('img')).toHaveLength(2))
+    expect(screen.getAllByRole('img')[0]).toHaveAttribute('src', 'https://cdn/orders/owner-1/o1/a.jpg')
+  })
+
+  it('resolves thumbnails when mounted with existing photos under StrictMode', async () => {
+    // Regression: re-entering an order with already-uploaded photos mounts the
+    // gallery with `photos` ALREADY present. StrictMode runs the resolve effect
+    // setup→cleanup→setup; the `requestedRef` (a ref) survives the re-run, so a
+    // per-run `active` flag would have discarded the first run's resolved URL
+    // while the second run skipped the already-requested path — leaving every
+    // thumbnail stuck on its loader. Gating on a mount-lifetime flag fixes it.
+    render(
+      <StrictMode>
+        <OrderPhotos
+          ownerId="owner-1"
+          orderId="o1"
+          photos={['orders/owner-1/o1/a.jpg', 'orders/owner-1/o1/b.jpg']}
+          onChange={vi.fn()}
+        />
+      </StrictMode>,
+    )
 
     await waitFor(() => expect(screen.getAllByRole('img')).toHaveLength(2))
     expect(screen.getAllByRole('img')[0]).toHaveAttribute('src', 'https://cdn/orders/owner-1/o1/a.jpg')
