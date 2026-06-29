@@ -92,6 +92,15 @@ describe('SettingsModal', () => {
     expect(screen.getByRole('combobox', { name: 'Способ доставки по умолчанию' })).toBeInTheDocument()
   })
 
+  it('navigates sections via the phone section picker (mobile control)', async () => {
+    const user = userEvent.setup()
+    renderModal()
+    // The picker drives the same section state as the desktop tabs; selecting
+    // "Заказы" reveals that section's panel.
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Разделы настроек' }), 'orders')
+    expect(screen.getByRole('combobox', { name: 'Способ доставки по умолчанию' })).toBeInTheDocument()
+  })
+
   it('reflects the current theme and toggles it live without persisting', async () => {
     const user = userEvent.setup()
     renderModal(true, settings({ theme: 'dark' }))

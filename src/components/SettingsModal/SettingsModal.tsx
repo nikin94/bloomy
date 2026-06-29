@@ -367,41 +367,62 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
       {/* The settings body is made inert while the discard confirmation is up, so
           only the confirm card is interactive (and it visually dims behind it). */}
       <div inert={confirmingDiscard} className="flex flex-col gap-6">
-        {/* Section tabs. Roving tabindex + arrow-key navigation per the ARIA tabs
-            pattern; equal-width segments so the header reads as one control. */}
-        <div
-          role="tablist"
-          aria-label={t('settings:tabsAria')}
-          // A horizontal strip rather than a wrapping/squishing grid: each tab keeps
-          // its full label on one line. ≤768px the strip scrolls sideways (bar
-          // hidden) if the labels don't all fit; ≥769px the tabs flex to equal
-          // segments (`min-[769px]:flex-1` on each), so it reads as one control.
-          className="flex gap-1 overflow-x-auto scrollbar-hidden rounded-lg border border-border bg-primary-bg p-1"
-        >
-          {tabs.map((key) => {
-            const selected = key === tab
-            return (
-              <button
-                key={key}
-                ref={(el) => {
-                  tabRefs.current[key] = el
-                }}
-                type="button"
-                role="tab"
-                id={`settings-tab-${key}`}
-                aria-selected={selected}
-                aria-controls={`settings-panel-${key}`}
-                tabIndex={selected ? 0 : -1}
-                onClick={() => setTab(key)}
-                onKeyDown={(e) => onTabKeyDown(e, key)}
-                className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary min-[769px]:flex-1 ${
-                  selected ? 'bg-bg text-heading shadow-sm' : 'text-text hover:text-heading'
-                }`}
-              >
-                {t(`settings:tabs.${key}` as const)}
-              </button>
-            )
-          })}
+        {/* Section navigation, responsive between two controls that drive the same
+            `tab` state. A horizontal scroll strip tested badly (no cue it scrolls),
+            so instead: on phones a native <Select> — its current section's full
+            label is always legible and a dropdown is the expected small-screen
+            control; from 769px up, a segmented ARIA tablist (the labels fit as
+            equal columns at that width) with roving-tabindex arrow-key navigation. */}
+        <div>
+          {/* Phone: section picker. */}
+          <div className="min-[769px]:hidden">
+            <Select
+              aria-label={t('settings:tabsAria')}
+              value={tab}
+              onChange={(e) => setTab(e.target.value as SettingsTab)}
+            >
+              {tabs.map((key) => (
+                <option key={key} value={key}>
+                  {t(`settings:tabs.${key}` as const)}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          {/* Desktop: segmented tabs as equal columns (3 or 4) so the header reads
+              as one control. */}
+          <div
+            role="tablist"
+            aria-label={t('settings:tabsAria')}
+            className={`hidden gap-1 rounded-lg border border-border bg-primary-bg p-1 min-[769px]:grid ${
+              tabs.length === 4 ? 'min-[769px]:grid-cols-4' : 'min-[769px]:grid-cols-3'
+            }`}
+          >
+            {tabs.map((key) => {
+              const selected = key === tab
+              return (
+                <button
+                  key={key}
+                  ref={(el) => {
+                    tabRefs.current[key] = el
+                  }}
+                  type="button"
+                  role="tab"
+                  id={`settings-tab-${key}`}
+                  aria-selected={selected}
+                  aria-controls={`settings-panel-${key}`}
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => setTab(key)}
+                  onKeyDown={(e) => onTabKeyDown(e, key)}
+                  className={`truncate rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                    selected ? 'bg-bg text-heading shadow-sm' : 'text-text hover:text-heading'
+                  }`}
+                >
+                  {t(`settings:tabs.${key}` as const)}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
         {/* A fixed min-height sized to the tallest everyday tab (appearance /
@@ -412,7 +433,9 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
         <div
           role="tabpanel"
           id={`settings-panel-${tab}`}
-          aria-labelledby={`settings-tab-${tab}`}
+          // Named by the section's own label (not aria-labelledby → the tab) so the
+          // name holds on phones too, where the desktop tablist is display:none.
+          aria-label={t(`settings:tabs.${tab}` as const)}
           className="flex min-h-[14rem] flex-col gap-2"
         >
           {tab === 'appearance' && (
