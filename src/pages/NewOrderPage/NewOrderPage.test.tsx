@@ -139,7 +139,7 @@ describe('NewOrderPage', () => {
     await screen.findByLabelText('Имя клиента')
     const addBtn = screen.getByRole('button', { name: '+ Добавить растение' })
     expect(addBtn).toBeDisabled()
-    await user.type(screen.getByPlaceholderText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
     expect(addBtn).toBeEnabled()
   })
 
@@ -147,10 +147,10 @@ describe('NewOrderPage', () => {
     const user = userEvent.setup()
     renderForm()
     await screen.findByLabelText('Имя клиента')
-    await user.type(screen.getByPlaceholderText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
     await user.click(screen.getByRole('button', { name: '+ Добавить растение' }))
     // The just-added (second) name input grabs focus so the user can type at once.
-    const nameInputs = screen.getAllByPlaceholderText('Название')
+    const nameInputs = screen.getAllByLabelText('Название')
     expect(nameInputs).toHaveLength(2)
     expect(nameInputs[1]).toHaveFocus()
   })
@@ -159,10 +159,10 @@ describe('NewOrderPage', () => {
     const user = userEvent.setup()
     renderForm()
     await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
-    const priceInput = screen.getByPlaceholderText('Цена')
+    const priceInput = screen.getByLabelText('Цена')
 
     // Typing a name but no price must NOT flag the field while editing.
-    await user.type(screen.getByPlaceholderText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
     expect(priceInput).toHaveAttribute('aria-invalid', 'false')
 
     // The flag appears only once the user tries to save without a price.
@@ -178,7 +178,7 @@ describe('NewOrderPage', () => {
     const user = userEvent.setup()
     renderForm()
     await screen.findByLabelText('Имя клиента')
-    const priceInput = screen.getByPlaceholderText('Цена')
+    const priceInput = screen.getByLabelText('Цена')
 
     // Letters are dropped, a single decimal separator is kept.
     await user.type(priceInput, '1a2b,3c')
@@ -194,7 +194,7 @@ describe('NewOrderPage', () => {
     const user = userEvent.setup()
     renderForm()
     await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
-    await user.type(screen.getByPlaceholderText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
     // No price entered for the named plant.
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
 
@@ -203,7 +203,7 @@ describe('NewOrderPage', () => {
     expect(navigate).not.toHaveBeenCalled()
 
     // Filling the price lets the save through.
-    await user.type(screen.getByPlaceholderText('Цена'), '149,90')
+    await user.type(screen.getByLabelText('Цена'), '149,90')
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     await waitFor(() => expect(createOrder).toHaveBeenCalledTimes(1))
   })
@@ -212,8 +212,8 @@ describe('NewOrderPage', () => {
     const user = userEvent.setup()
     renderForm()
     await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
-    await user.type(screen.getByPlaceholderText('Название'), 'Роза')
-    await user.type(screen.getByPlaceholderText('Цена'), '149,90')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Цена'), '149,90')
     await user.type(screen.getByPlaceholderText('0'), '300') // delivery cost
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
 
@@ -239,8 +239,8 @@ describe('NewOrderPage', () => {
     const user = userEvent.setup()
     renderForm()
     await screen.findByLabelText('Имя клиента')
-    await user.type(screen.getByPlaceholderText('Название'), 'Роза')
-    await user.type(screen.getByPlaceholderText('Цена'), '100')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Цена'), '100')
     await user.type(screen.getByPlaceholderText('0'), '50')
     // 100 ₽ × 1 + 50 ₽ delivery = 150,00 ₽ (NBSP between number and symbol).
     expect(screen.getByText(/150,00/)).toBeInTheDocument()
@@ -268,8 +268,8 @@ describe('NewOrderPage', () => {
     createCustomer.mockReturnValue(pending.promise)
     renderForm()
     await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
-    await user.type(screen.getByPlaceholderText('Название'), 'Роза')
-    await user.type(screen.getByPlaceholderText('Цена'), '100')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Цена'), '100')
 
     const form = screen.getByRole('button', { name: 'Сохранить' }).closest('form')!
     // First submit kicks off createCustomer and flips `saving` true.
@@ -290,8 +290,8 @@ describe('NewOrderPage', () => {
     createOrder.mockRejectedValueOnce(new Error('network')).mockResolvedValue('order-id')
     renderForm()
     await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
-    await user.type(screen.getByPlaceholderText('Название'), 'Роза')
-    await user.type(screen.getByPlaceholderText('Цена'), '100')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Цена'), '100')
 
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('network')
@@ -315,8 +315,8 @@ describe('NewOrderPage', () => {
     createOrder.mockRejectedValue(new Error('Не удалось сохранить'))
     renderForm()
     await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
-    await user.type(screen.getByPlaceholderText('Название'), 'Роза')
-    await user.type(screen.getByPlaceholderText('Цена'), '100')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Цена'), '100')
 
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось сохранить')
@@ -331,14 +331,14 @@ describe('NewOrderPage', () => {
     expect(screen.getByRole('button', { name: 'Удалить растение' })).toBeDisabled()
 
     // Add a second row, then remove it.
-    await user.type(screen.getByPlaceholderText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
     await user.click(screen.getByRole('button', { name: '+ Добавить растение' }))
-    expect(screen.getAllByPlaceholderText('Название')).toHaveLength(2)
+    expect(screen.getAllByLabelText('Название')).toHaveLength(2)
 
     await user.click(screen.getAllByRole('button', { name: 'Удалить растение' })[1])
-    expect(screen.getAllByPlaceholderText('Название')).toHaveLength(1)
+    expect(screen.getAllByLabelText('Название')).toHaveLength(1)
     // The surviving first row kept its value — removal didn't reindex state.
-    expect(screen.getByPlaceholderText('Название')).toHaveValue('Роза')
+    expect(screen.getByLabelText('Название')).toHaveValue('Роза')
   })
 
   it('prefills the delivery/payment method from the saved order defaults', async () => {

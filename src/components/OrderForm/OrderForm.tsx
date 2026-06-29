@@ -99,7 +99,7 @@ const PlantItemRow = ({
       </span>
       <Input
         className="min-w-0 flex-1"
-        placeholder={t('form.plantName')}
+        label={t('form.plantName')}
         autoFocus={autoFocus}
         value={item.name}
         onChange={(e) => onChange({ name: e.target.value })}
@@ -109,14 +109,14 @@ const PlantItemRow = ({
       <Input
         className="min-w-0 flex-[2]"
         numeric="integer"
-        placeholder={t('form.quantity')}
+        label={t('form.quantity')}
         value={item.quantity}
         onChange={(e) => onChange({ quantity: e.target.value })}
       />
       <Input
         className="min-w-0 flex-[3]"
         numeric="decimal"
-        placeholder={t('form.price')}
+        label={t('form.price')}
         invalid={priceMissing}
         value={item.price}
         onChange={(e) => onChange({ price: e.target.value })}
@@ -492,15 +492,13 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
               <div className="flex flex-col gap-3">
                 <Input
                   className="w-full"
-                  aria-label={t('form.customerName')}
-                  placeholder={t('form.namePlaceholder')}
+                  label={t('form.customerName')}
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                 />
                 <Input
                   className="w-full"
-                  aria-label={t('form.phone')}
-                  placeholder={t('form.phonePlaceholder')}
+                  label={t('form.phone')}
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
                 />
@@ -508,14 +506,12 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
             )}
           </fieldset>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-text">{t('form.deliveryAddress')}</span>
-            <Input
-              className="w-full"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-            />
-          </label>
+          <Input
+            className="w-full"
+            label={t('form.deliveryAddress')}
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+          />
 
           {/* min-w-0 defeats the fieldset UA `min-inline-size: min-content`,
               which otherwise stops the element from shrinking to its flex parent

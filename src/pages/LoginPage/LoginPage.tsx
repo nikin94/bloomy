@@ -243,8 +243,7 @@ const LoginPage = () => {
         <Input
           type="email"
           autoComplete="email"
-          aria-label={t('email')}
-          placeholder={t('email')}
+          label={t('email')}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -255,8 +254,7 @@ const LoginPage = () => {
           // A new account needs a fresh password; an existing one offers the
           // saved credential — hint the right autofill for each mode.
           autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-          aria-label={t('password')}
-          placeholder={mode === 'register' ? t('passwordHint') : t('password')}
+          label={t('password')}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -278,8 +276,7 @@ const LoginPage = () => {
           <Input
             type={showPassword ? 'text' : 'password'}
             autoComplete="new-password"
-            aria-label={t('confirmPassword')}
-            placeholder={t('confirmPasswordPlaceholder')}
+            label={t('confirmPassword')}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
