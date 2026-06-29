@@ -299,10 +299,34 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
     tabRefs.current[nextKey]?.focus()
   }
 
+  // While the thumb is held down (pointer drag), DON'T reflow the page on every
+  // value change: scaling the whole rem-based app would grow + recentre the
+  // dialog, sliding the thumb out from under the held pointer and making the UI
+  // fight the drag. So during a drag we update the draft live (thumb, ticks,
+  // aria, the "изменено" tint) but hold the font preview, then apply it ONCE on
+  // release — a single reflow the user isn't actively pointing at. Keyboard
+  // arrows never set this flag (no pointer is down), so each discrete step still
+  // previews live, where there's no held-thumb to fight.
+  const sliderDraggingRef = useRef(false)
+
   const handleSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
     const next = Number(e.target.value)
     setFontDraft(next)
-    previewFontScale(next) // live page update; not persisted until "Сохранить"
+    if (!sliderDraggingRef.current) previewFontScale(next)
+  }
+
+  // Drag started: hold the live preview until release.
+  const handleSliderPointerDown = () => {
+    sliderDraggingRef.current = true
+  }
+
+  // Drag ended (pointer up, or capture lost when released off-element): apply the
+  // final scale in one reflow. Read the value off the DOM so we don't depend on
+  // the just-set draft state having flushed.
+  const handleSliderDragEnd = (e: React.PointerEvent<HTMLInputElement>) => {
+    if (!sliderDraggingRef.current) return
+    sliderDraggingRef.current = false
+    previewFontScale(Number(e.currentTarget.value))
   }
 
   const handleTheme = (next: ThemeMode) => {
@@ -453,6 +477,13 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                       step={FONT_SCALE_STEP}
                       value={fontDraft}
                       onChange={handleSlider}
+                      // Hold the live preview during a pointer drag and apply it
+                      // once on release, so the rescaling page doesn't slide the
+                      // thumb out from under the held pointer (see handleSlider).
+                      onPointerDown={handleSliderPointerDown}
+                      onPointerUp={handleSliderDragEnd}
+                      onPointerCancel={handleSliderDragEnd}
+                      onLostPointerCapture={handleSliderDragEnd}
                       aria-label={t('settings:fontSize')}
                       // Screen readers announce a human-readable label (e.g.
                       // "увеличен") instead of the raw scale number (0.875, 1.25).

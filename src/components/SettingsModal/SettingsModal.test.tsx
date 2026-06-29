@@ -104,10 +104,27 @@ describe('SettingsModal', () => {
     expect(saveSettings).not.toHaveBeenCalled()
   })
 
-  it('previews the size live as the slider moves, without persisting', () => {
+  it('previews the size live when changed without a pointer drag (e.g. keyboard)', () => {
     renderModal()
+    // No pointerdown → not a held-thumb drag, so each step previews live.
     fireEvent.change(slider(), { target: { value: '1.25' } })
     expect(previewFontScale).toHaveBeenCalledWith(1.25)
+    expect(saveSettings).not.toHaveBeenCalled()
+  })
+
+  it('holds the font preview during a pointer drag and applies it once on release', () => {
+    renderModal()
+    const s = slider()
+    fireEvent.pointerDown(s)
+    fireEvent.change(s, { target: { value: '1.25' } })
+    fireEvent.change(s, { target: { value: '1.375' } })
+    // While the thumb is held, the page must NOT reflow (it would slide the thumb
+    // out from under the pointer); the draft still tracks for thumb/aria/tint.
+    expect(previewFontScale).not.toHaveBeenCalled()
+    fireEvent.pointerUp(s)
+    // Exactly one reflow on release, at the final value.
+    expect(previewFontScale).toHaveBeenCalledTimes(1)
+    expect(previewFontScale).toHaveBeenCalledWith(1.375)
     expect(saveSettings).not.toHaveBeenCalled()
   })
 
