@@ -13,13 +13,9 @@
   },
   "form": {
     "name": "Customer name",
-    "namePlaceholder": "Name*",
     "phone": "Phone",
-    "phonePlaceholder": "+7 900 000-00-00",
     "address": "Address",
-    "addressPlaceholder": "City, street, building",
     "note": "Customer note",
-    "notePlaceholder": "Note",
     "saveError": "Couldn't save the customer"
   }
 }

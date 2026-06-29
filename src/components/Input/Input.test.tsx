@@ -69,6 +69,27 @@ describe('Input', () => {
     expect(onChange.mock.calls.at(-1)![0].target.value).toBe('3')
   })
 
+  it('renders a floating label as the accessible name and links it to the input', () => {
+    render(<Input label="Телефон" value="" onChange={vi.fn()} />)
+    // The <label> is the accessible name (getByLabelText), not a placeholder.
+    const input = screen.getByLabelText('Телефон')
+    expect(input.tagName).toBe('INPUT')
+    // The input carries a non-empty placeholder so `:placeholder-shown` drives the
+    // float, and it is the `peer` the label keys off.
+    expect(input).toHaveAttribute('placeholder', ' ')
+    expect(input).toHaveClass('peer')
+  })
+
+  it('keeps numeric sanitising and invalid state when a floating label is used', async () => {
+    const onChange = vi.fn()
+    render(<Input label="Цена" numeric="decimal" invalid value="12" onChange={onChange} />)
+    const input = screen.getByLabelText('Цена')
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(input).toHaveAttribute('inputmode', 'decimal')
+    await userEvent.type(input, 'a') // letter filtered out by the decimal sanitiser
+    expect(onChange.mock.calls.at(-1)![0].target.value).toBe('12')
+  })
+
   it('renders a suffix node (e.g. an eye toggle) alongside the field, still typeable', async () => {
     const onChange = vi.fn()
     render(

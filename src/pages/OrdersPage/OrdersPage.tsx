@@ -223,68 +223,59 @@ const OrdersPage = () => {
       {filtersOpen && (
         <Modal title={t('filters.title')} onClose={() => setFiltersOpen(false)}>
           <div className="flex flex-col gap-4">
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-heading">{t('filters.paymentStatus')}</span>
-              <Select
-                aria-label={t('filters.paymentStatusAria')}
-                value={filter.paymentStatus}
-                onChange={(e) =>
-                  setFilter((f) => ({ ...f, paymentStatus: e.target.value as PaymentStatus | '' }))
-                }
-              >
-                <option value="">{t('filters.all')}</option>
-                {paymentStatusOptions(tOrder).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </label>
+            <Select
+              label={t('filters.paymentStatus')}
+              value={filter.paymentStatus}
+              onChange={(e) =>
+                setFilter((f) => ({ ...f, paymentStatus: e.target.value as PaymentStatus | '' }))
+              }
+            >
+              <option value="">{t('filters.all')}</option>
+              {paymentStatusOptions(tOrder).map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
 
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-heading">{t('filters.shipmentStatus')}</span>
-              <Select
-                aria-label={t('filters.shipmentStatusAria')}
-                value={filter.shipmentStatus}
-                onChange={(e) =>
-                  setFilter((f) => ({ ...f, shipmentStatus: e.target.value as ShipmentStatus | '' }))
-                }
-              >
-                <option value="">{t('filters.all')}</option>
-                {shipmentStatusOptions(tOrder).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </label>
+            <Select
+              label={t('filters.shipmentStatus')}
+              value={filter.shipmentStatus}
+              onChange={(e) =>
+                setFilter((f) => ({ ...f, shipmentStatus: e.target.value as ShipmentStatus | '' }))
+              }
+            >
+              <option value="">{t('filters.all')}</option>
+              {shipmentStatusOptions(tOrder).map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
 
             {/* Currency filter — each order keeps its own currency, so this
                 narrows the list to orders priced in the chosen one. */}
-            <label className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-heading">{t('filters.currency')}</span>
-              <Select
-                aria-label={t('filters.currencyAria')}
-                value={filter.currency}
-                onChange={(e) =>
-                  // Reset the price bounds: they were set on the previous
-                  // currency's minor-unit scale, so they don't carry over.
-                  setFilter((f) => ({
-                    ...f,
-                    currency: e.target.value as Currency | '',
-                    minPriceMinor: 0,
-                    maxPriceMinor: null,
-                  }))
-                }
-              >
-                <option value="">{t('filters.all')}</option>
-                {currencyOptions(tOrder).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </label>
+            <Select
+              label={t('filters.currency')}
+              value={filter.currency}
+              onChange={(e) =>
+                // Reset the price bounds: they were set on the previous
+                // currency's minor-unit scale, so they don't carry over.
+                setFilter((f) => ({
+                  ...f,
+                  currency: e.target.value as Currency | '',
+                  minPriceMinor: 0,
+                  maxPriceMinor: null,
+                }))
+              }
+            >
+              <option value="">{t('filters.all')}</option>
+              {currencyOptions(tOrder).map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
 
             {/* Price range: one track with two thumbs (from / to) over the
                 0…ceiling scale. Hidden when every order costs the same (or there

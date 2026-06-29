@@ -49,33 +49,29 @@ const CustomerForm = ({ initial, onSubmit, onCancel }: CustomerFormProps) => {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex min-w-0 flex-1 flex-col gap-2">
+    <form onSubmit={handleSubmit} className="flex min-w-0 flex-1 flex-col gap-4">
       <Input
         className="w-full"
-        aria-label={t('form.name')}
-        placeholder={t('form.namePlaceholder')}
+        label={t('form.name')}
         invalid={nameMissing}
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
       <Input
         className="w-full"
-        aria-label={t('form.phone')}
-        placeholder={t('form.phonePlaceholder')}
+        label={t('form.phone')}
         value={phone}
         onChange={(e) => setPhone(e.target.value)}
       />
       <Input
         className="w-full"
-        aria-label={t('form.address')}
-        placeholder={t('form.addressPlaceholder')}
+        label={t('form.address')}
         value={address}
         onChange={(e) => setAddress(e.target.value)}
       />
       <Textarea
         className="min-h-16 w-full"
-        aria-label={t('form.note')}
-        placeholder={t('form.notePlaceholder')}
+        label={t('form.note')}
         value={note}
         onChange={(e) => setNote(e.target.value)}
       />

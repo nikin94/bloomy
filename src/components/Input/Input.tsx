@@ -1,6 +1,23 @@
+import { useId } from 'react'
 import type { ChangeEvent, InputHTMLAttributes, ReactNode } from 'react'
 import { FIELD_BASE, FIELD_INVALID, FIELD_NORMAL } from '../../styles/fieldStyles'
 import { sanitizeDecimalInput, sanitizeIntegerInput } from '../../utils/format'
+
+// Floating label: resting (down) state is the bare base; the floated (up) state
+// is applied ONLY through `peer-*` variants, so it always wins over the base in
+// the cascade regardless of focus/placeholder-shown variant ordering. The label
+// floats up when the field is focused OR holds a value (`:not(:placeholder-shown)`,
+// which needs the input to carry a non-empty placeholder — we set `placeholder=" "`).
+// `bg-bg px-1` punches a notch in the top border (works because the field and its
+// container are both `bg-bg`). The motion is gated behind `motion-safe:` so a
+// reduced-motion user gets an instant snap instead of a slide.
+const FLOATING_LABEL =
+  'pointer-events-none absolute left-2 top-1/2 z-10 -translate-y-1/2 px-1 text-base text-placeholder ' +
+  'motion-safe:transition-all motion-safe:duration-150 ' +
+  'peer-focus:top-0 peer-focus:text-xs peer-focus:bg-bg peer-focus:text-primary ' +
+  'peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:text-xs ' +
+  'peer-[:not(:placeholder-shown)]:bg-bg peer-[:not(:placeholder-shown)]:text-text ' +
+  'peer-aria-[invalid=true]:text-danger'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   // Marks the field as failing validation: red border + focus ring, and the
@@ -19,12 +36,19 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   // extra right padding so its text never collides with the suffix. The suffix
   // sits above the input, so an interactive suffix (a button) stays clickable.
   suffix?: ReactNode
+  // Floating label text. When set, a real <label> is rendered (linked to the
+  // input via `htmlFor`, so it doubles as the accessible name) and animates from
+  // an in-field placeholder position up to straddle the top border on focus / when
+  // the field holds a value. Replaces the placeholder-as-label pattern. When
+  // omitted, the field renders exactly as before (the caller's `placeholder`
+  // shows as usual).
+  label?: string
 }
 
 // The app's standard text input. Wraps the shared field styling (border, focus
 // ring, padding) so every input looks identical; pass `invalid` for the error
-// state, `numeric` for number entry, and `className` for per-usage width. All
-// native input props pass through.
+// state, `numeric` for number entry, `label` for a floating label, and
+// `className` for per-usage width. All native input props pass through.
 const Input = ({
   invalid = false,
   className = '',
@@ -33,8 +57,16 @@ const Input = ({
   inputMode,
   onChange,
   suffix,
+  label,
+  id,
+  placeholder,
   ...props
 }: InputProps) => {
+  // A stable id is needed only to link a floating <label> to the input; generated
+  // unconditionally (hooks can't be conditional) and used only in the label path.
+  const reactId = useId()
+  const inputId = id ?? reactId
+
   // When numeric, take over type/inputMode and sanitize each keystroke before it
   // reaches the consumer's onChange — so a number field can't hold a non-number
   // and the caller just stores the value. Otherwise pass the props through as-is.
@@ -54,12 +86,40 @@ const Input = ({
 
   const borderClass = invalid ? FIELD_INVALID : FIELD_NORMAL
 
+  // Floating label: wrap so the <label> can be absolutely positioned over the
+  // field. The input MUST carry a non-empty placeholder (" ") so `:placeholder-
+  // shown` flips off the moment it holds a value, which drives the float. The
+  // caller's own `placeholder` is intentionally ignored here — the label is the
+  // hint now. Supports a suffix (reserve `pr-10`) just like the bare path.
+  if (label) {
+    return (
+      <div className={`relative w-full min-w-0 ${className}`}>
+        <input
+          id={inputId}
+          aria-invalid={invalid}
+          placeholder=" "
+          className={`peer ${FIELD_BASE} w-full py-2 pl-3 ${suffix ? 'pr-10' : 'pr-3'} ${borderClass}`}
+          {...numericProps}
+          {...props}
+        />
+        <label htmlFor={inputId} className={FLOATING_LABEL}>
+          {label}
+        </label>
+        {suffix && (
+          <span className="absolute inset-y-0 right-0 flex items-center pr-1.5">{suffix}</span>
+        )}
+      </div>
+    )
+  }
+
   // No suffix: the bare input carries the consumer className (width/layout) as
   // before — the common case, kept byte-identical so nothing else shifts.
   if (!suffix) {
     return (
       <input
+        id={id}
         aria-invalid={invalid}
+        placeholder={placeholder}
         className={`${FIELD_BASE} px-3 py-2 ${borderClass} ${className}`}
         {...numericProps}
         {...props}
@@ -74,7 +134,9 @@ const Input = ({
   return (
     <div className={`relative w-full min-w-0 ${className}`}>
       <input
+        id={id}
         aria-invalid={invalid}
+        placeholder={placeholder}
         className={`${FIELD_BASE} w-full py-2 pl-3 pr-10 ${borderClass}`}
         {...numericProps}
         {...props}
