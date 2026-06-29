@@ -25,4 +25,13 @@ describe('Textarea', () => {
     await userEvent.type(screen.getByPlaceholderText('Заметка'), 'x')
     expect(onChange).toHaveBeenCalled()
   })
+
+  it('renders a floating label as the accessible name, linked to the textarea', () => {
+    render(<Textarea label="Заметка о клиенте" value="" onChange={vi.fn()} />)
+    const area = screen.getByLabelText('Заметка о клиенте')
+    expect(area.tagName).toBe('TEXTAREA')
+    // Non-empty placeholder drives `:placeholder-shown`; it is the label's peer.
+    expect(area).toHaveAttribute('placeholder', ' ')
+    expect(area).toHaveClass('peer')
+  })
 })
