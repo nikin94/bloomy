@@ -22,12 +22,18 @@ interface DataTableProps {
   emptyMessage?: string
 }
 
-// Cell value: use the column's format function when present, otherwise
-// stringify the raw field. Derived columns (no `field`) must provide `format`.
-// A formatted value may contain newlines (e.g. the stacked plant list); render
-// each line on its own row so it reads as a column, not one long string.
+// Raw string value of a column for an order: the column's format function when
+// present, otherwise the stringified raw field. Derived columns (no `field`)
+// must provide `format`. Shared by the table (renderCell) and the mobile card so
+// both read the same OrderColumn source of truth.
+const cellValue = (order: Order, column: OrderColumn): string =>
+  column.format ? column.format(order) : column.field ? String(order[column.field]) : ''
+
+// Cell value for the table. A formatted value may contain newlines (e.g. the
+// stacked plant list); render each line on its own row so it reads as a column,
+// not one long string.
 const renderCell = (order: Order, column: OrderColumn): ReactNode => {
-  const value = column.format ? column.format(order) : column.field ? String(order[column.field]) : ''
+  const value = cellValue(order, column)
   if (!value.includes('\n')) return value
   return value.split('\n').map((line, i) => <div key={i}>{line}</div>)
 }
@@ -118,38 +124,105 @@ const OrderTableRow = ({
   </tr>
 )
 
-// The same order as a card (mobile layout): a vertical list of "label → value"
-// pairs, the whole card clickable. Reuses the table's cells so the formatting
-// stays identical to the desktop layout.
+// A small "label above, value below" pair used by the mobile card for the
+// customer, address and the paired payment/shipment statuses.
+const CardField = ({
+  label,
+  value,
+  className = '',
+}: {
+  label: string
+  value: string
+  className?: string
+}) => (
+  <div className={`flex min-w-0 flex-col gap-0.5 ${className}`}>
+    <span className="text-xs font-medium uppercase tracking-wide text-text">{label}</span>
+    <span className="break-words text-sm text-heading">{value}</span>
+  </div>
+)
+
+// The same order as a card (mobile layout). Unlike the desktop table — a flat
+// "label → value" row per column — the card regroups the SAME column values into
+// a richer phone layout: a number/date header, stacked customer + address, each
+// plant in its own bordered block, the total on one line, and payment/shipment
+// side by side. Every value still comes from the OrderColumn config (looked up by
+// id), so customer-name resolution, the order's currency, status labels and plant
+// formatting stay the single source of truth shared with the table.
 const OrderCard = ({
-  row,
+  order,
+  columnById,
   highlighted,
   onActivate,
 }: {
-  row: Row<Order>
+  order: Order
+  columnById: Map<string, OrderColumn>
   highlighted: boolean
   onActivate: (order: Order) => void
-}) => (
-  <div
-    className={`cursor-pointer rounded-lg border border-border p-4 transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary${
-      highlighted ? ' row-highlight' : ''
-    }`}
-    {...activationProps(row.original, onActivate)}
-  >
-    <dl className="m-0 flex flex-col gap-1.5 text-[0.8333rem]">
-      {row.getVisibleCells().map((cell) => (
-        <div key={cell.id} className="flex gap-3">
-          <dt className="shrink-0 basis-28 text-text">
-            {String(cell.column.columnDef.header)}
-          </dt>
-          <dd className="m-0 min-w-0 break-words text-heading">
-            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-          </dd>
-        </div>
-      ))}
-    </dl>
-  </div>
-)
+}) => {
+  const value = (id: string) => {
+    const column = columnById.get(id)
+    return column ? cellValue(order, column) : ''
+  }
+  const label = (id: string) => columnById.get(id)?.header ?? ''
+  // The date column packs date + time on two lines (for the table); collapse them
+  // onto one line for the card's header.
+  const dateText = value('dateCreated').split('\n').join(' · ')
+  // The plants column is newline-joined "name ×qty" lines — one bordered block each.
+  const plantLines = value('plants').split('\n').filter(Boolean)
+  return (
+    <div
+      className={`flex cursor-pointer flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary${
+        highlighted ? ' row-highlight' : ''
+      }`}
+      {...activationProps(order, onActivate)}
+    >
+      {/* Header: order number on the left, creation date on the right. */}
+      <div className="flex items-baseline justify-between gap-3 border-b border-border pb-3">
+        <span className="font-semibold text-heading">
+          {label('number')} {value('number')}
+        </span>
+        <span className="shrink-0 text-sm text-text">{dateText}</span>
+      </div>
+
+      <CardField label={label('customer')} value={value('customer')} />
+      <CardField label={label('address')} value={value('address')} />
+
+      {/* Plants: each line its own bordered block, not one joined string. */}
+      <div className="flex flex-col gap-1">
+        <span className="text-xs font-medium uppercase tracking-wide text-text">
+          {label('plants')}
+        </span>
+        <ul className="m-0 flex list-none flex-col gap-1 p-0">
+          {plantLines.map((line, i) => (
+            <li
+              key={i}
+              className="rounded-md border border-border px-3 py-1.5 text-sm text-heading"
+            >
+              {line}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Payment status on the left, shipment pushed to the right edge
+          (right-aligned, label over value). */}
+      <div className="flex items-start justify-between gap-4">
+        <CardField label={label('paymentStatus')} value={value('paymentStatus')} />
+        <CardField
+          label={label('shipmentStatus')}
+          value={value('shipmentStatus')}
+          className="items-end text-right"
+        />
+      </div>
+
+      {/* Total at the bottom, set off by a divider: label and amount on one line. */}
+      <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3">
+        <span className="text-sm font-medium text-text">{label('total')}</span>
+        <span className="font-semibold text-heading tabular-nums">{value('total')}</span>
+      </div>
+    </div>
+  )
+}
 
 // Renders the orders as a sticky-header table on wider screens (lg+) and as a
 // stack of cards below that (the eight columns don't fit a tablet/phone width).
@@ -174,6 +247,10 @@ const DataTable = ({
     () => new Map(columns.map((c) => [c.id, c.width])),
     [columns],
   )
+
+  // The full column config keyed by id, so the mobile card can pull each value
+  // (customer name, total, statuses, …) from the same source of truth as the table.
+  const columnById = useMemo(() => new Map(columns.map((c) => [c.id, c])), [columns])
 
   // Sorting is local, ephemeral state: clicking a header sorts the in-memory
   // list, but we don't persist the choice (it resets when the page remounts).
@@ -271,7 +348,8 @@ const DataTable = ({
         {rows.map((row) => (
           <OrderCard
             key={row.id}
-            row={row}
+            order={row.original}
+            columnById={columnById}
             highlighted={row.original.id === highlightOrderId}
             onActivate={onRowClick}
           />
