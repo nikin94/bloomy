@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { TFunction } from 'i18next'
+import i18next, { type TFunction } from 'i18next'
 import { formatDate, formatTime, formatMoney } from '../utils/format'
 
 // Status/method unions are defined as Zod enums so the runtime validator (used
@@ -229,7 +229,9 @@ export const deliveryMethodOptions = (t: OrderT) =>
     (a, b) => {
       if (a.value === 'other') return 1
       if (b.value === 'other') return -1
-      return a.label.localeCompare(b.label)
+      // Sort by the active UI locale so the alphabetical order is right for the
+      // language the labels are in (i18next is the same singleton config inits).
+      return a.label.localeCompare(b.label, i18next.language)
     },
   )
 

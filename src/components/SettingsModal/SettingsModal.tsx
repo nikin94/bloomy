@@ -268,13 +268,18 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
           </Row>
 
           {/* Font size: label on the left, the iOS-style slider (flanked by
-              small/large "А") taking the rest of the row after a fixed gap. The
-              whole app scales live, so the dialog previews the chosen size. */}
+              small/large "А") on the right. The slider cluster has a FIXED width
+              (matching the language/delivery/payment control rows) so its length
+              stays constant regardless of how long the translated label is —
+              otherwise "Размер шрифта" vs "Font size" would resize the slider.
+              The label takes the remaining space and may shrink/wrap on narrow
+              screens, so a fixed-width control never breaks the mobile layout.
+              The whole app scales live, so the dialog previews the chosen size. */}
           <div className="flex items-center gap-4 px-4 py-3">
-            <span className="shrink-0 whitespace-nowrap text-sm font-medium text-heading">
+            <span className="min-w-0 flex-1 text-sm font-medium text-heading">
               {t('settings:fontSize')}
             </span>
-            <div className="flex flex-1 items-center gap-3">
+            <div className="flex w-36 shrink-0 items-center gap-3">
               <span aria-hidden="true" className="shrink-0 text-sm text-text">
                 А
               </span>
@@ -322,7 +327,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
               >
                 {LANGUAGES.map((l) => (
                   <option key={l} value={l}>
-                    {t(`settings:lang.${l}`)}
+                    {t(`settings:lang.${l}` as const)}
                   </option>
                 ))}
               </Select>

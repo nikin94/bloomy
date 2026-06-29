@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
@@ -20,13 +21,16 @@ import type { Customer } from '../../types/customer'
 const DeletedOrderRow = ({
   order,
   customerName,
+  t,
   onRestore,
 }: {
   order: Order
   customerName: string
+  // Passed from the parent (single i18next subscription) so each trash row
+  // doesn't open its own useTranslation.
+  t: TFunction<['order', 'common']>
   onRestore: (id: string) => void
 }) => {
-  const { t } = useTranslation(['order', 'common'])
   return (
   <li className="flex items-center gap-3 border-b border-border py-3">
     <div className="min-w-0 flex-1">
@@ -133,6 +137,7 @@ const DeletedOrdersPage = () => {
                   key={order.id}
                   order={order}
                   customerName={getCustomerName(order.customerId)}
+                  t={t}
                   onRestore={handleRestore}
                 />
               ))}

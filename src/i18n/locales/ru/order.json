@@ -116,6 +116,7 @@
     "customerName": "Имя клиента",
     "namePlaceholder": "Имя*",
     "phone": "Телефон",
+    "phonePlaceholder": "+7 900 000-00-00",
     "deliveryAddress": "Адрес доставки",
     "plants": "Растения",
     "addPlant": "+ Добавить растение",

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import AppHeader from '../AppHeader/AppHeader'
 import { createCustomer, fetchCustomer, fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
@@ -71,6 +72,7 @@ const PlantItemRow = ({
   priceMissing,
   canRemove,
   autoFocus,
+  t,
   onChange,
   onRemove,
 }: {
@@ -78,13 +80,15 @@ const PlantItemRow = ({
   item: ItemInput
   priceMissing: boolean
   canRemove: boolean
+  // Passed from the parent (single i18next subscription) so each plant row
+  // doesn't open its own useTranslation.
+  t: TFunction<['order', 'common']>
   // Focus the name input on mount — set only for a row just added via the
   // "+ Добавить растение" button, so the user can type the name right away.
   autoFocus: boolean
   onChange: (patch: Partial<ItemInput>) => void
   onRemove: () => void
 }) => {
-  const { t } = useTranslation('order')
   return (
   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
     <div className="flex min-w-0 items-center gap-2 sm:flex-[4]">
@@ -491,7 +495,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                 <Input
                   className="w-full"
                   aria-label={t('form.phone')}
-                  placeholder={t('form.phone')}
+                  placeholder={t('form.phonePlaceholder')}
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
                 />
@@ -521,6 +525,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
                 priceMissing={isPriceMissing(item)}
                 canRemove={items.length > 1}
                 autoFocus={item.id === focusItemId}
+                t={t}
                 onChange={(patch) => updateItem(index, patch)}
                 onRemove={() => removeItem(index)}
               />

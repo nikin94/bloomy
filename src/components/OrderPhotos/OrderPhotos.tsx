@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { deleteOrderPhoto, getPhotoUrl, uploadOrderPhoto } from '../../firebase/photos'
 import { reportError } from '../../observability/reportError'
 import Button from '../Button/Button'
@@ -35,14 +36,17 @@ const CameraIcon = () => (
 // × requests deletion.
 const Thumb = ({
   url,
+  t,
   onOpen,
   onDelete,
 }: {
   url: string | undefined
+  // Passed from the parent (which subscribes to i18next once) so each thumbnail
+  // row doesn't open its own useTranslation subscription.
+  t: TFunction<['order', 'common']>
   onOpen: () => void
   onDelete: () => void
 }) => {
-  const { t } = useTranslation('order')
   return (
   <div className="relative size-20 shrink-0">
     <button
@@ -270,6 +274,7 @@ const OrderPhotos = ({
           <Thumb
             key={path}
             url={urls[path]}
+            t={t}
             onOpen={() => setViewerIndex(index)}
             onDelete={() => setPendingDelete(path)}
           />

@@ -61,14 +61,14 @@ const CustomerForm = ({ initial, onSubmit, onCancel }: CustomerFormProps) => {
       <Input
         className="w-full"
         aria-label={t('form.phone')}
-        placeholder={t('form.phone')}
+        placeholder={t('form.phonePlaceholder')}
         value={phone}
         onChange={(e) => setPhone(e.target.value)}
       />
       <Input
         className="w-full"
         aria-label={t('form.address')}
-        placeholder={t('form.address')}
+        placeholder={t('form.addressPlaceholder')}
         value={address}
         onChange={(e) => setAddress(e.target.value)}
       />

@@ -57,17 +57,22 @@ const AdminSeedSection = ({ ownerId }: { ownerId: string }) => {
 
         {result && (
           <p role="status" className="m-0 text-sm text-text">
-            {t('admin.result', {
-              customers: result.customers,
-              orders: result.orders,
-              trashed: result.trashed,
-            })}
-            {result.reset &&
-              t('admin.resultReset', {
-                removedOrders: result.removedOrders,
-                removedCustomers: result.removedCustomers,
-              })}
-            {t('admin.resultReload')}
+            {/* One complete, translatable sentence per case (with vs without
+                reset) — no fragile cross-key concatenation that would break a
+                language whose word order differs. */}
+            {result.reset
+              ? t('admin.resultReset', {
+                  customers: result.customers,
+                  orders: result.orders,
+                  trashed: result.trashed,
+                  removedOrders: result.removedOrders,
+                  removedCustomers: result.removedCustomers,
+                })
+              : t('admin.result', {
+                  customers: result.customers,
+                  orders: result.orders,
+                  trashed: result.trashed,
+                })}
           </p>
         )}
         {error && (

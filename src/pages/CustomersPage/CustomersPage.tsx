@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import AppHeader from '../../components/AppHeader/AppHeader'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
@@ -18,14 +19,17 @@ import type { Customer } from '../../types/customer'
 // Extracted from the map so the loop body is its own component.
 const CustomerRow = ({
   customer,
+  t,
   onEdit,
   onRequestDelete,
 }: {
   customer: Customer
+  // Passed from the parent (single i18next subscription) so each customer row
+  // doesn't open its own useTranslation.
+  t: TFunction<['customer', 'common']>
   onEdit: (customer: Customer) => void
   onRequestDelete: (customer: Customer) => void
 }) => {
-  const { t } = useTranslation('customer')
   return (
   <li className="flex items-center gap-3 border-b border-border py-3">
     <div className="min-w-0 flex-1">
@@ -198,6 +202,7 @@ const CustomersPage = () => {
                   <CustomerRow
                     key={customer.id}
                     customer={customer}
+                    t={t}
                     onEdit={setEditing}
                     onRequestDelete={setDeletingCustomer}
                   />
