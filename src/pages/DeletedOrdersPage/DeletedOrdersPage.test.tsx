@@ -125,6 +125,29 @@ describe('DeletedOrdersPage', () => {
     expect(screen.queryByText(/Заказ №5/)).not.toBeInTheDocument()
   })
 
+  it('filters the trash by shipment status from the filter dialog (same as the active list)', async () => {
+    const user = userEvent.setup()
+    fetchDeletedOrders.mockResolvedValue([
+      order({ id: 'o1', number: 5, customerId: 'c1', shipmentStatus: 'new' }),
+      order({ id: 'o2', number: 6, customerId: 'c2', shipmentStatus: 'shipped' }),
+    ])
+    fetchCustomers.mockResolvedValue([
+      customer({ id: 'c1', name: 'Анна' }),
+      customer({ id: 'c2', name: 'Борис' }),
+    ])
+    renderPage()
+    await screen.findByText(/Заказ №5/)
+
+    const header = within(screen.getByTestId('header-desktop'))
+    await user.click(header.getByRole('button', { name: 'Фильтры' }))
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус отправки' }), 'shipped')
+    await user.click(screen.getByRole('button', { name: 'Готово' }))
+
+    // Only the shipped order remains.
+    expect(screen.getByText(/Заказ №6/)).toBeInTheDocument()
+    expect(screen.queryByText(/Заказ №5/)).not.toBeInTheDocument()
+  })
+
   it('shows a "nothing found" message when the search matches no trashed order', async () => {
     const user = userEvent.setup()
     fetchDeletedOrders.mockResolvedValue([order({ id: 'o1', number: 5 })])
