@@ -49,6 +49,10 @@ const slider = () => screen.getByRole('slider', { name: 'Размер шрифт
 
 const themeSwitch = () => screen.getByRole('switch', { name: 'Тёмная тема' })
 
+// Settings are split across header tabs; jump to one by its label.
+const tab = (name: string) => screen.getByRole('tab', { name })
+const goToTab = (user: ReturnType<typeof userEvent.setup>, name: string) => user.click(tab(name))
+
 beforeEach(() => {
   vi.clearAllMocks()
   saveSettings.mockResolvedValue(undefined)
@@ -61,16 +65,31 @@ describe('SettingsModal', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('shows the font-size slider and sign-out when open', () => {
+  it('opens on the Appearance tab with the font-size slider', () => {
     renderModal()
     expect(screen.getByRole('dialog', { name: 'Настройки' })).toBeInTheDocument()
+    expect(tab('Оформление')).toHaveAttribute('aria-selected', 'true')
     expect(slider()).toBeInTheDocument()
+  })
+
+  it('shows the user name and sign-out on the Account tab', async () => {
+    const user = userEvent.setup()
+    renderModal()
+    // Sign-out and the name live on the Account tab now, not the action row.
+    expect(screen.queryByRole('button', { name: 'Выйти' })).not.toBeInTheDocument()
+    await goToTab(user, 'Аккаунт')
+    expect(screen.getByText('Tester')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Выйти' })).toBeInTheDocument()
   })
 
-  it('shows the signed-in user name in the dialog (moved out of the header)', () => {
+  it('switches tabs with arrow keys (ARIA tabs pattern)', async () => {
+    const user = userEvent.setup()
     renderModal()
-    expect(screen.getByText('Tester')).toBeInTheDocument()
+    tab('Оформление').focus()
+    await user.keyboard('{ArrowRight}')
+    expect(tab('Заказы')).toHaveAttribute('aria-selected', 'true')
+    expect(tab('Заказы')).toHaveFocus()
+    expect(screen.getByRole('combobox', { name: 'Способ доставки по умолчанию' })).toBeInTheDocument()
   })
 
   it('reflects the current theme and toggles it live without persisting', async () => {
@@ -127,6 +146,7 @@ describe('SettingsModal', () => {
   it('saves the chosen order defaults (delivery + payment)', async () => {
     const user = userEvent.setup()
     renderModal()
+    await goToTab(user, 'Заказы')
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Способ доставки по умолчанию' }),
       'cdek',
@@ -144,6 +164,7 @@ describe('SettingsModal', () => {
   it('saves the chosen default currency', async () => {
     const user = userEvent.setup()
     renderModal()
+    await goToTab(user, 'Заказы')
     await user.selectOptions(screen.getByRole('combobox', { name: 'Валюта по умолчанию' }), 'USD')
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(saveSettings).toHaveBeenCalledWith(expect.objectContaining({ defaultCurrency: 'USD' }))
@@ -166,6 +187,46 @@ describe('SettingsModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('asks to confirm before discarding unsaved changes when dismissed via X', async () => {
+    const user = userEvent.setup()
+    renderModal(true, settings({ fontScale: 1 }))
+    fireEvent.change(slider(), { target: { value: '1.25' } })
+    // The header X is a dismissal route, so with unsaved edits it confirms first.
+    await user.click(screen.getByRole('button', { name: 'Закрыть' }))
+    expect(screen.getByText('Несохранённые изменения')).toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('keeps the dialog open when the discard confirm is dismissed', async () => {
+    const user = userEvent.setup()
+    renderModal(true, settings({ fontScale: 1 }))
+    fireEvent.change(slider(), { target: { value: '1.25' } })
+    await user.click(screen.getByRole('button', { name: 'Закрыть' }))
+    await user.click(screen.getByRole('button', { name: 'Продолжить редактирование' }))
+    expect(screen.queryByText('Несохранённые изменения')).not.toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('discards unsaved changes and reverts the preview on confirm', async () => {
+    const user = userEvent.setup()
+    renderModal(true, settings({ fontScale: 1 }))
+    fireEvent.change(slider(), { target: { value: '1.25' } })
+    previewFontScale.mockClear()
+    await user.click(screen.getByRole('button', { name: 'Закрыть' }))
+    await user.click(screen.getByRole('button', { name: 'Закрыть без сохранения' }))
+    expect(previewFontScale).toHaveBeenLastCalledWith(1) // reverted to the saved value
+    expect(saveSettings).not.toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes immediately via X when there are no unsaved changes', async () => {
+    const user = userEvent.setup()
+    renderModal()
+    await user.click(screen.getByRole('button', { name: 'Закрыть' }))
+    expect(screen.queryByText('Несохранённые изменения')).not.toBeInTheDocument()
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
   it('surfaces a save error and re-enables the button without closing', async () => {
     const user = userEvent.setup()
     saveSettings.mockRejectedValueOnce(new Error('Сбой сети'))
@@ -180,6 +241,7 @@ describe('SettingsModal', () => {
   it('signs out from the dialog', async () => {
     const user = userEvent.setup()
     renderModal()
+    await goToTab(user, 'Аккаунт')
     await user.click(screen.getByRole('button', { name: 'Выйти' }))
     expect(signOutUser).toHaveBeenCalledTimes(1)
   })
@@ -188,6 +250,7 @@ describe('SettingsModal', () => {
     const user = userEvent.setup()
     signOutUser.mockRejectedValueOnce(new Error('Сеть недоступна'))
     renderModal()
+    await goToTab(user, 'Аккаунт')
     await user.click(screen.getByRole('button', { name: 'Выйти' }))
     // The failure is announced (so the user knows they're still signed in) and
     // the dialog is not dismissed.

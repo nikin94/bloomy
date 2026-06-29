@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/authContext'
@@ -132,13 +132,6 @@ const LogoutIcon = () => (
   </svg>
 )
 
-// iOS-style grouped list: a small uppercase caption above a rounded card whose
-// rows are separated by hairline dividers. Keeps each setting a "label left,
-// control right" row so the dialog reads as a settings list, not a loose stack.
-const SectionLabel = ({ children }: { children: ReactNode }) => (
-  <h3 className="m-0 px-1 text-xs font-medium uppercase tracking-wide text-text">{children}</h3>
-)
-
 // A rounded card grouping its rows; adjacent rows get a top hairline divider.
 const Group = ({ children }: { children: ReactNode }) => (
   <div className="overflow-hidden rounded-lg border border-border [&>*+*]:border-t [&>*+*]:border-border">
@@ -155,22 +148,29 @@ const Row = ({ label, children }: { label: string; children: ReactNode }) => (
   </div>
 )
 
+// The settings dialog is split into sections shown one at a time behind header
+// tabs, so the dialog's height stays roughly constant as settings accrue (it
+// used to grow into a long scroll). The admin tab is appended only for an admin.
+type SettingsTab = 'appearance' | 'orders' | 'account' | 'admin'
+
 // Mounts the dialog only while open, so each opening starts from the persisted
 // values (drafts are seeded from the applied settings on mount) without a reset
 // effect.
 const SettingsModal = ({ open, onClose }: { open: boolean; onClose: () => void }) =>
   open ? <SettingsDialog onClose={onClose} /> : null
 
-// Settings dialog body. Holds the colour theme (a sun/moon switch) and the
-// per-user font size (an iOS-style size slider), plus sign-out; the shared Modal
-// owns the shell (dialog role, backdrop, Escape, focus trap, header). Both
-// controls update the whole app immediately for preview, but are only persisted
-// to Firebase on "Сохранить"; dismissing reverts the live preview to the saved
-// values.
+// Settings dialog body. Holds the colour theme (a sun/moon switch), the per-user
+// font size (an iOS-style size slider), language, the new-order defaults, the
+// account (name + sign-out) and the admin seeder — grouped under header tabs.
+// The shared Modal owns the shell (dialog role, backdrop, Escape, focus trap,
+// header). Theme/font/language update the whole app immediately for preview, but
+// are only persisted on "Сохранить"; dismissing reverts the live preview to the
+// saved values. Dismissing with unsaved changes (via X / Escape / backdrop) asks
+// for confirmation first so a stray click can't silently discard edits.
 const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation(['settings', 'common'])
   // The default-method pickers show order-domain labels (delivery/payment
-  // methods), which live in the `order` namespace — a separate bound `t`.
+  // methods + currency), which live in the `order` namespace — a separate bound t.
   const { t: tOrder } = useTranslation('order')
   const { user } = useAuth()
   const {
@@ -196,13 +196,71 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Dismissing (backdrop / Escape / close button / "Отмена") drops the live
-  // preview back to the persisted values, then closes.
-  const handleClose = () => {
+  // The admin tab exists only for an admin account.
+  const adminUser = isAdmin(user?.uid) && user !== null
+  const tabs: SettingsTab[] = adminUser
+    ? ['appearance', 'orders', 'account', 'admin']
+    : ['appearance', 'orders', 'account']
+  const [tab, setTab] = useState<SettingsTab>('appearance')
+  // Refs to the tab buttons so arrow-key navigation can move focus onto the
+  // newly-selected tab (roving tabindex: only the active tab is tabbable).
+  const tabRefs = useRef<Partial<Record<SettingsTab, HTMLButtonElement | null>>>({})
+
+  // Any unsaved edit relative to the applied settings. Drives the discard guard.
+  const isDirty =
+    fontDraft !== fontScale ||
+    themeDraft !== theme ||
+    languageDraft !== language ||
+    deliveryDraft !== defaultDeliveryMethod ||
+    paymentDraft !== defaultPaymentMethod ||
+    currencyDraft !== defaultCurrency
+
+  // True while the "discard unsaved changes?" confirmation is shown.
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false)
+  const confirmRef = useRef<HTMLDivElement>(null)
+  // When the confirmation appears, move focus to its first (safe) button so the
+  // keyboard lands on it rather than on a now-inert control behind the overlay.
+  useEffect(() => {
+    if (confirmingDiscard) confirmRef.current?.querySelector('button')?.focus()
+  }, [confirmingDiscard])
+
+  // Drop the live preview back to the persisted values, then close.
+  const reallyClose = () => {
     previewFontScale(fontScale)
     previewTheme(theme)
     previewLanguage(language)
     onClose()
+  }
+
+  // The Modal's dismissal routes (X / Escape / backdrop) come through here. With
+  // unsaved changes we intercept and confirm first; while the confirm is already
+  // open, a second dismissal backs out of it (Escape/backdrop = "keep editing").
+  // The explicit "Отмена" button bypasses this — it IS the discard affordance, so
+  // double-confirming a button literally named "cancel" would only annoy.
+  const requestClose = () => {
+    if (confirmingDiscard) {
+      setConfirmingDiscard(false)
+      return
+    }
+    if (isDirty) {
+      setConfirmingDiscard(true)
+      return
+    }
+    reallyClose()
+  }
+
+  const onTabKeyDown = (e: React.KeyboardEvent, key: SettingsTab) => {
+    const idx = tabs.indexOf(key)
+    let nextIdx: number | null = null
+    if (e.key === 'ArrowRight') nextIdx = (idx + 1) % tabs.length
+    else if (e.key === 'ArrowLeft') nextIdx = (idx - 1 + tabs.length) % tabs.length
+    else if (e.key === 'Home') nextIdx = 0
+    else if (e.key === 'End') nextIdx = tabs.length - 1
+    if (nextIdx === null) return
+    e.preventDefault()
+    const nextKey = tabs[nextIdx]
+    setTab(nextKey)
+    tabRefs.current[nextKey]?.focus()
   }
 
   const handleSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -257,184 +315,256 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
   }
 
   return (
-    <Modal title={t('settings:title')} onClose={handleClose}>
-      {/* Signed-in user — a quiet line at the top so the dialog says whose
-          settings these are. Moves to an Account tab when settings are
-          reorganised (backlog). */}
-      {user && (
-        <p className="m-0 truncate text-sm text-text">{user.displayName ?? user.email}</p>
-      )}
-
-      {/* Appearance: theme + font size + language, as an iOS-style grouped list. */}
-      <section className="flex flex-col gap-2">
-        <SectionLabel>{t('settings:appearance')}</SectionLabel>
-        <Group>
-          {/* Theme: a sun/moon switch on the right. The icons are
-              self-explanatory, so the row's text label carries the name; the
-              switch's accessible name lives on the control for screen readers.
-              The whole app re-themes live. */}
-          <Row label={t('settings:theme')}>
-            <ThemeToggle value={themeDraft} label={t('settings:themeToggle')} onChange={handleTheme} />
-          </Row>
-
-          {/* Font size: label on the left, the iOS-style slider (flanked by
-              small/large "А") on the right. The slider cluster has a FIXED width
-              (matching the language/delivery/payment control rows) so its length
-              stays constant regardless of how long the translated label is —
-              otherwise "Размер шрифта" vs "Font size" would resize the slider.
-              The label takes the remaining space and may shrink/wrap on narrow
-              screens, so a fixed-width control never breaks the mobile layout.
-              The whole app scales live, so the dialog previews the chosen size. */}
-          <div className="flex items-center gap-4 px-4 py-3">
-            <span className="min-w-0 flex-1 text-sm font-medium text-heading">
-              {t('settings:fontSize')}
-            </span>
-            <div className="flex w-36 shrink-0 items-center gap-3">
-              <span aria-hidden="true" className="shrink-0 text-sm text-text">
-                А
-              </span>
-              <div className="relative flex-1">
-                {/* Step notches, iOS-style. Inset by the thumb radius (px-3) so
-                    the ticks line up with the thumb's centre at each snap point;
-                    taller than the track so their ends show past it. The thumb
-                    (z-10) sits over the current notch. */}
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-x-3 top-1/2 flex h-3 -translate-y-1/2 items-center justify-between"
-                >
-                  {Array.from({ length: SCALE_STEPS }).map((_, i) => (
-                    <span key={i} className="h-3 w-0.5 rounded-full bg-border" />
-                  ))}
-                </div>
-                <input
-                  type="range"
-                  min={FONT_SCALE_MIN}
-                  max={FONT_SCALE_MAX}
-                  step={FONT_SCALE_STEP}
-                  value={fontDraft}
-                  onChange={handleSlider}
-                  aria-label={t('settings:fontSize')}
-                  // Screen readers announce a human-readable label (e.g.
-                  // "увеличен") instead of the raw scale number (0.875, 1.25).
-                  aria-valuetext={t(`settings:fontScale.${fontScaleLabelKey(fontDraft)}` as const)}
-                  className={sliderClass}
-                />
-              </div>
-              <span aria-hidden="true" className="shrink-0 text-2xl text-text">
-                А
-              </span>
-            </div>
-          </div>
-
-          {/* Language: a Select on the right. Changing it re-renders the whole
-              app live (preview); persisted on Save like theme/font. */}
-          <Row label={t('settings:language')}>
-            <div className="w-36 shrink-0">
-              <Select
-                aria-label={t('settings:languageAria')}
-                value={languageDraft}
-                onChange={(e) => handleLanguage(e.target.value as Language)}
-              >
-                {LANGUAGES.map((l) => (
-                  <option key={l} value={l}>
-                    {t(`settings:lang.${l}` as const)}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </Row>
-        </Group>
-      </section>
-
-      {/* New-order defaults: prefill the order form's delivery/payment method.
-          These don't change the live app, only the next new order. */}
-      <section className="flex flex-col gap-2">
-        <SectionLabel>{t('settings:orderDefaults')}</SectionLabel>
-        <Group>
-          <Row label={t('settings:deliveryMethod')}>
-            {/* Fixed-width wrapper: Select's own ROOT is `w-full`, so a width on
-                the Select itself is ignored — the box around it sets the size.
-                Both pickers share `w-36` so they're identical and line up, wide
-                enough that the longest option ("Самовывоз") isn't clipped. */}
-            <div className="w-36 shrink-0">
-              <Select
-                aria-label={t('settings:deliveryMethodAria')}
-                value={deliveryDraft}
-                onChange={(e) => setDeliveryDraft(e.target.value as DeliveryMethod)}
-              >
-                {deliveryMethodOptions(tOrder).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </Row>
-          <Row label={t('settings:paymentMethod')}>
-            <div className="w-36 shrink-0">
-              <Select
-                aria-label={t('settings:paymentMethodAria')}
-                value={paymentDraft}
-                onChange={(e) => setPaymentDraft(e.target.value as PaymentMethod)}
-              >
-                {paymentMethodOptions(tOrder).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </Row>
-          {/* Currency a NEW order starts in. Each option shows the localized
-              name plus its symbol, e.g. "Рубли (₽)". */}
-          <Row label={t('settings:currency')}>
-            <div className="w-36 shrink-0">
-              <Select
-                aria-label={t('settings:currencyAria')}
-                value={currencyDraft}
-                onChange={(e) => setCurrencyDraft(e.target.value as Currency)}
-              >
-                {currencyOptions(tOrder).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </Row>
-        </Group>
-      </section>
-
-      {error && (
-        <p role="alert" className="m-0 text-danger">
-          {error}
-        </p>
-      )}
-
-      {/* Footer actions. Sign-out is an icon-only danger button pinned to the
-          left edge; Save/Cancel sit at the right (ml-auto on Save splits the
-          row). Icon-only, so the accessible name lives on aria-label/title. */}
-      <div className="flex items-center gap-2">
-        <Button
-          variant="danger"
-          size="icon"
-          onClick={handleLogout}
-          aria-label={t('common:signOut')}
-          title={t('common:signOut')}
-          className="shrink-0"
+    <Modal title={t('settings:title')} onClose={requestClose}>
+      {/* The settings body is made inert while the discard confirmation is up, so
+          only the confirm card is interactive (and it visually dims behind it). */}
+      <div inert={confirmingDiscard} className="flex flex-col gap-6">
+        {/* Section tabs. Roving tabindex + arrow-key navigation per the ARIA tabs
+            pattern; equal-width segments so the header reads as one control. */}
+        <div
+          role="tablist"
+          aria-label={t('settings:tabsAria')}
+          className={`grid ${tabs.length === 4 ? 'grid-cols-4' : 'grid-cols-3'} gap-1 rounded-lg border border-border bg-primary-bg p-1`}
         >
-          <LogoutIcon />
-        </Button>
-        <Button variant="primary" onClick={handleSave} isLoading={saving} className="ml-auto">
-          {t('common:save')}
-        </Button>
-        <Button variant="secondary" onClick={handleClose} disabled={saving}>
-          {t('common:cancel')}
-        </Button>
+          {tabs.map((key) => {
+            const selected = key === tab
+            return (
+              <button
+                key={key}
+                ref={(el) => {
+                  tabRefs.current[key] = el
+                }}
+                type="button"
+                role="tab"
+                id={`settings-tab-${key}`}
+                aria-selected={selected}
+                aria-controls={`settings-panel-${key}`}
+                tabIndex={selected ? 0 : -1}
+                onClick={() => setTab(key)}
+                onKeyDown={(e) => onTabKeyDown(e, key)}
+                className={`truncate rounded-md px-2 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                  selected ? 'bg-bg text-heading shadow-sm' : 'text-text hover:text-heading'
+                }`}
+              >
+                {t(`settings:tabs.${key}` as const)}
+              </button>
+            )
+          })}
+        </div>
+
+        <div
+          role="tabpanel"
+          id={`settings-panel-${tab}`}
+          aria-labelledby={`settings-tab-${tab}`}
+          className="flex flex-col gap-2"
+        >
+          {tab === 'appearance' && (
+            <Group>
+              {/* Theme: a sun/moon switch on the right. The icons are
+                  self-explanatory, so the row's text label carries the name; the
+                  switch's accessible name lives on the control for screen readers.
+                  The whole app re-themes live. */}
+              <Row label={t('settings:theme')}>
+                <ThemeToggle
+                  value={themeDraft}
+                  label={t('settings:themeToggle')}
+                  onChange={handleTheme}
+                />
+              </Row>
+
+              {/* Font size: label on the left, the iOS-style slider (flanked by
+                  small/large "А") on the right. The slider cluster has a FIXED
+                  width (matching the other control rows) so its length stays
+                  constant regardless of the translated label's length; the label
+                  takes the remaining space and may shrink/wrap on narrow screens.
+                  The whole app scales live, so the dialog previews the chosen size. */}
+              <div className="flex items-center gap-4 px-4 py-3">
+                <span className="min-w-0 flex-1 text-sm font-medium text-heading">
+                  {t('settings:fontSize')}
+                </span>
+                <div className="flex w-36 shrink-0 items-center gap-3">
+                  <span aria-hidden="true" className="shrink-0 text-sm text-text">
+                    А
+                  </span>
+                  <div className="relative flex-1">
+                    {/* Step notches, iOS-style. Inset by the thumb radius (px-3) so
+                        the ticks line up with the thumb's centre at each snap point;
+                        taller than the track so their ends show past it. The thumb
+                        (z-10) sits over the current notch. */}
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-x-3 top-1/2 flex h-3 -translate-y-1/2 items-center justify-between"
+                    >
+                      {Array.from({ length: SCALE_STEPS }).map((_, i) => (
+                        <span key={i} className="h-3 w-0.5 rounded-full bg-border" />
+                      ))}
+                    </div>
+                    <input
+                      type="range"
+                      min={FONT_SCALE_MIN}
+                      max={FONT_SCALE_MAX}
+                      step={FONT_SCALE_STEP}
+                      value={fontDraft}
+                      onChange={handleSlider}
+                      aria-label={t('settings:fontSize')}
+                      // Screen readers announce a human-readable label (e.g.
+                      // "увеличен") instead of the raw scale number (0.875, 1.25).
+                      aria-valuetext={t(`settings:fontScale.${fontScaleLabelKey(fontDraft)}` as const)}
+                      className={sliderClass}
+                    />
+                  </div>
+                  <span aria-hidden="true" className="shrink-0 text-2xl text-text">
+                    А
+                  </span>
+                </div>
+              </div>
+
+              {/* Language: a Select on the right. Changing it re-renders the whole
+                  app live (preview); persisted on Save like theme/font. */}
+              <Row label={t('settings:language')}>
+                <div className="w-36 shrink-0">
+                  <Select
+                    aria-label={t('settings:languageAria')}
+                    value={languageDraft}
+                    onChange={(e) => handleLanguage(e.target.value as Language)}
+                  >
+                    {LANGUAGES.map((l) => (
+                      <option key={l} value={l}>
+                        {t(`settings:lang.${l}` as const)}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </Row>
+            </Group>
+          )}
+
+          {tab === 'orders' && (
+            <Group>
+              <Row label={t('settings:deliveryMethod')}>
+                {/* Fixed-width wrapper: Select's own ROOT is `w-full`, so a width on
+                    the Select itself is ignored — the box around it sets the size.
+                    The pickers share `w-36` so they line up, wide enough that the
+                    longest option ("Самовывоз") isn't clipped. */}
+                <div className="w-36 shrink-0">
+                  <Select
+                    aria-label={t('settings:deliveryMethodAria')}
+                    value={deliveryDraft}
+                    onChange={(e) => setDeliveryDraft(e.target.value as DeliveryMethod)}
+                  >
+                    {deliveryMethodOptions(tOrder).map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </Row>
+              <Row label={t('settings:paymentMethod')}>
+                <div className="w-36 shrink-0">
+                  <Select
+                    aria-label={t('settings:paymentMethodAria')}
+                    value={paymentDraft}
+                    onChange={(e) => setPaymentDraft(e.target.value as PaymentMethod)}
+                  >
+                    {paymentMethodOptions(tOrder).map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </Row>
+              {/* Currency a NEW order starts in. Each option shows the localized
+                  name plus its symbol, e.g. "Рубли (₽)". */}
+              <Row label={t('settings:currency')}>
+                <div className="w-36 shrink-0">
+                  <Select
+                    aria-label={t('settings:currencyAria')}
+                    value={currencyDraft}
+                    onChange={(e) => setCurrencyDraft(e.target.value as Currency)}
+                  >
+                    {currencyOptions(tOrder).map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </Row>
+            </Group>
+          )}
+
+          {tab === 'account' && (
+            <div className="flex flex-col gap-4">
+              {user && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-medium text-heading">
+                    {user.displayName ?? user.email}
+                  </span>
+                  {user.displayName && user.email && (
+                    <span className="text-xs text-text">{user.email}</span>
+                  )}
+                </div>
+              )}
+              <Button
+                variant="danger"
+                onClick={handleLogout}
+                className="gap-1.5 self-start"
+              >
+                <LogoutIcon />
+                {t('common:signOut')}
+              </Button>
+            </div>
+          )}
+
+          {tab === 'admin' && adminUser && <AdminSeedSection ownerId={user.uid} />}
+        </div>
+
+        {error && (
+          <p role="alert" className="m-0 text-danger">
+            {error}
+          </p>
+        )}
+
+        {/* Global actions — save persists every tab's drafts; cancel discards
+            them outright (the explicit discard affordance, so no extra confirm). */}
+        <div className="flex justify-end gap-2">
+          <Button variant="primary" onClick={handleSave} isLoading={saving}>
+            {t('common:save')}
+          </Button>
+          <Button variant="secondary" onClick={reallyClose} disabled={saving}>
+            {t('common:cancel')}
+          </Button>
+        </div>
       </div>
 
-      {/* Admin-only test-data seeder (heavy fixtures lazy-loaded on use). */}
-      {isAdmin(user?.uid) && user && <AdminSeedSection ownerId={user.uid} />}
+      {/* Discard guard: a confirm card over the (now inert) settings body, shown
+          when dismissing with unsaved changes. "Keep editing" is first so it's the
+          focused, safe default; "Discard" closes without saving. */}
+      {confirmingDiscard && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-black/40 p-4">
+          <div
+            ref={confirmRef}
+            className="flex w-full max-w-xs flex-col gap-4 rounded-lg border border-border bg-bg p-5 shadow-xl"
+          >
+            <div className="flex flex-col gap-1">
+              <h3 className="m-0 text-base font-semibold text-heading">
+                {t('settings:discardTitle')}
+              </h3>
+              <p className="m-0 text-sm text-text">{t('settings:discardBody')}</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button variant="secondary" onClick={() => setConfirmingDiscard(false)}>
+                {t('settings:keepEditing')}
+              </Button>
+              <Button variant="danger" onClick={reallyClose}>
+                {t('settings:discard')}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Modal>
   )
 }
