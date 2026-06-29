@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import i18n from '../i18n/config'
 import {
   formatMoney,
   currencySymbol,
@@ -107,6 +108,18 @@ describe('currencySymbol', () => {
     expect(currencySymbol('RUB')).toBe('₽')
     expect(currencySymbol('USD')).toBe('$')
     expect(currencySymbol('EUR')).toBe('€')
+  })
+
+  it('keeps the ₽ glyph under en (narrowSymbol, not the "RUB" ISO code)', async () => {
+    // en-US's default currency symbol for RUB is the literal "RUB"; narrowSymbol
+    // forces the glyph so the English dropdown reads "Rubles (₽)", not "(RUB)".
+    await i18n.changeLanguage('en')
+    try {
+      expect(currencySymbol('RUB')).toBe('₽')
+      expect(formatMoney(50000, 'RUB')).toContain('₽')
+    } finally {
+      await i18n.changeLanguage('ru')
+    }
   })
 })
 

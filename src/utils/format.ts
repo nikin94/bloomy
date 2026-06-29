@@ -10,6 +10,16 @@ import type { Currency } from '../types/order'
 // app inits; a type-only Currency import keeps this free of a runtime cycle.
 const intlLocale = (): string => (i18next.language === 'en' ? 'en-US' : 'ru-RU')
 
+// Currency-formatter options shared by formatMoney and currencySymbol so they
+// stay a single source of truth. `narrowSymbol` forces the glyph (₽/$/€) even in
+// locales whose default `symbol` is the ISO code — e.g. en-US renders RUB as the
+// literal "RUB" by default, but as "₽" with narrowSymbol.
+const currencyFormatOptions = (currency: Currency): Intl.NumberFormatOptions => ({
+  style: 'currency',
+  currency,
+  currencyDisplay: 'narrowSymbol',
+})
+
 // Amounts are stored as integers in minor units (kopecks/cents). Render in the
 // order's own currency — there is no conversion, the symbol just labels the
 // amount the operator entered. RUB/USD/EUR are all 2-decimal, so `/100` holds
@@ -18,14 +28,14 @@ const intlLocale = (): string => (i18next.language === 'en' ? 'en-US' : 'ru-RU')
 // filtered currency, falling back to the settings default) rather than letting
 // a silent RUB default slip past the type checker at a future call site.
 export const formatMoney = (minor: number, currency: Currency) =>
-  new Intl.NumberFormat(intlLocale(), { style: 'currency', currency }).format(minor / 100)
+  new Intl.NumberFormat(intlLocale(), currencyFormatOptions(currency)).format(minor / 100)
 
 // The currency's symbol glyph for the active locale (e.g. "₽", "$", "€"), pulled
 // from the SAME Intl formatter as formatMoney so it's a single source of truth —
 // the option label "Рубли (₽)" and a formatted amount can never disagree on the
 // symbol. Falls back to the code if a locale exposes no distinct symbol part.
 export const currencySymbol = (currency: Currency): string =>
-  new Intl.NumberFormat(intlLocale(), { style: 'currency', currency })
+  new Intl.NumberFormat(intlLocale(), currencyFormatOptions(currency))
     .formatToParts(0)
     .find((part) => part.type === 'currency')?.value ?? currency
 

@@ -1,6 +1,12 @@
 {
   "title": "Settings",
-  "appearance": "Appearance",
+  "tabsAria": "Settings sections",
+  "tabs": {
+    "appearance": "Appearance",
+    "orders": "Orders",
+    "account": "Account",
+    "admin": "Admin"
+  },
   "theme": "Theme",
   "themeToggle": "Dark theme",
   "fontSize": "Font size",
@@ -15,7 +21,6 @@
     "ru": "Русский",
     "en": "English"
   },
-  "orderDefaults": "Order defaults",
   "deliveryMethod": "Delivery method",
   "deliveryMethodAria": "Default delivery method",
   "paymentMethod": "Payment method",
@@ -24,6 +29,10 @@
   "currencyAria": "Default currency",
   "saveError": "Couldn't save settings",
   "signOutError": "Couldn't sign out. Please try again.",
+  "discardTitle": "Unsaved changes",
+  "discardBody": "Close without saving? Your changes will be lost.",
+  "discard": "Close without saving",
+  "keepEditing": "Keep editing",
   "admin": {
     "title": "Test data (admin)",
     "resetLabel": "Delete old data before seeding",
