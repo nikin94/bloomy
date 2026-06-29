@@ -5,12 +5,19 @@ import AppHeader from '../../components/AppHeader/AppHeader'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
 import SearchControl from '../../components/SearchControl/SearchControl'
+import OrderFilterControl from '../../components/OrderFilterControl/OrderFilterControl'
 import { fetchDeletedOrders, restoreOrder } from '../../firebase/orders'
 import { fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
 import { formatDate, formatMoney } from '../../utils/format'
-import { getTotalMinor, formatOrderNumber, filterOrders, EMPTY_ORDER_FILTER } from '../../types/order'
-import type { Order } from '../../types/order'
+import {
+  getTotalMinor,
+  formatOrderNumber,
+  filterOrders,
+  isOrderFilterActive,
+  EMPTY_ORDER_FILTER,
+} from '../../types/order'
+import type { Order, OrderFilter } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
 // One soft-deleted order in the trash: its number, customer, date and total, with
@@ -67,8 +74,9 @@ const DeletedOrdersPage = () => {
   const [loading, setLoading] = useState(true)
   // A load failure means there is no list to show, so it replaces the content.
   const [loadError, setLoadError] = useState<string | null>(null)
-  // Inline search over the trash (order number / customer name).
-  const [query, setQuery] = useState('')
+  // Search + status/currency/price filter over the trash — the same OrderFilter
+  // shape as the main list, so the trash filters exactly like the active list.
+  const [filter, setFilter] = useState<OrderFilter>(EMPTY_ORDER_FILTER)
 
   useEffect(() => {
     if (!ownerId) return
@@ -105,16 +113,24 @@ const DeletedOrdersPage = () => {
     setOrders((prev) => prev.filter((o) => o.id !== id))
   }
 
-  // Reuse the orders predicate with a query-only filter (status/price are empty
-  // in EMPTY_ORDER_FILTER, so it matches purely by number / customer / plants) —
-  // the same matching as the main list, no extra logic.
-  const visibleOrders = filterOrders(orders, { ...EMPTY_ORDER_FILTER, query }, getCustomerName)
-  const searchActive = query.trim() !== ''
+  // Reuse the orders predicate — the trash filters exactly like the active list
+  // (search + status/currency/price), no extra logic.
+  const visibleOrders = filterOrders(orders, filter, getCustomerName)
+  const filterActive = isOrderFilterActive(filter)
 
   return (
     <div className="flex h-full flex-col">
       <AppHeader
-        actions={<SearchControl value={query} onChange={setQuery} label={t('trash.search')} />}
+        actions={
+          <>
+            <SearchControl
+              value={filter.query}
+              onChange={(query) => setFilter((f) => ({ ...f, query }))}
+              label={t('trash.search')}
+            />
+            <OrderFilterControl orders={orders} filter={filter} onChange={setFilter} />
+          </>
+        }
       />
 
       {/* Flex column so the empty state can center itself (m-auto) in the whole
@@ -128,7 +144,7 @@ const DeletedOrdersPage = () => {
           (visibleOrders.length === 0 ? (
             // m-auto in a flex container centers on both axes.
             <p className="m-auto text-text">
-              {searchActive ? t('common:nothingFound') : t('trash.empty')}
+              {filterActive ? t('common:nothingFound') : t('trash.empty')}
             </p>
           ) : (
             <ul className="mx-auto m-0 w-full max-w-2xl list-none p-0">

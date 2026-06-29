@@ -56,12 +56,22 @@ describe('filterCustomers', () => {
     expect(filterCustomers(list, '444-55')).toEqual([boris])
   })
 
-  it('returns nothing when neither name nor phone matches', () => {
+  it('matches by address', () => {
+    const withAddr = make({ id: 'c4', name: 'Глеб', address: 'ул. Пушкина, 10' })
+    expect(filterCustomers([withAddr], 'пушкина')).toEqual([withAddr])
+  })
+
+  it('matches by note', () => {
+    const withNote = make({ id: 'c5', name: 'Дина', note: 'любит пионы' })
+    expect(filterCustomers([withNote], 'пионы')).toEqual([withNote])
+  })
+
+  it('returns nothing when no field matches', () => {
     expect(filterCustomers(list, 'нет такого')).toEqual([])
   })
 
-  it('does not match a customer with no phone on a phone query', () => {
-    const noPhone = make({ id: 'c3', name: 'Виктор' })
-    expect(filterCustomers([noPhone], '900')).toEqual([])
+  it('does not match on an absent field (no phone/address/note)', () => {
+    const bare = make({ id: 'c3', name: 'Виктор' })
+    expect(filterCustomers([bare], '900')).toEqual([])
   })
 })
