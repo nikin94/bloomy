@@ -13,9 +13,10 @@ import {
   buildOrderColumns,
   filterOrders,
   isOrderFilterActive,
+  trashDaysLeft,
   EMPTY_ORDER_FILTER,
 } from '../../types/order'
-import type { Order, OrderFilter } from '../../types/order'
+import type { Order, OrderColumn, OrderFilter } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
 // Trash screen: the signed-in user's soft-deleted orders, shown in the SAME
@@ -41,6 +42,8 @@ const DeletedOrdersPage = () => {
   // Search + status/currency/price filter over the trash — the same OrderFilter
   // shape as the main list, so the trash filters exactly like the active list.
   const [filter, setFilter] = useState<OrderFilter>(EMPTY_ORDER_FILTER)
+  // "Now" for the purge countdown, captured once on mount (see purgeColumn below).
+  const [now] = useState(() => Date.now())
 
   useEffect(() => {
     if (!ownerId) return
@@ -69,7 +72,23 @@ const DeletedOrdersPage = () => {
 
   const customerNameById = new Map(customers.map((c) => [c.id, c.name]))
   const getCustomerName = (id: string) => customerNameById.get(id) ?? '—'
-  const columns = buildOrderColumns(getCustomerName, tOrder)
+  // The active-list columns plus a trash-only "auto-purge countdown" so the user
+  // sees, per order, how long until it is permanently deleted. `now` is captured
+  // once on mount (day-granularity, so it needn't be reactive — and a render-time
+  // Date.now() isn't pure). Uses the page's multi-namespace `t` (the column built
+  // inside buildOrderColumns is bound to `order` and couldn't reach `common:days`).
+  const purgeColumn: OrderColumn = {
+    id: 'purgeCountdown',
+    header: t('trash.purgeColumn'),
+    format: (o) => {
+      const days = trashDaysLeft(o, now)
+      return days === null ? '—' : t('common:days', { count: days })
+    },
+    // Sort soonest-to-purge first; a legacy delete with no countdown sorts last.
+    sortValue: (o) => trashDaysLeft(o, now) ?? Number.MAX_SAFE_INTEGER,
+    width: 'w-32',
+  }
+  const columns = [...buildOrderColumns(getCustomerName, tOrder), purgeColumn]
 
   // Reuse the orders predicate — the trash filters exactly like the active list
   // (search + status/currency/price), no extra logic.

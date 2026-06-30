@@ -271,5 +271,26 @@ describe('OrderDetailPage', () => {
       await waitFor(() => expect(restoreOrder).toHaveBeenCalledWith('o1'))
       expect(navigate).toHaveBeenCalledWith('/orders/deleted')
     })
+
+    it('shows the auto-purge countdown in the banner when deletedAt is set', async () => {
+      // Just deleted → the full 30-day window remains in the countdown.
+      fetchOrder.mockResolvedValue(order({ deletedAt: Date.now() }))
+      renderPage()
+      await screen.findByRole('heading', { name: 'Заказ №5' })
+
+      expect(
+        screen.getByText(/Будет навсегда удалён через 30 дней/),
+      ).toBeInTheDocument()
+    })
+  })
+
+  it('warns about the 30-day auto-deletion in the delete-confirm dialog', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+
+    await user.click(screen.getByRole('button', { name: 'Удалить' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Удалить заказ №5?' })
+    expect(within(dialog).getByText(/удалён через 30 дней/)).toBeInTheDocument()
   })
 })

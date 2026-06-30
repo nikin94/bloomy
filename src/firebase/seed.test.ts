@@ -69,8 +69,11 @@ describe('buildSeedOrders', () => {
     expect(payments).toEqual(new Set(['pending', 'paid', 'refunded']))
   })
 
-  it('puts a slice of orders in the trash so the Корзина page has content', () => {
-    expect(orders.filter((o) => o.isDeleted).length).toBeGreaterThan(0)
+  it('puts a slice of orders in the trash (deletedAt) so the Корзина page has content', () => {
+    const trashed = orders.filter((o) => o.deletedAt !== undefined)
+    expect(trashed.length).toBeGreaterThan(0)
+    // Stamped within the retention window so each shows a live purge countdown.
+    expect(trashed.every((o) => o.deletedAt! <= NOW)).toBe(true)
   })
 
   it('stamps completedAt exactly on terminal orders, never in the future', () => {

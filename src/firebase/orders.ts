@@ -7,11 +7,12 @@ import {
   query,
   runTransaction,
   setDoc,
+  Timestamp,
   updateDoc,
   where,
 } from 'firebase/firestore'
 import { db } from './client'
-import { STORED_ORDER_SCHEMA } from '../types/order'
+import { STORED_ORDER_SCHEMA, TRASH_RETENTION_DAYS, isOrderDeleted } from '../types/order'
 import type { Order, PaymentStatus, ShipmentStatus } from '../types/order'
 import { reportError } from '../observability/reportError'
 
@@ -39,7 +40,7 @@ export async function fetchOrders(ownerId: string): Promise<Order[]> {
   const snapshot = await getDocs(q)
   return snapshot.docs
     .map((d) => parseOrder(d.id, d.data()))
-    .filter((o) => !o.isDeleted)
+    .filter((o) => !isOrderDeleted(o))
     .sort((a, b) => b.dateCreated - a.dateCreated)
 }
 
@@ -51,7 +52,7 @@ export async function fetchDeletedOrders(ownerId: string): Promise<Order[]> {
   const snapshot = await getDocs(q)
   return snapshot.docs
     .map((d) => parseOrder(d.id, d.data()))
-    .filter((o) => o.isDeleted)
+    .filter((o) => isOrderDeleted(o))
     .sort((a, b) => b.dateCreated - a.dateCreated)
 }
 
@@ -74,7 +75,7 @@ export async function fetchOrder(
   if (!snapshot.exists()) return null
   const order = parseOrder(snapshot.id, snapshot.data())
   if (order.ownerId !== ownerId) return null
-  if (order.isDeleted && !options.includeDeleted) return null
+  if (isOrderDeleted(order) && !options.includeDeleted) return null
   return order
 }
 
@@ -207,26 +208,35 @@ export function patchOrder(id: string, patch: OrderPatch): void {
   )
 }
 
-// Soft-delete an order: flip `isDeleted` so it drops out of the list and detail
-// page, without removing the document. The per-owner number counter is left
-// untouched — kept docs mean numbering can never collide, and the hidden order
-// stays recoverable (a real order deleted by mistake is one flag-flip away). A
-// partial `updateDoc` (not setDoc) leaves every other field intact. Owner-scoped
-// Firestore rules already permit this update (ownerId is unchanged). Fire-and-
-// forget so it works offline; a failed write is reported to Sentry.
+// Soft-delete an order: move it to the trash without removing the document. The
+// per-owner number counter is left untouched — kept docs mean numbering can never
+// collide, and the hidden order stays recoverable (one restore away). Stamps:
+//   • `deletedAt` (ms) — the canonical "in trash" signal + the purge-countdown seed;
+//   • `purgeAt` (Firestore Timestamp) — deletedAt + retention; the field a TTL
+//     policy watches to auto-delete the document once the window lapses.
+// `Timestamp.fromMillis` is a pure client value (no server round-trip), so this
+// stays offline-safe. A partial `updateDoc` (not setDoc) leaves every other field
+// intact; owner-scoped Firestore rules already permit it (ownerId is unchanged).
+// Fire-and-forget so it works offline; a failed write is reported to Sentry.
 export function softDeleteOrder(id: string): void {
-  void updateDoc(doc(db, ORDERS_COLLECTION, id), { isDeleted: true }).catch((err) =>
+  const now = Date.now()
+  const purgeAt = Timestamp.fromMillis(now + TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000)
+  void updateDoc(doc(db, ORDERS_COLLECTION, id), { deletedAt: now, purgeAt }).catch((err) =>
     reportError(err, 'softDeleteOrder'),
   )
 }
 
-// Restore a soft-deleted order: REMOVE the `isDeleted` field (rather than store
-// `false`) so a restored order returns to its pristine, never-deleted shape —
-// matching how an active order has no flag at all. A partial update leaves every
-// other field intact; owner-scoped Firestore rules already permit it. Fire-and-
-// forget so it works offline; a failed write is reported to Sentry.
+// Restore a soft-deleted order: REMOVE every trash field (rather than store a
+// "false") so a restored order returns to its pristine, never-deleted shape — an
+// active order carries none of these. Clears the new `deletedAt`/`purgeAt` AND the
+// legacy `isDeleted` flag, so an order trashed before the switch restores cleanly
+// too. A partial update leaves every other field intact; owner-scoped Firestore
+// rules already permit it. Fire-and-forget so it works offline; a failed write is
+// reported to Sentry.
 export function restoreOrder(id: string): void {
-  void updateDoc(doc(db, ORDERS_COLLECTION, id), { isDeleted: deleteField() }).catch((err) =>
-    reportError(err, 'restoreOrder'),
-  )
+  void updateDoc(doc(db, ORDERS_COLLECTION, id), {
+    deletedAt: deleteField(),
+    purgeAt: deleteField(),
+    isDeleted: deleteField(),
+  }).catch((err) => reportError(err, 'restoreOrder'))
 }

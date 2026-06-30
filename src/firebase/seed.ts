@@ -162,8 +162,10 @@ export function buildSeedOrders(
       shipmentStatus,
       ...(i % 4 === 0 ? { comment: `Тестовый комментарий №${i + 1}` } : {}),
       ...(isTerminal ? { completedAt: Math.min(now, dateCreated + 3 * DAY_MS) } : {}),
-      // ~1 in 6 lands in the trash so the "Корзина" page has content.
-      ...(i % 6 === 5 ? { isDeleted: true } : {}),
+      // ~1 in 6 lands in the trash so the "Корзина" page has content. Stamped with
+      // a staggered `deletedAt` (the canonical trash signal) so the seeded trash
+      // shows a varied auto-purge countdown — elapsed 0..23 days → 30..7 days left.
+      ...(i % 6 === 5 ? { deletedAt: now - (i % 24) * DAY_MS } : {}),
     }
   })
 }
