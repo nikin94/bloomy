@@ -102,6 +102,47 @@ describe('NewOrderPage', () => {
     expect(screen.getByRole('option', { name: 'Анна (+7 900)' })).toBeInTheDocument()
   })
 
+  it('seeds a fresh create form from a "repeat order" passed in router state', async () => {
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна', phone: '+7 900' })])
+    const repeatOrder = {
+      id: 'src',
+      number: 7,
+      dateCreated: 1700000000000,
+      ownerId: 'owner-1',
+      customerId: 'c1',
+      address: 'ул. Пушкина, 1',
+      plants: [{ name: 'Роза', quantity: 2, unitPriceMinor: 15000 }],
+      paymentMethod: 'card',
+      deliveryMethod: 'cdek',
+      deliveryPriceMinor: 30000,
+      currency: 'USD',
+      // Per-instance state that must NOT carry over to the fresh order.
+      paymentStatus: 'paid',
+      shipmentStatus: 'delivered',
+      comment: 'был особый',
+    }
+    render(
+      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+        <SettingsContext.Provider value={settingsState()}>
+          <MemoryRouter initialEntries={[{ pathname: '/orders/new', state: { repeatOrder } }]}>
+            <NewOrderPage />
+          </MemoryRouter>
+        </SettingsContext.Provider>
+      </AuthContext.Provider>,
+    )
+
+    // Customer is pre-selected (existing mode) and the plant line is cloned…
+    const picker = await screen.findByRole('combobox', { name: 'Существующий клиент' })
+    expect(picker).toHaveValue('c1')
+    expect(screen.getByDisplayValue('Роза')).toBeInTheDocument()
+    // …the order's own currency carries over (no conversion), not the RUB default…
+    expect(screen.getByRole('combobox', { name: 'Валюта' })).toHaveValue('USD')
+    // …but the per-instance state starts pristine, not cloned from the source.
+    expect(screen.getByRole('combobox', { name: 'Статус оплаты' })).toHaveValue('pending')
+    expect(screen.getByRole('combobox', { name: 'Статус заказа' })).toHaveValue('new')
+    expect(screen.queryByDisplayValue('был особый')).not.toBeInTheDocument()
+  })
+
   it('requires a customer name in "new" mode', async () => {
     const user = userEvent.setup()
     renderForm()

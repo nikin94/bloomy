@@ -74,6 +74,7 @@
     "title": "Order #{{number}}",
     "unsynced": "not synced",
     "edit": "Edit",
+    "repeat": "Repeat",
     "delete": "Delete",
     "deleteTitle": "Delete order #{{number}}?",
     "deleteBody": "The order will move to the trash and be permanently deleted in {{days}}. You can restore it until then.",

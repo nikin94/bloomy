@@ -250,6 +250,16 @@ const OrderDetailPage = () => {
                   >
                     {t('detail.edit')}
                   </Button>
+                  {/* Repeat: open the create form seeded from this order's
+                      contents (customer + plants + logistics), as a fresh order.
+                      The source order rides in router state — no schema change. */}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => navigate('/orders/new', { state: { repeatOrder: order } })}
+                  >
+                    {t('detail.repeat')}
+                  </Button>
                   <Button
                     variant="danger"
                     size="sm"
