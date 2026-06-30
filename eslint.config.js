@@ -6,7 +6,10 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // `functions/` is a SEPARATE Node package (Cloud Functions) with its own
+  // tsconfig, deps and (Node, not browser) globals — it builds on its own
+  // (functions/ `npm run build`, strict tsconfig), so the root toolchain skips it.
+  globalIgnores(['dist', 'functions']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
