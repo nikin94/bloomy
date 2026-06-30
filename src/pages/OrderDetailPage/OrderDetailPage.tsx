@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { fetchOrder, patchOrder, softDeleteOrder, restoreOrder } from '../../firebase/orders'
@@ -28,6 +27,7 @@ import Button from '../../components/Button/Button'
 import Modal from '../../components/Modal/Modal'
 import CustomerForm from '../../components/CustomerForm/CustomerForm'
 import OrderPhotos from '../../components/OrderPhotos/OrderPhotos'
+import DetailRow from '../../components/DetailRow/DetailRow'
 import type { Currency, Order } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
@@ -276,7 +276,7 @@ const OrderDetailPage = () => {
               "mark paid/shipped" action) without opening the full edit form;
               the rest is read-only and changed via "Редактировать". */}
           <section className="flex flex-col">
-            <Field
+            <DetailRow
               label={t('detail.customer')}
               value={
                 customer ? (
@@ -304,10 +304,10 @@ const OrderDetailPage = () => {
                 ) : undefined
               }
             />
-            {customer?.phone && <Field label={t('detail.phone')} value={customer.phone} />}
-            <Field label={t('detail.deliveryAddress')} value={order.address || '—'} />
-            <Field label={t('detail.deliveryMethod')} value={deliveryMethodLabel(tOrder, order.deliveryMethod)} />
-            <Field label={t('detail.paymentMethod')} value={paymentMethodLabel(tOrder, order.paymentMethod)} />
+            {customer?.phone && <DetailRow label={t('detail.phone')} value={customer.phone} />}
+            <DetailRow label={t('detail.deliveryAddress')} value={order.address || '—'} />
+            <DetailRow label={t('detail.deliveryMethod')} value={deliveryMethodLabel(tOrder, order.deliveryMethod)} />
+            <DetailRow label={t('detail.paymentMethod')} value={paymentMethodLabel(tOrder, order.paymentMethod)} />
             <InlineStatusField
               label={t('detail.paymentStatus')}
               value={order.paymentStatus}
@@ -322,8 +322,8 @@ const OrderDetailPage = () => {
               onChange={(value) => saveStatus({ shipmentStatus: value as Order['shipmentStatus'] })}
               readOnly={isDeleted}
             />
-            {order.completedAt && <Field label={t('detail.completed')} value={formatDate(order.completedAt)} />}
-            {order.comment && <Field label={t('detail.comment')} value={order.comment} />}
+            {order.completedAt && <DetailRow label={t('detail.completed')} value={formatDate(order.completedAt)} />}
+            {order.comment && <DetailRow label={t('detail.comment')} value={order.comment} />}
           </section>
 
           {/* Itemized plant list */}
@@ -421,25 +421,7 @@ const OrderDetailPage = () => {
   )
 }
 
-// A read-only label/value row. An optional `action` slot (e.g. an edit button)
-// is pinned to the row's end — used by the "Клиент" row to edit the customer.
-const Field = ({
-  label,
-  value,
-  action,
-}: {
-  label: string
-  value: ReactNode
-  action?: ReactNode
-}) => (
-  <div className="flex items-center gap-3 border-b border-border py-2">
-    <span className="shrink-0 basis-[200px] text-text">{label}</span>
-    <span className="min-w-0 flex-1 text-heading">{value}</span>
-    {action}
-  </div>
-)
-
-// A status row that's editable in place: same layout as Field, but the value is
+// A status row that's editable in place: same layout as DetailRow, but the value is
 // a Select. Selecting an option calls onChange, which saves optimistically on
 // the page (the write is fire-and-forget, so there's no in-flight disabled
 // state). Used for both order statuses. `readOnly` (a trashed order) renders the

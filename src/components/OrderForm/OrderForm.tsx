@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
 import AppHeader from '../AppHeader/AppHeader'
 import { createCustomer, fetchCustomer, fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
@@ -19,8 +18,12 @@ import Spinner from '../Spinner/Spinner'
 import Select from '../Select/Select'
 import Button from '../Button/Button'
 import Input from '../Input/Input'
-import Autocomplete from '../Autocomplete/Autocomplete'
 import Textarea from '../Textarea/Textarea'
+import PlantItemRow from './PlantItemRow'
+import CustomerPicker from './CustomerPicker'
+import { emptyItem, initialItems } from './items'
+import type { ItemInput } from './items'
+import type { CustomerMode } from './CustomerPicker'
 import { fetchOrders } from '../../firebase/orders'
 import type { NewOrder } from '../../firebase/orders'
 import type {
@@ -33,116 +36,6 @@ import type {
   ShipmentStatus,
 } from '../../types/order'
 import type { Customer, NewCustomer } from '../../types/customer'
-
-// Item row as entered in the form. Numeric fields are kept as strings while
-// editing (controlled inputs) and parsed into the stored model on submit.
-interface ItemInput {
-  id: number // stable React key, independent of array position
-  name: string
-  quantity: string
-  price: string // rubles, e.g. "149,90"
-}
-
-// Quantity starts empty (not "1") so the field reads as blank; a blank quantity
-// is treated as 1 both in the live total below and when the order is saved.
-const emptyItem = (id: number): ItemInput => ({ id, name: '', quantity: '', price: '' })
-
-// Build the editable item rows for the initial state: one blank row when
-// creating, or the stored plants converted back to input strings when editing.
-// Row ids are the array index, so the id ref continues from there for new rows.
-const initialItems = (order: Order | undefined): ItemInput[] =>
-  order
-    ? order.plants.map((p, id) => ({
-        id,
-        name: p.name,
-        quantity: String(p.quantity),
-        price: formatMinorToInput(p.unitPriceMinor),
-      }))
-    : [emptyItem(0)]
-
-
-// Pick an existing customer from the address book, or enter a new one.
-type CustomerMode = 'existing' | 'new'
-
-// One editable plant line, prefixed with its 1-based position. Four controls
-// (name, quantity, price, delete) don't fit a phone width in a single row, so on
-// narrow screens the number+name take their own line and quantity/price/delete
-// share the line below; from `sm` up they all sit in one row. Widths are fluid
-// at every size — the two groups distribute the row via flex proportions and the
-// inputs carry `min-w-0` so they shrink with the container instead of locking to
-// a fixed width. Extracted from the map so the loop body is its own component.
-const PlantItemRow = ({
-  position,
-  item,
-  priceMissing,
-  canRemove,
-  autoFocus,
-  suggestions,
-  t,
-  onChange,
-  onRemove,
-}: {
-  position: number
-  item: ItemInput
-  priceMissing: boolean
-  canRemove: boolean
-  // Passed from the parent (single i18next subscription) so each plant row
-  // doesn't open its own useTranslation.
-  t: TFunction<['order', 'common']>
-  // Focus the name input on mount — set only for a row just added via the
-  // "+ Добавить растение" button, so the user can type the name right away.
-  autoFocus: boolean
-  // Known plant names from prior orders, offered as autocomplete suggestions on
-  // the name input so re-typing an existing plant reuses one spelling.
-  suggestions: string[]
-  onChange: (patch: Partial<ItemInput>) => void
-  onRemove: () => void
-}) => {
-  return (
-  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-    <div className="flex min-w-0 items-center gap-2 sm:flex-[4]">
-      <span aria-hidden="true" className="w-5 shrink-0 text-right text-sm text-text">
-        {position}.
-      </span>
-      <Autocomplete
-        className="min-w-0 flex-1"
-        label={t('form.plantName')}
-        suggestions={suggestions}
-        autoFocus={autoFocus}
-        value={item.name}
-        onChange={(name) => onChange({ name })}
-      />
-    </div>
-    <div className="flex min-w-0 items-center gap-2 sm:flex-[3]">
-      <Input
-        className="min-w-0 flex-[2]"
-        numeric="integer"
-        label={t('form.quantity')}
-        value={item.quantity}
-        onChange={(e) => onChange({ quantity: e.target.value })}
-      />
-      <Input
-        className="min-w-0 flex-[3]"
-        numeric="decimal"
-        label={t('form.price')}
-        invalid={priceMissing}
-        value={item.price}
-        onChange={(e) => onChange({ price: e.target.value })}
-      />
-      <Button
-        variant="secondary"
-        size="icon"
-        onClick={onRemove}
-        disabled={!canRemove}
-        aria-label={t('form.removePlant')}
-        className="shrink-0"
-      >
-        ✕
-      </Button>
-    </div>
-  </div>
-  )
-}
 
 interface OrderFormProps {
   // Screen heading, e.g. "Новый заказ" / "Редактирование заказа".
@@ -462,92 +355,19 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
           <div className="mx-auto flex max-w-2xl flex-col gap-5">
             <h1 className="m-0 text-[1.2222rem] font-semibold text-heading">{heading}</h1>
 
-          <fieldset className="flex min-w-0 flex-col gap-3 border-0 p-0">
-            <legend className="mb-1 p-0 text-sm text-text">{t('form.customer')}</legend>
-
-            {/* Segmented slider toggle. Native radios stay as the source of
-                truth (keyboard + form semantics) but are visually hidden; the
-                sliding pill is positioned from `customerMode`. */}
-            <div
-              role="radiogroup"
-              aria-label={t('form.customerType')}
-              className="relative grid w-full max-w-xs grid-cols-2 rounded-full border border-border bg-primary-bg p-1 text-sm font-medium"
-            >
-              {/* Sliding pill behind the active segment. */}
-              <span
-                aria-hidden="true"
-                className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-primary shadow-sm ${
-                  animateModeSlider ? 'transition-transform duration-200 ease-out' : ''
-                } ${customerMode === 'new' ? 'translate-x-full' : 'translate-x-0'}`}
-              />
-              <label
-                className={`relative z-10 flex min-w-0 cursor-pointer items-center justify-center rounded-full px-2 py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary ${
-                  customerMode === 'existing' ? 'text-white' : 'text-text hover:text-heading'
-                } ${customers.length === 0 ? 'cursor-not-allowed opacity-50' : ''}`}
-              >
-                <input
-                  type="radio"
-                  name="customerMode"
-                  className="sr-only"
-                  checked={customerMode === 'existing'}
-                  onChange={() => selectMode('existing')}
-                  disabled={customers.length === 0}
-                />
-                {/* truncate (with min-w-0 on the label) keeps a long label like
-                    "Существующий" inside its segment instead of overflowing. */}
-                <span className="min-w-0 truncate">{t('form.existing')}</span>
-              </label>
-              <label
-                className={`relative z-10 flex min-w-0 cursor-pointer items-center justify-center rounded-full px-2 py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary ${
-                  customerMode === 'new' ? 'text-white' : 'text-text hover:text-heading'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="customerMode"
-                  className="sr-only"
-                  checked={customerMode === 'new'}
-                  onChange={() => selectMode('new')}
-                />
-                <span className="min-w-0 truncate">{t('form.new')}</span>
-              </label>
-            </div>
-
-            {customerMode === 'existing' ? (
-              customers.length === 0 ? (
-                <p className="m-0 text-sm text-text">{t('form.noCustomers')}</p>
-              ) : (
-                <Select
-                  label={t('form.existingCustomer')}
-                  value={selectedCustomerId}
-                  onChange={(e) => selectCustomer(e.target.value)}
-                >
-                  <option value="">{t('form.selectCustomer')}</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.phone ? `${c.name} (${c.phone})` : c.name}
-                      {c.isDeleted ? t('form.deletedSuffix') : ''}
-                    </option>
-                  ))}
-                </Select>
-              )
-            ) : (
-              <div className="flex flex-col gap-3">
-                <Input
-                  className="w-full"
-                  label={t('form.customerName')}
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                />
-                <Input
-                  className="w-full"
-                  label={t('form.phone')}
-                  value={newPhone}
-                  onChange={(e) => setNewPhone(e.target.value)}
-                />
-              </div>
-            )}
-          </fieldset>
+          <CustomerPicker
+            mode={customerMode}
+            customers={customers}
+            selectedCustomerId={selectedCustomerId}
+            newName={newName}
+            newPhone={newPhone}
+            animate={animateModeSlider}
+            t={t}
+            onSelectMode={selectMode}
+            onSelectCustomer={selectCustomer}
+            onChangeNewName={setNewName}
+            onChangeNewPhone={setNewPhone}
+          />
 
           <Input
             className="w-full"

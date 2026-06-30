@@ -8,6 +8,7 @@ import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
 import Modal from '../../components/Modal/Modal'
 import CustomerForm from '../../components/CustomerForm/CustomerForm'
+import DetailRow from '../../components/DetailRow/DetailRow'
 import { fetchCustomer, updateCustomer } from '../../firebase/customers'
 import type { CustomerEdits } from '../../firebase/customers'
 import { fetchOrders } from '../../firebase/orders'
@@ -25,13 +26,11 @@ import type { Customer } from '../../types/customer'
 // How many "frequent plants" to surface in the summary.
 const TOP_PLANTS = 3
 
-// A read-only label/value row, matching the order detail page's Field. The value
-// can be a node so the customer's name elsewhere can be a link, etc.
+// The shared DetailRow with this page's narrower label column (its labels —
+// "Телефон" / "Всего заказов" — are shorter than the order page's). A thin
+// local alias so the call sites below stay terse and don't repeat the basis.
 const Field = ({ label, value }: { label: string; value: ReactNode }) => (
-  <div className="flex items-center gap-3 border-b border-border py-2">
-    <span className="shrink-0 basis-[160px] text-text">{label}</span>
-    <span className="min-w-0 flex-1 break-words text-heading">{value}</span>
-  </div>
+  <DetailRow label={label} value={value} labelBasisClass="basis-[160px]" />
 )
 
 // Customer page: the address-book record plus everything derived from this
