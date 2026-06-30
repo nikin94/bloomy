@@ -253,7 +253,7 @@ const OrderDetailPage = () => {
               label={t('detail.customer')}
               value={customer?.name ?? '—'}
               action={
-                customer ? (
+                customer && !isDeleted ? (
                   <Button
                     variant="secondary"
                     size="icon"
@@ -337,6 +337,7 @@ const OrderDetailPage = () => {
               orderId={order.id}
               photos={order.photos ?? []}
               onChange={handlePhotosChange}
+              readOnly={isDeleted}
             />
           )}
         </div>

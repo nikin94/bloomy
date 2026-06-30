@@ -242,6 +242,23 @@ describe('OrderDetailPage', () => {
       // Statuses are plain text, not editable selects; the label still resolves.
       expect(screen.queryByRole('combobox', { name: 'Статус оплаты' })).not.toBeInTheDocument()
       expect(screen.getByText('Ожидает')).toBeInTheDocument()
+      // The "edit customer" pencil is hidden — read-only means no writes anywhere.
+      expect(
+        screen.queryByRole('button', { name: 'Редактировать клиента' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('shows existing photos read-only: no add tile, no per-thumb delete', async () => {
+      fetchOrder.mockResolvedValue(order({ isDeleted: true, photos: ['orders/owner-1/o1/a.jpg'] }))
+      renderPage()
+      await screen.findByRole('heading', { name: 'Заказ №5' })
+
+      // The thumbnail (its open-viewer button) is present...
+      expect(screen.getByRole('button', { name: 'Открыть фото' })).toBeInTheDocument()
+      // ...but the add tile and the per-thumb delete are gone — nothing can write
+      // to the soft-deleted doc or upload an orphan blob under its path.
+      expect(screen.queryByRole('button', { name: 'Добавить фото' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Удалить фото' })).not.toBeInTheDocument()
     })
 
     it('restores the order and returns to the trash', async () => {
