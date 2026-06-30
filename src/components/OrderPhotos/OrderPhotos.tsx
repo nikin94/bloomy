@@ -45,7 +45,8 @@ const Thumb = ({
   // row doesn't open its own useTranslation subscription.
   t: TFunction<['order', 'common']>
   onOpen: () => void
-  onDelete: () => void
+  // Omitted in read-only mode (deleted order) — the × isn't rendered then.
+  onDelete?: () => void
 }) => {
   return (
   <div className="relative size-20 shrink-0">
@@ -63,17 +64,19 @@ const Thumb = ({
         </span>
       )}
     </button>
-    <button
-      type="button"
-      onClick={onDelete}
-      aria-label={t('photos.delete')}
-      title={t('photos.delete')}
-      className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full border border-border bg-bg text-text shadow-sm hover:text-danger focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-    >
-      <span aria-hidden="true" className="text-sm leading-none">
-        ✕
-      </span>
-    </button>
+    {onDelete && (
+      <button
+        type="button"
+        onClick={onDelete}
+        aria-label={t('photos.delete')}
+        title={t('photos.delete')}
+        className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full border border-border bg-bg text-text shadow-sm hover:text-danger focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        <span aria-hidden="true" className="text-sm leading-none">
+          ✕
+        </span>
+      </button>
+    )}
   </div>
   )
 }
@@ -179,11 +182,15 @@ const OrderPhotos = ({
   orderId,
   photos,
   onChange,
+  readOnly = false,
 }: {
   ownerId: string
   orderId: string
   photos: string[]
   onChange: (photos: string[]) => void
+  // Deleted order: show existing photos + the fullscreen viewer, but hide the
+  // add tile and the per-thumb delete so no write hits the soft-deleted doc.
+  readOnly?: boolean
 }) => {
   const { t } = useTranslation(['order', 'common'])
   // Resolved download URLs keyed by storage path.
@@ -278,6 +285,10 @@ const OrderPhotos = ({
     deleteOrderPhoto(path).catch((err: unknown) => reportError(err, 'deleteOrderPhoto'))
   }
 
+  // Read-only with nothing to show: skip the section entirely (no empty "Фото"
+  // heading on a deleted order that never had photos).
+  if (readOnly && photos.length === 0) return null
+
   return (
     <section className="flex flex-col gap-2">
       <h2 className="m-0 text-lg font-semibold text-heading">{t('photos.title')}</h2>
@@ -289,33 +300,37 @@ const OrderPhotos = ({
             url={urls[path]}
             t={t}
             onOpen={() => setViewerIndex(index)}
-            onDelete={() => setPendingDelete(path)}
+            onDelete={readOnly ? undefined : () => setPendingDelete(path)}
           />
         ))}
 
         {/* Add tile — opens the device camera or gallery (mobile) / file picker. */}
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          aria-label={t('photos.add')}
-          className="flex size-20 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-text hover:bg-primary-bg disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          {uploading ? <Loader size="md" /> : <CameraIcon />}
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            aria-label={t('photos.add')}
+            className="flex size-20 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-text hover:bg-primary-bg disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            {uploading ? <Loader size="md" /> : <CameraIcon />}
+          </button>
+        )}
       </div>
 
       {/* `capture="environment"` hints the rear camera on mobile but still lets
           the user pick from the gallery; `multiple` allows several at once. */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        multiple
-        className="hidden"
-        onChange={(e) => handleFiles(e.target.files)}
-      />
+      {!readOnly && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          multiple
+          className="hidden"
+          onChange={(e) => handleFiles(e.target.files)}
+        />
+      )}
 
       {uploadError && (
         <p role="alert" className="m-0 text-sm text-danger">

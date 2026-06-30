@@ -1,18 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
+import { useNavigate } from 'react-router-dom'
 import AppHeader from '../../components/AppHeader/AppHeader'
+import DataTable from '../../components/DataTable/DataTable'
 import Spinner from '../../components/Spinner/Spinner'
-import Button from '../../components/Button/Button'
 import SearchControl from '../../components/SearchControl/SearchControl'
 import OrderFilterControl from '../../components/OrderFilterControl/OrderFilterControl'
-import { fetchDeletedOrders, restoreOrder } from '../../firebase/orders'
+import { fetchDeletedOrders } from '../../firebase/orders'
 import { fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
-import { formatDate, formatMoney } from '../../utils/format'
 import {
-  getTotalMinor,
-  formatOrderNumber,
+  buildOrderColumns,
   filterOrders,
   isOrderFilterActive,
   EMPTY_ORDER_FILTER,
@@ -20,52 +18,18 @@ import {
 import type { Order, OrderFilter } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
-// One soft-deleted order in the trash: its number, customer, date and total, with
-// a Restore action. Confirming restores the record and the parent drops the row.
-// Deleted orders are NOT linked to the detail page — fetchOrder treats them as
-// gone, so a row link would only dead-end on "not found"; restore is the one
-// action here. Extracted from the map so the loop body is its own component.
-const DeletedOrderRow = ({
-  order,
-  customerName,
-  t,
-  onRestore,
-}: {
-  order: Order
-  customerName: string
-  // Passed from the parent (single i18next subscription) so each trash row
-  // doesn't open its own useTranslation.
-  t: TFunction<['order', 'common']>
-  onRestore: (id: string) => void
-}) => {
-  return (
-  <li className="flex items-center gap-3 border-b border-border py-3">
-    <div className="min-w-0 flex-1">
-      <p className="m-0 truncate text-heading">
-        {t('trash.row', { number: formatOrderNumber(order.number), customer: customerName })}
-      </p>
-      <p className="m-0 truncate text-sm text-text">
-        {formatDate(order.dateCreated)} · {formatMoney(getTotalMinor(order), order.currency)}
-      </p>
-    </div>
-    <Button
-      variant="secondary"
-      size="sm"
-      onClick={() => onRestore(order.id)}
-      className="shrink-0"
-    >
-      {t('common:restore')}
-    </Button>
-  </li>
-  )
-}
-
-// Trash screen: lists the signed-in user's soft-deleted orders and lets each be
-// restored back into the active list. Reached from the "Корзина" nav link. The
-// customer name is resolved the same way the orders list does — load customers
-// once (including deleted ones) and look the name up in memory.
+// Trash screen: the signed-in user's soft-deleted orders, shown in the SAME
+// table/card layout as the active list (DataTable) so it reads identically. Two
+// things keep it from being confused with the active list: a fixed "these are
+// deleted" banner, and that restoring happens on the order's own detail page
+// (open a row → Restore) rather than inline. The customer name is resolved the
+// way the orders list does — load customers once (including deleted ones) and
+// look the name up in memory.
 const DeletedOrdersPage = () => {
   const { t } = useTranslation(['order', 'common'])
+  // Order-bound t for the column helpers (typed TFunction<'order'>).
+  const { t: tOrder } = useTranslation('order')
+  const navigate = useNavigate()
   // Guaranteed non-null under ProtectedRoute, but read defensively and gate on it.
   const { user } = useAuth()
   const ownerId = user?.uid
@@ -105,13 +69,7 @@ const DeletedOrdersPage = () => {
 
   const customerNameById = new Map(customers.map((c) => [c.id, c.name]))
   const getCustomerName = (id: string) => customerNameById.get(id) ?? '—'
-
-  // Restore is fire-and-forget (offline-safe): drop the row optimistically and
-  // the order returns to the active list; a failed write is reported to Sentry.
-  const handleRestore = (id: string) => {
-    restoreOrder(id)
-    setOrders((prev) => prev.filter((o) => o.id !== id))
-  }
+  const columns = buildOrderColumns(getCustomerName, tOrder)
 
   // Reuse the orders predicate — the trash filters exactly like the active list
   // (search + status/currency/price), no extra logic.
@@ -133,33 +91,30 @@ const DeletedOrdersPage = () => {
         }
       />
 
-      {/* Flex column so the empty state can center itself (m-auto) in the whole
-          available area, while the list keeps its constrained max-w-2xl column. */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-auto p-6">
-        {loading && <Spinner />}
-        {loadError && <p className="mx-auto m-0 w-full max-w-2xl text-danger">{loadError}</p>}
+      {/* Fixed banner labelling the page as the trash, so the identical table
+          layout is never mistaken for the active orders list. Shown only once
+          there is something in the trash (an empty trash gets its own message
+          from the table below). */}
+      {!loading && !loadError && orders.length > 0 && (
+        <div
+          role="status"
+          className="border-b border-border bg-danger-bg px-6 py-2 text-center text-sm font-medium text-danger"
+        >
+          {t('trash.banner')}
+        </div>
+      )}
 
-        {!loading &&
-          !loadError &&
-          (visibleOrders.length === 0 ? (
-            // m-auto in a flex container centers on both axes.
-            <p className="m-auto text-text">
-              {filterActive ? t('common:nothingFound') : t('trash.empty')}
-            </p>
-          ) : (
-            <ul className="mx-auto m-0 w-full max-w-2xl list-none p-0">
-              {visibleOrders.map((order) => (
-                <DeletedOrderRow
-                  key={order.id}
-                  order={order}
-                  customerName={getCustomerName(order.customerId)}
-                  t={t}
-                  onRestore={handleRestore}
-                />
-              ))}
-            </ul>
-          ))}
-      </div>
+      {loading && <Spinner />}
+      {loadError && <p className="px-6 py-8 text-danger">{loadError}</p>}
+
+      {!loading && !loadError && (
+        <DataTable
+          orders={visibleOrders}
+          columns={columns}
+          onRowClick={(order) => navigate(`/orders/${order.id}`)}
+          emptyMessage={filterActive ? t('common:nothingFound') : t('trash.empty')}
+        />
+      )}
     </div>
   )
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { fetchOrder, patchOrder, softDeleteOrder } from '../../firebase/orders'
+import { fetchOrder, patchOrder, softDeleteOrder, restoreOrder } from '../../firebase/orders'
 import type { OrderPatch } from '../../firebase/orders'
 import { fetchCustomer, updateCustomer } from '../../firebase/customers'
 import type { CustomerEdits } from '../../firebase/customers'
@@ -68,7 +68,9 @@ const OrderDetailPage = () => {
   useEffect(() => {
     if (!id || !ownerId) return
     let active = true
-    fetchOrder(id, ownerId)
+    // includeDeleted: a trashed order opens here read-only (deleted banner +
+    // Restore) instead of dead-ending on "not found".
+    fetchOrder(id, ownerId, { includeDeleted: true })
       .then(async (data) => {
         if (!active) return
         setOrder(data)
@@ -160,10 +162,42 @@ const OrderDetailPage = () => {
     navigate('/orders')
   }
 
+  // Restore a trashed order back to the active list, then return to the trash
+  // (where it no longer appears). Fire-and-forget, same offline semantics as
+  // delete — the optimistic navigation never waits on the write.
+  const handleRestore = () => {
+    if (!order) return
+    restoreOrder(order.id)
+    navigate('/orders/deleted')
+  }
+
+  // A trashed order opens read-only: a fixed deleted banner with Restore, no
+  // edit/delete, statuses shown as plain text. `order` is null while loading, so
+  // default to not-deleted until it resolves.
+  const isDeleted = !!order?.isDeleted
+
   return (
-    <div className="overflow-auto p-6">
-      <Link to="/orders" className="mb-4 inline-block text-primary no-underline hover:underline">
-        {t('detail.back')}
+    <div className="flex h-full flex-col">
+      {/* Deleted banner — pinned above the scrolling body so it stays visible
+          (and Restore stays reachable) however far the order is scrolled. */}
+      {isDeleted && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-danger-bg px-6 py-3"
+        >
+          <span className="text-sm font-medium text-danger">{t('detail.deletedBanner')}</span>
+          <Button variant="primary" size="sm" onClick={handleRestore}>
+            {t('common:restore')}
+          </Button>
+        </div>
+      )}
+
+      <div className="overflow-auto p-6">
+      <Link
+        to={isDeleted ? '/orders/deleted' : '/orders'}
+        className="mb-4 inline-block text-primary no-underline hover:underline"
+      >
+        {isDeleted ? t('detail.backToTrash') : t('detail.back')}
       </Link>
 
       {loading && <Spinner />}
@@ -188,20 +222,26 @@ const OrderDetailPage = () => {
             </h1>
             <div className="flex items-center gap-3">
               <span className="text-sm text-text">{formatDate(order.dateCreated)}</span>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => navigate(`/orders/${order.id}/edit`)}
-              >
-                {t('detail.edit')}
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={() => setConfirmingDelete(true)}
-              >
-                {t('detail.delete')}
-              </Button>
+              {/* A trashed order is read-only — Restore lives in the banner, so
+                  edit/delete are hidden here until it's restored. */}
+              {!isDeleted && (
+                <>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => navigate(`/orders/${order.id}/edit`)}
+                  >
+                    {t('detail.edit')}
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => setConfirmingDelete(true)}
+                  >
+                    {t('detail.delete')}
+                  </Button>
+                </>
+              )}
             </div>
           </header>
 
@@ -213,7 +253,7 @@ const OrderDetailPage = () => {
               label={t('detail.customer')}
               value={customer?.name ?? '—'}
               action={
-                customer ? (
+                customer && !isDeleted ? (
                   <Button
                     variant="secondary"
                     size="icon"
@@ -235,12 +275,14 @@ const OrderDetailPage = () => {
               value={order.paymentStatus}
               options={paymentStatusOptions(tOrder)}
               onChange={(value) => saveStatus({ paymentStatus: value as Order['paymentStatus'] })}
+              readOnly={isDeleted}
             />
             <InlineStatusField
               label={t('detail.shipmentStatus')}
               value={order.shipmentStatus}
               options={shipmentStatusOptions(tOrder)}
               onChange={(value) => saveStatus({ shipmentStatus: value as Order['shipmentStatus'] })}
+              readOnly={isDeleted}
             />
             {order.completedAt && <Field label={t('detail.completed')} value={formatDate(order.completedAt)} />}
             {order.comment && <Field label={t('detail.comment')} value={order.comment} />}
@@ -295,6 +337,7 @@ const OrderDetailPage = () => {
               orderId={order.id}
               photos={order.photos ?? []}
               onChange={handlePhotosChange}
+              readOnly={isDeleted}
             />
           )}
         </div>
@@ -331,6 +374,7 @@ const OrderDetailPage = () => {
           </div>
         </Modal>
       )}
+      </div>
     </div>
   )
 }
@@ -356,29 +400,39 @@ const Field = ({
 // A status row that's editable in place: same layout as Field, but the value is
 // a Select. Selecting an option calls onChange, which saves optimistically on
 // the page (the write is fire-and-forget, so there's no in-flight disabled
-// state). Used for both order statuses.
+// state). Used for both order statuses. `readOnly` (a trashed order) renders the
+// resolved label as plain text instead — the same row layout as Field, so a
+// deleted order reads as a static archive rather than an editable record.
 const InlineStatusField = ({
   label,
   value,
   options,
   onChange,
+  readOnly = false,
 }: {
   label: string
   value: string
   options: { value: string; label: string }[]
   onChange: (value: string) => void
+  readOnly?: boolean
 }) => (
   <div className="flex items-center gap-3 border-b border-border py-2">
     <span className="shrink-0 basis-[200px] text-text">{label}</span>
-    <div className="min-w-0 max-w-[220px] flex-1">
-      <Select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </Select>
-    </div>
+    {readOnly ? (
+      <span className="min-w-0 flex-1 text-heading">
+        {options.find((o) => o.value === value)?.label ?? value}
+      </span>
+    ) : (
+      <div className="min-w-0 max-w-[220px] flex-1">
+        <Select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </Select>
+      </div>
+    )}
   </div>
 )
 
