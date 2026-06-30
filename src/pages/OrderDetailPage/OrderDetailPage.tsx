@@ -278,7 +278,18 @@ const OrderDetailPage = () => {
           <section className="flex flex-col">
             <Field
               label={t('detail.customer')}
-              value={customer?.name ?? '—'}
+              value={
+                customer ? (
+                  <Link
+                    to={`/customers/${customer.id}`}
+                    className="text-primary no-underline hover:underline"
+                  >
+                    {customer.name}
+                  </Link>
+                ) : (
+                  '—'
+                )
+              }
               action={
                 customer && !isDeleted ? (
                   <Button
@@ -418,7 +429,7 @@ const Field = ({
   action,
 }: {
   label: string
-  value: string
+  value: ReactNode
   action?: ReactNode
 }) => (
   <div className="flex items-center gap-3 border-b border-border py-2">

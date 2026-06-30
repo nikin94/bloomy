@@ -17,6 +17,8 @@ import {
   isOrderDeleted,
   trashDaysLeft,
   TRASH_RETENTION_DAYS,
+  revenueByCurrencyMinor,
+  topPlantsByQuantity,
   STORED_ORDER_SCHEMA,
 } from './order'
 import type { Order } from './order'
@@ -400,5 +402,66 @@ describe('trashDaysLeft', () => {
     const deletedAt = 1_000_000
     const past = deletedAt + (TRASH_RETENTION_DAYS + 5) * DAY
     expect(trashDaysLeft(makeOrder({ deletedAt }), past)).toBe(0)
+  })
+})
+
+describe('revenueByCurrencyMinor', () => {
+  it('sums paid order totals per currency, never across currencies', () => {
+    const orders = [
+      makeOrder({ id: 'a', currency: 'RUB', paymentStatus: 'paid', plants: [{ name: 'Кактус', quantity: 1, unitPriceMinor: 50000 }] }),
+      makeOrder({ id: 'b', currency: 'RUB', paymentStatus: 'paid', plants: [{ name: 'Фиалка', quantity: 2, unitPriceMinor: 10000 }] }),
+      makeOrder({ id: 'c', currency: 'USD', paymentStatus: 'paid', plants: [{ name: 'Суккулент', quantity: 1, unitPriceMinor: 3000 }] }),
+    ]
+    const revenue = revenueByCurrencyMinor(orders)
+    // RUB: 50000 + 20000; USD kept separate.
+    expect(revenue.get('RUB')).toBe(70000)
+    expect(revenue.get('USD')).toBe(3000)
+    expect(revenue.has('EUR')).toBe(false)
+  })
+
+  it('counts ONLY paid orders — pending/refunded/cancelled add nothing', () => {
+    const orders = [
+      makeOrder({ id: 'a', paymentStatus: 'paid', plants: [{ name: 'Кактус', quantity: 1, unitPriceMinor: 10000 }] }),
+      makeOrder({ id: 'b', paymentStatus: 'pending', plants: [{ name: 'Кактус', quantity: 1, unitPriceMinor: 99900 }] }),
+      makeOrder({ id: 'c', paymentStatus: 'refunded', plants: [{ name: 'Кактус', quantity: 1, unitPriceMinor: 99900 }] }),
+    ]
+    expect(revenueByCurrencyMinor(orders).get('RUB')).toBe(10000)
+  })
+
+  it('includes delivery in the per-order total', () => {
+    const orders = [
+      makeOrder({ paymentStatus: 'paid', plants: [{ name: 'Кактус', quantity: 1, unitPriceMinor: 10000 }], deliveryPriceMinor: 5000 }),
+    ]
+    expect(revenueByCurrencyMinor(orders).get('RUB')).toBe(15000)
+  })
+})
+
+describe('topPlantsByQuantity', () => {
+  it('ranks plants by total quantity across orders, highest first', () => {
+    const orders = [
+      makeOrder({ id: 'a', plants: [{ name: 'Кактус', quantity: 2, unitPriceMinor: 0 }, { name: 'Фиалка', quantity: 1, unitPriceMinor: 0 }] }),
+      makeOrder({ id: 'b', plants: [{ name: 'Кактус', quantity: 3, unitPriceMinor: 0 }, { name: 'Суккулент', quantity: 4, unitPriceMinor: 0 }] }),
+    ]
+    expect(topPlantsByQuantity(orders, 3)).toEqual([
+      { name: 'Кактус', quantity: 5 },
+      { name: 'Суккулент', quantity: 4 },
+      { name: 'Фиалка', quantity: 1 },
+    ])
+  })
+
+  it('caps the result at the requested limit', () => {
+    const orders = [
+      makeOrder({ plants: [
+        { name: 'A', quantity: 4, unitPriceMinor: 0 },
+        { name: 'B', quantity: 3, unitPriceMinor: 0 },
+        { name: 'C', quantity: 2, unitPriceMinor: 0 },
+        { name: 'D', quantity: 1, unitPriceMinor: 0 },
+      ] }),
+    ]
+    expect(topPlantsByQuantity(orders, 2).map((p) => p.name)).toEqual(['A', 'B'])
+  })
+
+  it('returns an empty array when there are no orders', () => {
+    expect(topPlantsByQuantity([], 3)).toEqual([])
   })
 })

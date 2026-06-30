@@ -6,10 +6,24 @@
   "deleteAria": "Delete customer {{name}}",
   "edit": "Edit",
   "delete": "Delete",
+  "openAria": "Open customer {{name}}",
   "list": {
     "empty": "No customers yet",
     "search": "Search customers",
     "loadError": "Couldn't load customers"
+  },
+  "page": {
+    "back": "← Back to customers",
+    "notFound": "Customer not found",
+    "loadError": "Couldn't load the customer",
+    "edit": "Edit",
+    "totalOrders": "Total orders",
+    "revenue": "Revenue (paid)",
+    "firstOrder": "First order",
+    "lastOrder": "Last order",
+    "topPlants": "Frequent plants",
+    "orders": "Orders",
+    "noOrders": "This customer has no orders yet"
   },
   "form": {
     "name": "Customer name",

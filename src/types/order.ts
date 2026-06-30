@@ -181,6 +181,45 @@ export const resolveCompletedAt = (
 export const plantsByValueDesc = (plants: OrderItem[]): OrderItem[] =>
   [...plants].sort((a, b) => b.unitPriceMinor * b.quantity - a.unitPriceMinor * a.quantity)
 
+// --- Aggregate stats (customer page; reused later by the statistics tab) ------
+//
+// All computed in memory from already-loaded orders, so they stay offline-safe
+// and need no extra reads or schema change. Callers pass an ALREADY-FILTERED
+// list (e.g. one customer's orders, deleted ones excluded) — these helpers don't
+// filter by owner/customer/trash themselves.
+
+// Total PAID revenue grouped by currency (minor units). Orders priced in
+// different currencies are never summed together — there is no conversion (see
+// the multi-currency model) — so the result is one running total per currency.
+// Only `paid` orders count as revenue; pending/refunded and cancelled don't.
+export const revenueByCurrencyMinor = (orders: Order[]): Map<Currency, number> => {
+  const totals = new Map<Currency, number>()
+  for (const order of orders) {
+    if (order.paymentStatus !== 'paid') continue
+    totals.set(order.currency, (totals.get(order.currency) ?? 0) + getTotalMinor(order))
+  }
+  return totals
+}
+
+// The most-ordered plants across the given orders, by total quantity (summed
+// across every order), highest first. Returns at most `limit` { name, quantity }
+// entries — used for the customer page's "frequent plants" summary.
+export const topPlantsByQuantity = (
+  orders: Order[],
+  limit: number,
+): { name: string; quantity: number }[] => {
+  const totals = new Map<string, number>()
+  for (const order of orders) {
+    for (const plant of order.plants) {
+      totals.set(plant.name, (totals.get(plant.name) ?? 0) + plant.quantity)
+    }
+  }
+  return [...totals.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([name, quantity]) => ({ name, quantity }))
+}
+
 // Compact per-line label for the orders-table list: the name, plus the quantity
 // as ×N only when it is more than 1 (a quantity of 1 is the common case and just
 // adds noise).
