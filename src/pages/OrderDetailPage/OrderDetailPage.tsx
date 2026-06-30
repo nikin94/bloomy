@@ -17,6 +17,9 @@ import {
   shipmentStatusOptions,
   resolveCompletedAt,
   formatOrderNumber,
+  isOrderDeleted,
+  trashDaysLeft,
+  TRASH_RETENTION_DAYS,
 } from '../../types/order'
 import { useAuth } from '../../context/authContext'
 import Spinner from '../../components/Spinner/Spinner'
@@ -53,6 +56,8 @@ const OrderDetailPage = () => {
   const { user } = useAuth()
   const ownerId = user?.uid
   const [order, setOrder] = useState<Order | null>(null)
+  // "Now" for the trash purge countdown, captured once on mount (see daysLeft).
+  const [mountNow] = useState(() => Date.now())
   // Resolved live from the customers collection. Stays null when the customer
   // was deleted (a dangling customerId must not crash the page).
   const [customer, setCustomer] = useState<Customer | null>(null)
@@ -174,7 +179,11 @@ const OrderDetailPage = () => {
   // A trashed order opens read-only: a fixed deleted banner with Restore, no
   // edit/delete, statuses shown as plain text. `order` is null while loading, so
   // default to not-deleted until it resolves.
-  const isDeleted = !!order?.isDeleted
+  const isDeleted = order ? isOrderDeleted(order) : false
+  // Whole days until this trashed order is auto-purged — null for a legacy
+  // delete with no `deletedAt` (no countdown shown for it). "Now" is captured once
+  // on mount (day-granularity; a render-time Date.now() isn't pure).
+  const daysLeft = order ? trashDaysLeft(order, mountNow) : null
 
   return (
     <div className="flex h-full flex-col">
@@ -185,7 +194,15 @@ const OrderDetailPage = () => {
           role="status"
           className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-danger-bg px-6 py-3"
         >
-          <span className="text-sm font-medium text-danger">{t('detail.deletedBanner')}</span>
+          <span className="text-sm font-medium text-danger">
+            {t('detail.deletedBanner')}
+            {daysLeft !== null && (
+              <>
+                {' '}
+                {t('detail.deletedCountdown', { days: t('common:days', { count: daysLeft }) })}
+              </>
+            )}
+          </span>
           <Button variant="primary" size="sm" onClick={handleRestore}>
             {t('common:restore')}
           </Button>
@@ -363,7 +380,11 @@ const OrderDetailPage = () => {
           title={t('detail.deleteTitle', { number: formatOrderNumber(order.number) })}
           onClose={() => setConfirmingDelete(false)}
         >
-          <p className="m-0 text-text">{t('detail.deleteBody')}</p>
+          <p className="m-0 text-text">
+            {t('detail.deleteBody', {
+              days: t('common:days', { count: TRASH_RETENTION_DAYS }),
+            })}
+          </p>
           <div className="flex justify-end gap-2">
             <Button variant="danger" onClick={handleDelete}>
               {t('common:delete')}

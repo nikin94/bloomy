@@ -61,12 +61,14 @@
     "banner": "Trash — these orders are deleted. Open an order to restore it.",
     "empty": "Trash is empty",
     "loadError": "Couldn't load the trash",
-    "search": "Search the trash"
+    "search": "Search the trash",
+    "purgeColumn": "Auto-delete"
   },
   "detail": {
     "back": "← Back to orders",
     "backToTrash": "← Back to trash",
     "deletedBanner": "This order is deleted and in the trash.",
+    "deletedCountdown": "It will be permanently deleted in {{days}}.",
     "notFound": "Order not found",
     "loadError": "Couldn't load the order",
     "title": "Order #{{number}}",
@@ -74,7 +76,7 @@
     "edit": "Edit",
     "delete": "Delete",
     "deleteTitle": "Delete order #{{number}}?",
-    "deleteBody": "The order will move to the trash — you can restore it.",
+    "deleteBody": "The order will move to the trash and be permanently deleted in {{days}}. You can restore it until then.",
     "editCustomer": "Edit customer",
     "editCustomerTitle": "Edit customer",
     "customer": "Customer",

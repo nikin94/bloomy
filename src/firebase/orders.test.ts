@@ -38,6 +38,9 @@ vi.mock('firebase/firestore', () => ({
   query: vi.fn(() => ({})),
   runTransaction: vi.fn(),
   setDoc: vi.fn(),
+  // Timestamp.fromMillis is a pure client value; stub it to a tagged object so a
+  // test can assert the purge timestamp without pulling in the real SDK.
+  Timestamp: { fromMillis: vi.fn((ms: number) => ({ __ts: ms })) },
   updateDoc: vi.fn(),
   where: vi.fn(() => ({})),
 }))
@@ -250,6 +253,22 @@ describe('fetchOrder', () => {
 
     expect(await fetchOrder('o1', 'owner-1')).toBeNull()
   })
+
+  it('treats a deletedAt-stamped order as gone by default, but returns it with includeDeleted', async () => {
+    vi.mocked(getDoc).mockResolvedValue({
+      exists: () => true,
+      id: 'o1',
+      data: () => storedOrder({ ownerId: 'owner-1', deletedAt: 1700 }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any)
+
+    // Default: a trashed order is gone (a stale link dead-ends).
+    expect(await fetchOrder('o1', 'owner-1')).toBeNull()
+    // includeDeleted: the trash detail view opens it read-only instead.
+    const viewed = await fetchOrder('o1', 'owner-1', { includeDeleted: true })
+    expect(viewed?.id).toBe('o1')
+    expect(viewed?.deletedAt).toBe(1700)
+  })
 })
 
 describe('fetchOrders', () => {
@@ -269,11 +288,12 @@ describe('fetchOrders', () => {
     expect(orders.map((o) => o.id)).toEqual(['new', 'mid', 'old'])
   })
 
-  it('drops soft-deleted orders from the list', async () => {
+  it('drops soft-deleted orders from the list (both legacy isDeleted and deletedAt)', async () => {
     vi.mocked(getDocs).mockResolvedValue({
       docs: [
         { id: 'live', data: () => storedOrder({ dateCreated: 2000 }) },
-        { id: 'gone', data: () => storedOrder({ dateCreated: 3000, isDeleted: true }) },
+        { id: 'legacy-gone', data: () => storedOrder({ dateCreated: 3000, isDeleted: true }) },
+        { id: 'gone', data: () => storedOrder({ dateCreated: 4000, deletedAt: 4000 }) },
       ],
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any)
@@ -303,28 +323,46 @@ describe('fetchDeletedOrders', () => {
 })
 
 describe('restoreOrder', () => {
-  it('removes the isDeleted field via a partial update (not a full overwrite)', async () => {
+  it('clears every trash field (new deletedAt/purgeAt + legacy isDeleted) via a partial update', async () => {
     vi.mocked(doc).mockReturnValue({ ref: 'order-ref' } as never)
 
     await restoreOrder('o1')
 
     expect(doc).toHaveBeenCalledWith(expect.anything(), 'orders', 'o1')
-    // deleteField() clears the flag so the order returns to its pristine shape.
+    // deleteField() removes the trash fields so the order returns to its pristine,
+    // never-deleted shape; the legacy isDeleted is cleared too so an order trashed
+    // before the switch restores cleanly.
     expect(deleteField).toHaveBeenCalled()
-    expect(updateDoc).toHaveBeenCalledWith({ ref: 'order-ref' }, { isDeleted: { __deleted: true } })
+    expect(updateDoc).toHaveBeenCalledWith(
+      { ref: 'order-ref' },
+      {
+        deletedAt: { __deleted: true },
+        purgeAt: { __deleted: true },
+        isDeleted: { __deleted: true },
+      },
+    )
     expect(setDoc).not.toHaveBeenCalled()
   })
 })
 
 describe('softDeleteOrder', () => {
-  it('flags the order as deleted without removing the document', async () => {
+  it('stamps deletedAt + a purgeAt timestamp (retention window) without removing the document', async () => {
     vi.mocked(doc).mockReturnValue({ ref: 'order-ref' } as never)
 
     await softDeleteOrder('o1')
 
     expect(doc).toHaveBeenCalledWith(expect.anything(), 'orders', 'o1')
     // A partial update (not setDoc) — every other field stays intact.
-    expect(updateDoc).toHaveBeenCalledWith({ ref: 'order-ref' }, { isDeleted: true })
     expect(setDoc).not.toHaveBeenCalled()
+    const [, writes] = vi.mocked(updateDoc).mock.calls[0] as unknown as [
+      unknown,
+      Record<string, unknown>,
+    ]
+    // deletedAt is "now" (ms); purgeAt is exactly 30 days later, as a Timestamp.
+    expect(typeof writes.deletedAt).toBe('number')
+    const deletedAt = writes.deletedAt as number
+    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000
+    expect(writes.purgeAt).toEqual({ __ts: deletedAt + THIRTY_DAYS })
+    expect(writes).not.toHaveProperty('isDeleted')
   })
 })

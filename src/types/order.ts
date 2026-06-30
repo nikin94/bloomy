@@ -90,11 +90,20 @@ export const STORED_ORDER_SCHEMA = z.object({
   // resolveCompletedAt). Optional so orders that aren't finished — and any
   // written before this field existed — stay valid without a migration.
   completedAt: z.number().optional(),
-  // Soft-delete flag. A "deleted" order is hidden from the list and the detail
-  // page, but the document is kept so the per-owner numbering stays intact (a
-  // hard delete would risk an unrecoverable loss of a real order and gaps in the
-  // counter). Optional so orders written before this field stay valid. Distinct
-  // from "cancelled", which is a shipment status that keeps the order visible.
+  // Soft-delete timestamp (ms). Set when the order is moved to the trash; absent
+  // for an active order. This is the CANONICAL "in trash" signal and also seeds
+  // the auto-purge countdown (deletedAt + TRASH_RETENTION_DAYS). Optional so an
+  // active order — and any document written before this field — stays valid.
+  // Distinct from "cancelled", which is a shipment status that keeps the order
+  // visible. See `isOrderDeleted` / `trashDaysLeft`.
+  deletedAt: z.number().optional(),
+  // LEGACY soft-delete flag, superseded by `deletedAt`. Kept readable so an order
+  // soft-deleted before the switch still counts as trashed (see `isOrderDeleted`)
+  // — narrowing a stored field is unsafe (the `packing` lesson), so we keep
+  // honouring it rather than dropping it. New deletions write `deletedAt`, not
+  // this; `restoreOrder` clears both. A separate `purgeAt` Firestore Timestamp is
+  // also written on delete for the TTL purge — it is not read here, so the schema
+  // (which strips unknown keys) intentionally omits it.
   isDeleted: z.boolean().optional(),
   // Storage paths of attached order photos, in display order. Each entry is a
   // PATH under `orders/{ownerId}/{orderId}/{photoId}.jpg` in Firebase Storage —
@@ -114,6 +123,29 @@ export type Order = z.infer<typeof STORED_ORDER_SCHEMA> & { id: string }
 // dash for that transient state so the UI never prints "№null".
 export const formatOrderNumber = (number: number | null): string =>
   number === null ? '—' : String(number)
+
+// Days a soft-deleted order stays in the trash before it is permanently purged.
+// Shared by the client (the countdown warning + delete-confirm copy) and the
+// server-side TTL purge, so both agree on the retention window.
+export const TRASH_RETENTION_DAYS = 30
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+// True when an order is in the trash. `deletedAt` (set on soft-delete) is the
+// canonical signal; the legacy boolean `isDeleted` is still honoured so an order
+// trashed before `deletedAt` existed stays in the trash.
+export const isOrderDeleted = (order: Order): boolean =>
+  order.deletedAt !== undefined || order.isDeleted === true
+
+// Whole days left before a trashed order is auto-purged, given the current time.
+// Returns null for a legacy `isDeleted`-only order with no `deletedAt` (it
+// predates the countdown), so the caller can omit the countdown for it. Floored
+// at 0 so an expired-but-not-yet-purged order reads "0 days", never negative.
+export const trashDaysLeft = (order: Order, now: number): number | null => {
+  if (order.deletedAt === undefined) return null
+  const purgeAt = order.deletedAt + TRASH_RETENTION_DAYS * DAY_MS
+  return Math.max(0, Math.ceil((purgeAt - now) / DAY_MS))
+}
 
 // Derived money selectors. All amounts are integers in minor units (kopecks).
 // Subtotal = sum of item line totals; total = subtotal + delivery.

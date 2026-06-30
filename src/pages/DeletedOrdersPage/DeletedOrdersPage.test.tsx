@@ -92,6 +92,18 @@ describe('DeletedOrdersPage', () => {
     expect(fetchDeletedOrders).toHaveBeenCalledWith('owner-1')
   })
 
+  it('shows a per-order auto-purge countdown column', async () => {
+    // Just deleted → the full 30-day retention window remains.
+    fetchDeletedOrders.mockResolvedValue([
+      order({ id: 'o1', number: 5, customerId: 'c1', deletedAt: Date.now() }),
+    ])
+    renderPage()
+    await screen.findByTestId('orders-table')
+
+    expect(table().getByText('Удаление')).toBeInTheDocument() // the column header
+    expect(table().getByText('30 дней')).toBeInTheDocument() // days left in the window
+  })
+
   it('shows a fixed "these are deleted" banner when the trash has orders', async () => {
     fetchDeletedOrders.mockResolvedValue([order({ id: 'o1', number: 5 })])
     renderPage()
