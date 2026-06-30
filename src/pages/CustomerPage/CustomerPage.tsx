@@ -139,71 +139,77 @@ const CustomerPage = () => {
         {!loading && !error && !customer && <p className="text-text">{t('page.notFound')}</p>}
 
         {!loading && customer && (
-          <div className="mx-auto flex max-w-2xl flex-col gap-6">
-            <header className="flex flex-wrap items-center justify-between gap-3">
-              <h1 className="m-0 text-2xl font-semibold text-heading">{customer.name}</h1>
-              <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
-                {t('page.edit')}
-              </Button>
-            </header>
+          <div className="flex flex-col gap-6">
+            {/* Summary — kept in a readable, centred column. The orders table
+                below breaks out of this width to span the full page. */}
+            <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+              <header className="flex flex-wrap items-center justify-between gap-3">
+                <h1 className="m-0 text-2xl font-semibold text-heading">{customer.name}</h1>
+                <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
+                  {t('page.edit')}
+                </Button>
+              </header>
 
-            {/* Contact details — only the fields the customer actually has. */}
-            {(customer.phone || customer.address || customer.note) && (
+              {/* Contact details — only the fields the customer actually has. */}
+              {(customer.phone || customer.address || customer.note) && (
+                <section className="flex flex-col">
+                  {customer.phone && <Field label={t('form.phone')} value={customer.phone} />}
+                  {customer.address && <Field label={t('form.address')} value={customer.address} />}
+                  {customer.note && <Field label={t('form.note')} value={customer.note} />}
+                </section>
+              )}
+
+              {/* Order stats, derived from this customer's orders. */}
               <section className="flex flex-col">
-                {customer.phone && <Field label={t('form.phone')} value={customer.phone} />}
-                {customer.address && <Field label={t('form.address')} value={customer.address} />}
-                {customer.note && <Field label={t('form.note')} value={customer.note} />}
+                <Field label={t('page.totalOrders')} value={String(orders.length)} />
+                <Field
+                  label={t('page.revenue')}
+                  value={
+                    revenueEntries.length === 0 ? (
+                      '—'
+                    ) : (
+                      <span className="flex flex-col">
+                        {revenueEntries.map(([currency, minor]) => (
+                          <span key={currency} className="tabular-nums">
+                            {formatMoney(minor, currency)}
+                          </span>
+                        ))}
+                      </span>
+                    )
+                  }
+                />
+                {firstOrder !== null && (
+                  <Field label={t('page.firstOrder')} value={formatDate(firstOrder)} />
+                )}
+                {lastOrder !== null && (
+                  <Field label={t('page.lastOrder')} value={formatDate(lastOrder)} />
+                )}
               </section>
-            )}
 
-            {/* Order stats, derived from this customer's orders. */}
-            <section className="flex flex-col">
-              <Field label={t('page.totalOrders')} value={String(orders.length)} />
-              <Field
-                label={t('page.revenue')}
-                value={
-                  revenueEntries.length === 0 ? (
-                    '—'
-                  ) : (
-                    <span className="flex flex-col">
-                      {revenueEntries.map(([currency, minor]) => (
-                        <span key={currency} className="tabular-nums">
-                          {formatMoney(minor, currency)}
-                        </span>
-                      ))}
-                    </span>
-                  )
-                }
-              />
-              {firstOrder !== null && (
-                <Field label={t('page.firstOrder')} value={formatDate(firstOrder)} />
+              {/* Frequent plants — the operator's "what does this customer usually
+                  buy" cue. Omitted entirely when the customer has no orders. */}
+              {topPlants.length > 0 && (
+                <section className="flex flex-col gap-2">
+                  <h2 className="m-0 text-lg font-semibold text-heading">{t('page.topPlants')}</h2>
+                  <ul className="m-0 flex list-none flex-col gap-1 p-0">
+                    {topPlants.map((plant) => (
+                      <li
+                        key={plant.name}
+                        className="flex justify-between gap-3 rounded-md border border-border px-3 py-1.5 text-sm"
+                      >
+                        <span className="min-w-0 break-words text-heading">{plant.name}</span>
+                        <span className="shrink-0 tabular-nums text-text">×{plant.quantity}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
               )}
-              {lastOrder !== null && (
-                <Field label={t('page.lastOrder')} value={formatDate(lastOrder)} />
-              )}
-            </section>
-
-            {/* Frequent plants — the operator's "what does this customer usually
-                buy" cue. Omitted entirely when the customer has no orders. */}
-            {topPlants.length > 0 && (
-              <section className="flex flex-col gap-2">
-                <h2 className="m-0 text-lg font-semibold text-heading">{t('page.topPlants')}</h2>
-                <ul className="m-0 flex list-none flex-col gap-1 p-0">
-                  {topPlants.map((plant) => (
-                    <li
-                      key={plant.name}
-                      className="flex justify-between gap-3 rounded-md border border-border px-3 py-1.5 text-sm"
-                    >
-                      <span className="min-w-0 break-words text-heading">{plant.name}</span>
-                      <span className="shrink-0 tabular-nums text-text">×{plant.quantity}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
+            </div>
 
             {/* The customer's orders, in the same table/card layout as the main
-                list. Clicking a row opens that order. */}
+                list — full width (not constrained to the summary column) so the
+                table fills the page instead of scrolling inside a narrow box.
+                Clicking a row opens that order. */}
             <section className="flex min-w-0 flex-col gap-2">
               <h2 className="m-0 text-lg font-semibold text-heading">{t('page.orders')}</h2>
               <DataTable
