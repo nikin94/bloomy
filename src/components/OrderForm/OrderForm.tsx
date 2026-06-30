@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import AppHeader from '../AppHeader/AppHeader'
@@ -19,6 +19,7 @@ import Spinner from '../Spinner/Spinner'
 import Select from '../Select/Select'
 import Button from '../Button/Button'
 import Input from '../Input/Input'
+import Autocomplete from '../Autocomplete/Autocomplete'
 import Textarea from '../Textarea/Textarea'
 import { fetchOrders } from '../../firebase/orders'
 import type { NewOrder } from '../../firebase/orders'
@@ -76,7 +77,7 @@ const PlantItemRow = ({
   priceMissing,
   canRemove,
   autoFocus,
-  nameListId,
+  suggestions,
   t,
   onChange,
   onRemove,
@@ -91,9 +92,9 @@ const PlantItemRow = ({
   // Focus the name input on mount — set only for a row just added via the
   // "+ Добавить растение" button, so the user can type the name right away.
   autoFocus: boolean
-  // Id of the shared <datalist> of known plant names; links the name input to it
-  // (native autocomplete) so re-typing an existing plant reuses one spelling.
-  nameListId: string
+  // Known plant names from prior orders, offered as autocomplete suggestions on
+  // the name input so re-typing an existing plant reuses one spelling.
+  suggestions: string[]
   onChange: (patch: Partial<ItemInput>) => void
   onRemove: () => void
 }) => {
@@ -103,13 +104,13 @@ const PlantItemRow = ({
       <span aria-hidden="true" className="w-5 shrink-0 text-right text-sm text-text">
         {position}.
       </span>
-      <Input
+      <Autocomplete
         className="min-w-0 flex-1"
         label={t('form.plantName')}
-        list={nameListId}
+        suggestions={suggestions}
         autoFocus={autoFocus}
         value={item.name}
-        onChange={(e) => onChange({ name: e.target.value })}
+        onChange={(name) => onChange({ name })}
       />
     </div>
     <div className="flex min-w-0 items-center gap-2 sm:flex-[3]">
@@ -244,9 +245,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   const [error, setError] = useState<string | null>(null)
 
   // Plant-name autocomplete: distinct names from the owner's existing orders,
-  // offered via a native <datalist> on each name input. A stable id links every
-  // row's input to the one shared list below.
-  const plantListId = useId()
+  // offered as suggestions on each row's name input (see Autocomplete).
   const [plantNameSuggestions, setPlantNameSuggestions] = useState<string[]>([])
 
   useEffect(() => {
@@ -565,13 +564,6 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
           <span aria-hidden="true" className="h-px w-full bg-border" />
           <fieldset className="flex min-w-0 flex-col gap-2 border-0 p-0">
             <legend className="sr-only">{t('form.plants')}</legend>
-            {/* Shared suggestion list for every plant-name input (native
-                autocomplete). Invisible; renders no options until orders load. */}
-            <datalist id={plantListId}>
-              {plantNameSuggestions.map((name) => (
-                <option key={name} value={name} />
-              ))}
-            </datalist>
             {items.map((item, index) => (
               <PlantItemRow
                 key={item.id}
@@ -580,7 +572,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                 priceMissing={isPriceMissing(item)}
                 canRemove={items.length > 1}
                 autoFocus={item.id === focusItemId}
-                nameListId={plantListId}
+                suggestions={plantNameSuggestions}
                 t={t}
                 onChange={(patch) => updateItem(index, patch)}
                 onRemove={() => removeItem(index)}

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
@@ -102,28 +102,31 @@ describe('NewOrderPage', () => {
     expect(screen.getByRole('heading', { name: 'Новый заказ' })).toBeInTheDocument()
   })
 
-  it('offers the distinct plant names from prior orders as autocomplete suggestions', async () => {
+  it('suggests the distinct plant names from prior orders and fills the field on pick', async () => {
+    const user = userEvent.setup()
     fetchOrders.mockResolvedValue([
       { plants: [
         { name: 'Фиалка', quantity: 1, unitPriceMinor: 0 },
         { name: 'Кактус', quantity: 1, unitPriceMinor: 0 },
       ] },
     ] as unknown as Order[])
-    const { container } = renderForm()
+    renderForm()
     await screen.findByLabelText('Имя клиента')
 
-    // The suggestions load asynchronously into a <datalist>, sorted (ru locale).
-    await waitFor(() => {
-      const values = Array.from(container.querySelectorAll('datalist option')).map(
-        (o) => (o as HTMLOptionElement).value,
-      )
-      expect(values).toEqual(['Кактус', 'Фиалка'])
-    })
+    // Focusing the plant-name field opens the styled suggestion popup with the
+    // distinct names from prior orders, sorted (ru locale).
+    const nameInput = screen.getByRole('combobox', { name: 'Название' })
+    await user.click(nameInput)
+    const listbox = await screen.findByRole('listbox')
+    expect(within(listbox).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Кактус',
+      'Фиалка',
+    ])
 
-    // The plant-name input is wired to that list, so the browser shows them.
-    const listId = screen.getByLabelText('Название').getAttribute('list')
-    expect(listId).toBeTruthy()
-    expect(container.querySelector(`datalist#${listId}`)).toBeInTheDocument()
+    // Picking a suggestion fills the field and closes the popup.
+    fireEvent.mouseDown(within(listbox).getByText('Кактус'))
+    expect(nameInput).toHaveValue('Кактус')
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 
   it('defaults to the "existing" picker when the address book is non-empty', async () => {
