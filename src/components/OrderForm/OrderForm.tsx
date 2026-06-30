@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import AppHeader from '../AppHeader/AppHeader'
@@ -13,12 +13,14 @@ import {
   paymentStatusOptions,
   shipmentStatusOptions,
   resolveCompletedAt,
+  collectPlantNames,
 } from '../../types/order'
 import Spinner from '../Spinner/Spinner'
 import Select from '../Select/Select'
 import Button from '../Button/Button'
 import Input from '../Input/Input'
 import Textarea from '../Textarea/Textarea'
+import { fetchOrders } from '../../firebase/orders'
 import type { NewOrder } from '../../firebase/orders'
 import type {
   Currency,
@@ -74,6 +76,7 @@ const PlantItemRow = ({
   priceMissing,
   canRemove,
   autoFocus,
+  nameListId,
   t,
   onChange,
   onRemove,
@@ -88,6 +91,9 @@ const PlantItemRow = ({
   // Focus the name input on mount — set only for a row just added via the
   // "+ Добавить растение" button, so the user can type the name right away.
   autoFocus: boolean
+  // Id of the shared <datalist> of known plant names; links the name input to it
+  // (native autocomplete) so re-typing an existing plant reuses one spelling.
+  nameListId: string
   onChange: (patch: Partial<ItemInput>) => void
   onRemove: () => void
 }) => {
@@ -100,6 +106,7 @@ const PlantItemRow = ({
       <Input
         className="min-w-0 flex-1"
         label={t('form.plantName')}
+        list={nameListId}
         autoFocus={autoFocus}
         value={item.name}
         onChange={(e) => onChange({ name: e.target.value })}
@@ -236,6 +243,12 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   const [submitAttempted, setSubmitAttempted] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Plant-name autocomplete: distinct names from the owner's existing orders,
+  // offered via a native <datalist> on each name input. A stable id links every
+  // row's input to the one shared list below.
+  const plantListId = useId()
+  const [plantNameSuggestions, setPlantNameSuggestions] = useState<string[]>([])
+
   useEffect(() => {
     if (!ownerId) return
     let active = true
@@ -267,6 +280,25 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
       active = false
     }
   }, [ownerId, source])
+
+  // Load the autocomplete suggestions independently of the customer fetch: they
+  // are non-critical, so a failure (or slow load) must never block or gate the
+  // form — it just falls back to a plain name input. Active orders only
+  // (fetchOrders drops deleted), i.e. the current assortment.
+  useEffect(() => {
+    if (!ownerId) return
+    let active = true
+    fetchOrders(ownerId)
+      .then((orders) => {
+        if (active) setPlantNameSuggestions(collectPlantNames(orders))
+      })
+      .catch(() => {
+        // No suggestions on failure — the field still works as a plain input.
+      })
+    return () => {
+      active = false
+    }
+  }, [ownerId])
 
   const updateItem = (index: number, patch: Partial<ItemInput>) => {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
@@ -533,6 +565,13 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
           <span aria-hidden="true" className="h-px w-full bg-border" />
           <fieldset className="flex min-w-0 flex-col gap-2 border-0 p-0">
             <legend className="sr-only">{t('form.plants')}</legend>
+            {/* Shared suggestion list for every plant-name input (native
+                autocomplete). Invisible; renders no options until orders load. */}
+            <datalist id={plantListId}>
+              {plantNameSuggestions.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
             {items.map((item, index) => (
               <PlantItemRow
                 key={item.id}
@@ -541,6 +580,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                 priceMissing={isPriceMissing(item)}
                 canRemove={items.length > 1}
                 autoFocus={item.id === focusItemId}
+                nameListId={plantListId}
                 t={t}
                 onChange={(patch) => updateItem(index, patch)}
                 onRemove={() => removeItem(index)}

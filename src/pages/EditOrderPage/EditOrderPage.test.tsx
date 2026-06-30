@@ -20,6 +20,9 @@ const navigate = vi.fn()
 vi.mock('../../firebase/orders', () => ({
   fetchOrder: (...args: unknown[]) => fetchOrder(...args),
   updateOrder: (...args: unknown[]) => updateOrder(...args),
+  // OrderForm fetches orders to build the plant-name autocomplete list; stub it
+  // empty so the form renders with no suggestions and Firestore stays untouched.
+  fetchOrders: () => Promise.resolve([]),
 }))
 vi.mock('../../firebase/customers', () => ({
   fetchCustomers: (...args: unknown[]) => fetchCustomers(...args),

@@ -19,6 +19,7 @@ import {
   TRASH_RETENTION_DAYS,
   revenueByCurrencyMinor,
   topPlantsByQuantity,
+  collectPlantNames,
   STORED_ORDER_SCHEMA,
 } from './order'
 import type { Order } from './order'
@@ -463,5 +464,38 @@ describe('topPlantsByQuantity', () => {
 
   it('returns an empty array when there are no orders', () => {
     expect(topPlantsByQuantity([], 3)).toEqual([])
+  })
+})
+
+describe('collectPlantNames', () => {
+  it('returns distinct names sorted in ru locale', () => {
+    const orders = [
+      makeOrder({ id: 'a', plants: [{ name: 'Фиалка', quantity: 1, unitPriceMinor: 0 }, { name: 'Кактус', quantity: 1, unitPriceMinor: 0 }] }),
+      makeOrder({ id: 'b', plants: [{ name: 'Суккулент', quantity: 1, unitPriceMinor: 0 }] }),
+    ]
+    expect(collectPlantNames(orders)).toEqual(['Кактус', 'Суккулент', 'Фиалка'])
+  })
+
+  it('dedupes case-insensitively, keeping the first-seen spelling', () => {
+    const orders = [
+      makeOrder({ id: 'a', plants: [{ name: 'Кактус', quantity: 1, unitPriceMinor: 0 }] }),
+      makeOrder({ id: 'b', plants: [{ name: 'кактус', quantity: 1, unitPriceMinor: 0 }] }),
+    ]
+    // One entry, in the original casing of the first order that used it.
+    expect(collectPlantNames(orders)).toEqual(['Кактус'])
+  })
+
+  it('trims whitespace and drops blank names', () => {
+    const orders = [
+      makeOrder({ plants: [
+        { name: '  Кактус  ', quantity: 1, unitPriceMinor: 0 },
+        { name: '   ', quantity: 1, unitPriceMinor: 0 },
+      ] }),
+    ]
+    expect(collectPlantNames(orders)).toEqual(['Кактус'])
+  })
+
+  it('returns an empty array when there are no orders', () => {
+    expect(collectPlantNames([])).toEqual([])
   })
 })

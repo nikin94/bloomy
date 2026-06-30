@@ -7,6 +7,7 @@ import { AuthContext } from '../../context/authContext'
 import { SettingsContext } from '../../context/settingsContext'
 import type { SettingsState } from '../../context/settingsContext'
 import type { Customer } from '../../types/customer'
+import type { Order } from '../../types/order'
 
 // Firebase-touching modules are mocked so the data layer never initializes the
 // real SDK. The form's behaviour (validation, item rows, prefill, submit
@@ -14,9 +15,14 @@ import type { Customer } from '../../types/customer'
 const createOrder = vi.fn()
 const createCustomer = vi.fn()
 const fetchCustomers = vi.fn()
+const fetchOrders = vi.fn()
 const navigate = vi.fn()
 
-vi.mock('../../firebase/orders', () => ({ createOrder: (...args: unknown[]) => createOrder(...args) }))
+vi.mock('../../firebase/orders', () => ({
+  createOrder: (...args: unknown[]) => createOrder(...args),
+  // OrderForm fetches orders to build the plant-name autocomplete list.
+  fetchOrders: (...args: unknown[]) => fetchOrders(...args),
+}))
 vi.mock('../../firebase/customers', () => ({
   createCustomer: (...args: unknown[]) => createCustomer(...args),
   fetchCustomers: (...args: unknown[]) => fetchCustomers(...args),
@@ -82,6 +88,8 @@ function renderForm(settings: SettingsState = settingsState()) {
 beforeEach(() => {
   vi.clearAllMocks()
   fetchCustomers.mockResolvedValue([])
+  // No prior orders by default → an empty plant-name suggestion list.
+  fetchOrders.mockResolvedValue([])
   createCustomer.mockResolvedValue('new-customer-id')
   createOrder.mockResolvedValue('new-order-id')
 })
@@ -92,6 +100,30 @@ describe('NewOrderPage', () => {
     // The form is gated on the customer fetch; the name input appears after it.
     expect(await screen.findByLabelText('Имя клиента')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Новый заказ' })).toBeInTheDocument()
+  })
+
+  it('offers the distinct plant names from prior orders as autocomplete suggestions', async () => {
+    fetchOrders.mockResolvedValue([
+      { plants: [
+        { name: 'Фиалка', quantity: 1, unitPriceMinor: 0 },
+        { name: 'Кактус', quantity: 1, unitPriceMinor: 0 },
+      ] },
+    ] as unknown as Order[])
+    const { container } = renderForm()
+    await screen.findByLabelText('Имя клиента')
+
+    // The suggestions load asynchronously into a <datalist>, sorted (ru locale).
+    await waitFor(() => {
+      const values = Array.from(container.querySelectorAll('datalist option')).map(
+        (o) => (o as HTMLOptionElement).value,
+      )
+      expect(values).toEqual(['Кактус', 'Фиалка'])
+    })
+
+    // The plant-name input is wired to that list, so the browser shows them.
+    const listId = screen.getByLabelText('Название').getAttribute('list')
+    expect(listId).toBeTruthy()
+    expect(container.querySelector(`datalist#${listId}`)).toBeInTheDocument()
   })
 
   it('defaults to the "existing" picker when the address book is non-empty', async () => {
