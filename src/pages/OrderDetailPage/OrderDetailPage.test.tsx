@@ -12,6 +12,7 @@ import type { Customer } from '../../types/customer'
 const fetchOrder = vi.fn()
 const patchOrder = vi.fn()
 const softDeleteOrder = vi.fn()
+const restoreOrder = vi.fn()
 const fetchCustomer = vi.fn()
 const updateCustomer = vi.fn()
 const navigate = vi.fn()
@@ -20,6 +21,7 @@ vi.mock('../../firebase/orders', () => ({
   fetchOrder: (...args: unknown[]) => fetchOrder(...args),
   patchOrder: (...args: unknown[]) => patchOrder(...args),
   softDeleteOrder: (...args: unknown[]) => softDeleteOrder(...args),
+  restoreOrder: (...args: unknown[]) => restoreOrder(...args),
 }))
 vi.mock('../../firebase/customers', () => ({
   fetchCustomer: (...args: unknown[]) => fetchCustomer(...args),
@@ -83,6 +85,7 @@ beforeEach(() => {
   fetchCustomer.mockResolvedValue(customer())
   patchOrder.mockResolvedValue(undefined)
   softDeleteOrder.mockResolvedValue(undefined)
+  restoreOrder.mockResolvedValue(undefined)
   updateCustomer.mockResolvedValue(undefined)
 })
 
@@ -219,5 +222,37 @@ describe('OrderDetailPage', () => {
     // is NOT soft-deleted by a photo removal.
     await waitFor(() => expect(patchOrder).toHaveBeenCalledWith('o1', { photos: [] }))
     expect(softDeleteOrder).not.toHaveBeenCalled()
+  })
+
+  describe('when the order is in the trash (deleted)', () => {
+    beforeEach(() => {
+      fetchOrder.mockResolvedValue(order({ isDeleted: true }))
+    })
+
+    it('opens a deleted order read-only: banner, Restore, no edit/delete, static statuses', async () => {
+      renderPage()
+      await screen.findByRole('heading', { name: 'Заказ №5' })
+
+      // The deleted banner is shown, with a Restore action.
+      expect(screen.getByText('Этот заказ удалён и находится в корзине.')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Восстановить' })).toBeInTheDocument()
+      // Edit/Delete are hidden — a trashed order must be restored first.
+      expect(screen.queryByRole('button', { name: 'Редактировать' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Удалить' })).not.toBeInTheDocument()
+      // Statuses are plain text, not editable selects; the label still resolves.
+      expect(screen.queryByRole('combobox', { name: 'Статус оплаты' })).not.toBeInTheDocument()
+      expect(screen.getByText('Ожидает')).toBeInTheDocument()
+    })
+
+    it('restores the order and returns to the trash', async () => {
+      const user = userEvent.setup()
+      renderPage()
+      await screen.findByRole('heading', { name: 'Заказ №5' })
+
+      await user.click(screen.getByRole('button', { name: 'Восстановить' }))
+
+      await waitFor(() => expect(restoreOrder).toHaveBeenCalledWith('o1'))
+      expect(navigate).toHaveBeenCalledWith('/orders/deleted')
+    })
   })
 })

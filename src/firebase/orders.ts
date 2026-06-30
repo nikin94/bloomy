@@ -60,13 +60,21 @@ export async function fetchDeletedOrders(ownerId: string): Promise<Order[]> {
 // leaking its doc id. This is defense-in-depth in the UI — owner-scoped
 // Firestore security rules remain the real boundary — but it keeps foreign data
 // off the screen even before/independent of those rules.
-export async function fetchOrder(id: string, ownerId: string): Promise<Order | null> {
+//
+// By default a soft-deleted order is treated as gone (a stale link shows "not
+// found"). Pass `includeDeleted` to view one from the trash — the detail page
+// uses it to render a deleted order read-only with a Restore action, instead of
+// dead-ending. A FOREIGN order is always gone, regardless of the flag.
+export async function fetchOrder(
+  id: string,
+  ownerId: string,
+  options: { includeDeleted?: boolean } = {},
+): Promise<Order | null> {
   const snapshot = await getDoc(doc(db, ORDERS_COLLECTION, id))
   if (!snapshot.exists()) return null
   const order = parseOrder(snapshot.id, snapshot.data())
-  // Foreign or soft-deleted orders are treated as gone, so a stale link to a
-  // deleted order shows "not found" rather than letting it be viewed or edited.
-  if (order.ownerId !== ownerId || order.isDeleted) return null
+  if (order.ownerId !== ownerId) return null
+  if (order.isDeleted && !options.includeDeleted) return null
   return order
 }
 

@@ -58,13 +58,15 @@
     "done": "Done"
   },
   "trash": {
-    "row": "Order #{{number}} · {{customer}}",
+    "banner": "Trash — these orders are deleted. Open an order to restore it.",
     "empty": "Trash is empty",
     "loadError": "Couldn't load the trash",
     "search": "Search the trash"
   },
   "detail": {
     "back": "← Back to orders",
+    "backToTrash": "← Back to trash",
+    "deletedBanner": "This order is deleted and in the trash.",
     "notFound": "Order not found",
     "loadError": "Couldn't load the order",
     "title": "Order #{{number}}",

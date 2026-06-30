@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
@@ -8,20 +8,25 @@ import type { Order } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
 // Firebase-touching modules are mocked so the page never initializes the real
-// SDK. We test the trash list rendering and the restore flow, not Firestore.
+// SDK. We test the trash list rendering (same DataTable as the active list), the
+// search/filter, and that a row opens the order's detail page (where Restore now
+// lives) — not Firestore.
 const fetchDeletedOrders = vi.fn()
-const restoreOrder = vi.fn()
 const fetchCustomers = vi.fn()
+const navigate = vi.fn()
 
 vi.mock('../../firebase/orders', () => ({
   fetchDeletedOrders: (...args: unknown[]) => fetchDeletedOrders(...args),
-  restoreOrder: (...args: unknown[]) => restoreOrder(...args),
 }))
 vi.mock('../../firebase/customers', () => ({
   fetchCustomers: (...args: unknown[]) => fetchCustomers(...args),
 }))
 // AppHeader imports signOutUser from here; stub it so firebase stays untouched.
 vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
+vi.mock('react-router-dom', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('react-router-dom')>()),
+  useNavigate: () => navigate,
+}))
 
 // Imported after the mocks above are registered.
 import DeletedOrdersPage from './DeletedOrdersPage'
@@ -63,42 +68,53 @@ const renderPage = () =>
     </AuthContext.Provider>,
   )
 
+// The desktop table and mobile cards both render in jsdom; scope to one layout.
+const table = () => within(screen.getByTestId('orders-table'))
+// Search/filter actions render in both header layouts; scope to the desktop bar.
+const header = () => within(screen.getByTestId('header-desktop'))
+
 beforeEach(() => {
   vi.clearAllMocks()
   fetchDeletedOrders.mockResolvedValue([])
   fetchCustomers.mockResolvedValue([customer()])
-  restoreOrder.mockResolvedValue(undefined)
 })
 
 describe('DeletedOrdersPage', () => {
-  it('lists deleted orders with the resolved customer name', async () => {
+  it('lists deleted orders in the same table layout, with the resolved name', async () => {
     fetchDeletedOrders.mockResolvedValue([order({ id: 'o1', number: 5, customerId: 'c1' })])
     renderPage()
 
-    const item = await screen.findByRole('listitem')
-    expect(within(item).getByText(/Заказ №5/)).toBeInTheDocument()
+    await screen.findByTestId('orders-table')
     // The customer name is resolved via the customers lookup, not stored on the order.
-    expect(within(item).getByText(/Анна/)).toBeInTheDocument()
+    expect(table().getByText('Анна')).toBeInTheDocument()
+    expect(table().getByText('5')).toBeInTheDocument()
     // The trash fetch asks for the owner's deleted orders.
     expect(fetchDeletedOrders).toHaveBeenCalledWith('owner-1')
   })
 
-  it('shows an empty state when the trash is empty', async () => {
+  it('shows a fixed "these are deleted" banner when the trash has orders', async () => {
+    fetchDeletedOrders.mockResolvedValue([order({ id: 'o1', number: 5 })])
+    renderPage()
+    await screen.findByTestId('orders-table')
+    expect(screen.getByText(/Корзина — эти заказы удалены/)).toBeInTheDocument()
+  })
+
+  it('shows an empty state (and no banner) when the trash is empty', async () => {
     fetchDeletedOrders.mockResolvedValue([])
     renderPage()
     expect(await screen.findByText('Корзина пуста')).toBeInTheDocument()
+    // No deleted orders → the page-label banner is not shown.
+    expect(screen.queryByText(/Корзина — эти заказы удалены/)).not.toBeInTheDocument()
   })
 
-  it('restores an order after clicking Restore and drops it from the list', async () => {
+  it('opens the order detail page when a trash row is clicked', async () => {
     const user = userEvent.setup()
-    fetchDeletedOrders.mockResolvedValue([order({ id: 'o1', number: 5 })])
+    fetchDeletedOrders.mockResolvedValue([order({ id: 'o1', number: 5, customerId: 'c1' })])
     renderPage()
+    await screen.findByTestId('orders-table')
 
-    await user.click(await screen.findByRole('button', { name: 'Восстановить' }))
-
-    await waitFor(() => expect(restoreOrder).toHaveBeenCalledWith('o1'))
-    // On success the row leaves the list; with no others left, the empty state shows.
-    await waitFor(() => expect(screen.getByText('Корзина пуста')).toBeInTheDocument())
+    await user.click(table().getAllByRole('link')[0])
+    expect(navigate).toHaveBeenCalledWith('/orders/o1')
   })
 
   it('narrows the trash to orders matching the search (by number or customer)', async () => {
@@ -112,17 +128,14 @@ describe('DeletedOrdersPage', () => {
       customer({ id: 'c2', name: 'Борис' }),
     ])
     renderPage()
-    await screen.findByText(/Заказ №5/)
+    await screen.findByTestId('orders-table')
 
-    // The header renders both layouts (desktop + mobile) in jsdom, so scope the
-    // search to the desktop bar to act on a single copy. It's collapsed behind a
-    // loupe; click it to reveal the input.
-    const header = within(screen.getByTestId('header-desktop'))
-    await user.click(header.getByRole('button', { name: 'Поиск' }))
-    await user.type(header.getByRole('textbox', { name: 'Поиск в корзине' }), 'Борис')
+    // The search box is collapsed behind a loupe; click it to reveal the input.
+    await user.click(header().getByRole('button', { name: 'Поиск' }))
+    await user.type(header().getByRole('textbox', { name: 'Поиск в корзине' }), 'Борис')
 
-    expect(screen.getByText(/Заказ №6/)).toBeInTheDocument()
-    expect(screen.queryByText(/Заказ №5/)).not.toBeInTheDocument()
+    expect(table().getByText('Борис')).toBeInTheDocument()
+    expect(table().queryByText('Анна')).not.toBeInTheDocument()
   })
 
   it('filters the trash by shipment status from the filter dialog (same as the active list)', async () => {
@@ -136,29 +149,26 @@ describe('DeletedOrdersPage', () => {
       customer({ id: 'c2', name: 'Борис' }),
     ])
     renderPage()
-    await screen.findByText(/Заказ №5/)
+    await screen.findByTestId('orders-table')
 
-    const header = within(screen.getByTestId('header-desktop'))
-    await user.click(header.getByRole('button', { name: 'Фильтры' }))
+    await user.click(header().getByRole('button', { name: 'Фильтры' }))
     await user.selectOptions(screen.getByRole('combobox', { name: 'Статус отправки' }), 'shipped')
     await user.click(screen.getByRole('button', { name: 'Готово' }))
 
     // Only the shipped order remains.
-    expect(screen.getByText(/Заказ №6/)).toBeInTheDocument()
-    expect(screen.queryByText(/Заказ №5/)).not.toBeInTheDocument()
+    expect(table().getByText('Борис')).toBeInTheDocument()
+    expect(table().queryByText('Анна')).not.toBeInTheDocument()
   })
 
   it('shows a "nothing found" message when the search matches no trashed order', async () => {
     const user = userEvent.setup()
     fetchDeletedOrders.mockResolvedValue([order({ id: 'o1', number: 5 })])
     renderPage()
-    await screen.findByText(/Заказ №5/)
+    await screen.findByTestId('orders-table')
 
-    const header = within(screen.getByTestId('header-desktop'))
-    await user.click(header.getByRole('button', { name: 'Поиск' }))
-    await user.type(header.getByRole('textbox', { name: 'Поиск в корзине' }), 'нет такого')
+    await user.click(header().getByRole('button', { name: 'Поиск' }))
+    await user.type(header().getByRole('textbox', { name: 'Поиск в корзине' }), 'нет такого')
 
     expect(screen.getByText('Ничего не найдено')).toBeInTheDocument()
-    expect(screen.queryByText(/Заказ №5/)).not.toBeInTheDocument()
   })
 })
