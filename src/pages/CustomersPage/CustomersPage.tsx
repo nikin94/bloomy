@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import AppHeader from '../../components/AppHeader/AppHeader'
@@ -20,6 +21,7 @@ import type { Customer } from '../../types/customer'
 const CustomerRow = ({
   customer,
   t,
+  onOpen,
   onEdit,
   onRequestDelete,
 }: {
@@ -27,12 +29,29 @@ const CustomerRow = ({
   // Passed from the parent (single i18next subscription) so each customer row
   // doesn't open its own useTranslation.
   t: TFunction<['customer', 'common']>
+  onOpen: (customer: Customer) => void
   onEdit: (customer: Customer) => void
   onRequestDelete: (customer: Customer) => void
 }) => {
   return (
   <li className="flex items-center gap-3 border-b border-border py-3">
-    <div className="min-w-0 flex-1">
+    {/* The name/details block navigates to the customer page (acts as a link,
+        focusable and Enter/Space-activatable). The edit/delete icons are
+        SIBLINGS, not nested inside this target, so they stay independently
+        clickable without an interactive-inside-interactive nesting. */}
+    <div
+      role="link"
+      tabIndex={0}
+      aria-label={t('openAria', { name: customer.name })}
+      onClick={() => onOpen(customer)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onOpen(customer)
+        }
+      }}
+      className="min-w-0 flex-1 cursor-pointer rounded-md transition-colors hover:text-heading focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+    >
       <p className="m-0 truncate text-heading">{customer.name}</p>
       {/* The rest of the customer's details. Phone/address are usually short
           (truncate to one line); the note can be long, so it wraps in full so
@@ -96,6 +115,7 @@ const CustomerRow = ({
 // be edited (in a modal, one at a time) or removed (soft delete — see softDeleteCustomer).
 const CustomersPage = () => {
   const { t } = useTranslation(['customer', 'common'])
+  const navigate = useNavigate()
   // Guaranteed non-null under ProtectedRoute, but read defensively and gate on it.
   const { user } = useAuth()
   const ownerId = user?.uid
@@ -203,6 +223,7 @@ const CustomersPage = () => {
                     key={customer.id}
                     customer={customer}
                     t={t}
+                    onOpen={(c) => navigate(`/customers/${c.id}`)}
                     onEdit={setEditing}
                     onRequestDelete={setDeletingCustomer}
                   />

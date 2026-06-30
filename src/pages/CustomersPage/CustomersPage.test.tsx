@@ -63,6 +63,16 @@ describe('CustomersPage', () => {
     expect(fetchCustomers).toHaveBeenCalledWith('owner-1')
   })
 
+  it('exposes each row as a keyboard-activatable link to the customer page', async () => {
+    fetchCustomers.mockResolvedValue([customer({ name: 'Анна' })])
+    renderPage()
+    // The name/details block is a link (role + accessible name), focusable so a
+    // keyboard user can open the customer page; the edit/delete icons stay
+    // separate buttons.
+    const link = await screen.findByRole('link', { name: 'Открыть клиента Анна' })
+    expect(link).toHaveAttribute('tabindex', '0')
+  })
+
   it('shows the full customer details (phone, address, note) in the list', async () => {
     fetchCustomers.mockResolvedValue([
       customer({ name: 'Анна', phone: '+700', address: 'ул. Пушкина, 1', note: 'Любит пионы' }),
