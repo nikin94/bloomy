@@ -160,6 +160,20 @@ describe('OrderDetailPage', () => {
     expect(screen.queryByText('Завершён')).not.toBeInTheDocument()
   })
 
+  it('repeats the order: opens the create form seeded with this order in router state', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+
+    await user.click(screen.getByRole('button', { name: 'Повторить' }))
+
+    // Navigates to the create route, carrying the source order as a clone seed
+    // (no schema change) — OrderForm prefills the fresh order from it.
+    expect(navigate).toHaveBeenCalledWith('/orders/new', {
+      state: { repeatOrder: expect.objectContaining({ id: 'o1' }) },
+    })
+  })
+
   it('soft-deletes the order after confirming and returns to the list', async () => {
     const user = userEvent.setup()
     renderPage()
@@ -236,8 +250,9 @@ describe('OrderDetailPage', () => {
       // The deleted banner is shown, with a Restore action.
       expect(screen.getByText('Этот заказ удалён и находится в корзине.')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Восстановить' })).toBeInTheDocument()
-      // Edit/Delete are hidden — a trashed order must be restored first.
+      // Edit/Repeat/Delete are hidden — a trashed order must be restored first.
       expect(screen.queryByRole('button', { name: 'Редактировать' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Повторить' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Удалить' })).not.toBeInTheDocument()
       // Statuses are plain text, not editable selects; the label still resolves.
       expect(screen.queryByRole('combobox', { name: 'Статус оплаты' })).not.toBeInTheDocument()

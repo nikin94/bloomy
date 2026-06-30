@@ -143,6 +143,12 @@ interface OrderFormProps {
   // creating (the form starts blank). Read once on mount — the caller must load
   // the order before rendering the form, not swap this prop in later.
   initialOrder?: Order
+  // Repeat-order ("Повторить") seed: an existing order whose CONTENTS prefill a
+  // fresh create form (customer, plants, address, methods, currency). Unlike
+  // `initialOrder` it does NOT carry over the per-instance state — statuses,
+  // comment, number and dates start pristine — so the result is a brand-new
+  // order, just pre-populated. Ignored when `initialOrder` is set (edit wins).
+  seed?: Order
   // Persist the assembled order, then navigate. The form owns customer
   // resolution (creating a new customer when needed) and builds the order
   // payload, but NOT `dateCreated`: the caller owns it so create can stamp
@@ -159,7 +165,7 @@ interface OrderFormProps {
 // The order form screen, shared by the create and edit pages. Owns all form
 // state and validation; the caller supplies the heading and how a finished order
 // is persisted (see OrderFormProps).
-const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps) => {
+const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFormProps) => {
   const { t } = useTranslation(['order', 'common'])
   // Order-bound t for the option helpers (typed TFunction<'order'>).
   const { t: tOrder } = useTranslation('order')
@@ -170,10 +176,16 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
   // (set in Settings); an edited order keeps its own stored values.
   const { defaultDeliveryMethod, defaultPaymentMethod, defaultCurrency } = useSettings()
 
+  // The order whose CONTENTS prefill the form: the edited order, or a repeat
+  // seed. Both fill customer/plants/address/methods/currency identically; only
+  // an EDIT additionally carries the per-instance state (statuses, comment),
+  // so those read from `initialOrder` alone and stay pristine on a repeat.
+  const source = initialOrder ?? seed
+
   // Customer selection. New orders default to "new"; an edited order already has
   // a customer, so it starts in "existing" mode with that customer selected.
   const [customers, setCustomers] = useState<Customer[]>([])
-  const [customerMode, setCustomerMode] = useState<CustomerMode>(initialOrder ? 'existing' : 'new')
+  const [customerMode, setCustomerMode] = useState<CustomerMode>(source ? 'existing' : 'new')
   // Gate the form on the customer fetch: the initial mode depends on whether the
   // address book is empty, so rendering the form before it resolves would paint
   // the slider at "new" and snap it to "existing" once the data arrives. Showing
@@ -182,33 +194,33 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
   // The slider pill only animates after the user interacts. The initial
   // fetch-driven switch to "existing" (for returning users) must not slide.
   const [animateModeSlider, setAnimateModeSlider] = useState(false)
-  const [selectedCustomerId, setSelectedCustomerId] = useState(initialOrder?.customerId ?? '')
+  const [selectedCustomerId, setSelectedCustomerId] = useState(source?.customerId ?? '')
   const [newName, setNewName] = useState('')
   const [newPhone, setNewPhone] = useState('')
 
-  const [address, setAddress] = useState(initialOrder?.address ?? '')
+  const [address, setAddress] = useState(source?.address ?? '')
   // Monotonic id source for item rows, so React keys stay stable across
   // add/remove instead of being tied to array position. Rows are seeded with ids
   // 0..n-1 (see initialItems), so the ref continues from there for rows added later.
-  const itemIdRef = useRef(initialOrder ? initialOrder.plants.length - 1 : 0)
+  const itemIdRef = useRef(source ? source.plants.length - 1 : 0)
   const nextItemId = () => (itemIdRef.current += 1)
-  const [items, setItems] = useState<ItemInput[]>(() => initialItems(initialOrder))
+  const [items, setItems] = useState<ItemInput[]>(() => initialItems(source))
   // Id of the row whose name input should grab focus on mount — set when a row
   // is added so the user can type immediately. Null at first render (and after
   // a prefill) so no row steals focus on load.
   const [focusItemId, setFocusItemId] = useState<number | null>(null)
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>(
-    initialOrder?.deliveryMethod ?? defaultDeliveryMethod,
+    source?.deliveryMethod ?? defaultDeliveryMethod,
   )
   const [deliveryPrice, setDeliveryPrice] = useState(
-    initialOrder ? formatMinorToInput(initialOrder.deliveryPriceMinor) : '',
+    source ? formatMinorToInput(source.deliveryPriceMinor) : '',
   )
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
-    initialOrder?.paymentMethod ?? defaultPaymentMethod,
+    source?.paymentMethod ?? defaultPaymentMethod,
   )
-  // A new order starts in the user's default currency; an edited order keeps the
-  // currency it was created with (it is fixed per order — no conversion).
-  const [currency, setCurrency] = useState<Currency>(initialOrder?.currency ?? defaultCurrency)
+  // A new order starts in the user's default currency; an edited order (or a
+  // repeat) keeps the source currency — it is fixed per order, no conversion.
+  const [currency, setCurrency] = useState<Currency>(source?.currency ?? defaultCurrency)
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(
     initialOrder?.paymentStatus ?? 'pending',
   )
@@ -230,14 +242,14 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
     fetchCustomers(ownerId)
       .then(async (data) => {
         if (!active) return
-        // When editing an order whose customer was soft-deleted, that customer
-        // is absent from the active list — so the picker would drop the current
-        // selection. Fetch it directly and keep it in the options (labelled
-        // "(удалён)") so the order stays linked to it unless the user changes it.
-        const editedId = initialOrder?.customerId
+        // When editing (or repeating) an order whose customer was soft-deleted,
+        // that customer is absent from the active list — so the picker would drop
+        // the current selection. Fetch it directly and keep it in the options
+        // (labelled "(удалён)") so the order stays linked to it unless changed.
+        const seededId = source?.customerId
         let list = data
-        if (editedId && !data.some((c) => c.id === editedId)) {
-          const deleted = await fetchCustomer(editedId)
+        if (seededId && !data.some((c) => c.id === seededId)) {
+          const deleted = await fetchCustomer(seededId)
           if (!active) return
           if (deleted) list = [...data, deleted]
         }
@@ -254,7 +266,7 @@ const OrderForm = ({ heading, initialOrder, onSubmit, onCancel }: OrderFormProps
     return () => {
       active = false
     }
-  }, [ownerId, initialOrder])
+  }, [ownerId, source])
 
   const updateItem = (index: number, patch: Partial<ItemInput>) => {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
