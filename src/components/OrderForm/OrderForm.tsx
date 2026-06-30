@@ -13,12 +13,15 @@ import {
   paymentStatusOptions,
   shipmentStatusOptions,
   resolveCompletedAt,
+  collectPlantNames,
 } from '../../types/order'
 import Spinner from '../Spinner/Spinner'
 import Select from '../Select/Select'
 import Button from '../Button/Button'
 import Input from '../Input/Input'
+import Autocomplete from '../Autocomplete/Autocomplete'
 import Textarea from '../Textarea/Textarea'
+import { fetchOrders } from '../../firebase/orders'
 import type { NewOrder } from '../../firebase/orders'
 import type {
   Currency,
@@ -74,6 +77,7 @@ const PlantItemRow = ({
   priceMissing,
   canRemove,
   autoFocus,
+  suggestions,
   t,
   onChange,
   onRemove,
@@ -88,6 +92,9 @@ const PlantItemRow = ({
   // Focus the name input on mount — set only for a row just added via the
   // "+ Добавить растение" button, so the user can type the name right away.
   autoFocus: boolean
+  // Known plant names from prior orders, offered as autocomplete suggestions on
+  // the name input so re-typing an existing plant reuses one spelling.
+  suggestions: string[]
   onChange: (patch: Partial<ItemInput>) => void
   onRemove: () => void
 }) => {
@@ -97,12 +104,13 @@ const PlantItemRow = ({
       <span aria-hidden="true" className="w-5 shrink-0 text-right text-sm text-text">
         {position}.
       </span>
-      <Input
+      <Autocomplete
         className="min-w-0 flex-1"
         label={t('form.plantName')}
+        suggestions={suggestions}
         autoFocus={autoFocus}
         value={item.name}
-        onChange={(e) => onChange({ name: e.target.value })}
+        onChange={(name) => onChange({ name })}
       />
     </div>
     <div className="flex min-w-0 items-center gap-2 sm:flex-[3]">
@@ -236,6 +244,10 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   const [submitAttempted, setSubmitAttempted] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Plant-name autocomplete: distinct names from the owner's existing orders,
+  // offered as suggestions on each row's name input (see Autocomplete).
+  const [plantNameSuggestions, setPlantNameSuggestions] = useState<string[]>([])
+
   useEffect(() => {
     if (!ownerId) return
     let active = true
@@ -267,6 +279,25 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
       active = false
     }
   }, [ownerId, source])
+
+  // Load the autocomplete suggestions independently of the customer fetch: they
+  // are non-critical, so a failure (or slow load) must never block or gate the
+  // form — it just falls back to a plain name input. Active orders only
+  // (fetchOrders drops deleted), i.e. the current assortment.
+  useEffect(() => {
+    if (!ownerId) return
+    let active = true
+    fetchOrders(ownerId)
+      .then((orders) => {
+        if (active) setPlantNameSuggestions(collectPlantNames(orders))
+      })
+      .catch(() => {
+        // No suggestions on failure — the field still works as a plain input.
+      })
+    return () => {
+      active = false
+    }
+  }, [ownerId])
 
   const updateItem = (index: number, patch: Partial<ItemInput>) => {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
@@ -541,6 +572,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                 priceMissing={isPriceMissing(item)}
                 canRemove={items.length > 1}
                 autoFocus={item.id === focusItemId}
+                suggestions={plantNameSuggestions}
                 t={t}
                 onChange={(patch) => updateItem(index, patch)}
                 onRemove={() => removeItem(index)}

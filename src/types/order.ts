@@ -220,6 +220,24 @@ export const topPlantsByQuantity = (
     .map(([name, quantity]) => ({ name, quantity }))
 }
 
+// Distinct plant names across the given orders, trimmed and sorted (ru locale),
+// for the order form's name autocomplete. Deduped case-insensitively, keeping the
+// FIRST-seen original casing as the suggestion — so picking one reuses an exact
+// existing spelling. That is the whole point: fewer near-duplicate names ("Кактус"
+// vs "кактус") means cleaner per-plant stats. Blank names are dropped.
+export const collectPlantNames = (orders: Order[]): string[] => {
+  const byKey = new Map<string, string>()
+  for (const order of orders) {
+    for (const plant of order.plants) {
+      const name = plant.name.trim()
+      if (name === '') continue
+      const key = name.toLowerCase()
+      if (!byKey.has(key)) byKey.set(key, name)
+    }
+  }
+  return [...byKey.values()].sort((a, b) => a.localeCompare(b, 'ru'))
+}
+
 // Compact per-line label for the orders-table list: the name, plus the quantity
 // as ×N only when it is more than 1 (a quantity of 1 is the common case and just
 // adds noise).

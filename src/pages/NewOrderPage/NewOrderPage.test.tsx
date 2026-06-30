@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
@@ -7,6 +7,7 @@ import { AuthContext } from '../../context/authContext'
 import { SettingsContext } from '../../context/settingsContext'
 import type { SettingsState } from '../../context/settingsContext'
 import type { Customer } from '../../types/customer'
+import type { Order } from '../../types/order'
 
 // Firebase-touching modules are mocked so the data layer never initializes the
 // real SDK. The form's behaviour (validation, item rows, prefill, submit
@@ -14,9 +15,14 @@ import type { Customer } from '../../types/customer'
 const createOrder = vi.fn()
 const createCustomer = vi.fn()
 const fetchCustomers = vi.fn()
+const fetchOrders = vi.fn()
 const navigate = vi.fn()
 
-vi.mock('../../firebase/orders', () => ({ createOrder: (...args: unknown[]) => createOrder(...args) }))
+vi.mock('../../firebase/orders', () => ({
+  createOrder: (...args: unknown[]) => createOrder(...args),
+  // OrderForm fetches orders to build the plant-name autocomplete list.
+  fetchOrders: (...args: unknown[]) => fetchOrders(...args),
+}))
 vi.mock('../../firebase/customers', () => ({
   createCustomer: (...args: unknown[]) => createCustomer(...args),
   fetchCustomers: (...args: unknown[]) => fetchCustomers(...args),
@@ -82,6 +88,8 @@ function renderForm(settings: SettingsState = settingsState()) {
 beforeEach(() => {
   vi.clearAllMocks()
   fetchCustomers.mockResolvedValue([])
+  // No prior orders by default → an empty plant-name suggestion list.
+  fetchOrders.mockResolvedValue([])
   createCustomer.mockResolvedValue('new-customer-id')
   createOrder.mockResolvedValue('new-order-id')
 })
@@ -92,6 +100,33 @@ describe('NewOrderPage', () => {
     // The form is gated on the customer fetch; the name input appears after it.
     expect(await screen.findByLabelText('Имя клиента')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Новый заказ' })).toBeInTheDocument()
+  })
+
+  it('suggests the distinct plant names from prior orders and fills the field on pick', async () => {
+    const user = userEvent.setup()
+    fetchOrders.mockResolvedValue([
+      { plants: [
+        { name: 'Фиалка', quantity: 1, unitPriceMinor: 0 },
+        { name: 'Кактус', quantity: 1, unitPriceMinor: 0 },
+      ] },
+    ] as unknown as Order[])
+    renderForm()
+    await screen.findByLabelText('Имя клиента')
+
+    // Focusing the plant-name field opens the styled suggestion popup with the
+    // distinct names from prior orders, sorted (ru locale).
+    const nameInput = screen.getByRole('combobox', { name: 'Название' })
+    await user.click(nameInput)
+    const listbox = await screen.findByRole('listbox')
+    expect(within(listbox).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Кактус',
+      'Фиалка',
+    ])
+
+    // Picking a suggestion fills the field and closes the popup.
+    fireEvent.mouseDown(within(listbox).getByText('Кактус'))
+    expect(nameInput).toHaveValue('Кактус')
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 
   it('defaults to the "existing" picker when the address book is non-empty', async () => {
