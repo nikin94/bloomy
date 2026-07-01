@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/authContext'
 import { useSettings } from '../../context/settingsContext'
 import { signOutUser } from '../../firebase/auth'
-import { FONT_SCALE_MAX, FONT_SCALE_MIN, FONT_SCALE_STEP, LANGUAGES } from '../../types/settings'
+import { LANGUAGES } from '../../types/settings'
 import type { Language, ThemeMode } from '../../types/settings'
 import { currencyOptions, deliveryMethodOptions, paymentMethodOptions } from '../../types/order'
 import type { Currency, DeliveryMethod, PaymentMethod } from '../../types/order'
@@ -12,153 +11,10 @@ import Button from '../Button/Button'
 import Select from '../Select/Select'
 import Modal from '../Modal/Modal'
 import AdminSeedSection from './AdminSeedSection'
+import SettingsTabs from './SettingsTabs'
+import type { SettingsTab } from './SettingsTabs'
+import { Group, Row, ThemeToggle, FontSizeSlider, LogoutIcon } from './controls'
 import { isAdmin } from '../../lib/admin'
-
-// Number of discrete positions on the slider (one notch each), so the iOS-style
-// ticks below the track always match the actual snap points.
-const SCALE_STEPS = Math.round((FONT_SCALE_MAX - FONT_SCALE_MIN) / FONT_SCALE_STEP) + 1
-
-// Custom-styled range: the native `accent-color` thumb can't be resized, so we
-// strip the appearance and draw our own. The thumb is enlarged (size-6) for an
-// easy grab and ringed with the background so it reads as a knob riding over the
-// step ticks; `-mt-2.5` re-centres the 24px thumb on the 4px track. Stays a real
-// <input type="range">, so its slider role / keyboard control are unchanged.
-const sliderClass =
-  // `block` removes the inline-block descender gap below the input, so the
-  // wrapper's height matches the track and the step ticks centre on it exactly.
-  'relative block h-6 w-full cursor-pointer appearance-none bg-transparent focus-visible:outline-none ' +
-  '[&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-border ' +
-  '[&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-border ' +
-  '[&::-webkit-slider-thumb]:relative [&::-webkit-slider-thumb]:z-10 [&::-webkit-slider-thumb]:-mt-2.5 [&::-webkit-slider-thumb]:size-6 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-bg [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow ' +
-  '[&::-moz-range-thumb]:size-6 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-bg [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:shadow'
-
-// Translation key (under settings:fontScale) describing the current scale for
-// screen readers, so the slider announces "уменьшен"/"по умолчанию"/"увеличен"
-// (localised) rather than a raw number.
-const fontScaleLabelKey = (scale: number): 'decreased' | 'default' | 'increased' => {
-  if (scale < 1) return 'decreased'
-  if (scale > 1) return 'increased'
-  return 'default'
-}
-
-const SunIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-4"
-  >
-    <circle cx="12" cy="12" r="4" />
-    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-  </svg>
-)
-
-const MoonIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-4"
-  >
-    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-  </svg>
-)
-
-// Theme switch styled as a pill track with a sun (light) and a moon (dark) at
-// its ends; the sliding knob carries the ACTIVE theme's icon, so the visible
-// track icon is the other option. A real `role="switch"` (checked = dark) so it
-// is keyboard- and screen-reader-operable.
-const ThemeToggle = ({
-  value,
-  label,
-  onChange,
-}: {
-  value: ThemeMode
-  label: string
-  onChange: (next: ThemeMode) => void
-}) => {
-  const isDark = value === 'dark'
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={isDark}
-      aria-label={label}
-      onClick={() => onChange(isDark ? 'light' : 'dark')}
-      className="relative inline-flex h-9 w-[4.5rem] shrink-0 items-center rounded-full border border-border bg-primary-bg p-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-    >
-      {/* Track icons at each end (the not-selected option stays visible). */}
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 flex items-center justify-between px-2 text-text"
-      >
-        <SunIcon />
-        <MoonIcon />
-      </span>
-      {/* Sliding knob carrying the active theme's icon. */}
-      <span
-        className={`relative z-10 flex size-7 items-center justify-center rounded-full bg-bg text-primary shadow transition-transform ${
-          isDark ? 'translate-x-[2.25rem]' : 'translate-x-0'
-        }`}
-      >
-        {isDark ? <MoonIcon /> : <SunIcon />}
-      </span>
-    </button>
-  )
-}
-
-const LogoutIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-5"
-  >
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-    <polyline points="16 17 21 12 16 7" />
-    <line x1="21" y1="12" x2="9" y2="12" />
-  </svg>
-)
-
-// A rounded card grouping its rows; adjacent rows get a top hairline divider.
-const Group = ({ children }: { children: ReactNode }) => (
-  <div className="overflow-hidden rounded-lg border border-border [&>*+*]:border-t [&>*+*]:border-border">
-    {children}
-  </div>
-)
-
-// One settings row: label on the left, control on the right. The label stays on
-// one line (shrink-0 + nowrap) so a wide control can't squeeze it into a wrap.
-const Row = ({ label, children }: { label: string; children: ReactNode }) => (
-  <div
-    // ≤768px: stack label over control (two lines) so a fixed-width control can't
-    // push the row wider than a phone viewport. ≥769px: the original label-left /
-    // control-right row.
-    className="flex flex-col items-start gap-1.5 px-4 py-3 min-[769px]:flex-row min-[769px]:items-center min-[769px]:justify-between min-[769px]:gap-3"
-  >
-    <span className="text-sm font-medium text-heading min-[769px]:shrink-0 min-[769px]:whitespace-nowrap">
-      {label}
-    </span>
-    {children}
-  </div>
-)
-
-// The settings dialog is split into sections shown one at a time behind header
-// tabs, so the dialog's height stays roughly constant as settings accrue (it
-// used to grow into a long scroll). The admin tab is appended only for an admin.
-type SettingsTab = 'appearance' | 'orders' | 'account' | 'admin'
 
 // Mounts the dialog only while open, so each opening starts from the persisted
 // values (drafts are seeded from the applied settings on mount) without a reset
@@ -209,9 +65,6 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
     ? ['appearance', 'orders', 'account', 'admin']
     : ['appearance', 'orders', 'account']
   const [tab, setTab] = useState<SettingsTab>('appearance')
-  // Refs to the tab buttons so arrow-key navigation can move focus onto the
-  // newly-selected tab (roving tabindex: only the active tab is tabbable).
-  const tabRefs = useRef<Partial<Record<SettingsTab, HTMLButtonElement | null>>>({})
 
   // Any draft differing from its saved value means there are unsaved changes —
   // drives the discard guard when the user dismisses the dialog.
@@ -271,50 +124,6 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
     reallyClose()
   }
 
-  const onTabKeyDown = (e: React.KeyboardEvent, key: SettingsTab) => {
-    const idx = tabs.indexOf(key)
-    let nextIdx: number | null = null
-    if (e.key === 'ArrowRight') nextIdx = (idx + 1) % tabs.length
-    else if (e.key === 'ArrowLeft') nextIdx = (idx - 1 + tabs.length) % tabs.length
-    else if (e.key === 'Home') nextIdx = 0
-    else if (e.key === 'End') nextIdx = tabs.length - 1
-    if (nextIdx === null) return
-    e.preventDefault()
-    const nextKey = tabs[nextIdx]
-    setTab(nextKey)
-    tabRefs.current[nextKey]?.focus()
-  }
-
-  // While the thumb is held down (pointer drag), DON'T reflow the page on every
-  // value change: scaling the whole rem-based app would grow + recentre the
-  // dialog, sliding the thumb out from under the held pointer and making the UI
-  // fight the drag. So during a drag we update the draft live (thumb, ticks,
-  // aria, the "изменено" tint) but hold the font preview, then apply it ONCE on
-  // release — a single reflow the user isn't actively pointing at. Keyboard
-  // arrows never set this flag (no pointer is down), so each discrete step still
-  // previews live, where there's no held-thumb to fight.
-  const sliderDraggingRef = useRef(false)
-
-  const handleSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const next = Number(e.target.value)
-    setFontDraft(next)
-    if (!sliderDraggingRef.current) previewFontScale(next)
-  }
-
-  // Drag started: hold the live preview until release.
-  const handleSliderPointerDown = () => {
-    sliderDraggingRef.current = true
-  }
-
-  // Drag ended (pointer up, or capture lost when released off-element): apply the
-  // final scale in one reflow. Read the value off the DOM so we don't depend on
-  // the just-set draft state having flushed.
-  const handleSliderDragEnd = (e: React.PointerEvent<HTMLInputElement>) => {
-    if (!sliderDraggingRef.current) return
-    sliderDraggingRef.current = false
-    previewFontScale(Number(e.currentTarget.value))
-  }
-
   const handleTheme = (next: ThemeMode) => {
     setThemeDraft(next)
     previewTheme(next) // live page update; not persisted until "Сохранить"
@@ -367,63 +176,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
       {/* The settings body is made inert while the discard confirmation is up, so
           only the confirm card is interactive (and it visually dims behind it). */}
       <div inert={confirmingDiscard} className="flex flex-col gap-6">
-        {/* Section navigation, responsive between two controls that drive the same
-            `tab` state. A horizontal scroll strip tested badly (no cue it scrolls),
-            so instead: on phones a native <Select> — its current section's full
-            label is always legible and a dropdown is the expected small-screen
-            control; from 769px up, a segmented ARIA tablist (the labels fit as
-            equal columns at that width) with roving-tabindex arrow-key navigation. */}
-        <div>
-          {/* Phone: section picker. */}
-          <div className="min-[769px]:hidden">
-            <Select
-              aria-label={t('settings:tabsAria')}
-              value={tab}
-              onChange={(e) => setTab(e.target.value as SettingsTab)}
-            >
-              {tabs.map((key) => (
-                <option key={key} value={key}>
-                  {t(`settings:tabs.${key}` as const)}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          {/* Desktop: segmented tabs as equal columns (3 or 4) so the header reads
-              as one control. */}
-          <div
-            role="tablist"
-            aria-label={t('settings:tabsAria')}
-            className={`hidden gap-1 rounded-lg border border-border bg-primary-bg p-1 min-[769px]:grid ${
-              tabs.length === 4 ? 'min-[769px]:grid-cols-4' : 'min-[769px]:grid-cols-3'
-            }`}
-          >
-            {tabs.map((key) => {
-              const selected = key === tab
-              return (
-                <button
-                  key={key}
-                  ref={(el) => {
-                    tabRefs.current[key] = el
-                  }}
-                  type="button"
-                  role="tab"
-                  id={`settings-tab-${key}`}
-                  aria-selected={selected}
-                  aria-controls={`settings-panel-${key}`}
-                  tabIndex={selected ? 0 : -1}
-                  onClick={() => setTab(key)}
-                  onKeyDown={(e) => onTabKeyDown(e, key)}
-                  className={`truncate rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                    selected ? 'bg-bg text-heading shadow-sm' : 'text-text hover:text-heading'
-                  }`}
-                >
-                  {t(`settings:tabs.${key}` as const)}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        <SettingsTabs tabs={tabs} value={tab} onChange={setTab} />
 
         {/* A fixed min-height sized to the tallest everyday tab (appearance /
             orders, three rows each) so the dialog doesn't jump as the user switches
@@ -452,62 +205,14 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                 />
               </Row>
 
-              {/* Font size: label on the left, the iOS-style slider (flanked by
-                  small/large "А") on the right. The slider cluster has a FIXED
-                  width (matching the other control rows) so its length stays
-                  constant regardless of the translated label's length; the label
-                  takes the remaining space and may shrink/wrap on narrow screens.
-                  The whole app scales live, so the dialog previews the chosen size. */}
-              <div className="flex flex-col items-start gap-2 px-4 py-3 min-[769px]:flex-row min-[769px]:items-center min-[769px]:gap-4">
-                <span className="text-sm font-medium text-heading min-[769px]:min-w-0 min-[769px]:flex-1">
-                  {t('settings:fontSize')}
-                </span>
-                {/* ≤768px the slider cluster takes the full second line (easier to
-                    drag); ≥769px it keeps the fixed width that lines up with the
-                    other control rows. */}
-                <div className="flex w-full items-center gap-3 min-[769px]:w-36 min-[769px]:shrink-0">
-                  <span aria-hidden="true" className="shrink-0 text-sm text-text">
-                    А
-                  </span>
-                  <div className="relative flex-1">
-                    {/* Step notches, iOS-style. Inset by the thumb radius (px-3) so
-                        the ticks line up with the thumb's centre at each snap point;
-                        taller than the track so their ends show past it. The thumb
-                        (z-10) sits over the current notch. */}
-                    <div
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-x-3 top-1/2 flex h-3 -translate-y-1/2 items-center justify-between"
-                    >
-                      {Array.from({ length: SCALE_STEPS }).map((_, i) => (
-                        <span key={i} className="h-3 w-0.5 rounded-full bg-border" />
-                      ))}
-                    </div>
-                    <input
-                      type="range"
-                      min={FONT_SCALE_MIN}
-                      max={FONT_SCALE_MAX}
-                      step={FONT_SCALE_STEP}
-                      value={fontDraft}
-                      onChange={handleSlider}
-                      // Hold the live preview during a pointer drag and apply it
-                      // once on release, so the rescaling page doesn't slide the
-                      // thumb out from under the held pointer (see handleSlider).
-                      onPointerDown={handleSliderPointerDown}
-                      onPointerUp={handleSliderDragEnd}
-                      onPointerCancel={handleSliderDragEnd}
-                      onLostPointerCapture={handleSliderDragEnd}
-                      aria-label={t('settings:fontSize')}
-                      // Screen readers announce a human-readable label (e.g.
-                      // "увеличен") instead of the raw scale number (0.875, 1.25).
-                      aria-valuetext={t(`settings:fontScale.${fontScaleLabelKey(fontDraft)}` as const)}
-                      className={sliderClass}
-                    />
-                  </div>
-                  <span aria-hidden="true" className="shrink-0 text-2xl text-text">
-                    А
-                  </span>
-                </div>
-              </div>
+              {/* Font size: an iOS-style notched slider. The whole app scales
+                  live (preview), so the dialog reflects the chosen size; the
+                  control owns its drag handling — see FontSizeSlider. */}
+              <FontSizeSlider
+                value={fontDraft}
+                onDraftChange={setFontDraft}
+                onPreview={previewFontScale}
+              />
 
               {/* Language: a Select on the right. Changing it re-renders the whole
                   app live (preview); persisted on Save like theme/font. */}
