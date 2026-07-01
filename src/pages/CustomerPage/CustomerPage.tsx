@@ -29,7 +29,7 @@ const TOP_PLANTS = 3
 // "Телефон" / "Всего заказов" — are shorter than the order page's). A thin
 // local alias so the call sites below stay terse and don't repeat the basis.
 const Field = ({ label, value }: { label: string; value: ReactNode }) => (
-  <DetailRow label={label} value={value} labelBasisClass="basis-[160px]" />
+  <DetailRow label={label} value={value} labelBasisClass="sm:basis-[160px]" />
 )
 
 // Customer page: the address-book record plus everything derived from this
