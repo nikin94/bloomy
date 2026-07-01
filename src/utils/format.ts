@@ -42,6 +42,30 @@ export const currencySymbol = (currency: Currency): string =>
 export const formatDate = (ms: number) =>
   new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short' }).format(new Date(ms))
 
+// Local `yyyy-mm-dd` string for an `<input type="date">` value from a ms
+// timestamp. Uses local calendar parts (not toISOString, which is UTC and would
+// shift the day across the timezone boundary), so the field shows the day the
+// operator actually sees.
+export const toDateInputValue = (ms: number): string => {
+  const d = new Date(ms)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+// Parse a `yyyy-mm-dd` `<input type="date">` value into a local ms timestamp at
+// the START (00:00:00.000) or END (23:59:59.999) of that day. `edge: 'end'` makes
+// a range's upper bound INCLUSIVE of the whole day the user picked. An empty or
+// malformed value returns null, so that side of a range stays open. Shared by the
+// stats custom period and the orders-list date filter.
+export const parseDateInput = (value: string, edge: 'start' | 'end'): number | null => {
+  const parts = value.split('-').map(Number)
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return null
+  const [y, m, day] = parts
+  return edge === 'start'
+    ? new Date(y, m - 1, day, 0, 0, 0, 0).getTime()
+    : new Date(y, m - 1, day, 23, 59, 59, 999).getTime()
+}
+
 // Time of day only, e.g. "14:32". Pairs with formatDate to show a creation
 // moment over two lines (date above, time below) in the orders table.
 export const formatTime = (ms: number) =>

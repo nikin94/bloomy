@@ -5,6 +5,8 @@
   "period": {
     "aria": "Statistics period",
     "month": "This month",
+    "3months": "3 months",
+    "6months": "6 months",
     "year": "This year",
     "all": "All time",
     "custom": "Custom range",
@@ -29,7 +31,8 @@
   },
   "chart": {
     "title": "Orders by month",
-    "subtitle": "Last 12 months"
+    "subtitle": "Last 12 months",
+    "openMonth": "Open orders for this month"
   },
   "orders_one": "{{count}} order",
   "orders_other": "{{count}} orders"

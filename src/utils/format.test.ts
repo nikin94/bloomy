@@ -9,7 +9,34 @@ import {
   formatMinorToInput,
   sanitizeDecimalInput,
   sanitizeIntegerInput,
+  toDateInputValue,
+  parseDateInput,
 } from './format'
+
+describe('toDateInputValue', () => {
+  it('formats a timestamp as local yyyy-mm-dd, zero-padded', () => {
+    expect(toDateInputValue(new Date(2026, 2, 5, 14, 30).getTime())).toBe('2026-03-05')
+    expect(toDateInputValue(new Date(2026, 11, 31, 0, 0).getTime())).toBe('2026-12-31')
+  })
+})
+
+describe('parseDateInput', () => {
+  it("returns local start-of-day for edge 'start'", () => {
+    expect(parseDateInput('2026-03-05', 'start')).toBe(new Date(2026, 2, 5, 0, 0, 0, 0).getTime())
+  })
+  it("returns the last ms of the day for edge 'end' (inclusive upper bound)", () => {
+    expect(parseDateInput('2026-03-05', 'end')).toBe(new Date(2026, 2, 5, 23, 59, 59, 999).getTime())
+  })
+  it('round-trips with toDateInputValue', () => {
+    const start = parseDateInput('2026-07-15', 'start')!
+    expect(toDateInputValue(start)).toBe('2026-07-15')
+  })
+  it('returns null for an empty or malformed value (open bound)', () => {
+    expect(parseDateInput('', 'start')).toBeNull()
+    expect(parseDateInput('2026-07', 'end')).toBeNull()
+    expect(parseDateInput('not-a-date', 'start')).toBeNull()
+  })
+})
 
 describe('sanitizeDecimalInput', () => {
   it('keeps a plain integer amount', () => {

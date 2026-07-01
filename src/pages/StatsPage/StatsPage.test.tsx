@@ -10,9 +10,14 @@ import type { Order } from '../../types/order'
 // Firebase is mocked so the page never touches the real SDK. We test the derived
 // KPIs, the period selector, and the empty state — not Firestore.
 const fetchOrders = vi.fn()
+const navigate = vi.fn()
 
 vi.mock('../../firebase/orders', () => ({
   fetchOrders: (...args: unknown[]) => fetchOrders(...args),
+}))
+vi.mock('react-router-dom', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('react-router-dom')>()),
+  useNavigate: () => navigate,
 }))
 
 // Imported after the mock above is registered.
@@ -154,6 +159,53 @@ describe('StatsPage', () => {
     expect(totalCount().getByText('0')).toBeInTheDocument()
   })
 
+  it('narrows the KPIs to the last 3 and 6 months', async () => {
+    fetchOrders.mockResolvedValue([
+      order({ id: 'recent', dateCreated: Date.now() - 40 * DAY }), // within 3 months
+      order({ id: 'mid', dateCreated: Date.now() - 100 * DAY }), // outside 3, within 6 months
+      order({ id: 'old', dateCreated: Date.now() - 250 * DAY }), // outside 6 months
+    ])
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Заказов за период')
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Период статистики' }), '3 месяца')
+    expect(totalCount().getByText('1')).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Период статистики' }), '6 месяцев')
+    expect(totalCount().getByText('2')).toBeInTheDocument()
+  })
+
+  it('clamps the custom date fields between the earliest order and today', async () => {
+    const earliest = Date.now() - 100 * DAY
+    fetchOrders.mockResolvedValue([
+      order({ id: 'old', dateCreated: earliest }),
+      order({ id: 'now', dateCreated: Date.now() }),
+    ])
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Заказов за период')
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Период статистики' }),
+      'Произвольный период',
+    )
+    const from = screen.getByLabelText('С')
+    const to = screen.getByLabelText('По')
+    // Neither field can go before the earliest order or after today.
+    expect(from).toHaveAttribute('min', ymd(earliest))
+    expect(from).toHaveAttribute('max', ymd(Date.now()))
+    expect(to).toHaveAttribute('min', ymd(earliest))
+    expect(to).toHaveAttribute('max', ymd(Date.now()))
+
+    // Picking a `from` cross-links it as the `to` field's lower bound (range can't
+    // be inverted); the `to` upper bound stays today.
+    const chosen = ymd(Date.now() - 10 * DAY)
+    fireEvent.change(from, { target: { value: chosen } })
+    expect(to).toHaveAttribute('min', chosen)
+    expect(from).toHaveAttribute('max', ymd(Date.now()))
+  })
+
   it('distinguishes an empty period from a paid-less one in the money card', async () => {
     // Orders exist in the period but none are paid → "no paid orders", so the
     // operator knows money is zero because nothing's been paid yet, not because
@@ -176,5 +228,31 @@ describe('StatsPage', () => {
     fireEvent.change(screen.getByLabelText('С'), { target: { value: ymd(Date.now() + 2 * DAY) } })
     expect(totalCount().getByText('0')).toBeInTheDocument()
     expect(screen.getByText('Нет заказов за период')).toBeInTheDocument()
+  })
+
+  it('opens the orders list scoped to a month when its chart bar is clicked', async () => {
+    fetchOrders.mockResolvedValue([order({ id: 'now', dateCreated: Date.now() })])
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Заказы по месяцам')
+
+    // Each month column is a button carrying the "open this month" affordance;
+    // the last one is the current month.
+    const monthButtons = screen.getAllByRole('button', { name: /Открыть заказы за этот месяц/ })
+    expect(monthButtons).toHaveLength(12)
+    await user.click(monthButtons[monthButtons.length - 1])
+
+    // Navigates to the list with an inclusive [minDate, maxDate] month window in
+    // router state; OrdersPage seeds its filter from it.
+    expect(navigate).toHaveBeenCalledWith(
+      '/orders',
+      expect.objectContaining({
+        state: {
+          dateFilter: { minDate: expect.any(Number), maxDate: expect.any(Number) },
+        },
+      }),
+    )
+    const { minDate, maxDate } = navigate.mock.calls[0][1].state.dateFilter
+    expect(minDate).toBeLessThan(maxDate)
   })
 })

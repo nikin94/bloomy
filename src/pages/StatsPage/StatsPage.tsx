@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 import Spinner from '../../components/Spinner/Spinner'
 import Select from '../../components/Select/Select'
 import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
 import { fetchOrders } from '../../firebase/orders'
 import { useAuth } from '../../context/authContext'
-import { formatMoney } from '../../utils/format'
+import { formatMoney, toDateInputValue } from '../../utils/format'
 import { revenueByCurrencyMinor, CURRENCIES } from '../../types/order'
 import type { Order } from '../../types/order'
 import {
@@ -16,6 +17,7 @@ import {
   deliveryByCurrencyMinor,
   statusBreakdown,
   ordersPerMonth,
+  monthBounds,
 } from '../../types/stats'
 import type { StatsPreset } from '../../types/stats'
 
@@ -31,6 +33,7 @@ const MONTHS_WINDOW = 12
 // figure is grouped per currency and paid-only (a realized amount).
 const StatsPage = () => {
   const { t, i18n } = useTranslation(['stats', 'common'])
+  const navigate = useNavigate()
   // Guaranteed non-null under ProtectedRoute, but read defensively and gate on it.
   const { user } = useAuth()
   const ownerId = user?.uid
@@ -87,6 +90,23 @@ const StatsPage = () => {
   const monthLong = (ms: number) =>
     new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(new Date(ms))
 
+  // Selectable bounds for the custom date fields: no earlier than the earliest
+  // order, no later than today. Cross-linking the two (from.max ≤ to, to.min ≥
+  // from) additionally stops the range being inverted. Native min/max clamp the
+  // picker and flag an out-of-range value — the pragmatic guard for one operator.
+  const earliestOrderMs =
+    orders.length > 0 ? Math.min(...orders.map((o) => o.dateCreated)) : now
+  const minDateInput = toDateInputValue(earliestOrderMs)
+  const maxDateInput = toDateInputValue(now)
+
+  // Open the orders list scoped to a clicked month. The date range rides in
+  // router state (like the create-order highlight); OrdersPage seeds its filter
+  // from it and strips the state so a refresh doesn't replay it.
+  const openMonth = (monthStart: number) => {
+    const { start, end } = monthBounds(monthStart)
+    navigate('/orders', { state: { dateFilter: { minDate: start, maxDate: end } } })
+  }
+
   return (
     <div className="min-h-0 flex-1 overflow-auto p-6">
       {loading && <Spinner />}
@@ -137,7 +157,8 @@ const StatsPage = () => {
                 <input
                   type="date"
                   value={customFrom}
-                  max={customTo || undefined}
+                  min={minDateInput}
+                  max={customTo || maxDateInput}
                   onChange={(e) => setCustomFrom(e.target.value)}
                   className={`${FIELD_BASE} ${FIELD_NORMAL} px-3 py-2 text-heading`}
                 />
@@ -147,7 +168,8 @@ const StatsPage = () => {
                 <input
                   type="date"
                   value={customTo}
-                  min={customFrom || undefined}
+                  min={customFrom || minDateInput}
+                  max={maxDateInput}
                   onChange={(e) => setCustomTo(e.target.value)}
                   className={`${FIELD_BASE} ${FIELD_NORMAL} px-3 py-2 text-heading`}
                 />
@@ -265,28 +287,36 @@ const StatsPage = () => {
                     // aligned; the full "month year" is always in the bar's tooltip.
                     const labelOnMobile = (monthly.length - 1 - i) % 2 === 0
                     return (
-                      <div
+                      // The whole column is a button: hovering tints it (a clear
+                      // "clickable" affordance) and a click opens the orders list
+                      // filtered to that month. A native <button> gives keyboard
+                      // (Enter/Space) + focus for free; its accessible name carries
+                      // the month, its order count, and the action.
+                      <button
                         key={bucket.monthStart}
-                        className="flex min-w-0 flex-1 flex-col items-center gap-1"
+                        type="button"
+                        onClick={() => openMonth(bucket.monthStart)}
+                        title={`${monthLong(bucket.monthStart)} — ${t('orders', { count: bucket.count })}`}
+                        aria-label={`${monthLong(bucket.monthStart)}: ${t('orders', { count: bucket.count })}. ${t('chart.openMonth')}`}
+                        className="group flex min-w-0 flex-1 flex-col items-center gap-1 rounded px-0.5 py-1 transition-colors hover:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                       >
                         <span className="h-4 text-xs tabular-nums text-text">
                           {bucket.count || ''}
                         </span>
                         <div className="flex h-28 w-full items-end">
                           <div
-                            className="w-full rounded-t bg-primary"
+                            className="w-full rounded-t bg-primary transition-opacity group-hover:opacity-80"
                             style={{ height: `${(bucket.count / maxMonthly) * 100}%` }}
-                            title={`${monthLong(bucket.monthStart)} — ${t('orders', { count: bucket.count })}`}
                           />
                         </div>
                         <span
-                          className={`whitespace-nowrap text-[0.65rem] text-text ${
+                          className={`whitespace-nowrap text-xs font-semibold text-heading ${
                             labelOnMobile ? '' : 'invisible sm:visible'
                           }`}
                         >
                           {monthShort(bucket.monthStart)}
                         </span>
-                      </div>
+                      </button>
                     )
                   })}
                 </div>

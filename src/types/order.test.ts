@@ -187,6 +187,8 @@ describe('isModalFilterActive', () => {
     expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, currency: 'USD' })).toBe(true)
     expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, minPriceMinor: 5000 })).toBe(true)
     expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, maxPriceMinor: 5000 })).toBe(true)
+    expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, minDate: 1000 })).toBe(true)
+    expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, maxDate: 1000 })).toBe(true)
   })
 })
 
@@ -266,6 +268,28 @@ describe('filterOrders', () => {
         (o) => o.id,
       ),
     ).toEqual(['mid'])
+  })
+
+  it('filters by the creation-date range (inclusive on both bounds)', () => {
+    const dated = [
+      makeOrder({ id: 'jan', dateCreated: new Date(2026, 0, 15).getTime() }),
+      makeOrder({ id: 'jun', dateCreated: new Date(2026, 5, 15).getTime() }),
+      makeOrder({ id: 'dec', dateCreated: new Date(2026, 11, 15).getTime() }),
+    ]
+    const min = new Date(2026, 5, 1, 0, 0, 0, 0).getTime()
+    const max = new Date(2026, 5, 30, 23, 59, 59, 999).getTime()
+    // A month window keeps only the order created that month.
+    expect(
+      filterOrders(dated, { ...EMPTY_ORDER_FILTER, minDate: min, maxDate: max }, getName).map((o) => o.id),
+    ).toEqual(['jun'])
+    // Lower bound only — everything from June onwards.
+    expect(
+      filterOrders(dated, { ...EMPTY_ORDER_FILTER, minDate: min }, getName).map((o) => o.id),
+    ).toEqual(['jun', 'dec'])
+    // Upper bound only — everything up to end of June.
+    expect(
+      filterOrders(dated, { ...EMPTY_ORDER_FILTER, maxDate: max }, getName).map((o) => o.id),
+    ).toEqual(['jan', 'jun'])
   })
 })
 

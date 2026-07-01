@@ -3,6 +3,7 @@ import {
   presetRange,
   customRange,
   filterOrdersByRange,
+  monthBounds,
   deliveryByCurrencyMinor,
   statusBreakdown,
   ordersPerMonth,
@@ -36,6 +37,14 @@ describe('presetRange', () => {
   it('starts at the first of the current month for "month", open-ended', () => {
     expect(presetRange('month', NOW)).toEqual({ start: MONTH_START, end: null })
   })
+  it('rolls back exactly 3 months from today for "3months", open-ended', () => {
+    // NOW = 15 Jul 2026 → 15 Apr 2026.
+    expect(presetRange('3months', NOW)).toEqual({ start: new Date(2026, 3, 15).getTime(), end: null })
+  })
+  it('rolls back exactly 6 months from today for "6months", open-ended', () => {
+    // NOW = 15 Jul 2026 → 15 Jan 2026.
+    expect(presetRange('6months', NOW)).toEqual({ start: new Date(2026, 0, 15).getTime(), end: null })
+  })
   it('starts at the first of the current year for "year", open-ended', () => {
     expect(presetRange('year', NOW)).toEqual({ start: YEAR_START, end: null })
   })
@@ -65,6 +74,18 @@ describe('customRange', () => {
   })
   it('is fully open when both sides are empty', () => {
     expect(customRange('', '')).toEqual({ start: null, end: null })
+  })
+})
+
+describe('monthBounds', () => {
+  it('returns the inclusive [start, end] of the month a first-of-month ts belongs to', () => {
+    const { start, end } = monthBounds(MONTH_START) // July 2026
+    expect(start).toBe(new Date(2026, 6, 1, 0, 0, 0, 0).getTime())
+    expect(end).toBe(new Date(2026, 6, 31, 23, 59, 59, 999).getTime())
+  })
+  it('handles a February in a non-leap year (28 days)', () => {
+    const { end } = monthBounds(new Date(2026, 1, 1).getTime())
+    expect(end).toBe(new Date(2026, 1, 28, 23, 59, 59, 999).getTime())
   })
 })
 
