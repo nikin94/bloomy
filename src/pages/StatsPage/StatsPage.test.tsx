@@ -236,10 +236,11 @@ describe('StatsPage', () => {
     renderPage()
     await screen.findByText('Заказы по месяцам')
 
-    // Each month column is a button carrying the "open this month" affordance;
-    // the last one is the current month.
+    // Only a month WITH orders is a clickable button — here just the current
+    // month. The other 11 (empty) months render as plain columns, so filtering
+    // the list to a month that has no orders is never offered as a dead-end link.
     const monthButtons = screen.getAllByRole('button', { name: /Открыть заказы за этот месяц/ })
-    expect(monthButtons).toHaveLength(12)
+    expect(monthButtons).toHaveLength(1)
     await user.click(monthButtons[monthButtons.length - 1])
 
     // Navigates to the list with an inclusive [minDate, maxDate] month window in

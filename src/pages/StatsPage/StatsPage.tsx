@@ -286,20 +286,16 @@ const StatsPage = () => {
                     // (not removed) so the column keeps its height and the bars stay
                     // aligned; the full "month year" is always in the bar's tooltip.
                     const labelOnMobile = (monthly.length - 1 - i) % 2 === 0
-                    return (
-                      // The whole column is a button: hovering tints it (a clear
-                      // "clickable" affordance) and a click opens the orders list
-                      // filtered to that month. A native <button> gives keyboard
-                      // (Enter/Space) + focus for free; its accessible name carries
-                      // the month, its order count, and the action.
-                      <button
-                        key={bucket.monthStart}
-                        type="button"
-                        onClick={() => openMonth(bucket.monthStart)}
-                        title={`${monthLong(bucket.monthStart)} — ${t('orders', { count: bucket.count })}`}
-                        aria-label={`${monthLong(bucket.monthStart)}: ${t('orders', { count: bucket.count })}. ${t('chart.openMonth')}`}
-                        className="group flex min-w-0 flex-1 flex-col items-center gap-1 rounded px-0.5 py-1 transition-colors hover:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                      >
+                    // Only a month WITH orders is clickable: filtering the list to an
+                    // empty month would land on "nothing found", so a link there is a
+                    // dead end. Empty months render as a plain (non-interactive)
+                    // column — no hover tint, no link — so the affordance points only
+                    // at the green bars that actually lead somewhere.
+                    const hasOrders = bucket.count > 0
+                    // Shared column body (count, bar, label); the wrapper differs by
+                    // whether the month is clickable.
+                    const body = (
+                      <>
                         <span className="h-4 text-xs tabular-nums text-text">
                           {bucket.count || ''}
                         </span>
@@ -316,7 +312,32 @@ const StatsPage = () => {
                         >
                           {monthShort(bucket.monthStart)}
                         </span>
+                      </>
+                    )
+                    // A column with orders is a button: hovering tints it (a clear
+                    // "clickable" affordance) and a click opens the orders list
+                    // filtered to that month. A native <button> gives keyboard
+                    // (Enter/Space) + focus for free; its accessible name carries
+                    // the month, its order count, and the action.
+                    return hasOrders ? (
+                      <button
+                        key={bucket.monthStart}
+                        type="button"
+                        onClick={() => openMonth(bucket.monthStart)}
+                        title={`${monthLong(bucket.monthStart)} — ${t('orders', { count: bucket.count })}`}
+                        aria-label={`${monthLong(bucket.monthStart)}: ${t('orders', { count: bucket.count })}. ${t('chart.openMonth')}`}
+                        className="group flex min-w-0 flex-1 flex-col items-center gap-1 rounded px-0.5 py-1 transition-colors hover:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                      >
+                        {body}
                       </button>
+                    ) : (
+                      <div
+                        key={bucket.monthStart}
+                        title={`${monthLong(bucket.monthStart)} — ${t('orders', { count: bucket.count })}`}
+                        className="group flex min-w-0 flex-1 flex-col items-center gap-1 px-0.5 py-1"
+                      >
+                        {body}
+                      </div>
                     )
                   })}
                 </div>
