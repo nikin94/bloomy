@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router-dom'
+import type { ReactNode } from 'react'
 import type { User } from 'firebase/auth'
 import { AuthContext } from '../../context/authContext'
 
@@ -21,11 +22,11 @@ const LocationProbe = () => {
   return <div data-testid="loc">{loc.pathname}</div>
 }
 
-const renderSidebar = (path = '/orders') =>
+const renderSidebar = (path = '/orders', actions?: ReactNode) =>
   render(
     <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
       <MemoryRouter initialEntries={[path]}>
-        <Sidebar />
+        <Sidebar actions={actions} />
         <LocationProbe />
       </MemoryRouter>
     </AuthContext.Provider>,
@@ -66,6 +67,14 @@ describe('Sidebar (desktop rail)', () => {
   it('keeps the create link on one line (no wrap growing the row)', () => {
     renderSidebar()
     expect(rail().getByRole('link', { name: 'Новый заказ' })).toHaveClass('whitespace-nowrap')
+  })
+
+  it('renders published page actions in the rail (and mirrors them in the mobile bar)', () => {
+    renderSidebar('/orders', <div data-testid="page-actions">search</div>)
+    // Present in the desktop rail's per-page controls slot...
+    expect(rail().getByTestId('page-actions')).toBeInTheDocument()
+    // ...and mirrored in the mobile top bar, so both layouts get the controls.
+    expect(screen.getAllByTestId('page-actions')).toHaveLength(2)
   })
 })
 

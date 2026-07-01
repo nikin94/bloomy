@@ -74,7 +74,10 @@ const SearchControl = ({
   useEffect(() => () => clearTimeout(collapseTimer.current), [])
 
   return (
-    <div className="flex items-center">
+    // `min-w-0` lets the whole control shrink below its content width when its
+    // container is tight (the narrow sidebar rail, or a cramped mobile top bar),
+    // so the expanded field caps to the available width instead of distending it.
+    <div className="flex min-w-0 items-center">
       {/* Collapsed: just the loupe. Hidden the instant the field opens and not
           shown again until the collapse animation has finished, so it never
           appears mid-reflow. The input (with the X inside it) is the only thing
@@ -95,8 +98,11 @@ const SearchControl = ({
       {/* The input wrapper carries the width transition; the X is absolutely
           positioned at its right edge, inside the field. */}
       <div
+        // `max-w-full` caps the expanded field to the container width, so in the
+        // narrow rail (or a tight mobile bar) the ~224px `sm:w-56` target never
+        // overflows — it fills what room there is and no more.
         className={`relative transition-[width] duration-200 ${
-          expanded ? 'w-40 sm:w-56' : 'w-0'
+          expanded ? 'w-40 max-w-full sm:w-56' : 'w-0'
         }`}
       >
         <input

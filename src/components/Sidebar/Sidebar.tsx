@@ -208,8 +208,12 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
 
         <div className="flex flex-col gap-1">{destinations()}</div>
 
-        {/* Per-page controls (search / filter), when a page publishes them. */}
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
+        {/* Per-page controls (search / filter), when a page publishes them.
+            Stacked as a column (not a row) so each control gets the full rail
+            width and can't overflow it — an expanded search would otherwise be
+            wider than the 208px inner rail. This also lines them up in the same
+            vertical rhythm as the nav rows above. */}
+        {actions && <div className="flex flex-col items-stretch gap-2">{actions}</div>}
 
         {/* Pinned to the bottom: the sync indicator (only shows when offline or
             flushing) and the settings control, now part of the button list. */}
@@ -245,7 +249,10 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
             <BackIcon />
           </Button>
         )}
-        {actions}
+        {/* Page controls take the remaining room and may shrink (`min-w-0`), so an
+            expanded search caps to the free space instead of pushing the sync
+            indicator off a 320px viewport. */}
+        {actions && <div className="flex min-w-0 flex-1 items-center gap-2">{actions}</div>}
         <div className="ml-auto flex items-center gap-2">
           <SyncStatus />
         </div>
