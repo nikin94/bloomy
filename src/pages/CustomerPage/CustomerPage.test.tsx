@@ -144,7 +144,10 @@ describe('CustomerPage', () => {
     renderPage()
     await screen.findByRole('heading', { name: 'Анна' })
 
-    await user.click(screen.getByRole('button', { name: 'Редактировать' }))
+    // Two edit controls share the "Редактировать" name — a compact pencil icon
+    // (mobile) and the full text button (sm+); jsdom applies no media queries so
+    // both render. Either opens the same dialog; click the first.
+    await user.click(screen.getAllByRole('button', { name: 'Редактировать' })[0])
     const dialog = await screen.findByRole('dialog')
     const nameField = within(dialog).getByLabelText('Имя клиента')
     await user.clear(nameField)
@@ -154,5 +157,13 @@ describe('CustomerPage', () => {
     await waitFor(() => expect(updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({ name: 'Анна Петрова' })))
     // The heading reflects the new name without a refetch.
     expect(await screen.findByRole('heading', { name: 'Анна Петрова' })).toBeInTheDocument()
+  })
+
+  it('offers both responsive edit controls (pencil on mobile, text button sm+)', async () => {
+    renderPage()
+    await screen.findByRole('heading', { name: 'Анна' })
+    // Both variants render (jsdom has no media queries); CSS shows one per width.
+    // Same accessible name so either is reachable as "Редактировать".
+    expect(screen.getAllByRole('button', { name: 'Редактировать' })).toHaveLength(2)
   })
 })

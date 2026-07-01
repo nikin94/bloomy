@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Button from '../Button/Button'
 import SettingsModal from '../SettingsModal/SettingsModal'
@@ -16,6 +16,40 @@ const NAV_LINKS: { to: string; labelKey: 'orders' | 'customers' | 'stats' | 'tra
   { to: '/stats', labelKey: 'stats' },
   { to: '/orders/deleted', labelKey: 'trash' },
 ]
+
+// The top-level destinations reachable straight from the nav — these ARE the
+// "top screen", so they get no back control. Every OTHER signed-in route is an
+// inner page (an order/customer detail, the create/edit form) that a mobile
+// back button returns UP from. Derived from NAV_LINKS so a new nav destination
+// is automatically treated as top-level.
+const TOP_LEVEL_PATHS = NAV_LINKS.map((link) => link.to)
+
+// The parent ("upper") screen of an inner page: the path with its last segment
+// dropped — `/orders/:id/edit` → `/orders/:id`, `/orders/:id` → `/orders`,
+// `/customers/:id` → `/customers`, `/orders/new` → `/orders`. Deterministic (it
+// walks the route hierarchy, not the history stack), so "back" always lands on
+// the section above regardless of how the page was reached.
+const parentPath = (pathname: string): string => {
+  const trimmed = pathname.replace(/\/+$/, '')
+  const cut = trimmed.lastIndexOf('/')
+  return cut > 0 ? trimmed.slice(0, cut) : '/orders'
+}
+
+const BackIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="size-6"
+  >
+    <line x1="19" y1="12" x2="5" y2="12" />
+    <polyline points="12 19 5 12 12 5" />
+  </svg>
+)
 
 const PlusIcon = ({ className = 'size-4' }: { className?: string }) => (
   <svg
@@ -114,9 +148,14 @@ const MenuDivider = () => <span aria-hidden="true" className="block h-px w-full 
 // gear so the page can add header controls without the header knowing about them.
 const AppHeader = ({ actions }: { actions?: ReactNode }) => {
   const { t } = useTranslation('nav')
+  const location = useLocation()
+  const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
+  // Inner pages (order/customer detail, the create/edit form) get a mobile "up"
+  // control; the top-level nav destinations are the top screen, so they don't.
+  const showBack = !TOP_LEVEL_PATHS.includes(location.pathname)
 
   // Close the mobile menu on Escape, so keyboard users aren't trapped with the
   // overlay open. Only listens while the menu is open.
@@ -179,9 +218,25 @@ const AppHeader = ({ actions }: { actions?: ReactNode }) => {
             {t('addOrder')}
           </NavLink>
         ) : (
-          // Page actions (search/filter) sit on the left of the bar; hidden while
-          // the menu is open so the create-order action takes the row instead.
-          actions
+          // Left of the bar (opposite the burger): an "up" button on inner pages,
+          // then any page actions (search/filter). Hidden while the menu is open
+          // so the create-order action takes the row instead. On the list pages
+          // there is no back button, so `actions` sits alone as before.
+          <>
+            {showBack && (
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={() => navigate(parentPath(location.pathname))}
+                aria-label={t('back')}
+                title={t('back')}
+                className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border"
+              >
+                <BackIcon />
+              </Button>
+            )}
+            {actions}
+          </>
         )}
         {/* Sync state + burger, grouped on the right. SyncStatus renders only
             when offline/flushing, so normally just the burger shows here. */}

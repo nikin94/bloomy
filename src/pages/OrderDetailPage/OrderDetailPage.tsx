@@ -28,24 +28,9 @@ import Modal from '../../components/Modal/Modal'
 import CustomerForm from '../../components/CustomerForm/CustomerForm'
 import OrderPhotos from '../../components/OrderPhotos/OrderPhotos'
 import DetailRow from '../../components/DetailRow/DetailRow'
+import PencilIcon from '../../components/icons/PencilIcon'
 import type { Currency, Order } from '../../types/order'
 import type { Customer } from '../../types/customer'
-
-const EditIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-5"
-  >
-    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-  </svg>
-)
 
 const OrderDetailPage = () => {
   const { t } = useTranslation(['order', 'common'])
@@ -298,7 +283,7 @@ const OrderDetailPage = () => {
                     aria-label={t('detail.editCustomer')}
                     title={t('detail.editCustomer')}
                   >
-                    <EditIcon />
+                    <PencilIcon />
                   </Button>
                 ) : undefined
               }

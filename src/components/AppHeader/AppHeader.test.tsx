@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import type { User } from 'firebase/auth'
 import { AuthContext } from '../../context/authContext'
 
@@ -14,11 +14,18 @@ import AppHeader from './AppHeader'
 
 const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
 
-const renderHeader = () =>
+// Surfaces the current route so a navigation (e.g. the mobile back button) is
+// assertable without a full page tree.
+const LocationProbe = () => <div data-testid="pathname">{useLocation().pathname}</div>
+
+// Defaults to a top-level route (`/orders`), so the header sits where it has no
+// back control; pass an inner path to exercise the back button.
+const renderHeader = (initialPath = '/orders') =>
   render(
     <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[initialPath]}>
         <AppHeader />
+        <LocationProbe />
       </MemoryRouter>
     </AuthContext.Provider>,
   )
@@ -112,5 +119,47 @@ describe('AppHeader (mobile menu)', () => {
     await user.click(screen.getByRole('button', { name: 'Открыть меню' }))
     await user.click(mobileMenu().getByRole('button', { name: 'Настройки' }))
     expect(screen.getByRole('dialog', { name: 'Настройки' })).toBeInTheDocument()
+  })
+})
+
+describe('AppHeader mobile back button', () => {
+  it('shows no back button on a top-level nav destination', () => {
+    renderHeader('/orders')
+    expect(screen.queryByRole('button', { name: 'Назад' })).not.toBeInTheDocument()
+  })
+
+  it('shows no back button on the trash (also a top-level destination)', () => {
+    renderHeader('/orders/deleted')
+    expect(screen.queryByRole('button', { name: 'Назад' })).not.toBeInTheDocument()
+  })
+
+  it('returns an order detail up to the orders list', async () => {
+    const user = userEvent.setup()
+    renderHeader('/orders/abc123')
+    await user.click(screen.getByRole('button', { name: 'Назад' }))
+    // Anchored: substring 'toHaveTextContent' would also match an inner path.
+    expect(screen.getByTestId('pathname')).toHaveTextContent(/^\/orders$/)
+  })
+
+  it('returns a customer page up to the customers list', async () => {
+    const user = userEvent.setup()
+    renderHeader('/customers/c1')
+    await user.click(screen.getByRole('button', { name: 'Назад' }))
+    expect(screen.getByTestId('pathname')).toHaveTextContent(/^\/customers$/)
+  })
+
+  it('returns the edit form up to its order detail (one level, not the list)', async () => {
+    const user = userEvent.setup()
+    renderHeader('/orders/abc123/edit')
+    await user.click(screen.getByRole('button', { name: 'Назад' }))
+    expect(screen.getByTestId('pathname')).toHaveTextContent(/^\/orders\/abc123$/)
+  })
+
+  it('hides the back button while the mobile menu is open (create action takes the row)', async () => {
+    const user = userEvent.setup()
+    renderHeader('/orders/abc123')
+    expect(screen.getByRole('button', { name: 'Назад' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Открыть меню' }))
+    expect(screen.queryByRole('button', { name: 'Назад' })).not.toBeInTheDocument()
   })
 })
