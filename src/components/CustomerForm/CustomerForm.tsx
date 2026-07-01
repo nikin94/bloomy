@@ -60,6 +60,7 @@ const CustomerForm = ({ initial, onSubmit, onCancel }: CustomerFormProps) => {
       <Input
         className="w-full"
         label={t('form.phone')}
+        hint={t('form.phoneHint')}
         value={phone}
         onChange={(e) => setPhone(e.target.value)}
       />

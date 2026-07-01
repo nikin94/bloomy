@@ -119,6 +119,7 @@ const CustomerPicker = ({
         <Input
           className="w-full"
           label={t('form.phone')}
+          hint={t('form.phoneHint')}
           value={newPhone}
           onChange={(e) => onChangeNewPhone(e.target.value)}
         />

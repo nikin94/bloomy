@@ -71,4 +71,30 @@ describe('Autocomplete', () => {
     // Nothing matches, so no popup blocks the free text.
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
+
+  it('caps the visible rows and shows a "+N more" footer for the overflow', async () => {
+    const user = userEvent.setup()
+    const many = Array.from({ length: 10 }, (_, i) => `Растение ${i}`)
+    render(<Harness suggestions={many} />)
+
+    await user.click(screen.getByRole('combobox', { name: 'Растение' }))
+
+    // 8 shown, 2 hidden past the cap → the footer names the overflow (ru locale).
+    expect(within(screen.getByRole('listbox')).getAllByRole('option')).toHaveLength(8)
+    expect(screen.getByText(/ещё 2/)).toBeInTheDocument()
+  })
+
+  it('reopens on ArrowDown after Escape and highlights the first row', async () => {
+    const user = userEvent.setup()
+    render(<Harness suggestions={SUGGESTIONS} />)
+    const input = screen.getByRole('combobox', { name: 'Растение' })
+
+    await user.click(input)
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+
+    // ArrowDown reopens AND advances to the first option in the same press.
+    await user.keyboard('{ArrowDown}{Enter}')
+    expect(input).toHaveValue('Кактус')
+  })
 })

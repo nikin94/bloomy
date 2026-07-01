@@ -124,6 +124,7 @@
     "deletedSuffix": " (deleted)",
     "customerName": "Customer name",
     "phone": "Phone",
+    "phoneHint": "+7 900 000-00-00",
     "deliveryAddress": "Delivery address",
     "plants": "Plants",
     "addPlant": "+ Add plant",

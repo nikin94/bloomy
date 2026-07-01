@@ -10,6 +10,7 @@
   "nothingFound": "Ничего не найдено",
   "search": "Поиск",
   "searchClear": "Очистить и закрыть поиск",
+  "moreSuggestions": "Продолжите ввод — ещё {{count}}",
   "days_one": "{{count}} день",
   "days_few": "{{count}} дня",
   "days_many": "{{count}} дней",
