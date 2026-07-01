@@ -142,4 +142,41 @@ describe('OrderForm', () => {
     // The caller owns dateCreated (create stamps it, edit preserves it).
     expect(payload).not.toHaveProperty('dateCreated')
   })
+
+  it('drops a dangling customer FK when the seeded customer no longer exists', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    // The address book has one OTHER customer; the repeated order points at a
+    // customer that has been hard-deleted, so fetchCustomer resolves null.
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    fetchCustomer.mockResolvedValue(null)
+    renderForm({ onSubmit, seed: order({ customerId: 'gone' }) })
+
+    // The picker must NOT keep the dangling id — it falls back to "no selection"
+    // rather than silently carrying a broken customer reference.
+    const picker = await screen.findByRole('combobox', { name: 'Существующий клиент' })
+    expect(picker).toHaveValue('')
+
+    // Saving is blocked by the select-customer guard, so a broken FK never
+    // persists — everything else in the form was validly prefilled from the seed.
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('drops a dangling customer FK when the seeded-customer fetch throws', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    // Same dangling-FK scenario, but fetchCustomer REJECTS (transient network /
+    // rules change) instead of resolving null. A throw must be treated the same
+    // as "unresolved" — the stale id is dropped, not left to save a broken FK.
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    fetchCustomer.mockRejectedValue(new Error('network'))
+    renderForm({ onSubmit, seed: order({ customerId: 'gone' }) })
+
+    const picker = await screen.findByRole('combobox', { name: 'Существующий клиент' })
+    expect(picker).toHaveValue('')
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
 })

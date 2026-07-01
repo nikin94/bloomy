@@ -153,9 +153,30 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
         const seededId = source?.customerId
         let list = data
         if (seededId && !data.some((c) => c.id === seededId)) {
-          const deleted = await fetchCustomer(seededId)
+          // Treat a throw (transient network / rules change) the same as an
+          // unresolved customer: the whole point of this branch is dropping a
+          // dangling FK, so a swallowed error must not leave the stale id in
+          // place — otherwise the outer .catch would let it save anyway.
+          let seededCustomer: Customer | null
+          try {
+            seededCustomer = await fetchCustomer(seededId)
+          } catch {
+            seededCustomer = null
+          }
           if (!active) return
-          if (deleted) list = [...data, deleted]
+          if (seededCustomer) {
+            list = [...data, seededCustomer]
+          } else {
+            // The seeded customer is truly gone (hard-deleted, e.g. via the admin
+            // reset). fetchCustomer returns SOFT-deleted ones, so a null here
+            // means no such document at all. Drop the dangling selection: the
+            // submit guard only rejects an EMPTY id, so a stale id would sail
+            // through and save the order against a non-existent customer FK
+            // (rendering "—" everywhere). Clearing it forces the user to re-pick,
+            // or to enter a new customer when the address book is now empty.
+            setSelectedCustomerId('')
+            if (data.length === 0) setCustomerMode('new')
+          }
         }
         setCustomers(list)
         if (list.length > 0) setCustomerMode('existing')
