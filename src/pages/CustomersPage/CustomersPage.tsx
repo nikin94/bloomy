@@ -50,7 +50,7 @@ const CustomerRow = ({
           onOpen(customer)
         }
       }}
-      className="min-w-0 flex-1 cursor-pointer rounded-md transition-colors hover:text-heading focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      className="-mx-2 min-w-0 flex-1 cursor-pointer rounded-md px-2 py-1 transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
     >
       <p className="m-0 truncate text-heading">{customer.name}</p>
       {/* The rest of the customer's details. Phone/address are usually short

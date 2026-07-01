@@ -230,8 +230,11 @@ const OrderDetailPage = () => {
                 </span>
               )}
             </h1>
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-sm text-text">{formatDate(order.dateCreated)}</span>
+            {/* On a phone the actions stack full-width, one button per line (an
+                easy tap target); from sm up they collapse back to the compact
+                inline row. The date leads the group on its own line either way. */}
+            <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+              <span className="text-sm text-text sm:self-center">{formatDate(order.dateCreated)}</span>
               {/* A trashed order is read-only — Restore lives in the banner, so
                   edit/delete are hidden here until it's restored. */}
               {!isDeleted && (
@@ -240,6 +243,7 @@ const OrderDetailPage = () => {
                     variant="primary"
                     size="sm"
                     onClick={() => navigate(`/orders/${order.id}/edit`)}
+                    className="w-full sm:w-auto"
                   >
                     {t('detail.edit')}
                   </Button>
@@ -250,6 +254,7 @@ const OrderDetailPage = () => {
                     variant="secondary"
                     size="sm"
                     onClick={() => navigate('/orders/new', { state: { repeatOrder: order } })}
+                    className="w-full sm:w-auto"
                   >
                     {t('detail.repeat')}
                   </Button>
@@ -257,6 +262,7 @@ const OrderDetailPage = () => {
                     variant="danger"
                     size="sm"
                     onClick={() => setConfirmingDelete(true)}
+                    className="w-full sm:w-auto"
                   >
                     {t('detail.delete')}
                   </Button>
