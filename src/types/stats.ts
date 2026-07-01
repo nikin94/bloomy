@@ -8,12 +8,14 @@ import { parseDateInput } from '../utils/format'
 import type { Currency, Order } from './order'
 
 // The period presets offered in the tab's dropdown, ordered by widening window.
-// 'month'/'year' are the current calendar month/year (local time); '3months'/
-// '6months' are ROLLING windows ending now (the last 3/6 months, not calendar
-// quarters); 'all' has no bounds; 'custom' takes its bounds from the two date
-// fields the page shows instead of a fixed boundary. The KPI cards + status
-// breakdown follow this; the monthly chart deliberately does not (see below).
-export const STATS_PRESETS = ['month', '3months', '6months', 'year', 'all', 'custom'] as const
+// '30days'/'3months'/'6months'/'12months' are all ROLLING windows ending now
+// (e.g. "the last 30 days", not the current calendar month) — rolling reads more
+// obviously to the operator than a calendar "this month"/"this year", which
+// resets to a near-empty window on the 1st. 'all' has no bounds; 'custom' takes
+// its bounds from the two date fields the page shows instead of a fixed boundary.
+// The KPI cards + status breakdown follow this; the monthly chart deliberately
+// does not (see below).
+export const STATS_PRESETS = ['30days', '3months', '6months', '12months', 'all', 'custom'] as const
 export type StatsPreset = (typeof STATS_PRESETS)[number]
 
 // A resolved date window: inclusive [start, end] ms bounds; either side null
@@ -23,19 +25,19 @@ export interface DateRange {
   end: number | null
 }
 
-// Resolve a NON-custom preset to a date window. 'month'/'year' start at the first
-// of the current calendar month/year; '3months'/'6months' are rolling windows
-// starting exactly 3/6 months back from today; all four are open-ended (end null,
-// i.e. up to now). 'all' is fully open. 'custom' has no fixed window here (the
-// page supplies it via customRange), so it falls through to fully open — a safe
-// default if ever resolved directly. Uses local calendar boundaries so the
-// windows match the operator's calendar, not UTC.
+// Resolve a NON-custom preset to a date window. Every window is a ROLLING span
+// ending now: '30days' starts at midnight 30 days back; '3months'/'6months'/
+// '12months' start at midnight the same day-of-month 3/6/12 months back. All are
+// open-ended (end null, i.e. up to now). 'all' is fully open. 'custom' has no
+// fixed window here (the page supplies it via customRange), so it falls through to
+// fully open — a safe default if ever resolved directly. Built from local calendar
+// parts (midnight boundaries) so the windows match the operator's clock, not UTC.
 export const presetRange = (preset: StatsPreset, now: number): DateRange => {
   const d = new Date(now)
-  if (preset === 'month') return { start: new Date(d.getFullYear(), d.getMonth(), 1).getTime(), end: null }
+  if (preset === '30days') return { start: new Date(d.getFullYear(), d.getMonth(), d.getDate() - 30).getTime(), end: null }
   if (preset === '3months') return { start: new Date(d.getFullYear(), d.getMonth() - 3, d.getDate()).getTime(), end: null }
   if (preset === '6months') return { start: new Date(d.getFullYear(), d.getMonth() - 6, d.getDate()).getTime(), end: null }
-  if (preset === 'year') return { start: new Date(d.getFullYear(), 0, 1).getTime(), end: null }
+  if (preset === '12months') return { start: new Date(d.getFullYear(), d.getMonth() - 12, d.getDate()).getTime(), end: null }
   return { start: null, end: null } // 'all' (and 'custom' — page overrides)
 }
 

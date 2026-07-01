@@ -34,8 +34,9 @@ const makeOrder = (overrides: Partial<Order> = {}): Order => ({
 })
 
 describe('presetRange', () => {
-  it('starts at the first of the current month for "month", open-ended', () => {
-    expect(presetRange('month', NOW)).toEqual({ start: MONTH_START, end: null })
+  it('rolls back exactly 30 days from today for "30days", open-ended', () => {
+    // NOW = 15 Jul 2026 → 15 Jun 2026.
+    expect(presetRange('30days', NOW)).toEqual({ start: new Date(2026, 6, 15 - 30).getTime(), end: null })
   })
   it('rolls back exactly 3 months from today for "3months", open-ended', () => {
     // NOW = 15 Jul 2026 → 15 Apr 2026.
@@ -45,8 +46,9 @@ describe('presetRange', () => {
     // NOW = 15 Jul 2026 → 15 Jan 2026.
     expect(presetRange('6months', NOW)).toEqual({ start: new Date(2026, 0, 15).getTime(), end: null })
   })
-  it('starts at the first of the current year for "year", open-ended', () => {
-    expect(presetRange('year', NOW)).toEqual({ start: YEAR_START, end: null })
+  it('rolls back exactly 12 months from today for "12months", open-ended', () => {
+    // NOW = 15 Jul 2026 → 15 Jul 2025.
+    expect(presetRange('12months', NOW)).toEqual({ start: new Date(2025, 6, 15).getTime(), end: null })
   })
   it('is fully open for "all"', () => {
     expect(presetRange('all', NOW)).toEqual({ start: null, end: null })
@@ -95,8 +97,9 @@ describe('filterOrdersByRange', () => {
   const lastYear = makeOrder({ id: 'o', dateCreated: new Date(2025, 5, 1).getTime() })
   const orders = [thisMonth, earlierThisYear, lastYear]
 
-  it('applies a preset window (this month)', () => {
-    expect(filterOrdersByRange(orders, presetRange('month', NOW)).map((o) => o.id)).toEqual(['m'])
+  it('applies a preset window (last 30 days)', () => {
+    // 30-day window from 15 Jul 2026 → back to 15 Jun; only the NOW order lands in it.
+    expect(filterOrdersByRange(orders, presetRange('30days', NOW)).map((o) => o.id)).toEqual(['m'])
   })
   it('keeps everything for a fully-open window', () => {
     expect(filterOrdersByRange(orders, { start: null, end: null })).toHaveLength(3)

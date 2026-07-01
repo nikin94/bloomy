@@ -40,7 +40,7 @@ const StatsPage = () => {
   // Capture one timestamp at mount: period boundaries and the month buckets must
   // be stable across renders, and a render-time Date.now() isn't pure.
   const [now] = useState(() => Date.now())
-  const [preset, setPreset] = useState<StatsPreset>('month')
+  const [preset, setPreset] = useState<StatsPreset>('30days')
   // Custom-range bounds (yyyy-mm-dd, as <input type="date"> produces). Read only
   // while `preset === 'custom'`; an empty side leaves that bound open.
   const [customFrom, setCustomFrom] = useState('')

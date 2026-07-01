@@ -4,10 +4,10 @@
   "empty": "No orders to report on yet",
   "period": {
     "aria": "Statistics period",
-    "month": "This month",
+    "30days": "30 days",
     "3months": "3 months",
     "6months": "6 months",
-    "year": "This year",
+    "12months": "12 months",
     "all": "All time",
     "custom": "Custom range",
     "from": "From",

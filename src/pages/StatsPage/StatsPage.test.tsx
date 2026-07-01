@@ -84,7 +84,7 @@ describe('StatsPage', () => {
     ])
     renderPage()
 
-    // Default period is "this month" → the one current-month order counts.
+    // Default period is "last 30 days" → the just-created order counts.
     await screen.findByText('Заказов за период')
     expect(totalCount().getByText('1')).toBeInTheDocument()
     // Money + status + chart sections are present.
@@ -122,13 +122,13 @@ describe('StatsPage', () => {
   it('rescopes the KPIs when the period preset changes', async () => {
     fetchOrders.mockResolvedValue([
       order({ id: 'now', dateCreated: Date.now() }),
-      // ~400 days ago → outside both this month and this year.
+      // ~400 days ago → outside every rolling preset window.
       order({ id: 'old', dateCreated: Date.now() - 400 * DAY }),
     ])
     const user = userEvent.setup()
     renderPage()
 
-    // "This month" (default) sees only the recent order.
+    // "Last 30 days" (default) sees only the recent order.
     await screen.findByText('Заказов за период')
     expect(totalCount().getByText('1')).toBeInTheDocument()
 
