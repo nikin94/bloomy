@@ -65,8 +65,6 @@
     "purgeColumn": "Удаление"
   },
   "detail": {
-    "back": "← К списку заказов",
-    "backToTrash": "← В корзину",
     "deletedBanner": "Этот заказ удалён и находится в корзине.",
     "deletedCountdown": "Будет навсегда удалён через {{days}}.",
     "notFound": "Заказ не найден",

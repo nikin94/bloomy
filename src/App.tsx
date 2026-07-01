@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute'
+import AppLayout from './components/AppLayout/AppLayout'
 import Spinner from './components/Spinner/Spinner'
 import UpdatePrompt from './components/UpdatePrompt/UpdatePrompt'
 import LoginPage from './pages/LoginPage/LoginPage'
@@ -71,17 +72,20 @@ function App() {
         {/* Public login screen. */}
         <Route path="/" element={<LoginPage />} />
 
-        {/* Owner-scoped pages: require a signed-in user. */}
+        {/* Owner-scoped pages: require a signed-in user, then share the app
+            shell (global header) via AppLayout so every page carries the header. */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/orders" element={<OrdersPage />} />
-          <Route path="/orders/new" element={<NewOrderPage />} />
-          {/* Static path declared before /orders/:id; React Router ranks it above
-              the dynamic segment regardless, but the order reads clearly. */}
-          <Route path="/orders/deleted" element={<DeletedOrdersPage />} />
-          <Route path="/orders/:id" element={<OrderDetailPage />} />
-          <Route path="/orders/:id/edit" element={<EditOrderPage />} />
-          <Route path="/customers" element={<CustomersPage />} />
-          <Route path="/customers/:id" element={<CustomerPage />} />
+          <Route element={<AppLayout />}>
+            <Route path="/orders" element={<OrdersPage />} />
+            <Route path="/orders/new" element={<NewOrderPage />} />
+            {/* Static path declared before /orders/:id; React Router ranks it above
+                the dynamic segment regardless, but the order reads clearly. */}
+            <Route path="/orders/deleted" element={<DeletedOrdersPage />} />
+            <Route path="/orders/:id" element={<OrderDetailPage />} />
+            <Route path="/orders/:id/edit" element={<EditOrderPage />} />
+            <Route path="/customers" element={<CustomersPage />} />
+            <Route path="/customers/:id" element={<CustomerPage />} />
+          </Route>
         </Route>
       </Routes>
     </Suspense>

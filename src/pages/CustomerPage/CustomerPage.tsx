@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import AppHeader from '../../components/AppHeader/AppHeader'
+import { useNavigate, useParams } from 'react-router-dom'
 import DataTable from '../../components/DataTable/DataTable'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
@@ -118,21 +117,8 @@ const CustomerPage = () => {
   const lastOrder = orderDates.length > 0 ? Math.max(...orderDates) : null
 
   return (
-    <div className="flex h-full flex-col">
-      <AppHeader />
-
+    <>
       <div className="min-h-0 flex-1 overflow-auto p-6">
-        {/* Align the back link's left edge with the centred summary column below,
-            so on wide screens it doesn't float alone at the far page edge. */}
-        <div className="mx-auto w-full max-w-2xl">
-          <Link
-            to="/customers"
-            className="mb-4 inline-block text-primary no-underline hover:underline"
-          >
-            {t('page.back')}
-          </Link>
-        </div>
-
         {loading && <Spinner />}
         {error && (
           <p role="alert" className="text-danger">
@@ -242,7 +228,7 @@ const CustomerPage = () => {
           />
         </Modal>
       )}
-    </div>
+    </>
   )
 }
 

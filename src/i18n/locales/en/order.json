@@ -65,8 +65,6 @@
     "purgeColumn": "Auto-delete"
   },
   "detail": {
-    "back": "← Back to orders",
-    "backToTrash": "← Back to trash",
     "deletedBanner": "This order is deleted and in the trash.",
     "deletedCountdown": "It will be permanently deleted in {{days}}.",
     "notFound": "Order not found",

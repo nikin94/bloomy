@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import type { User } from 'firebase/auth'
 import { AuthContext } from '../../context/authContext'
+import AppLayout from '../../components/AppLayout/AppLayout'
 import type { Order } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
@@ -51,11 +52,19 @@ const customer = (over: Partial<Customer> = {}): Customer => ({
   ...over,
 })
 
+// The header now lives in AppLayout (above the page in the route tree), and the
+// page publishes its search + filter controls into it via the header-actions
+// slot — so the page is mounted inside AppLayout here, as in the app, for the
+// header and its actions to render.
 const renderPage = () =>
   render(
     <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
       <MemoryRouter>
-        <OrdersPage />
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route path="*" element={<OrdersPage />} />
+          </Route>
+        </Routes>
       </MemoryRouter>
     </AuthContext.Provider>,
   )

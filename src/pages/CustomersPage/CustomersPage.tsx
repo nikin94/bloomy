@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import AppHeader from '../../components/AppHeader/AppHeader'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
 import Modal from '../../components/Modal/Modal'
@@ -11,6 +10,7 @@ import CustomerForm from '../../components/CustomerForm/CustomerForm'
 import { fetchCustomers, softDeleteCustomer, updateCustomer } from '../../firebase/customers'
 import type { CustomerEdits } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
+import { useHeaderActions } from '../../context/headerActionsContext'
 import { filterCustomers } from '../../types/customer'
 import type { Customer } from '../../types/customer'
 
@@ -196,12 +196,16 @@ const CustomersPage = () => {
   const visibleCustomers = filterCustomers(customers, query)
   const searchActive = query.trim() !== ''
 
-  return (
-    <div className="flex h-full flex-col">
-      <AppHeader
-        actions={<SearchControl value={query} onChange={setQuery} label={t('list.search')} />}
-      />
+  // Search lives in the global header; published via the action slot (memoised so
+  // its identity only changes with the query — see useHeaderActions).
+  const headerActions = useMemo(
+    () => <SearchControl value={query} onChange={setQuery} label={t('list.search')} />,
+    [query, t],
+  )
+  useHeaderActions(headerActions)
 
+  return (
+    <>
       {loading && <Spinner />}
       {loadError && (
         <p role="alert" className="px-6 py-8 text-danger">
@@ -274,7 +278,7 @@ const CustomersPage = () => {
           </div>
         </Modal>
       )}
-    </div>
+    </>
   )
 }
 

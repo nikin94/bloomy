@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
-import AppHeader from '../../components/AppHeader/AppHeader'
 import DataTable from '../../components/DataTable/DataTable'
 import Spinner from '../../components/Spinner/Spinner'
 import SearchControl from '../../components/SearchControl/SearchControl'
@@ -9,6 +8,7 @@ import OrderFilterControl from '../../components/OrderFilterControl/OrderFilterC
 import { fetchOrders, reconcileOrderNumbers } from '../../firebase/orders'
 import { fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
+import { useHeaderActions } from '../../context/headerActionsContext'
 import {
   buildOrderColumns,
   filterOrders,
@@ -113,21 +113,25 @@ const OrdersPage = () => {
 
   // Search + filter controls live in the header (next to settings). Search is an
   // expanding loupe; the funnel opens the shared status/currency/price dialog.
-  const headerActions = (
-    <>
-      <SearchControl
-        value={filter.query}
-        onChange={(query) => setFilter((f) => ({ ...f, query }))}
-        label={t('list.search')}
-      />
-      <OrderFilterControl orders={orders} filter={filter} onChange={setFilter} />
-    </>
+  // Published into the global header via the action slot; memoised so its
+  // identity only changes with the state it depends on (see useHeaderActions).
+  const headerActions = useMemo(
+    () => (
+      <>
+        <SearchControl
+          value={filter.query}
+          onChange={(query) => setFilter((f) => ({ ...f, query }))}
+          label={t('list.search')}
+        />
+        <OrderFilterControl orders={orders} filter={filter} onChange={setFilter} />
+      </>
+    ),
+    [filter, orders, t],
   )
+  useHeaderActions(headerActions)
 
   return (
-    <div className="flex h-full flex-col">
-      <AppHeader actions={headerActions} />
-
+    <>
       {loading && <Spinner />}
       {error && <p className="px-6 py-8 text-danger">{error}</p>}
 
@@ -140,7 +144,7 @@ const OrdersPage = () => {
           emptyMessage={filterActive ? t('common:nothingFound') : t('list.empty')}
         />
       )}
-    </div>
+    </>
   )
 }
 
