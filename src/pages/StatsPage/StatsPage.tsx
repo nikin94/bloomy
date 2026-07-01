@@ -1,19 +1,23 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Spinner from '../../components/Spinner/Spinner'
+import Select from '../../components/Select/Select'
+import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
 import { fetchOrders } from '../../firebase/orders'
 import { useAuth } from '../../context/authContext'
 import { formatMoney } from '../../utils/format'
 import { revenueByCurrencyMinor, CURRENCIES } from '../../types/order'
 import type { Order } from '../../types/order'
 import {
-  STATS_PERIODS,
-  filterOrdersByPeriod,
+  STATS_PRESETS,
+  presetRange,
+  customRange,
+  filterOrdersByRange,
   deliveryByCurrencyMinor,
   statusBreakdown,
   ordersPerMonth,
 } from '../../types/stats'
-import type { StatsPeriod } from '../../types/stats'
+import type { StatsPreset } from '../../types/stats'
 
 // How many months the "orders by month" chart spans. Fixed at a year so the
 // seasonal shape reads regardless of the period selector above it.
@@ -33,7 +37,11 @@ const StatsPage = () => {
   // Capture one timestamp at mount: period boundaries and the month buckets must
   // be stable across renders, and a render-time Date.now() isn't pure.
   const [now] = useState(() => Date.now())
-  const [period, setPeriod] = useState<StatsPeriod>('month')
+  const [preset, setPreset] = useState<StatsPreset>('month')
+  // Custom-range bounds (yyyy-mm-dd, as <input type="date"> produces). Read only
+  // while `preset === 'custom'`; an empty side leaves that bound open.
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -62,7 +70,8 @@ const StatsPage = () => {
   // Everything below is derived per render from the loaded orders (cheap — the
   // list is small). The KPIs + breakdown follow the selected period; the chart
   // deliberately spans the full year window.
-  const periodOrders = filterOrdersByPeriod(orders, period, now)
+  const range = preset === 'custom' ? customRange(customFrom, customTo) : presetRange(preset, now)
+  const periodOrders = filterOrdersByRange(orders, range)
   const revenue = revenueByCurrencyMinor(periodOrders)
   const delivery = deliveryByCurrencyMinor(periodOrders)
   // Currencies to show a money card for: any that has paid revenue OR delivery in
@@ -92,34 +101,56 @@ const StatsPage = () => {
           <header className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="m-0 text-2xl font-semibold text-heading">{t('title')}</h1>
 
-            {/* Period selector — radio semantics (one active choice). Hidden when
+            {/* Period selector — a dropdown of presets plus a "custom range"
+                option (native <select> = the expected mobile control, and it
+                scales to more presets without crowding the header). Hidden when
                 there is no data to scope. */}
             {orders.length > 0 && (
-              <div
-                role="radiogroup"
-                aria-label={t('period.aria')}
-                className="inline-flex rounded-full border border-border bg-primary-bg p-1 text-sm font-medium"
-              >
-                {STATS_PERIODS.map((p) => {
-                  const selected = p === period
-                  return (
-                    <button
-                      key={p}
-                      type="button"
-                      role="radio"
-                      aria-checked={selected}
-                      onClick={() => setPeriod(p)}
-                      className={`rounded-full px-3 py-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                        selected ? 'bg-primary text-white shadow-sm' : 'text-text hover:text-heading'
-                      }`}
-                    >
+              <div className="w-48 shrink-0">
+                <Select
+                  aria-label={t('period.aria')}
+                  value={preset}
+                  onChange={(e) => setPreset(e.target.value as StatsPreset)}
+                >
+                  {STATS_PRESETS.map((p) => (
+                    <option key={p} value={p}>
                       {t(`period.${p}`)}
-                    </button>
-                  )
-                })}
+                    </option>
+                  ))}
+                </Select>
               </div>
             )}
           </header>
+
+          {/* Custom range: two native date fields, shown only for the custom
+              preset. `max`/`min` cross-link them so the range can never be
+              inverted; an empty side leaves that bound open (e.g. only "from" =
+              everything since that day). Native date inputs are mobile-friendly
+              and need no extra library. */}
+          {orders.length > 0 && preset === 'custom' && (
+            <div className="flex flex-wrap items-end gap-4">
+              <label className="flex flex-col gap-1 text-sm text-text">
+                {t('period.from')}
+                <input
+                  type="date"
+                  value={customFrom}
+                  max={customTo || undefined}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  className={`${FIELD_BASE} ${FIELD_NORMAL} px-3 py-2 text-heading`}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm text-text">
+                {t('period.to')}
+                <input
+                  type="date"
+                  value={customTo}
+                  min={customFrom || undefined}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  className={`${FIELD_BASE} ${FIELD_NORMAL} px-3 py-2 text-heading`}
+                />
+              </label>
+            </div>
+          )}
 
           {orders.length === 0 ? (
             <p className="m-0 text-text">{t('empty')}</p>

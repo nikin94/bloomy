@@ -6,32 +6,63 @@
 // can capture a single mount-time timestamp (a render-time Date.now() isn't pure).
 import type { Currency, Order } from './order'
 
-// The period the tab is scoped to. 'month'/'year' are the current calendar
-// month/year (local time); 'all' has no lower bound. The KPI cards + status
-// breakdown follow this; the monthly chart deliberately does not (see below).
-export const STATS_PERIODS = ['month', 'year', 'all'] as const
-export type StatsPeriod = (typeof STATS_PERIODS)[number]
+// The period presets offered in the tab's dropdown. 'month'/'year' are the
+// current calendar month/year (local time); 'all' has no bounds; 'custom' takes
+// its bounds from the two date fields the page shows instead of a fixed calendar
+// boundary. The KPI cards + status breakdown follow this; the monthly chart
+// deliberately does not (see below).
+export const STATS_PRESETS = ['month', 'year', 'all', 'custom'] as const
+export type StatsPreset = (typeof STATS_PRESETS)[number]
 
-// Inclusive lower bound (ms) for a period given the current time, or null for
-// 'all' (no bound). Uses local calendar boundaries so "this month"/"this year"
-// match what the operator sees on a calendar, not UTC.
-export const periodStart = (period: StatsPeriod, now: number): number | null => {
+// A resolved date window: inclusive [start, end] ms bounds; either side null
+// means "unbounded" (open) on that side.
+export interface DateRange {
+  start: number | null
+  end: number | null
+}
+
+// Resolve a NON-custom preset to a date window. 'month'/'year' start at the first
+// of the current calendar month/year with no upper bound; 'all' is fully open.
+// 'custom' has no fixed window here (the page supplies it via customRange), so it
+// falls through to fully open — a safe default if ever resolved directly. Uses
+// local calendar boundaries so "this month"/"this year" match the operator's
+// calendar, not UTC.
+export const presetRange = (preset: StatsPreset, now: number): DateRange => {
   const d = new Date(now)
-  if (period === 'month') return new Date(d.getFullYear(), d.getMonth(), 1).getTime()
-  if (period === 'year') return new Date(d.getFullYear(), 0, 1).getTime()
-  return null // 'all'
+  if (preset === 'month') return { start: new Date(d.getFullYear(), d.getMonth(), 1).getTime(), end: null }
+  if (preset === 'year') return { start: new Date(d.getFullYear(), 0, 1).getTime(), end: null }
+  return { start: null, end: null } // 'all' (and 'custom' — page overrides)
 }
 
-// Orders created within the selected period (by dateCreated). 'all' returns the
-// list unchanged.
-export const filterOrdersByPeriod = (
-  orders: Order[],
-  period: StatsPeriod,
-  now: number,
-): Order[] => {
-  const start = periodStart(period, now)
-  return start === null ? orders : orders.filter((o) => o.dateCreated >= start)
+// Parse a `yyyy-mm-dd` field value (as produced by <input type="date">) into a
+// local timestamp. `edge: 'start'` returns local midnight; `edge: 'end'` returns
+// the last millisecond of that day, so a `to` bound is INCLUSIVE of the whole day
+// the user picked. An empty or malformed value returns null (that side stays open).
+const parseDateField = (value: string, edge: 'start' | 'end'): number | null => {
+  const parts = value.split('-').map(Number)
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return null
+  const [y, m, day] = parts
+  return edge === 'start'
+    ? new Date(y, m - 1, day, 0, 0, 0, 0).getTime()
+    : new Date(y, m - 1, day, 23, 59, 59, 999).getTime()
 }
+
+// Build a window from the two custom date fields (each `yyyy-mm-dd` or empty).
+// An empty side is left open, so a `from` alone means "since that day" and a `to`
+// alone means "up to and including that day". The `to` day is fully included.
+export const customRange = (from: string, to: string): DateRange => ({
+  start: parseDateField(from, 'start'),
+  end: parseDateField(to, 'end'),
+})
+
+// Orders whose dateCreated falls within the window (inclusive on both bounds; a
+// null bound is open). A window with start > end simply matches nothing.
+export const filterOrdersByRange = (orders: Order[], range: DateRange): Order[] =>
+  orders.filter(
+    (o) =>
+      (range.start === null || o.dateCreated >= range.start) &&
+      (range.end === null || o.dateCreated <= range.end),
+  )
 
 // Total PAID delivery charge grouped by currency (minor units). Mirrors
 // revenueByCurrencyMinor: only `paid` orders count (a realized amount), and

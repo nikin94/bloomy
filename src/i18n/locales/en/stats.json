@@ -6,7 +6,10 @@
     "aria": "Statistics period",
     "month": "This month",
     "year": "This year",
-    "all": "All time"
+    "all": "All time",
+    "custom": "Custom range",
+    "from": "From",
+    "to": "To"
   },
   "totalOrders": "Orders in period",
   "money": {

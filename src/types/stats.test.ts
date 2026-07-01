@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
-  periodStart,
-  filterOrdersByPeriod,
+  presetRange,
+  customRange,
+  filterOrdersByRange,
   deliveryByCurrencyMinor,
   statusBreakdown,
   ordersPerMonth,
@@ -31,32 +32,66 @@ const makeOrder = (overrides: Partial<Order> = {}): Order => ({
   ...overrides,
 })
 
-describe('periodStart', () => {
-  it('returns the first of the current month for "month"', () => {
-    expect(periodStart('month', NOW)).toBe(MONTH_START)
+describe('presetRange', () => {
+  it('starts at the first of the current month for "month", open-ended', () => {
+    expect(presetRange('month', NOW)).toEqual({ start: MONTH_START, end: null })
   })
-  it('returns the first of the current year for "year"', () => {
-    expect(periodStart('year', NOW)).toBe(YEAR_START)
+  it('starts at the first of the current year for "year", open-ended', () => {
+    expect(presetRange('year', NOW)).toEqual({ start: YEAR_START, end: null })
   })
-  it('returns null for "all" (no lower bound)', () => {
-    expect(periodStart('all', NOW)).toBeNull()
+  it('is fully open for "all"', () => {
+    expect(presetRange('all', NOW)).toEqual({ start: null, end: null })
+  })
+  it('is fully open for "custom" (the page supplies the window)', () => {
+    expect(presetRange('custom', NOW)).toEqual({ start: null, end: null })
   })
 })
 
-describe('filterOrdersByPeriod', () => {
+describe('customRange', () => {
+  it('makes the `to` day inclusive (end-of-day) and the `from` day start-of-day', () => {
+    const range = customRange('2026-03-10', '2026-03-20')
+    expect(range.start).toBe(new Date(2026, 2, 10, 0, 0, 0, 0).getTime())
+    expect(range.end).toBe(new Date(2026, 2, 20, 23, 59, 59, 999).getTime())
+  })
+  it('leaves an empty side open', () => {
+    expect(customRange('2026-03-10', '')).toEqual({
+      start: new Date(2026, 2, 10, 0, 0, 0, 0).getTime(),
+      end: null,
+    })
+    expect(customRange('', '2026-03-20')).toEqual({
+      start: null,
+      end: new Date(2026, 2, 20, 23, 59, 59, 999).getTime(),
+    })
+  })
+  it('is fully open when both sides are empty', () => {
+    expect(customRange('', '')).toEqual({ start: null, end: null })
+  })
+})
+
+describe('filterOrdersByRange', () => {
   const thisMonth = makeOrder({ id: 'm', dateCreated: NOW })
   const earlierThisYear = makeOrder({ id: 'y', dateCreated: new Date(2026, 2, 10).getTime() })
   const lastYear = makeOrder({ id: 'o', dateCreated: new Date(2025, 5, 1).getTime() })
   const orders = [thisMonth, earlierThisYear, lastYear]
 
-  it('keeps only orders created this month for "month"', () => {
-    expect(filterOrdersByPeriod(orders, 'month', NOW).map((o) => o.id)).toEqual(['m'])
+  it('applies a preset window (this month)', () => {
+    expect(filterOrdersByRange(orders, presetRange('month', NOW)).map((o) => o.id)).toEqual(['m'])
   })
-  it('keeps this-year orders for "year"', () => {
-    expect(filterOrdersByPeriod(orders, 'year', NOW).map((o) => o.id).sort()).toEqual(['m', 'y'])
+  it('keeps everything for a fully-open window', () => {
+    expect(filterOrdersByRange(orders, { start: null, end: null })).toHaveLength(3)
   })
-  it('keeps everything for "all"', () => {
-    expect(filterOrdersByPeriod(orders, 'all', NOW)).toHaveLength(3)
+  it('keeps orders within an inclusive custom window (both bounds)', () => {
+    // March–June 2026 → only the March order qualifies.
+    const range = customRange('2026-03-01', '2026-06-30')
+    expect(filterOrdersByRange(orders, range).map((o) => o.id)).toEqual(['y'])
+  })
+  it('includes an order dated on the `to` day itself (end-of-day inclusive)', () => {
+    const onEdge = makeOrder({ id: 'e', dateCreated: new Date(2026, 2, 10, 18, 30).getTime() })
+    const range = customRange('2026-03-10', '2026-03-10')
+    expect(filterOrdersByRange([onEdge], range).map((o) => o.id)).toEqual(['e'])
+  })
+  it('matches nothing when start is after end (inverted window)', () => {
+    expect(filterOrdersByRange(orders, { start: NOW, end: YEAR_START })).toHaveLength(0)
   })
 })
 

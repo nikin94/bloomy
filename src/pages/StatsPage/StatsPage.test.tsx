@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
@@ -52,6 +52,14 @@ const renderPage = () =>
 // number isn't confused with the same digit in the chart/legend.
 const totalCount = () => within(screen.getByText('Заказов за период').parentElement as HTMLElement)
 
+// yyyy-mm-dd (local), matching what <input type="date"> holds — for driving the
+// custom-range fields.
+const ymd = (ms: number) => {
+  const d = new Date(ms)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   fetchOrders.mockResolvedValue([])
@@ -62,7 +70,7 @@ describe('StatsPage', () => {
     renderPage()
     expect(await screen.findByText('Пока нет заказов для статистики')).toBeInTheDocument()
     // No period selector when there's nothing to scope.
-    expect(screen.queryByRole('radiogroup', { name: 'Период статистики' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Период статистики' })).not.toBeInTheDocument()
   })
 
   it('renders KPIs, the status breakdown, and the monthly chart for the current period', async () => {
@@ -106,7 +114,7 @@ describe('StatsPage', () => {
     expect(screen.getByText(money(125000))).toBeInTheDocument()
   })
 
-  it('rescopes the KPIs when the period changes', async () => {
+  it('rescopes the KPIs when the period preset changes', async () => {
     fetchOrders.mockResolvedValue([
       order({ id: 'now', dateCreated: Date.now() }),
       // ~400 days ago → outside both this month and this year.
@@ -120,7 +128,29 @@ describe('StatsPage', () => {
     expect(totalCount().getByText('1')).toBeInTheDocument()
 
     // "All time" includes the year-old one too.
-    await user.click(screen.getByRole('radio', { name: 'Всё время' }))
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Период статистики' }), 'Всё время')
     expect(totalCount().getByText('2')).toBeInTheDocument()
+  })
+
+  it('scopes the KPIs to a custom date range', async () => {
+    fetchOrders.mockResolvedValue([
+      order({ id: 'now', dateCreated: Date.now() }),
+      order({ id: 'old', dateCreated: Date.now() - 400 * DAY }),
+    ])
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Заказов за период')
+
+    // Switching to the custom preset reveals the two date fields; empty bounds
+    // leave the window fully open, so both orders count.
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Период статистики' }),
+      'Произвольный период',
+    )
+    expect(totalCount().getByText('2')).toBeInTheDocument()
+
+    // A `from` bound in the future excludes every existing order → 0.
+    fireEvent.change(screen.getByLabelText('С'), { target: { value: ymd(Date.now() + 2 * DAY) } })
+    expect(totalCount().getByText('0')).toBeInTheDocument()
   })
 })
