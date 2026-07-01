@@ -162,4 +162,21 @@ describe('OrderForm', () => {
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(onSubmit).not.toHaveBeenCalled()
   })
+
+  it('drops a dangling customer FK when the seeded-customer fetch throws', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    // Same dangling-FK scenario, but fetchCustomer REJECTS (transient network /
+    // rules change) instead of resolving null. A throw must be treated the same
+    // as "unresolved" — the stale id is dropped, not left to save a broken FK.
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    fetchCustomer.mockRejectedValue(new Error('network'))
+    renderForm({ onSubmit, seed: order({ customerId: 'gone' }) })
+
+    const picker = await screen.findByRole('combobox', { name: 'Существующий клиент' })
+    expect(picker).toHaveValue('')
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
 })

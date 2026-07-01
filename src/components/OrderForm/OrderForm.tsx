@@ -153,7 +153,16 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
         const seededId = source?.customerId
         let list = data
         if (seededId && !data.some((c) => c.id === seededId)) {
-          const seededCustomer = await fetchCustomer(seededId)
+          // Treat a throw (transient network / rules change) the same as an
+          // unresolved customer: the whole point of this branch is dropping a
+          // dangling FK, so a swallowed error must not leave the stale id in
+          // place — otherwise the outer .catch would let it save anyway.
+          let seededCustomer: Customer | null
+          try {
+            seededCustomer = await fetchCustomer(seededId)
+          } catch {
+            seededCustomer = null
+          }
           if (!active) return
           if (seededCustomer) {
             list = [...data, seededCustomer]
