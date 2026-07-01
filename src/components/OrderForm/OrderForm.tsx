@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AppHeader from '../AppHeader/AppHeader'
 import { createCustomer, fetchCustomer, fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
 import { useSettings } from '../../context/settingsContext'
@@ -346,10 +345,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   if (customersLoading) return <Spinner />
 
   return (
-    <div className="flex h-full flex-col">
-      <AppHeader />
-
-      <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+    <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
         {/* Scrollable body — the footer below stays pinned. */}
         <div className="flex-1 overflow-auto p-6">
           <div className="mx-auto flex max-w-2xl flex-col gap-5">
@@ -529,7 +525,6 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
           </div>
         </div>
       </form>
-    </div>
   )
 }
 

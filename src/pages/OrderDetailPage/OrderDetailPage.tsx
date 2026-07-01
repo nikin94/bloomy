@@ -186,7 +186,7 @@ const OrderDetailPage = () => {
   const daysLeft = order ? trashDaysLeft(order, mountNow) : null
 
   return (
-    <div className="flex h-full flex-col">
+    <>
       {/* Deleted banner — pinned above the scrolling body so it stays visible
           (and Restore stays reachable) however far the order is scrolled. */}
       {isDeleted && (
@@ -417,7 +417,7 @@ const OrderDetailPage = () => {
         </Modal>
       )}
       </div>
-    </div>
+    </>
   )
 }
 

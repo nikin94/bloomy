@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import AppHeader from '../../components/AppHeader/AppHeader'
 import DataTable from '../../components/DataTable/DataTable'
 import Spinner from '../../components/Spinner/Spinner'
 import SearchControl from '../../components/SearchControl/SearchControl'
@@ -9,6 +8,7 @@ import OrderFilterControl from '../../components/OrderFilterControl/OrderFilterC
 import { fetchDeletedOrders } from '../../firebase/orders'
 import { fetchCustomers } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
+import { useHeaderActions } from '../../context/headerActionsContext'
 import {
   buildOrderColumns,
   filterOrders,
@@ -95,21 +95,25 @@ const DeletedOrdersPage = () => {
   const visibleOrders = filterOrders(orders, filter, getCustomerName)
   const filterActive = isOrderFilterActive(filter)
 
-  return (
-    <div className="flex h-full flex-col">
-      <AppHeader
-        actions={
-          <>
-            <SearchControl
-              value={filter.query}
-              onChange={(query) => setFilter((f) => ({ ...f, query }))}
-              label={t('trash.search')}
-            />
-            <OrderFilterControl orders={orders} filter={filter} onChange={setFilter} />
-          </>
-        }
-      />
+  // Search + filter live in the global header; published via the action slot
+  // (memoised so identity only changes with the state — see useHeaderActions).
+  const headerActions = useMemo(
+    () => (
+      <>
+        <SearchControl
+          value={filter.query}
+          onChange={(query) => setFilter((f) => ({ ...f, query }))}
+          label={t('trash.search')}
+        />
+        <OrderFilterControl orders={orders} filter={filter} onChange={setFilter} />
+      </>
+    ),
+    [filter, orders, t],
+  )
+  useHeaderActions(headerActions)
 
+  return (
+    <>
       {/* Fixed banner labelling the page as the trash, so the identical table
           layout is never mistaken for the active orders list. Shown only once
           there is something in the trash (an empty trash gets its own message
@@ -134,7 +138,7 @@ const DeletedOrdersPage = () => {
           emptyMessage={filterActive ? t('common:nothingFound') : t('trash.empty')}
         />
       )}
-    </div>
+    </>
   )
 }
 
