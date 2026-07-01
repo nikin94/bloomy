@@ -9,21 +9,28 @@ import type { ThemeMode } from '../../types/settings'
 // controls rather than one long render. None hold settings state — they take
 // the current value and a change callback; the dialog owns the drafts.
 
-// A rounded card grouping its rows; adjacent rows get a top hairline divider.
+// A plain vertical list of settings rows separated by hairline dividers — NOT a
+// bordered card. Dropping the card border + rounding (and the rows' own
+// horizontal padding, see Row) lets each control span the dialog's full content
+// width: the Modal panel already pads the edges, so a boxed card here only
+// stacked a second inset that squeezed the usable width on a phone. The
+// between-row hairline keeps the settings scannable (same divider language as
+// DetailRow) without walling them off.
 export const Group = ({ children }: { children: ReactNode }) => (
-  <div className="overflow-hidden rounded-lg border border-border [&>*+*]:border-t [&>*+*]:border-border">
-    {children}
-  </div>
+  <div className="[&>*+*]:border-t [&>*+*]:border-border">{children}</div>
 )
 
 // One settings row: label on the left, control on the right. The label stays on
 // one line (shrink-0 + nowrap) so a wide control can't squeeze it into a wrap.
+// No horizontal padding — the row runs edge to edge inside the Group (the Modal
+// panel already insets it), so the control gets the full width; only vertical
+// padding sets the row rhythm.
 export const Row = ({ label, children }: { label: string; children: ReactNode }) => (
   <div
     // ≤768px: stack label over control (two lines) so a fixed-width control can't
     // push the row wider than a phone viewport. ≥769px: the original label-left /
     // control-right row.
-    className="flex flex-col items-start gap-1.5 px-4 py-3 min-[769px]:flex-row min-[769px]:items-center min-[769px]:justify-between min-[769px]:gap-3"
+    className="flex flex-col items-start gap-1.5 py-3 min-[769px]:flex-row min-[769px]:items-center min-[769px]:justify-between min-[769px]:gap-3"
   >
     <span className="text-sm font-medium text-heading min-[769px]:shrink-0 min-[769px]:whitespace-nowrap">
       {label}
@@ -187,7 +194,7 @@ export const FontSizeSlider = ({
   }
 
   return (
-    <div className="flex flex-col items-start gap-2 px-4 py-3 min-[769px]:flex-row min-[769px]:items-center min-[769px]:gap-4">
+    <div className="flex flex-col items-start gap-2 py-3 min-[769px]:flex-row min-[769px]:items-center min-[769px]:gap-4">
       <span className="text-sm font-medium text-heading min-[769px]:min-w-0 min-[769px]:flex-1">
         {t('fontSize')}
       </span>

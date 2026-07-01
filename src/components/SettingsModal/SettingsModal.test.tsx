@@ -68,7 +68,7 @@ describe('SettingsModal', () => {
   it('opens on the Appearance tab with the font-size slider', () => {
     renderModal()
     expect(screen.getByRole('dialog', { name: 'Настройки' })).toBeInTheDocument()
-    expect(tab('Оформление')).toHaveAttribute('aria-selected', 'true')
+    expect(tab('Внешний вид')).toHaveAttribute('aria-selected', 'true')
     expect(slider()).toBeInTheDocument()
   })
 
@@ -85,7 +85,7 @@ describe('SettingsModal', () => {
   it('switches tabs with arrow keys (ARIA tabs pattern)', async () => {
     const user = userEvent.setup()
     renderModal()
-    tab('Оформление').focus()
+    tab('Внешний вид').focus()
     await user.keyboard('{ArrowRight}')
     expect(tab('Заказы')).toHaveAttribute('aria-selected', 'true')
     expect(tab('Заказы')).toHaveFocus()

@@ -171,7 +171,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
 
   return (
     // Slightly wider than the default form dialog so the four-tab header (with the
-    // admin tab) fits each label on one line without truncating "Оформление".
+    // admin tab) fits each label on one line without truncating "Внешний вид".
     <Modal title={t('settings:title')} onClose={requestClose} widthClassName="max-w-lg">
       {/* The settings body is made inert while the discard confirmation is up, so
           only the confirm card is interactive (and it visually dims behind it). */}
