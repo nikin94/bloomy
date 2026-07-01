@@ -125,7 +125,8 @@ const StatsPage = () => {
             <p className="m-0 text-text">{t('empty')}</p>
           ) : (
             <>
-              {/* KPI cards: order count + per-currency money (revenue + delivery). */}
+              {/* KPI cards: order count + per-currency money broken into
+                  plants / delivery / total (total = plants + delivery). */}
               <section className="grid gap-3 sm:grid-cols-2">
                 <div className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-4">
                   <span className="text-sm text-text">{t('totalOrders')}</span>
@@ -139,25 +140,39 @@ const StatsPage = () => {
                     {t('money.empty')}
                   </div>
                 ) : (
-                  moneyCurrencies.map((c) => (
-                    <div
-                      key={c}
-                      className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4"
-                    >
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="text-sm text-text">{t('money.revenue')}</span>
-                        <span className="text-lg font-semibold tabular-nums text-heading">
-                          {formatMoney(revenue.get(c) ?? 0, c)}
-                        </span>
+                  moneyCurrencies.map((c) => {
+                    const totalMinor = revenue.get(c) ?? 0
+                    const deliveryMinor = delivery.get(c) ?? 0
+                    // `revenue` already includes delivery (getTotalMinor = plants +
+                    // delivery), so plants = revenue − delivery. Showing all three
+                    // avoids the misread where Revenue/Delivery look additive.
+                    const plantsMinor = totalMinor - deliveryMinor
+                    return (
+                      <div
+                        key={c}
+                        className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4"
+                      >
+                        <div className="flex items-baseline justify-between gap-3">
+                          <span className="text-sm text-text">{t('money.plants')}</span>
+                          <span className="tabular-nums text-heading">
+                            {formatMoney(plantsMinor, c)}
+                          </span>
+                        </div>
+                        <div className="flex items-baseline justify-between gap-3">
+                          <span className="text-sm text-text">{t('money.delivery')}</span>
+                          <span className="tabular-nums text-heading">
+                            {formatMoney(deliveryMinor, c)}
+                          </span>
+                        </div>
+                        <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
+                          <span className="text-sm text-text">{t('money.total')}</span>
+                          <span className="text-lg font-semibold tabular-nums text-heading">
+                            {formatMoney(totalMinor, c)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="text-sm text-text">{t('money.delivery')}</span>
-                        <span className="tabular-nums text-heading">
-                          {formatMoney(delivery.get(c) ?? 0, c)}
-                        </span>
-                      </div>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
               </section>
               <p className="-mt-4 text-xs text-text">{t('money.hint')}</p>

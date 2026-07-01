@@ -11,8 +11,9 @@
   "totalOrders": "Orders in period",
   "money": {
     "title": "Money",
-    "revenue": "Revenue",
+    "plants": "Plants",
     "delivery": "Delivery",
+    "total": "Total",
     "hint": "Paid orders only",
     "empty": "No paid orders in this period"
   },

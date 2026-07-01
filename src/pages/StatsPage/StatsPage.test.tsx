@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
 import { AuthContext } from '../../context/authContext'
+import { formatMoney } from '../../utils/format'
 import type { Order } from '../../types/order'
 
 // Firebase is mocked so the page never touches the real SDK. We test the derived
@@ -74,10 +75,35 @@ describe('StatsPage', () => {
     await screen.findByText('Заказов за период')
     expect(totalCount().getByText('1')).toBeInTheDocument()
     // Money + status + chart sections are present.
-    expect(screen.getByText('Выручка')).toBeInTheDocument()
+    expect(screen.getByText('Растения')).toBeInTheDocument()
+    expect(screen.getByText('Итого')).toBeInTheDocument()
     expect(screen.getByText('Статусы заказов')).toBeInTheDocument()
     expect(screen.getByText('Доставлено')).toBeInTheDocument()
     expect(screen.getByText('Заказы по месяцам')).toBeInTheDocument()
+  })
+
+  it('splits paid money into plants, delivery, and their total', async () => {
+    // plants = 1 × 1000.00, delivery = 250.00 → total = 1250.00. The total must
+    // equal plants + delivery (revenue already includes delivery), so the three
+    // rows never read as if delivery is added on top of the total.
+    fetchOrders.mockResolvedValue([
+      order({
+        id: 'a',
+        dateCreated: Date.now(),
+        paymentStatus: 'paid',
+        plants: [{ name: 'Кактус', quantity: 1, unitPriceMinor: 100000 }],
+        deliveryPriceMinor: 25000,
+      }),
+    ])
+    renderPage()
+
+    await screen.findByText('Растения')
+    // getByText collapses non-breaking spaces (U+00A0) in the DOM to regular
+    // spaces, so normalise the expected formatted amount to match.
+    const money = (minor: number) => formatMoney(minor, 'RUB').replace(/\s/g, ' ')
+    expect(screen.getByText(money(100000))).toBeInTheDocument()
+    expect(screen.getByText(money(25000))).toBeInTheDocument()
+    expect(screen.getByText(money(125000))).toBeInTheDocument()
   })
 
   it('rescopes the KPIs when the period changes', async () => {
