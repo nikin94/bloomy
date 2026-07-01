@@ -90,6 +90,13 @@ describe('filterOrdersByRange', () => {
     const range = customRange('2026-03-10', '2026-03-10')
     expect(filterOrdersByRange([onEdge], range).map((o) => o.id)).toEqual(['e'])
   })
+  it('excludes an order at midnight of the day after `to` (upper bound is tight)', () => {
+    // Nails the "end-of-day inclusive" contract from the boundary side: an order
+    // one millisecond into `to + 1 day` must fall outside the window.
+    const nextMidnight = makeOrder({ id: 'x', dateCreated: new Date(2026, 2, 21, 0, 0, 0, 0).getTime() })
+    const range = customRange('2026-03-20', '2026-03-20')
+    expect(filterOrdersByRange([nextMidnight], range)).toHaveLength(0)
+  })
   it('matches nothing when start is after end (inverted window)', () => {
     expect(filterOrdersByRange(orders, { start: NOW, end: YEAR_START })).toHaveLength(0)
   })

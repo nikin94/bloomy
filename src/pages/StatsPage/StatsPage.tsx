@@ -126,7 +126,10 @@ const StatsPage = () => {
               preset. `max`/`min` cross-link them so the range can never be
               inverted; an empty side leaves that bound open (e.g. only "from" =
               everything since that day). Native date inputs are mobile-friendly
-              and need no extra library. */}
+              and need no extra library. Top-label (not the shared floating-label
+              <Input>) on purpose: a native date input always paints a browser
+              format hint, so `:placeholder-shown` never matches and a floating
+              label would never settle down — keep them plain. */}
           {orders.length > 0 && preset === 'custom' && (
             <div className="flex flex-wrap items-end gap-4">
               <label className="flex flex-col gap-1 text-sm text-text">
@@ -168,7 +171,11 @@ const StatsPage = () => {
 
                 {moneyCurrencies.length === 0 ? (
                   <div className="flex items-center rounded-lg border border-border bg-surface p-4 text-sm text-text">
-                    {t('money.empty')}
+                    {/* Two distinct empty states so the operator knows WHY money is
+                        zero: no orders in the range at all vs orders exist but none
+                        are paid yet. Common now that custom ranges can select an
+                        empty window. */}
+                    {periodOrders.length === 0 ? t('money.emptyPeriod') : t('money.empty')}
                   </div>
                 ) : (
                   moneyCurrencies.map((c) => {

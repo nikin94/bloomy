@@ -153,4 +153,28 @@ describe('StatsPage', () => {
     fireEvent.change(screen.getByLabelText('С'), { target: { value: ymd(Date.now() + 2 * DAY) } })
     expect(totalCount().getByText('0')).toBeInTheDocument()
   })
+
+  it('distinguishes an empty period from a paid-less one in the money card', async () => {
+    // Orders exist in the period but none are paid → "no paid orders", so the
+    // operator knows money is zero because nothing's been paid yet, not because
+    // the window is empty.
+    fetchOrders.mockResolvedValue([
+      order({ id: 'now', dateCreated: Date.now(), paymentStatus: 'pending' }),
+    ])
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByText('Заказов за период')
+    expect(totalCount().getByText('1')).toBeInTheDocument()
+    expect(screen.getByText('Нет оплаченных заказов за период')).toBeInTheDocument()
+
+    // Now scope to a future window with no orders at all → the other copy, so the
+    // reason for zero money is "no orders in range", not "unpaid".
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Период статистики' }),
+      'Произвольный период',
+    )
+    fireEvent.change(screen.getByLabelText('С'), { target: { value: ymd(Date.now() + 2 * DAY) } })
+    expect(totalCount().getByText('0')).toBeInTheDocument()
+    expect(screen.getByText('Нет заказов за период')).toBeInTheDocument()
+  })
 })
