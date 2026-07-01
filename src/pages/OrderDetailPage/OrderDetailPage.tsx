@@ -206,54 +206,57 @@ const OrderDetailPage = () => {
           loading is done makes the whole block appear at once, no jump. */}
       {!loading && order && (
         <div className="mx-auto flex max-w-2xl flex-col gap-6">
-          <header className="flex flex-wrap items-center justify-between gap-3">
-            <h1 className="m-0 text-2xl font-semibold text-heading">
-              {t('detail.title', { number: formatOrderNumber(order.number) })}
-              {order.number === null && (
-                <span className="ml-2 align-middle text-sm font-normal text-text">
-                  {t('detail.unsynced')}
-                </span>
-              )}
-            </h1>
-            {/* On a phone the actions stack full-width, one button per line (an
-                easy tap target); from sm up they collapse back to the compact
-                inline row. The date leads the group on its own line either way. */}
-            <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-              <span className="text-sm text-text sm:self-center">{formatDate(order.dateCreated)}</span>
-              {/* A trashed order is read-only — Restore lives in the banner, so
-                  edit/delete are hidden here until it's restored. */}
-              {!isDeleted && (
-                <>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => navigate(`/orders/${order.id}/edit`)}
-                    className="w-full sm:w-auto"
-                  >
-                    {t('detail.edit')}
-                  </Button>
-                  {/* Repeat: open the create form seeded from this order's
-                      contents (customer + plants + logistics), as a fresh order.
-                      The source order rides in router state — no schema change. */}
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => navigate('/orders/new', { state: { repeatOrder: order } })}
-                    className="w-full sm:w-auto"
-                  >
-                    {t('detail.repeat')}
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => setConfirmingDelete(true)}
-                    className="w-full sm:w-auto"
-                  >
-                    {t('detail.delete')}
-                  </Button>
-                </>
-              )}
+          <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            {/* Title + date share a line: the date sits right after the number and
+                wraps to its own line ONLY when there isn't room (a long number on a
+                narrow phone). items-baseline drops the small date onto the h1's
+                baseline instead of centring it against the tall heading. */}
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h1 className="m-0 text-2xl font-semibold text-heading">
+                {t('detail.title', { number: formatOrderNumber(order.number) })}
+                {order.number === null && (
+                  <span className="ml-2 align-middle text-sm font-normal text-text">
+                    {t('detail.unsynced')}
+                  </span>
+                )}
+              </h1>
+              <span className="text-sm text-text">{formatDate(order.dateCreated)}</span>
             </div>
+            {/* A trashed order is read-only — Restore lives in the banner, so
+                edit/delete are hidden here until it's restored. On a phone the
+                actions stack full-width, one button per line (an easy tap target);
+                from sm up they collapse back to the compact inline row. */}
+            {!isDeleted && (
+              <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => navigate(`/orders/${order.id}/edit`)}
+                  className="w-full sm:w-auto"
+                >
+                  {t('detail.edit')}
+                </Button>
+                {/* Repeat: open the create form seeded from this order's
+                    contents (customer + plants + logistics), as a fresh order.
+                    The source order rides in router state — no schema change. */}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => navigate('/orders/new', { state: { repeatOrder: order } })}
+                  className="w-full sm:w-auto"
+                >
+                  {t('detail.repeat')}
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setConfirmingDelete(true)}
+                  className="w-full sm:w-auto"
+                >
+                  {t('detail.delete')}
+                </Button>
+              </div>
+            )}
           </header>
 
           {/* General info. The two statuses are editable inline (the frequent
