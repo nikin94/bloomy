@@ -1,12 +1,12 @@
 import { createContext, useContext, useEffect } from 'react'
 import type { ReactNode } from 'react'
 
-// Header "action slot" plumbing. The global header (AppHeader) lives in the app
-// layout, above every page in the route tree — so a page can no longer pass its
-// per-page controls (the orders search + filter, etc.) to the header via a prop.
+// Header "action slot" plumbing. The global navigation (Sidebar) lives in the app
+// layout, beside every page in the route tree — so a page can no longer pass its
+// per-page controls (the orders search + filter, etc.) to the nav via a prop.
 // Instead the layout exposes a setter through this context; a page publishes its
-// controls into the header for as long as it is mounted via useHeaderActions,
-// and they render in the header's action cluster exactly as the old `actions`
+// controls into the sidebar for as long as it is mounted via useHeaderActions,
+// and they render in the sidebar's action cluster exactly as the old `actions`
 // prop did. The context value is the setter (stable across renders); null when
 // there is no provider (e.g. a component rendered outside the layout in a test).
 export type HeaderActionsSetter = (actions: ReactNode) => void

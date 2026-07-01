@@ -18,7 +18,7 @@ vi.mock('../../firebase/customers', () => ({
   softDeleteCustomer: (...args: unknown[]) => softDeleteCustomer(...args),
   updateCustomer: (...args: unknown[]) => updateCustomer(...args),
 }))
-// AppHeader imports signOutUser from here; stub it so firebase stays untouched.
+// Sidebar imports signOutUser from here; stub it so firebase stays untouched.
 vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
 
 // Imported after the mocks above are registered.
@@ -199,7 +199,7 @@ describe('CustomersPage', () => {
     // The header renders both layouts (desktop + mobile) in jsdom, so scope the
     // search to the desktop bar to act on a single copy. It's collapsed behind a
     // loupe; click it to reveal the input.
-    const header = within(screen.getByTestId('header-desktop'))
+    const header = within(screen.getByTestId('sidebar-desktop'))
     await user.click(header.getByRole('button', { name: 'Поиск' }))
     await user.type(header.getByRole('textbox', { name: 'Поиск клиентов' }), 'Борис')
 
@@ -213,7 +213,7 @@ describe('CustomersPage', () => {
     renderPage()
     await screen.findByText('Анна')
 
-    const header = within(screen.getByTestId('header-desktop'))
+    const header = within(screen.getByTestId('sidebar-desktop'))
     await user.click(header.getByRole('button', { name: 'Поиск' }))
     await user.type(header.getByRole('textbox', { name: 'Поиск клиентов' }), 'нет такого')
 

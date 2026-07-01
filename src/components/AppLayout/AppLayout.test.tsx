@@ -8,7 +8,7 @@ import { AuthContext } from '../../context/authContext'
 import { useHeaderActions } from '../../context/headerActionsContext'
 import AppLayout from './AppLayout'
 
-// AppHeader (rendered by the layout) pulls in the settings dialog, which imports
+// Sidebar (rendered by the layout) pulls in the settings dialog, which imports
 // signOutUser — stub it so the real Firebase SDK stays out of the test.
 vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
 
@@ -39,14 +39,14 @@ const renderAt = (path: string) =>
     </AuthContext.Provider>,
   )
 
-// The header renders both layouts (desktop + mobile) in jsdom; the actions node
-// appears in each, so scope assertions to the desktop bar.
-const desktop = () => within(screen.getByTestId('header-desktop'))
+// The sidebar renders both layouts (desktop rail + mobile drawer) in jsdom; the
+// actions node appears in each, so scope assertions to the desktop rail.
+const desktop = () => within(screen.getByTestId('sidebar-desktop'))
 
 describe('AppLayout', () => {
-  it('renders the global header once, above the routed page', () => {
+  it('renders the global sidebar once, beside the routed page', () => {
     renderAt('/plain')
-    expect(screen.getByTestId('header-desktop')).toBeInTheDocument()
+    expect(screen.getByTestId('sidebar-desktop')).toBeInTheDocument()
     expect(screen.getByText('plain page')).toBeInTheDocument()
   })
 

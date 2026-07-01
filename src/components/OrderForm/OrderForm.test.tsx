@@ -27,7 +27,7 @@ vi.mock('../../firebase/orders', () => ({
   // OrderForm fetches orders only to build the plant-name autocomplete list.
   fetchOrders: (...a: unknown[]) => fetchOrders(...a),
 }))
-// AppHeader (rendered by OrderForm) imports signOutUser from here.
+// Stub signOutUser so the real Firebase SDK stays out of the test.
 vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
 
 // Imported after the mocks above are registered.

@@ -19,7 +19,7 @@ vi.mock('../../firebase/orders', () => ({
   reconcileOrderNumbers: (...a: unknown[]) => reconcileOrderNumbers(...a),
 }))
 vi.mock('../../firebase/customers', () => ({ fetchCustomers: (...a: unknown[]) => fetchCustomers(...a) }))
-// AppHeader imports signOutUser from here; stub it so firebase stays untouched.
+// Sidebar imports signOutUser from here; stub it so firebase stays untouched.
 vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
 
 // Imported after the mocks above are registered.
@@ -73,7 +73,7 @@ const renderPage = () =>
 const table = () => within(screen.getByTestId('orders-table'))
 // The search/filter actions render in both the desktop header and the mobile
 // bar (jsdom applies no CSS), so scope action queries to the desktop header.
-const header = () => within(screen.getByTestId('header-desktop'))
+const header = () => within(screen.getByTestId('sidebar-desktop'))
 
 // The search input is collapsed behind a loupe; click it to reveal the input.
 const openSearch = async (user: ReturnType<typeof userEvent.setup>) => {
