@@ -7,12 +7,14 @@ import ruNav from './locales/ru/nav.json'
 import ruSettings from './locales/ru/settings.json'
 import ruOrder from './locales/ru/order.json'
 import ruCustomer from './locales/ru/customer.json'
+import ruStats from './locales/ru/stats.json'
 import ruAuth from './locales/ru/auth.json'
 import enCommon from './locales/en/common.json'
 import enNav from './locales/en/nav.json'
 import enSettings from './locales/en/settings.json'
 import enOrder from './locales/en/order.json'
 import enCustomer from './locales/en/customer.json'
+import enStats from './locales/en/stats.json'
 import enAuth from './locales/en/auth.json'
 
 // localStorage key shared by the index.html no-flash script and SettingsProvider
@@ -31,6 +33,7 @@ export const resources = {
     settings: ruSettings,
     order: ruOrder,
     customer: ruCustomer,
+    stats: ruStats,
     auth: ruAuth,
   },
   en: {
@@ -39,6 +42,7 @@ export const resources = {
     settings: enSettings,
     order: enOrder,
     customer: enCustomer,
+    stats: enStats,
     auth: enAuth,
   },
 } as const
@@ -65,7 +69,7 @@ void i18n.use(initReactI18next).init({
   lng: cachedLanguage,
   fallbackLng: DEFAULT_LANGUAGE,
   defaultNS,
-  ns: ['common', 'nav', 'settings', 'order', 'customer', 'auth'],
+  ns: ['common', 'nav', 'settings', 'order', 'customer', 'stats', 'auth'],
   // React already escapes interpolated values; don't let i18next double-escape.
   interpolation: { escapeValue: false },
   react: { useSuspense: false },

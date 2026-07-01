@@ -1,0 +1,100 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
+import type { User } from 'firebase/auth'
+import { AuthContext } from '../../context/authContext'
+import type { Order } from '../../types/order'
+
+// Firebase is mocked so the page never touches the real SDK. We test the derived
+// KPIs, the period selector, and the empty state — not Firestore.
+const fetchOrders = vi.fn()
+
+vi.mock('../../firebase/orders', () => ({
+  fetchOrders: (...args: unknown[]) => fetchOrders(...args),
+}))
+
+// Imported after the mock above is registered.
+import StatsPage from './StatsPage'
+
+const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
+
+const DAY = 24 * 60 * 60 * 1000
+
+const order = (over: Partial<Order> = {}): Order => ({
+  id: 'o1',
+  number: 1,
+  dateCreated: Date.now(),
+  ownerId: 'owner-1',
+  customerId: 'c1',
+  address: 'ул. Пушкина, 1',
+  plants: [{ name: 'Кактус', quantity: 1, unitPriceMinor: 100000 }],
+  paymentMethod: 'cash',
+  deliveryMethod: 'post',
+  deliveryPriceMinor: 0,
+  currency: 'RUB',
+  paymentStatus: 'paid',
+  shipmentStatus: 'new',
+  ...over,
+})
+
+const renderPage = () =>
+  render(
+    <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+      <MemoryRouter>
+        <StatsPage />
+      </MemoryRouter>
+    </AuthContext.Provider>,
+  )
+
+// The total-orders KPI card holds the count next to its label; scope to it so the
+// number isn't confused with the same digit in the chart/legend.
+const totalCount = () => within(screen.getByText('Заказов за период').parentElement as HTMLElement)
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  fetchOrders.mockResolvedValue([])
+})
+
+describe('StatsPage', () => {
+  it('shows an empty state when the owner has no orders', async () => {
+    renderPage()
+    expect(await screen.findByText('Пока нет заказов для статистики')).toBeInTheDocument()
+    // No period selector when there's nothing to scope.
+    expect(screen.queryByRole('radiogroup', { name: 'Период статистики' })).not.toBeInTheDocument()
+  })
+
+  it('renders KPIs, the status breakdown, and the monthly chart for the current period', async () => {
+    fetchOrders.mockResolvedValue([
+      order({ id: 'a', dateCreated: Date.now(), paymentStatus: 'paid', shipmentStatus: 'delivered' }),
+    ])
+    renderPage()
+
+    // Default period is "this month" → the one current-month order counts.
+    await screen.findByText('Заказов за период')
+    expect(totalCount().getByText('1')).toBeInTheDocument()
+    // Money + status + chart sections are present.
+    expect(screen.getByText('Выручка')).toBeInTheDocument()
+    expect(screen.getByText('Статусы заказов')).toBeInTheDocument()
+    expect(screen.getByText('Доставлено')).toBeInTheDocument()
+    expect(screen.getByText('Заказы по месяцам')).toBeInTheDocument()
+  })
+
+  it('rescopes the KPIs when the period changes', async () => {
+    fetchOrders.mockResolvedValue([
+      order({ id: 'now', dateCreated: Date.now() }),
+      // ~400 days ago → outside both this month and this year.
+      order({ id: 'old', dateCreated: Date.now() - 400 * DAY }),
+    ])
+    const user = userEvent.setup()
+    renderPage()
+
+    // "This month" (default) sees only the recent order.
+    await screen.findByText('Заказов за период')
+    expect(totalCount().getByText('1')).toBeInTheDocument()
+
+    // "All time" includes the year-old one too.
+    await user.click(screen.getByRole('radio', { name: 'Всё время' }))
+    expect(totalCount().getByText('2')).toBeInTheDocument()
+  })
+})

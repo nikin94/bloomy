@@ -1,0 +1,31 @@
+{
+  "title": "Statistics",
+  "loadError": "Couldn't load statistics",
+  "empty": "No orders to report on yet",
+  "period": {
+    "aria": "Statistics period",
+    "month": "This month",
+    "year": "This year",
+    "all": "All time"
+  },
+  "totalOrders": "Orders in period",
+  "money": {
+    "title": "Money",
+    "revenue": "Revenue",
+    "delivery": "Delivery",
+    "hint": "Paid orders only",
+    "empty": "No paid orders in this period"
+  },
+  "status": {
+    "title": "Order statuses",
+    "delivered": "Delivered",
+    "cancelled": "Cancelled",
+    "inProgress": "In progress"
+  },
+  "chart": {
+    "title": "Orders by month",
+    "subtitle": "Last 12 months"
+  },
+  "orders_one": "{{count}} order",
+  "orders_other": "{{count}} orders"
+}
