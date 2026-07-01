@@ -1,6 +1,7 @@
 {
   "orders": "Orders",
   "customers": "Customers",
+  "stats": "Statistics",
   "trash": "Trash",
   "newOrder": "New order",
   "addOrder": "Add order",

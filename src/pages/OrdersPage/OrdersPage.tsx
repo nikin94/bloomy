@@ -32,17 +32,27 @@ const OrdersPage = () => {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [filter, setFilter] = useState<OrderFilter>(EMPTY_ORDER_FILTER)
-
-  // Set by NewOrderPage after a successful create, to highlight the new order.
-  // Read once into state, then strip it from history so a refresh or back-nav
-  // doesn't replay the highlight.
-  const highlightState = (location.state as { highlightId?: string } | null) ?? null
+  // Navigation state, set by another screen:
+  //  • highlightId — NewOrderPage, after a create, to flash the new row.
+  //  • dateFilter — the statistics tab, when a monthly-chart bar is clicked, to
+  //    open this list scoped to that month.
+  // Both are read once into state, then stripped from history so a refresh or
+  // back-nav doesn't replay them.
+  const navState =
+    (location.state as {
+      highlightId?: string
+      dateFilter?: { minDate: number | null; maxDate: number | null }
+    } | null) ?? null
+  const [filter, setFilter] = useState<OrderFilter>(() =>
+    navState?.dateFilter
+      ? { ...EMPTY_ORDER_FILTER, minDate: navState.dateFilter.minDate, maxDate: navState.dateFilter.maxDate }
+      : EMPTY_ORDER_FILTER,
+  )
   // Captured once on mount so it survives the history cleanup below (which sets
   // location.state to null); the row keeps highlighting through its animation.
-  const [highlightOrderId] = useState(highlightState?.highlightId)
+  const [highlightOrderId] = useState(navState?.highlightId)
   useEffect(() => {
-    if (highlightState?.highlightId) {
+    if (navState?.highlightId || navState?.dateFilter) {
       navigate('.', { replace: true, state: null })
     }
     // Only on first mount: consume the navigation state exactly once.

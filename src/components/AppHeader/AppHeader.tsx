@@ -10,9 +10,10 @@ import SyncStatus from '../SyncStatus/SyncStatus'
 // and appears in both the desktop bar and the mobile menu. `end` keeps "Заказы"
 // active only on the exact list route, not on /orders/new. The label is a key
 // into the `nav` namespace, resolved per-render so it follows the active language.
-const NAV_LINKS: { to: string; labelKey: 'orders' | 'customers' | 'trash'; end?: boolean }[] = [
+const NAV_LINKS: { to: string; labelKey: 'orders' | 'customers' | 'stats' | 'trash'; end?: boolean }[] = [
   { to: '/orders', labelKey: 'orders', end: true },
   { to: '/customers', labelKey: 'customers' },
+  { to: '/stats', labelKey: 'stats' },
   { to: '/orders/deleted', labelKey: 'trash' },
 ]
 

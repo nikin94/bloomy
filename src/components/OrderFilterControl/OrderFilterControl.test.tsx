@@ -83,4 +83,26 @@ describe('OrderFilterControl', () => {
     // The status filters still render.
     expect(screen.getByRole('combobox', { name: 'Статус оплаты' })).toBeInTheDocument()
   })
+
+  it('sets a creation-date range from the two date fields, and Reset clears it', async () => {
+    const user = userEvent.setup()
+    render(<Harness orders={[order()]} />)
+
+    await user.click(funnel())
+    // Always rendered (unlike the price slider, which needs a non-zero ceiling).
+    const from = screen.getByLabelText('С')
+    const to = screen.getByLabelText('По')
+    await user.type(from, '2026-06-01')
+    await user.type(to, '2026-06-30')
+
+    // A date bound is a dialog filter → the funnel fills in.
+    expect(funnel()).toHaveClass('bg-primary')
+    // The `to` field's minimum tracks the chosen `from` (range can't invert).
+    expect(to).toHaveAttribute('min', '2026-06-01')
+
+    await user.click(screen.getByRole('button', { name: 'Сбросить' }))
+    expect(screen.getByLabelText('С')).toHaveValue('')
+    expect(screen.getByLabelText('По')).toHaveValue('')
+    expect(funnel()).not.toHaveClass('bg-primary')
+  })
 })

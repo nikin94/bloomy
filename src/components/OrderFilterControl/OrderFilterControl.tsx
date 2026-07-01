@@ -6,7 +6,8 @@ import Button from '../Button/Button'
 import Select from '../Select/Select'
 import Modal from '../Modal/Modal'
 import { useSettings } from '../../context/settingsContext'
-import { formatMoney } from '../../utils/format'
+import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
+import { formatMoney, parseDateInput, toDateInputValue } from '../../utils/format'
 import {
   currencyOptions,
   getTotalMinor,
@@ -163,6 +164,43 @@ const OrderFilterControl = ({
               ))}
             </Select>
 
+            {/* Creation-date range: two native date fields (from / to). `max`/`min`
+                cross-link them so the range can't be inverted; an empty side leaves
+                that bound open. Native date inputs are the expected mobile control
+                and need no extra library — matching the statistics tab's custom
+                period. The `to` day is included in full (parseDateInput 'end'). */}
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-heading">{t('filters.dateRange')}</span>
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="flex flex-col gap-1 text-sm text-text">
+                  {t('filters.dateFrom')}
+                  <input
+                    type="date"
+                    aria-label={t('filters.dateFrom')}
+                    value={filter.minDate !== null ? toDateInputValue(filter.minDate) : ''}
+                    max={filter.maxDate !== null ? toDateInputValue(filter.maxDate) : undefined}
+                    onChange={(e) =>
+                      onChange((f) => ({ ...f, minDate: parseDateInput(e.target.value, 'start') }))
+                    }
+                    className={`${FIELD_BASE} ${FIELD_NORMAL} px-3 py-2 text-heading`}
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-sm text-text">
+                  {t('filters.dateTo')}
+                  <input
+                    type="date"
+                    aria-label={t('filters.dateTo')}
+                    value={filter.maxDate !== null ? toDateInputValue(filter.maxDate) : ''}
+                    min={filter.minDate !== null ? toDateInputValue(filter.minDate) : undefined}
+                    onChange={(e) =>
+                      onChange((f) => ({ ...f, maxDate: parseDateInput(e.target.value, 'end') }))
+                    }
+                    className={`${FIELD_BASE} ${FIELD_NORMAL} px-3 py-2 text-heading`}
+                  />
+                </label>
+              </div>
+            </div>
+
             {/* Price range: one track with two thumbs (from / to) over the
                 0…ceiling scale. Hidden when every order costs the same (or there
                 are none) — there is no range to pick. */}
@@ -197,6 +235,8 @@ const OrderFilterControl = ({
                     currency: '',
                     minPriceMinor: 0,
                     maxPriceMinor: null,
+                    minDate: null,
+                    maxDate: null,
                   }))
                 }
                 disabled={!modalFilterActive}

@@ -54,6 +54,9 @@
     "priceRange": "Order total",
     "minPrice": "Minimum amount",
     "maxPrice": "Maximum amount",
+    "dateRange": "Order date",
+    "dateFrom": "From",
+    "dateTo": "To",
     "reset": "Reset",
     "done": "Done"
   },

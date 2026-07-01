@@ -434,6 +434,11 @@ export interface OrderFilter {
   currency: Currency | ''
   minPriceMinor: number
   maxPriceMinor: number | null
+  // Inclusive creation-date range (ms). null on a side means that bound is open.
+  // Set from the filter dialog's date fields, or seeded when a monthly-chart bar
+  // on the statistics tab is clicked (opens the list scoped to that month).
+  minDate: number | null
+  maxDate: number | null
 }
 
 export const EMPTY_ORDER_FILTER: OrderFilter = {
@@ -443,6 +448,8 @@ export const EMPTY_ORDER_FILTER: OrderFilter = {
   currency: '',
   minPriceMinor: 0,
   maxPriceMinor: null,
+  minDate: null,
+  maxDate: null,
 }
 
 // True when no filter is active — used to tell "no orders yet" apart from
@@ -458,12 +465,15 @@ export const isModalFilterActive = (filter: OrderFilter): boolean =>
   filter.shipmentStatus !== '' ||
   filter.currency !== '' ||
   filter.minPriceMinor > 0 ||
-  filter.maxPriceMinor !== null
+  filter.maxPriceMinor !== null ||
+  filter.minDate !== null ||
+  filter.maxDate !== null
 
 // Filter the orders list in memory (the dataset is small and already loaded, so
 // no extra query). `query` matches the order number, the resolved customer name,
 // or any plant name, case- and whitespace-insensitive; each set status must
-// match exactly; the order total must fall within the price range. The customer
+// match exactly; the order total must fall within the price range and its
+// creation date within the date range. The customer
 // name is resolved via the same lookup the table uses, so a search finds orders
 // by who they belong to even though the order stores only an id.
 export const filterOrders = (
@@ -479,6 +489,8 @@ export const filterOrders = (
     const total = getTotalMinor(o)
     if (total < filter.minPriceMinor) return false
     if (filter.maxPriceMinor !== null && total > filter.maxPriceMinor) return false
+    if (filter.minDate !== null && o.dateCreated < filter.minDate) return false
+    if (filter.maxDate !== null && o.dateCreated > filter.maxDate) return false
     if (q === '') return true
     const plantNames = o.plants.map((p) => p.name).join(' ')
     // `number ?? ''` so an unsynced order (number null) isn't searchable as the

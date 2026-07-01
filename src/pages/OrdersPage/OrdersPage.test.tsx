@@ -311,4 +311,44 @@ describe('OrdersPage offline numbering', () => {
     await within(tbl).findByText('7')
     expect(within(tbl).queryByText('—')).not.toBeInTheDocument()
   })
+
+  it('seeds the date filter from navigation state (a clicked month on the stats tab)', async () => {
+    // June 2026 orders vs a January 2026 one; the incoming state scopes to June.
+    const jun = new Date(2026, 5, 15).getTime()
+    const jan = new Date(2026, 0, 10).getTime()
+    fetchOrders.mockResolvedValue([
+      order({ id: 'jun', number: 1, customerId: 'c-anna', dateCreated: jun }),
+      order({ id: 'jan', number: 2, customerId: 'c-boris', dateCreated: jan }),
+    ])
+    render(
+      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+        <MemoryRouter
+          initialEntries={[
+            {
+              pathname: '/orders',
+              state: {
+                dateFilter: {
+                  minDate: new Date(2026, 5, 1, 0, 0, 0, 0).getTime(),
+                  maxDate: new Date(2026, 5, 30, 23, 59, 59, 999).getTime(),
+                },
+              },
+            },
+          ]}
+        >
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="*" element={<OrdersPage />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    )
+
+    await screen.findByTestId('orders-table')
+    // Only the June order shows; the January one is filtered out on first render.
+    expect(table().getByText('Анна')).toBeInTheDocument()
+    expect(table().queryByText('Борис')).not.toBeInTheDocument()
+    // The date bound is a dialog filter, so the funnel button reads as active.
+    expect(header().getByRole('button', { name: 'Фильтры' })).toHaveClass('bg-primary')
+  })
 })

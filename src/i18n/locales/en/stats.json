@@ -1,0 +1,39 @@
+{
+  "title": "Statistics",
+  "loadError": "Couldn't load statistics",
+  "empty": "No orders to report on yet",
+  "period": {
+    "aria": "Statistics period",
+    "30days": "30 days",
+    "3months": "3 months",
+    "6months": "6 months",
+    "12months": "12 months",
+    "all": "All time",
+    "custom": "Custom range",
+    "from": "From",
+    "to": "To"
+  },
+  "totalOrders": "Orders in period",
+  "money": {
+    "title": "Money",
+    "plants": "Plants",
+    "delivery": "Delivery",
+    "total": "Total",
+    "hint": "Paid orders only",
+    "empty": "No paid orders in this period",
+    "emptyPeriod": "No orders in this period"
+  },
+  "status": {
+    "title": "Order statuses",
+    "delivered": "Delivered",
+    "cancelled": "Cancelled",
+    "inProgress": "In progress"
+  },
+  "chart": {
+    "title": "Orders by month",
+    "subtitle": "Last 12 months",
+    "openMonth": "Open orders for this month"
+  },
+  "orders_one": "{{count}} order",
+  "orders_other": "{{count}} orders"
+}
