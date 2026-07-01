@@ -28,24 +28,9 @@ import Modal from '../../components/Modal/Modal'
 import CustomerForm from '../../components/CustomerForm/CustomerForm'
 import OrderPhotos from '../../components/OrderPhotos/OrderPhotos'
 import DetailRow from '../../components/DetailRow/DetailRow'
+import PencilIcon from '../../components/icons/PencilIcon'
 import type { Currency, Order } from '../../types/order'
 import type { Customer } from '../../types/customer'
-
-const EditIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-5"
-  >
-    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-  </svg>
-)
 
 const OrderDetailPage = () => {
   const { t } = useTranslation(['order', 'common'])
@@ -221,54 +206,57 @@ const OrderDetailPage = () => {
           loading is done makes the whole block appear at once, no jump. */}
       {!loading && order && (
         <div className="mx-auto flex max-w-2xl flex-col gap-6">
-          <header className="flex flex-wrap items-center justify-between gap-3">
-            <h1 className="m-0 text-2xl font-semibold text-heading">
-              {t('detail.title', { number: formatOrderNumber(order.number) })}
-              {order.number === null && (
-                <span className="ml-2 align-middle text-sm font-normal text-text">
-                  {t('detail.unsynced')}
-                </span>
-              )}
-            </h1>
-            {/* On a phone the actions stack full-width, one button per line (an
-                easy tap target); from sm up they collapse back to the compact
-                inline row. The date leads the group on its own line either way. */}
-            <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-              <span className="text-sm text-text sm:self-center">{formatDate(order.dateCreated)}</span>
-              {/* A trashed order is read-only — Restore lives in the banner, so
-                  edit/delete are hidden here until it's restored. */}
-              {!isDeleted && (
-                <>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => navigate(`/orders/${order.id}/edit`)}
-                    className="w-full sm:w-auto"
-                  >
-                    {t('detail.edit')}
-                  </Button>
-                  {/* Repeat: open the create form seeded from this order's
-                      contents (customer + plants + logistics), as a fresh order.
-                      The source order rides in router state — no schema change. */}
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => navigate('/orders/new', { state: { repeatOrder: order } })}
-                    className="w-full sm:w-auto"
-                  >
-                    {t('detail.repeat')}
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => setConfirmingDelete(true)}
-                    className="w-full sm:w-auto"
-                  >
-                    {t('detail.delete')}
-                  </Button>
-                </>
-              )}
+          <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            {/* Title + date share a line: the date sits right after the number and
+                wraps to its own line ONLY when there isn't room (a long number on a
+                narrow phone). items-baseline drops the small date onto the h1's
+                baseline instead of centring it against the tall heading. */}
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h1 className="m-0 text-2xl font-semibold text-heading">
+                {t('detail.title', { number: formatOrderNumber(order.number) })}
+                {order.number === null && (
+                  <span className="ml-2 align-middle text-sm font-normal text-text">
+                    {t('detail.unsynced')}
+                  </span>
+                )}
+              </h1>
+              <span className="text-sm text-text">{formatDate(order.dateCreated)}</span>
             </div>
+            {/* A trashed order is read-only — Restore lives in the banner, so
+                edit/delete are hidden here until it's restored. On a phone the
+                actions stack full-width, one button per line (an easy tap target);
+                from sm up they collapse back to the compact inline row. */}
+            {!isDeleted && (
+              <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => navigate(`/orders/${order.id}/edit`)}
+                  className="w-full sm:w-auto"
+                >
+                  {t('detail.edit')}
+                </Button>
+                {/* Repeat: open the create form seeded from this order's
+                    contents (customer + plants + logistics), as a fresh order.
+                    The source order rides in router state — no schema change. */}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => navigate('/orders/new', { state: { repeatOrder: order } })}
+                  className="w-full sm:w-auto"
+                >
+                  {t('detail.repeat')}
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setConfirmingDelete(true)}
+                  className="w-full sm:w-auto"
+                >
+                  {t('detail.delete')}
+                </Button>
+              </div>
+            )}
           </header>
 
           {/* General info. The two statuses are editable inline (the frequent
@@ -298,7 +286,7 @@ const OrderDetailPage = () => {
                     aria-label={t('detail.editCustomer')}
                     title={t('detail.editCustomer')}
                   >
-                    <EditIcon />
+                    <PencilIcon />
                   </Button>
                 ) : undefined
               }

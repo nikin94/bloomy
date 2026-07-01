@@ -8,6 +8,7 @@ import Button from '../../components/Button/Button'
 import Modal from '../../components/Modal/Modal'
 import CustomerForm from '../../components/CustomerForm/CustomerForm'
 import DetailRow from '../../components/DetailRow/DetailRow'
+import PencilIcon from '../../components/icons/PencilIcon'
 import { fetchCustomer, updateCustomer } from '../../firebase/customers'
 import type { CustomerEdits } from '../../firebase/customers'
 import { fetchOrders } from '../../firebase/orders'
@@ -132,9 +133,31 @@ const CustomerPage = () => {
             {/* Summary — kept in a readable, centred column. The orders table
                 below breaks out of this width to span the full page. */}
             <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
-              <header className="flex flex-wrap items-center justify-between gap-3">
-                <h1 className="m-0 text-2xl font-semibold text-heading">{customer.name}</h1>
-                <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
+              {/* items-start (not wrap) so a long name wraps within its column
+                  while the edit control stays pinned to the top-right and never
+                  drops to its own line. On a phone the control is a compact pencil
+                  icon (shrink-0 → never wraps, always flush right even beside a
+                  multi-line name); from sm up it's the full text button. */}
+              <header className="flex items-start justify-between gap-3">
+                <h1 className="m-0 min-w-0 break-words text-2xl font-semibold text-heading">
+                  {customer.name}
+                </h1>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  onClick={() => setEditing(true)}
+                  aria-label={t('page.edit')}
+                  title={t('page.edit')}
+                  className="shrink-0 sm:hidden"
+                >
+                  <PencilIcon />
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setEditing(true)}
+                  className="shrink-0 max-sm:hidden"
+                >
                   {t('page.edit')}
                 </Button>
               </header>
