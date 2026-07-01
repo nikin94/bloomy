@@ -27,7 +27,7 @@ vi.mock('../../firebase/customers', () => ({
   createCustomer: (...args: unknown[]) => createCustomer(...args),
   fetchCustomers: (...args: unknown[]) => fetchCustomers(...args),
 }))
-// AppHeader imports signOutUser from here; stub it so firebase stays untouched.
+// Stub signOutUser so the real Firebase SDK stays out of the test.
 vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
 vi.mock('react-router-dom', async (importOriginal) => ({
   ...(await importOriginal<typeof import('react-router-dom')>()),

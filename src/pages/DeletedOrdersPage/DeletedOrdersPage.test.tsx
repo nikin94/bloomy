@@ -22,7 +22,7 @@ vi.mock('../../firebase/orders', () => ({
 vi.mock('../../firebase/customers', () => ({
   fetchCustomers: (...args: unknown[]) => fetchCustomers(...args),
 }))
-// AppHeader imports signOutUser from here; stub it so firebase stays untouched.
+// Sidebar imports signOutUser from here; stub it so firebase stays untouched.
 vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
 vi.mock('react-router-dom', async (importOriginal) => ({
   ...(await importOriginal<typeof import('react-router-dom')>()),
@@ -80,7 +80,7 @@ const renderPage = () =>
 // The desktop table and mobile cards both render in jsdom; scope to one layout.
 const table = () => within(screen.getByTestId('orders-table'))
 // Search/filter actions render in both header layouts; scope to the desktop bar.
-const header = () => within(screen.getByTestId('header-desktop'))
+const header = () => within(screen.getByTestId('sidebar-desktop'))
 
 beforeEach(() => {
   vi.clearAllMocks()

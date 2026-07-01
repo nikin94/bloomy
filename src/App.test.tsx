@@ -43,14 +43,14 @@ describe('App routing', () => {
   it('resolves the lazy orders route for a signed-in user', async () => {
     renderAt('/orders', { user: USER, loading: false, sessionLost: false })
     // The chunk loads asynchronously, so the page content appears after a tick.
-    // The header renders both layouts (desktop + mobile menu duplicate the nav),
-    // so scope to the desktop bar to match a single create-order link.
+    // The sidebar renders both layouts (desktop rail + mobile drawer duplicate the
+    // nav), so scope to the desktop rail to match a single create-order link.
     // A generous timeout: this is the one test that waits for the real lazy
     // OrdersPage chunk to transform+resolve under vitest, which can exceed the
     // 1000ms default on a cold module graph (purely a test-env transform cost —
     // the prebuilt chunk loads instantly in the browser).
-    const header = await screen.findByTestId('header-desktop', {}, { timeout: 5000 })
-    expect(within(header).getByRole('link', { name: 'Новый заказ' })).toHaveAttribute(
+    const rail = await screen.findByTestId('sidebar-desktop', {}, { timeout: 5000 })
+    expect(within(rail).getByRole('link', { name: 'Новый заказ' })).toHaveAttribute(
       'href',
       '/orders/new',
     )
