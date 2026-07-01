@@ -22,8 +22,9 @@ export const Row = ({ label, children }: { label: string; children: ReactNode })
   <div
     // ≤768px: stack label over control (two lines) so a fixed-width control can't
     // push the row wider than a phone viewport. ≥769px: the original label-left /
-    // control-right row.
-    className="flex flex-col items-start gap-1.5 px-4 py-3 min-[769px]:flex-row min-[769px]:items-center min-[769px]:justify-between min-[769px]:gap-3"
+    // control-right row. Phone gets a tighter horizontal inset (px-3) so the cell
+    // padding doesn't compound with the modal's on a narrow screen.
+    className="flex flex-col items-start gap-1.5 px-3 py-3 min-[769px]:flex-row min-[769px]:items-center min-[769px]:justify-between min-[769px]:gap-3 sm:px-4"
   >
     <span className="text-sm font-medium text-heading min-[769px]:shrink-0 min-[769px]:whitespace-nowrap">
       {label}
@@ -187,7 +188,7 @@ export const FontSizeSlider = ({
   }
 
   return (
-    <div className="flex flex-col items-start gap-2 px-4 py-3 min-[769px]:flex-row min-[769px]:items-center min-[769px]:gap-4">
+    <div className="flex flex-col items-start gap-2 px-3 py-3 min-[769px]:flex-row min-[769px]:items-center min-[769px]:gap-4 sm:px-4">
       <span className="text-sm font-medium text-heading min-[769px]:min-w-0 min-[769px]:flex-1">
         {t('fontSize')}
       </span>

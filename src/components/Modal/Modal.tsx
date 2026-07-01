@@ -82,7 +82,7 @@ const Modal = ({ title, onClose, children, widthClassName = 'max-w-md' }: ModalP
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4"
     >
       {/* Backdrop: tap outside to dismiss. */}
       <button
@@ -93,9 +93,12 @@ const Modal = ({ title, onClose, children, widthClassName = 'max-w-md' }: ModalP
         className="absolute inset-0 cursor-default bg-black/40"
       />
 
+      {/* Panel. Tighter inset on phones (p-4) than desktop (sm:p-6): on a narrow
+          viewport the outer margin + panel padding + any inner cell padding
+          compound and starve the content width, so the phone gets back ~16px. */}
       <div
         ref={panelRef}
-        className={`relative z-10 flex w-full ${widthClassName} flex-col gap-6 rounded-lg border border-border bg-bg p-6 shadow-xl`}
+        className={`relative z-10 flex w-full ${widthClassName} flex-col gap-6 rounded-lg border border-border bg-bg p-4 shadow-xl sm:p-6`}
       >
         <header className="flex items-center justify-between gap-3">
           <h2 id={titleId} className="m-0 text-lg font-semibold text-heading">
