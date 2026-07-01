@@ -13,7 +13,6 @@
     "loadError": "Couldn't load customers"
   },
   "page": {
-    "back": "← Back to customers",
     "notFound": "Customer not found",
     "loadError": "Couldn't load the customer",
     "edit": "Edit",

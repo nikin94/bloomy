@@ -210,13 +210,6 @@ const OrderDetailPage = () => {
       )}
 
       <div className="overflow-auto p-6">
-      <Link
-        to={isDeleted ? '/orders/deleted' : '/orders'}
-        className="mb-4 inline-block text-primary no-underline hover:underline"
-      >
-        {isDeleted ? t('detail.backToTrash') : t('detail.back')}
-      </Link>
-
       {loading && <Spinner />}
       {error && <p className="text-danger">{error}</p>}
       {!loading && !error && !order && <p className="text-text">{t('detail.notFound')}</p>}

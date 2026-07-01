@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import OrderForm from '../../components/OrderForm/OrderForm'
 import Spinner from '../../components/Spinner/Spinner'
@@ -50,9 +50,6 @@ const EditOrderPage = () => {
   if (error || !order) {
     return (
       <div className="p-6">
-        <Link to="/orders" className="mb-4 inline-block text-primary no-underline hover:underline">
-          {t('detail.back')}
-        </Link>
         <p className="text-text">{error ?? t('detail.notFound')}</p>
       </div>
     )
