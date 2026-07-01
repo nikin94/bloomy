@@ -208,16 +208,15 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
 
         <div className="flex flex-col gap-1">{destinations()}</div>
 
-        {/* Per-page controls (search / filter), when a page publishes them.
-            Stacked as a column (not a row) so each control gets the full rail
-            width and can't overflow it — an expanded search would otherwise be
-            wider than the 208px inner rail. This also lines them up in the same
-            vertical rhythm as the nav rows above. */}
-        {actions && <div className="flex flex-col items-stretch gap-2">{actions}</div>}
-
-        {/* Pinned to the bottom: the sync indicator (only shows when offline or
-            flushing) and the settings control, now part of the button list. */}
-        <div className="mt-auto flex flex-col gap-1">
+        {/* Bottom cluster, pinned via mt-auto and split off by a top divider: the
+            page's per-page controls (search / filter), the sync indicator (only
+            shows when offline or flushing), and the settings control. The controls
+            render here as the same borderless icon+label rows as settings, so the
+            whole cluster reads as one consistent list. Each is stacked in its own
+            row (items-stretch → full rail width) so an expanded search fills the
+            rail and can't overflow its 208px inner width. */}
+        <div className="mt-auto flex flex-col gap-1 border-t border-border pt-2">
+          {actions && <div className="flex flex-col items-stretch gap-1">{actions}</div>}
           <SyncStatus />
           {settingsButton()}
         </div>

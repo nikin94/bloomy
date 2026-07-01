@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
-import Button from '../Button/Button'
 import CloseIcon from '../icons/CloseIcon'
 
 const SearchIcon = () => (
@@ -83,26 +82,36 @@ const SearchControl = ({
           appears mid-reflow. The input (with the X inside it) is the only thing
           beside it while open. */}
       {loupeVisible && (
-        <Button
-          variant="secondary"
-          size="icon"
+        // Responsive trigger: a bordered icon button in the cramped mobile top
+        // bar (base), and a borderless full-width "icon + label" row from md: up
+        // (the desktop rail), matching the sidebar's settings/nav rows so the
+        // search control reads as part of the same button list.
+        <button
+          type="button"
           onClick={expand}
           aria-label={t('search')}
           title={t('search')}
           aria-expanded={false}
-          className="shrink-0"
+          className={
+            'flex shrink-0 items-center justify-center rounded-md border border-border p-2 text-heading transition-colors hover:bg-primary-bg ' +
+            'md:w-full md:justify-start md:gap-2 md:border-0 md:px-3 md:py-2 md:text-sm md:font-medium ' +
+            'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+          }
         >
           <SearchIcon />
-        </Button>
+          <span className="hidden md:inline">{t('search')}</span>
+        </button>
       )}
       {/* The input wrapper carries the width transition; the X is absolutely
           positioned at its right edge, inside the field. */}
       <div
-        // `max-w-full` caps the expanded field to the container width, so in the
-        // narrow rail (or a tight mobile bar) the ~224px `sm:w-56` target never
-        // overflows — it fills what room there is and no more.
+        // `max-w-full` caps the expanded field to the container width, so in a
+        // tight mobile bar the ~224px `sm:w-56` target never overflows — it fills
+        // what room there is and no more. In the desktop rail (md:) it expands to
+        // the FULL rail width (`md:w-full`) and, capped by the rail's own padding,
+        // still can't spill past the sidebar's edges.
         className={`relative transition-[width] duration-200 ${
-          expanded ? 'w-40 max-w-full sm:w-56' : 'w-0'
+          expanded ? 'w-40 max-w-full sm:w-56 md:w-full' : 'w-0'
         }`}
       >
         <input

@@ -92,20 +92,30 @@ const OrderFilterControl = ({
 
   return (
     <>
-      {/* When a dialog filter is active the whole button fills in (primary), the
-          same language as an active nav button — far more legible than a small
-          badge that filtering is on while the filters themselves are hidden. */}
-      <Button
-        variant={modalFilterActive ? 'primary' : 'secondary'}
-        size="icon"
+      {/* Responsive trigger. In the cramped mobile top bar (base) it's a compact
+          icon button that fills in (primary) when a filter is active — the same
+          language as an active nav button. From md: up (the desktop rail) it
+          becomes a borderless full-width "icon + label" row matching the sidebar's
+          settings/nav rows; there the active state is shown as primary TEXT, since
+          a full fill would read like an active nav destination beside them. */}
+      <button
+        type="button"
         onClick={() => setOpen(true)}
         aria-label={t('filters.open')}
         title={t('filters.open')}
         aria-pressed={modalFilterActive}
-        className="shrink-0"
+        className={[
+          'flex shrink-0 items-center justify-center rounded-md border p-2 transition-colors',
+          'md:w-full md:justify-start md:gap-2 md:border-0 md:px-3 md:py-2 md:text-sm md:font-medium',
+          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+          modalFilterActive
+            ? 'border-primary bg-primary text-white md:bg-transparent md:text-primary md:hover:bg-primary-bg'
+            : 'border-border text-heading hover:bg-primary-bg',
+        ].join(' ')}
       >
         <FilterIcon />
-      </Button>
+        <span className="hidden md:inline">{t('filters.open')}</span>
+      </button>
 
       {open && (
         <Modal title={t('filters.title')} onClose={() => setOpen(false)}>
