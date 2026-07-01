@@ -121,9 +121,14 @@ const navButtonClass = ({ isActive }: { isActive: boolean }) =>
 // as the main action, not a third nav tab. Still a NavLink (it navigates to the
 // form route — links stay the a11y-correct element for navigation), styled to
 // mirror the primary Button.
+// `whitespace-nowrap` keeps the label on ONE line: in the mobile bar this link
+// replaces the (fixed-height) icon controls when the menu opens, so if it wrapped
+// to two lines on a narrow phone (or at a larger font scale) it would grow the
+// bar taller than the closed state and nudge the page content below down — the
+// "content jump on menu open". One line = the bar's height stays invariant.
 const actionButtonClass =
-  'inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium ' +
-  'text-white no-underline transition-opacity hover:opacity-90 ' +
+  'inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-primary px-4 py-2 text-sm ' +
+  'font-medium text-white no-underline transition-opacity hover:opacity-90 ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 
 // Mobile menu rows: full-width, same active-route fill as desktop.
