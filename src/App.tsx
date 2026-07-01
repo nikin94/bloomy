@@ -24,6 +24,7 @@ const loadDeletedOrders = () => import('./pages/DeletedOrdersPage/DeletedOrdersP
 const loadCustomers = () => import('./pages/CustomersPage/CustomersPage')
 const loadCustomer = () => import('./pages/CustomerPage/CustomerPage')
 const loadStats = () => import('./pages/StatsPage/StatsPage')
+const loadSettings = () => import('./pages/SettingsPage/SettingsPage')
 
 const ROUTE_LOADERS = [
   loadOrders,
@@ -34,6 +35,7 @@ const ROUTE_LOADERS = [
   loadCustomers,
   loadCustomer,
   loadStats,
+  loadSettings,
 ]
 
 const OrdersPage = lazy(loadOrders)
@@ -44,6 +46,7 @@ const DeletedOrdersPage = lazy(loadDeletedOrders)
 const CustomersPage = lazy(loadCustomers)
 const CustomerPage = lazy(loadCustomer)
 const StatsPage = lazy(loadStats)
+const SettingsPage = lazy(loadSettings)
 
 function App() {
   // Prefetch every route chunk once the app is up, so navigating to a page the
@@ -89,6 +92,7 @@ function App() {
             <Route path="/customers" element={<CustomersPage />} />
             <Route path="/customers/:id" element={<CustomerPage />} />
             <Route path="/stats" element={<StatsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Route>
       </Routes>

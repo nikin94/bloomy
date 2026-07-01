@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Button from '../Button/Button'
-import SettingsModal from '../SettingsModal/SettingsModal'
 import SyncStatus from '../SyncStatus/SyncStatus'
 
 // Navigation destinations, defined once so a new section is added in ONE place
@@ -20,9 +19,9 @@ const NAV_LINKS: { to: string; labelKey: 'orders' | 'customers' | 'stats' | 'tra
 // The top-level destinations reachable straight from the nav — these ARE the
 // "top screen", so they get no back control. Every OTHER signed-in route is an
 // inner page (an order/customer detail, the create/edit form) that a mobile back
-// button returns UP from. Derived from NAV_LINKS so a new nav destination is
-// automatically treated as top-level.
-const TOP_LEVEL_PATHS = NAV_LINKS.map((link) => link.to)
+// button returns UP from. Derived from NAV_LINKS plus /settings (also a sidebar
+// destination, just rendered in the bottom cluster rather than the nav list).
+const TOP_LEVEL_PATHS = [...NAV_LINKS.map((link) => link.to), '/settings']
 
 // The parent ("upper") screen of an inner page: the path with its last segment
 // dropped — `/orders/:id/edit` → `/orders/:id`, `/orders/:id` → `/orders`,
@@ -128,11 +127,16 @@ const createLinkClass =
   'text-sm font-medium text-white no-underline transition-opacity hover:opacity-90 ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 
-// Settings row, styled like a nav destination (it now lives IN the button list,
-// not as a special right-corner gear). Opens the settings dialog.
-const settingsRowClass =
-  'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-heading transition-colors ' +
-  'hover:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+// Settings link, styled like a nav destination (it now lives IN the button list,
+// not as a special right-corner gear). Same active-fill treatment as navLinkClass,
+// plus a gap for its leading gear icon. Navigates to the /settings page (was a
+// dialog before Stage 2).
+const settingsLinkClass = ({ isActive }: { isActive: boolean }) =>
+  [
+    'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium no-underline transition-colors',
+    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+    isActive ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg',
+  ].join(' ')
 
 // App-wide navigation, as a LEFT sidebar (replaces the former top header). On wide
 // screens (md+) it is a fixed vertical rail beside the content, giving the
@@ -151,7 +155,6 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
   const location = useLocation()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
   // Inner pages (order/customer detail, the create/edit form) get a mobile "up"
   // control; the top-level nav destinations are the top screen, so they don't.
@@ -177,18 +180,13 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
       </NavLink>
     ))
 
-  const settingsButton = (onBefore?: () => void) => (
-    <button
-      type="button"
-      onClick={() => {
-        onBefore?.()
-        setSettingsOpen(true)
-      }}
-      className={settingsRowClass}
-    >
+  // `onNavigate` closes the drawer after a pick (a no-op on the desktop rail),
+  // matching the nav destinations.
+  const settingsLink = (onNavigate?: () => void) => (
+    <NavLink to="/settings" className={settingsLinkClass} onClick={onNavigate}>
       <GearIcon />
       {t('settings')}
-    </button>
+    </NavLink>
   )
 
   return (
@@ -218,7 +216,7 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
         <div className="mt-auto flex flex-col gap-1 border-t border-border pt-2">
           {actions && <div className="flex flex-col items-stretch gap-1">{actions}</div>}
           <SyncStatus />
-          {settingsButton()}
+          {settingsLink()}
         </div>
       </nav>
 
@@ -291,10 +289,8 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
 
         <div className="flex flex-col gap-1">{destinations(closeMenu)}</div>
 
-        <div className="mt-auto flex flex-col gap-1">{settingsButton(closeMenu)}</div>
+        <div className="mt-auto flex flex-col gap-1">{settingsLink(closeMenu)}</div>
       </nav>
-
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   )
 }

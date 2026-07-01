@@ -29,10 +29,7 @@
   "currencyAria": "Default currency",
   "saveError": "Couldn't save settings",
   "signOutError": "Couldn't sign out. Please try again.",
-  "discardTitle": "Unsaved changes",
-  "discardBody": "Close without saving? Your changes will be lost.",
-  "discard": "Close without saving",
-  "keepEditing": "Keep editing",
+  "saved": "Saved",
   "admin": {
     "title": "Test data (admin)",
     "resetLabel": "Delete old data before seeding",

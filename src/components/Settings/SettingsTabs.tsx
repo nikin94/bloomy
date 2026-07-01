@@ -2,9 +2,9 @@ import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Select from '../Select/Select'
 
-// The settings dialog is split into sections shown one at a time behind these
-// tabs, so the dialog's height stays roughly constant as settings accrue. The
-// admin tab is appended only for an admin (the caller decides the `tabs` list).
+// The settings screen is split into sections shown one at a time behind these
+// tabs, so its height stays roughly constant as settings accrue. The admin tab is
+// appended only for an admin (the caller decides the `tabs` list).
 export type SettingsTab = 'appearance' | 'orders' | 'account' | 'admin'
 
 // Section navigation, responsive between two controls that drive the same
@@ -12,8 +12,8 @@ export type SettingsTab = 'appearance' | 'orders' | 'account' | 'admin'
 // instead: on phones a native <Select> — its current section's full label is
 // always legible and a dropdown is the expected small-screen control; from
 // 769px up, a segmented ARIA tablist (the labels fit as equal columns at that
-// width) with roving-tabindex arrow-key navigation. Extracted from SettingsModal
-// so it owns the tab refs + keyboard handling; the dialog just tracks the value.
+// width) with roving-tabindex arrow-key navigation. A standalone control that owns
+// the tab refs + keyboard handling; the settings page just tracks the value.
 const SettingsTabs = ({
   tabs,
   value,

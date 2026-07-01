@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next'
 import Button from '../Button/Button'
 import type { SeedResult } from '../../firebase/seed'
 
-// Admin-only test-data tool, rendered at the bottom of the settings dialog for
-// the admin account (see isAdmin). The heavy seeder (and its fixtures) is loaded
+// Admin-only test-data tool, rendered in the settings page's admin tab for the
+// admin account (see isAdmin). The heavy seeder (and its fixtures) is loaded
 // with a DYNAMIC import only when the button is pressed, so neither the mock data
 // nor the destructive code ships in the main bundle for ordinary users.
 //

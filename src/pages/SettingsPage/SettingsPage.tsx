@@ -7,30 +7,28 @@ import { LANGUAGES } from '../../types/settings'
 import type { Language, ThemeMode } from '../../types/settings'
 import { currencyOptions, deliveryMethodOptions, paymentMethodOptions } from '../../types/order'
 import type { Currency, DeliveryMethod, PaymentMethod } from '../../types/order'
-import Button from '../Button/Button'
-import Select from '../Select/Select'
-import Modal from '../Modal/Modal'
-import AdminSeedSection from './AdminSeedSection'
-import SettingsTabs from './SettingsTabs'
-import type { SettingsTab } from './SettingsTabs'
-import { Group, Row, ThemeToggle, FontSizeSlider, LogoutIcon } from './controls'
+import Button from '../../components/Button/Button'
+import Select from '../../components/Select/Select'
+import AdminSeedSection from '../../components/Settings/AdminSeedSection'
+import SettingsTabs from '../../components/Settings/SettingsTabs'
+import type { SettingsTab } from '../../components/Settings/SettingsTabs'
+import { Group, Row, ThemeToggle, FontSizeSlider, LogoutIcon } from '../../components/Settings/controls'
 import { isAdmin } from '../../lib/admin'
 
-// Mounts the dialog only while open, so each opening starts from the persisted
-// values (drafts are seeded from the applied settings on mount) without a reset
-// effect.
-const SettingsModal = ({ open, onClose }: { open: boolean; onClose: () => void }) =>
-  open ? <SettingsDialog onClose={onClose} /> : null
-
-// Settings dialog body. Holds the colour theme (a sun/moon switch), the per-user
-// font size (an iOS-style size slider), language, the new-order defaults, the
-// account (name + sign-out) and the admin seeder — grouped under header tabs.
-// The shared Modal owns the shell (dialog role, backdrop, Escape, focus trap,
-// header). Theme/font/language update the whole app immediately for preview, but
-// are only persisted on "Сохранить"; dismissing reverts the live preview to the
-// saved values. Dismissing with unsaved changes (via X / Escape / backdrop) asks
-// for confirmation first so a stray click can't silently discard edits.
-const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
+// Settings screen (was a modal until Stage 2 of the sidebar work — now a dedicated
+// /settings route reachable from the sidebar's settings link). Holds the colour
+// theme (a sun/moon switch), the per-user font size (an iOS-style size slider),
+// language, the new-order defaults, the account (name + sign-out) and the admin
+// seeder — grouped under tabs. Theme/font/language update the whole app
+// immediately for preview but are only persisted on "Сохранить".
+//
+// Discard model on a PAGE (vs the old modal): a declarative <BrowserRouter> has no
+// navigation blocker, so instead of a dismiss-confirm we (a) revert the live
+// preview to the saved values when the page UNMOUNTS, so leaving without saving
+// never leaves the app showing an unsaved theme/font/language, and (b) arm the
+// browser's native beforeunload prompt while there are unsaved edits, covering a
+// tab close / refresh. "Отмена" reverts the edits in place; "Сохранить" persists.
+const SettingsPage = () => {
   const { t } = useTranslation(['settings', 'common'])
   // The default-method pickers show order-domain labels (delivery/payment
   // methods + currency), which live in the `order` namespace — a separate bound t.
@@ -57,6 +55,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
   const [paymentDraft, setPaymentDraft] = useState(defaultPaymentMethod)
   const [currencyDraft, setCurrencyDraft] = useState(defaultCurrency)
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // The admin tab exists only for an admin account.
@@ -67,7 +66,7 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
   const [tab, setTab] = useState<SettingsTab>('appearance')
 
   // Any draft differing from its saved value means there are unsaved changes —
-  // drives the discard guard when the user dismisses the dialog.
+  // drives the beforeunload guard and enables Cancel / disables the saved note.
   const isDirty =
     fontDraft !== fontScale ||
     themeDraft !== theme ||
@@ -76,60 +75,44 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
     paymentDraft !== defaultPaymentMethod ||
     currencyDraft !== defaultCurrency
 
-  // True while the "discard unsaved changes?" confirmation is shown.
-  const [confirmingDiscard, setConfirmingDiscard] = useState(false)
-  const confirmRef = useRef<HTMLDivElement>(null)
-  // The control the user was on before the confirm opened, so dismissing the
-  // confirm ("keep editing") returns focus exactly there instead of dropping it
-  // to document.body (the focused button gets unmounted with the confirm card).
-  const lastFocusedRef = useRef<HTMLElement | null>(null)
-  // Drive focus across the confirm's appearance/dismissal. On open, move focus to
-  // its first (safe) button so the keyboard lands on it rather than on a now-inert
-  // control behind the overlay. On dismissal, restore focus to the remembered
-  // control — run from an effect (after commit) so the body's `inert` is already
-  // lifted and the target is focusable again.
+  // Revert the LIVE preview (theme/font/language) back to the saved values when the
+  // page unmounts, so navigating away without saving never leaves the app rendered
+  // in an unsaved appearance. Reads the latest saved values + preview setters from
+  // refs so the empty-dep cleanup (unmount only) always reverts to the current
+  // truth (e.g. the just-saved values after a Save), not a stale render's closure.
+  const revertRef = useRef({ fontScale, theme, language, previewFontScale, previewTheme, previewLanguage })
+  // Keep the ref pointed at the latest saved values + preview setters after every
+  // commit, so the unmount-only cleanup below reads the current truth.
   useEffect(() => {
-    if (confirmingDiscard) {
-      confirmRef.current?.querySelector('button')?.focus()
-    } else if (lastFocusedRef.current) {
-      lastFocusedRef.current.focus()
-      lastFocusedRef.current = null
-    }
-  }, [confirmingDiscard])
+    revertRef.current = { fontScale, theme, language, previewFontScale, previewTheme, previewLanguage }
+  })
+  useEffect(
+    () => () => {
+      const r = revertRef.current
+      r.previewFontScale(r.fontScale)
+      r.previewTheme(r.theme)
+      r.previewLanguage(r.language)
+    },
+    [],
+  )
 
-  // Drop the live preview back to the persisted values, then close.
-  const reallyClose = () => {
-    previewFontScale(fontScale)
-    previewTheme(theme)
-    previewLanguage(language)
-    onClose()
-  }
-
-  // The Modal's dismissal routes (X / Escape / backdrop) come through here. With
-  // unsaved changes we intercept and confirm first; while the confirm is already
-  // open, a second dismissal backs out of it (Escape/backdrop = "keep editing").
-  // The explicit "Отмена" button bypasses this — it IS the discard affordance, so
-  // double-confirming a button literally named "cancel" would only annoy.
-  const requestClose = () => {
-    if (confirmingDiscard) {
-      setConfirmingDiscard(false)
-      return
-    }
-    if (isDirty) {
-      // Remember where focus was so "keep editing" can return it there.
-      lastFocusedRef.current = document.activeElement as HTMLElement | null
-      setConfirmingDiscard(true)
-      return
-    }
-    reallyClose()
-  }
+  // Native "leave site?" prompt for a tab close / refresh with unsaved edits — the
+  // one navigation an in-app router can't mediate. Armed only while dirty.
+  useEffect(() => {
+    if (!isDirty) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [isDirty])
 
   const handleTheme = (next: ThemeMode) => {
+    setSaved(false)
     setThemeDraft(next)
     previewTheme(next) // live page update; not persisted until "Сохранить"
   }
 
   const handleLanguage = (next: Language) => {
+    setSaved(false)
     setLanguageDraft(next)
     previewLanguage(next) // re-renders the whole app live; persisted on Save
   }
@@ -146,43 +129,55 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
         defaultPaymentMethod: paymentDraft,
         defaultCurrency: currencyDraft,
       })
-      onClose()
+      setSaved(true)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('settings:saveError'))
+    } finally {
       setSaving(false)
     }
+  }
+
+  // Discard the unsaved edits in place: reset every draft to its saved value and
+  // revert the live preview. Stays on the page (there is no dialog to close).
+  const handleCancel = () => {
+    setFontDraft(fontScale)
+    setThemeDraft(theme)
+    setLanguageDraft(language)
+    setDeliveryDraft(defaultDeliveryMethod)
+    setPaymentDraft(defaultPaymentMethod)
+    setCurrencyDraft(defaultCurrency)
+    previewFontScale(fontScale)
+    previewTheme(theme)
+    previewLanguage(language)
+    setSaved(false)
+    setError(null)
   }
 
   const handleLogout = async () => {
     // signOut is a local operation (clears the persisted session, no network
     // request), so it works offline and almost never fails. But if it does, the
     // user must SEE it — otherwise they think they signed out while the session
-    // is still live. Await it, surface any failure inline, and close only on
-    // success (a successful sign-out unmounts this dialog via the auth change
-    // anyway, so the explicit close is just belt-and-suspenders).
+    // is still live. Await it, surface any failure inline (a successful sign-out
+    // navigates away via the auth change anyway).
     setError(null)
     try {
       await signOutUser()
-      onClose()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('settings:signOutError'))
     }
   }
 
   return (
-    // Slightly wider than the default form dialog so the four-tab header (with the
-    // admin tab) fits each label on one line without truncating "Внешний вид".
-    <Modal title={t('settings:title')} onClose={requestClose} widthClassName="max-w-lg">
-      {/* The settings body is made inert while the discard confirmation is up, so
-          only the confirm card is interactive (and it visually dims behind it). */}
-      <div inert={confirmingDiscard} className="flex flex-col gap-6">
+    <div className="min-h-0 flex-1 overflow-auto p-6">
+      <div className="mx-auto flex w-full max-w-lg flex-col gap-6">
+        <h1 className="m-0 text-2xl font-semibold text-heading">{t('settings:title')}</h1>
+
         <SettingsTabs tabs={tabs} value={tab} onChange={setTab} />
 
         {/* A fixed min-height sized to the tallest everyday tab (appearance /
-            orders, three rows each) so the dialog doesn't jump as the user switches
+            orders, three rows each) so the page doesn't jump as the user switches
             tabs — a shorter tab (account) just pads to the same height. BUMP THIS
-            whenever a tab gains rows and grows past it: the value must stay ≥ the
-            tallest everyday tab, otherwise that tab nudges the dialog height again. */}
+            whenever a tab gains rows and grows past it. */}
         <div
           role="tabpanel"
           id={`settings-panel-${tab}`}
@@ -206,11 +201,13 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
               </Row>
 
               {/* Font size: an iOS-style notched slider. The whole app scales
-                  live (preview), so the dialog reflects the chosen size; the
-                  control owns its drag handling — see FontSizeSlider. */}
+                  live (preview); the control owns its drag handling. */}
               <FontSizeSlider
                 value={fontDraft}
-                onDraftChange={setFontDraft}
+                onDraftChange={(next) => {
+                  setSaved(false)
+                  setFontDraft(next)
+                }}
                 onPreview={previewFontScale}
               />
 
@@ -245,7 +242,10 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                   <Select
                     aria-label={t('settings:deliveryMethodAria')}
                     value={deliveryDraft}
-                    onChange={(e) => setDeliveryDraft(e.target.value as DeliveryMethod)}
+                    onChange={(e) => {
+                      setSaved(false)
+                      setDeliveryDraft(e.target.value as DeliveryMethod)
+                    }}
                   >
                     {deliveryMethodOptions(tOrder).map((o) => (
                       <option key={o.value} value={o.value}>
@@ -260,7 +260,10 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                   <Select
                     aria-label={t('settings:paymentMethodAria')}
                     value={paymentDraft}
-                    onChange={(e) => setPaymentDraft(e.target.value as PaymentMethod)}
+                    onChange={(e) => {
+                      setSaved(false)
+                      setPaymentDraft(e.target.value as PaymentMethod)
+                    }}
                   >
                     {paymentMethodOptions(tOrder).map((o) => (
                       <option key={o.value} value={o.value}>
@@ -277,7 +280,10 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
                   <Select
                     aria-label={t('settings:currencyAria')}
                     value={currencyDraft}
-                    onChange={(e) => setCurrencyDraft(e.target.value as Currency)}
+                    onChange={(e) => {
+                      setSaved(false)
+                      setCurrencyDraft(e.target.value as Currency)
+                    }}
                   >
                     {currencyOptions(tOrder).map((o) => (
                       <option key={o.value} value={o.value}>
@@ -305,10 +311,8 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
               <Button
                 variant="danger"
                 onClick={handleLogout}
-                // Save lives in the global footer (visible on every tab); disable
-                // sign-out while it's in flight so a tab-switch + click can't fire
-                // signOutUser() over a pending saveSettings (Cancel is likewise
-                // disabled). Consistent with the #99 follow-up.
+                // Disable sign-out while a save is in flight so a tab-switch + click
+                // can't fire signOutUser() over a pending saveSettings.
                 disabled={saving}
                 className="gap-1.5 self-start"
               >
@@ -327,56 +331,25 @@ const SettingsDialog = ({ onClose }: { onClose: () => void }) => {
           </p>
         )}
 
-        {/* Global actions — save persists every tab's drafts; cancel discards
-            them outright (the explicit discard affordance, so no extra confirm).
-            Extra top margin sets the actions a touch further from the content. */}
-        <div className="mt-2 flex flex-col gap-2 min-[769px]:flex-row min-[769px]:justify-end">
-          <Button variant="primary" onClick={handleSave} isLoading={saving}>
-            {t('common:save')}
-          </Button>
-          <Button variant="secondary" onClick={reallyClose} disabled={saving}>
+        {/* Save persists every tab's drafts; Cancel discards the unsaved edits in
+            place (reverting the live preview). A brief saved note confirms a
+            successful persist, cleared the moment a new edit is made. */}
+        <div className="mt-2 flex flex-col gap-2 min-[769px]:flex-row min-[769px]:items-center min-[769px]:justify-end">
+          {saved && (
+            <span role="status" className="text-sm text-text min-[769px]:mr-auto">
+              {t('settings:saved')}
+            </span>
+          )}
+          <Button variant="secondary" onClick={handleCancel} disabled={saving || !isDirty}>
             {t('common:cancel')}
+          </Button>
+          <Button variant="primary" onClick={handleSave} isLoading={saving} disabled={!isDirty}>
+            {t('common:save')}
           </Button>
         </div>
       </div>
-
-      {/* Discard guard: a confirm card over the (now inert) settings body, shown
-          when dismissing with unsaved changes. "Keep editing" is first so it's the
-          focused, safe default; "Discard" closes without saving. */}
-      {confirmingDiscard && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-black/40 p-4">
-          <div
-            ref={confirmRef}
-            // A nested alertdialog so AT announces the discard prompt's own title
-            // and body when focus enters it — the outer Modal's aria-labelledby
-            // still points at "Настройки", which would otherwise be re-read.
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="discard-title"
-            aria-describedby="discard-body"
-            className="flex w-full max-w-xs flex-col gap-4 rounded-lg border border-border bg-bg p-5 shadow-xl"
-          >
-            <div className="flex flex-col gap-1">
-              <h3 id="discard-title" className="m-0 text-base font-semibold text-heading">
-                {t('settings:discardTitle')}
-              </h3>
-              <p id="discard-body" className="m-0 text-sm text-text">
-                {t('settings:discardBody')}
-              </p>
-            </div>
-            <div className="mt-2 flex flex-col gap-2">
-              <Button variant="secondary" onClick={() => setConfirmingDiscard(false)}>
-                {t('settings:keepEditing')}
-              </Button>
-              <Button variant="danger" onClick={reallyClose}>
-                {t('settings:discard')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </Modal>
+    </div>
   )
 }
 
-export default SettingsModal
+export default SettingsPage

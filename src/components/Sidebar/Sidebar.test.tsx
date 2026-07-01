@@ -44,17 +44,11 @@ beforeEach(() => {
 })
 
 describe('Sidebar (desktop rail)', () => {
-  it('exposes the settings control by name in the button list', () => {
+  it('links the settings destination in the button list (a page now, not a dialog)', () => {
     renderSidebar()
-    expect(rail().getByRole('button', { name: 'Настройки' })).toBeInTheDocument()
-  })
-
-  it('opens the settings dialog from the settings button', async () => {
-    const user = userEvent.setup()
-    renderSidebar()
+    // Stage 2: settings is a nav destination — a link to /settings, not a dialog opener.
+    expect(rail().getByRole('link', { name: 'Настройки' })).toHaveAttribute('href', '/settings')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    await user.click(rail().getByRole('button', { name: 'Настройки' }))
-    expect(screen.getByRole('dialog', { name: 'Настройки' })).toBeInTheDocument()
   })
 
   it('links the primary create action and the nav destinations', () => {
@@ -97,7 +91,7 @@ describe('Sidebar (mobile drawer)', () => {
       '/orders/new',
     )
     expect(drawer().getByRole('link', { name: 'Заказы' })).toHaveAttribute('href', '/orders')
-    expect(drawer().getByRole('button', { name: 'Настройки' })).toBeInTheDocument()
+    expect(drawer().getByRole('link', { name: 'Настройки' })).toHaveAttribute('href', '/settings')
   })
 
   it('closes the drawer after a destination is chosen', async () => {
