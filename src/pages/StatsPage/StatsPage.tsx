@@ -216,24 +216,41 @@ const StatsPage = () => {
                   <p className="m-0 text-sm text-text">{t('chart.subtitle')}</p>
                 </div>
                 <div className="flex items-end gap-1">
-                  {monthly.map((bucket) => (
-                    <div
-                      key={bucket.monthStart}
-                      className="flex min-w-0 flex-1 flex-col items-center gap-1"
-                    >
-                      <span className="h-4 text-xs tabular-nums text-text">
-                        {bucket.count || ''}
-                      </span>
-                      <div className="flex h-28 w-full items-end">
-                        <div
-                          className="w-full rounded-t bg-primary"
-                          style={{ height: `${(bucket.count / maxMonthly) * 100}%` }}
-                          title={`${monthLong(bucket.monthStart)} — ${t('orders', { count: bucket.count })}`}
-                        />
+                  {monthly.map((bucket, i) => {
+                    // All 12 month names don't fit side by side on a phone (a ~24px
+                    // column vs a ~30px name → they'd collide, and the user font-scale
+                    // makes them wider still). So label only every OTHER month on
+                    // mobile — counted from the end, so the latest month is always
+                    // labelled and the labelled set doesn't shuffle as the window rolls.
+                    // `sm+` has the width for all 12. Hidden labels stay `invisible`
+                    // (not removed) so the column keeps its height and the bars stay
+                    // aligned; the full "month year" is always in the bar's tooltip.
+                    const labelOnMobile = (monthly.length - 1 - i) % 2 === 0
+                    return (
+                      <div
+                        key={bucket.monthStart}
+                        className="flex min-w-0 flex-1 flex-col items-center gap-1"
+                      >
+                        <span className="h-4 text-xs tabular-nums text-text">
+                          {bucket.count || ''}
+                        </span>
+                        <div className="flex h-28 w-full items-end">
+                          <div
+                            className="w-full rounded-t bg-primary"
+                            style={{ height: `${(bucket.count / maxMonthly) * 100}%` }}
+                            title={`${monthLong(bucket.monthStart)} — ${t('orders', { count: bucket.count })}`}
+                          />
+                        </div>
+                        <span
+                          className={`whitespace-nowrap text-[0.65rem] text-text ${
+                            labelOnMobile ? '' : 'invisible sm:visible'
+                          }`}
+                        >
+                          {monthShort(bucket.monthStart)}
+                        </span>
                       </div>
-                      <span className="text-[0.65rem] text-text">{monthShort(bucket.monthStart)}</span>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </section>
             </>
