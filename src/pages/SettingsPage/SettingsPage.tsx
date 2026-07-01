@@ -178,8 +178,12 @@ const SettingsPage = () => {
         <h1 className="m-0 text-2xl font-semibold text-heading">{t('settings:title')}</h1>
 
         <div className="flex flex-col gap-6 min-[769px]:flex-row min-[769px]:items-start min-[769px]:gap-8">
-          {/* Section nav: a <Select> on phones, a vertical sub-rail from 769px. */}
-          <div className="min-[769px]:w-52 min-[769px]:shrink-0">
+          {/* Section nav: a <Select> on phones, a vertical sub-rail from 769px.
+              From 769px the rail is a full-height side panel — a slightly lifted
+              background (bg-surface) so it reads apart from the page, and a right
+              hairline as an explicit vertical divider from the content beside it.
+              `self-stretch` runs the panel (and its divider) the full row height. */}
+          <div className="min-[769px]:w-52 min-[769px]:shrink-0 min-[769px]:self-stretch min-[769px]:border-r min-[769px]:border-border min-[769px]:bg-surface min-[769px]:py-2 min-[769px]:pr-3">
             <SettingsTabs tabs={tabs} value={tab} onChange={setTab} />
           </div>
 

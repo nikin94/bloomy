@@ -62,9 +62,11 @@ const SettingsTabs = ({
         </Select>
       </div>
 
-      {/* Desktop: a vertical sub-rail of sections. Each row is full-width within
-          its narrow column and fills (active) exactly like a main-sidebar nav row,
-          so the second level reads as a continuation of the first. */}
+      {/* Desktop: a vertical sub-rail of sections. Deliberately a LIGHTER register
+          than the main sidebar (which is font-medium with a solid bg-primary fill
+          on the active row): here the labels are muted normal-weight text and the
+          active row is accent-coloured on a soft bg-primary-bg tint, so the second
+          level reads as subordinate to the main nav rather than a peer of it. */}
       <div
         role="tablist"
         aria-label={t('tabsAria')}
@@ -87,8 +89,10 @@ const SettingsTabs = ({
               tabIndex={selected ? 0 : -1}
               onClick={() => onChange(key)}
               onKeyDown={(e) => onTabKeyDown(e, key)}
-              className={`flex items-center rounded-md px-3 py-2 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                selected ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg'
+              className={`flex items-center rounded-md px-3 py-2 text-left text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                selected
+                  ? 'bg-primary-bg font-semibold text-primary'
+                  : 'font-normal text-text hover:text-heading'
               }`}
             >
               {t(`tabs.${key}` as const)}
