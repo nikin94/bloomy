@@ -90,6 +90,20 @@ describe('Input', () => {
     expect(onChange.mock.calls.at(-1)![0].target.value).toBe('12')
   })
 
+  it('renders helper text below a floating-label field and links it via aria-describedby', () => {
+    render(<Input label="Телефон" hint="+7 900 000-00-00" value="" onChange={vi.fn()} />)
+    const input = screen.getByLabelText('Телефон')
+    const hint = screen.getByText('+7 900 000-00-00')
+    expect(hint).toBeInTheDocument()
+    // The input points at the hint so assistive tech announces it.
+    expect(input).toHaveAttribute('aria-describedby', hint.id)
+  })
+
+  it('omits aria-describedby when no hint is given', () => {
+    render(<Input label="Телефон" value="" onChange={vi.fn()} />)
+    expect(screen.getByLabelText('Телефон')).not.toHaveAttribute('aria-describedby')
+  })
+
   it('renders a suffix node (e.g. an eye toggle) alongside the field, still typeable', async () => {
     const onChange = vi.fn()
     render(

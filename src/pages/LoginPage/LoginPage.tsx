@@ -255,6 +255,8 @@ const LoginPage = () => {
           // saved credential — hint the right autofill for each mode.
           autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
           label={t('password')}
+          // The 6-char minimum only matters when creating a password.
+          hint={mode === 'register' ? t('passwordHint') : undefined}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required

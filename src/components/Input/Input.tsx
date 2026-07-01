@@ -43,6 +43,10 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   // omitted, the field renders exactly as before (the caller's `placeholder`
   // shows as usual).
   label?: string
+  // Optional helper text shown below the field (e.g. a phone format or a
+  // password-length rule), linked to the input via `aria-describedby` so screen
+  // readers announce it. Only rendered in the floating-label path.
+  hint?: string
 }
 
 // The app's standard text input. Wraps the shared field styling (border, focus
@@ -58,6 +62,7 @@ const Input = ({
   onChange,
   suffix,
   label,
+  hint,
   id,
   placeholder,
   ...props
@@ -66,6 +71,7 @@ const Input = ({
   // unconditionally (hooks can't be conditional) and used only in the label path.
   const reactId = useId()
   const inputId = id ?? reactId
+  const hintId = `${reactId}-hint`
 
   // When numeric, take over type/inputMode and sanitize each keystroke before it
   // reaches the consumer's onChange — so a number field can't hold a non-number
@@ -93,20 +99,31 @@ const Input = ({
   // hint now. Supports a suffix (reserve `pr-10`) just like the bare path.
   if (label) {
     return (
-      <div className={`relative w-full min-w-0 ${className}`}>
-        <input
-          id={inputId}
-          aria-invalid={invalid}
-          placeholder=" "
-          className={`peer ${FIELD_BASE} w-full py-2 pl-3 ${suffix ? 'pr-10' : 'pr-3'} ${borderClass}`}
-          {...numericProps}
-          {...props}
-        />
-        <label htmlFor={inputId} className={FLOATING_LABEL}>
-          {label}
-        </label>
-        {suffix && (
-          <span className="absolute inset-y-0 right-0 flex items-center pr-1.5">{suffix}</span>
+      // Outer wrapper carries width/layout; the inner `relative` box holds the
+      // field so an absolutely-positioned suffix stays centred on the INPUT, not
+      // on the input+hint stack. With no hint this renders identically to before.
+      <div className={`w-full min-w-0 ${className}`}>
+        <div className="relative">
+          <input
+            id={inputId}
+            aria-invalid={invalid}
+            aria-describedby={hint ? hintId : undefined}
+            placeholder=" "
+            className={`peer ${FIELD_BASE} w-full py-2 pl-3 ${suffix ? 'pr-10' : 'pr-3'} ${borderClass}`}
+            {...numericProps}
+            {...props}
+          />
+          <label htmlFor={inputId} className={FLOATING_LABEL}>
+            {label}
+          </label>
+          {suffix && (
+            <span className="absolute inset-y-0 right-0 flex items-center pr-1.5">{suffix}</span>
+          )}
+        </div>
+        {hint && (
+          <p id={hintId} className="m-0 mt-1 px-1 text-xs text-text">
+            {hint}
+          </p>
         )}
       </div>
     )

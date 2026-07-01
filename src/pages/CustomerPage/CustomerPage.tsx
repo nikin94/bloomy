@@ -122,12 +122,16 @@ const CustomerPage = () => {
       <AppHeader />
 
       <div className="min-h-0 flex-1 overflow-auto p-6">
-        <Link
-          to="/customers"
-          className="mb-4 inline-block text-primary no-underline hover:underline"
-        >
-          {t('page.back')}
-        </Link>
+        {/* Align the back link's left edge with the centred summary column below,
+            so on wide screens it doesn't float alone at the far page edge. */}
+        <div className="mx-auto w-full max-w-2xl">
+          <Link
+            to="/customers"
+            className="mb-4 inline-block text-primary no-underline hover:underline"
+          >
+            {t('page.back')}
+          </Link>
+        </div>
 
         {loading && <Spinner />}
         {error && (

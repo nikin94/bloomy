@@ -1,9 +1,11 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import Input from '../Input/Input'
 
 // How many suggestions to show at once — keeps the popup compact; the rest stay
-// reachable by typing more of the name.
+// reachable by typing more of the name. When the pool has more, a non-interactive
+// footer tells the user to keep typing (see the "+N more" line).
 const MAX_VISIBLE = 8
 
 interface AutocompleteProps {
@@ -35,25 +37,41 @@ const Autocomplete = ({
   autoFocus,
   className = '',
 }: AutocompleteProps) => {
+  const { t } = useTranslation()
   const listboxId = useId()
   const optionId = (i: number) => `${listboxId}-opt-${i}`
   // Whether the popup is open (the field is focused), and which option is
   // keyboard-active (-1 = none; the active row is highlighted and chosen on Enter).
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
+  // The active option's node, so keyboard navigation can scroll it into view when
+  // it moves past the popup's scroll window.
+  const activeRef = useRef<HTMLLIElement>(null)
 
   // Case-insensitive "contains" filter; an empty field offers the whole pool.
   // Drop an exact match — there's nothing to suggest once the field already
-  // equals a known name. Capped so the popup never grows unbounded.
+  // equals a known name.
   const q = value.trim().toLowerCase()
-  const matches = suggestions
-    .filter((s) => {
-      const sl = s.toLowerCase()
-      return sl !== q && (q === '' || sl.includes(q))
-    })
-    .slice(0, MAX_VISIBLE)
+  const allMatches = suggestions.filter((s) => {
+    const sl = s.toLowerCase()
+    return sl !== q && (q === '' || sl.includes(q))
+  })
+  // Cap the visible rows so the popup never grows unbounded; the overflow count
+  // drives the "keep typing — N more" footer.
+  const matches = allMatches.slice(0, MAX_VISIBLE)
+  const hiddenCount = allMatches.length - matches.length
 
   const isOpen = open && matches.length > 0
+  // Active index guarded against a shrinking list: the pool can change (orders
+  // load async) after a keyboard/hover set `active`, leaving it past the end. A
+  // clamped read keeps aria-activedescendant and Enter pointing at a real row.
+  const activeInRange = active >= 0 && active < matches.length
+
+  // Keep the highlighted row visible when arrow-keying past the scroll window.
+  // scrollIntoView is a no-op in jsdom (guarded with `?.`), so tests don't break.
+  useEffect(() => {
+    if (activeInRange) activeRef.current?.scrollIntoView?.({ block: 'nearest' })
+  }, [active, activeInRange])
 
   const choose = (name: string) => {
     onChange(name)
@@ -64,12 +82,18 @@ const Autocomplete = ({
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      if (!open) setOpen(true)
-      else setActive((a) => Math.min(a + 1, matches.length - 1))
+      // Closed (e.g. just after Escape) → reopen and highlight the first row in
+      // the same press, so ArrowDown always advances the selection.
+      if (!open) {
+        setOpen(true)
+        setActive(0)
+      } else {
+        setActive((a) => Math.min(a + 1, matches.length - 1))
+      }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setActive((a) => Math.max(a - 1, 0))
-    } else if (e.key === 'Enter' && isOpen && active >= 0) {
+    } else if (e.key === 'Enter' && isOpen && activeInRange) {
       // Pick the highlighted suggestion; don't submit the form on this Enter.
       e.preventDefault()
       choose(matches[active])
@@ -90,7 +114,7 @@ const Autocomplete = ({
         aria-expanded={isOpen}
         aria-controls={listboxId}
         aria-autocomplete="list"
-        aria-activedescendant={isOpen && active >= 0 ? optionId(active) : undefined}
+        aria-activedescendant={isOpen && activeInRange ? optionId(active) : undefined}
         onChange={(e) => {
           onChange(e.target.value)
           setOpen(true)
@@ -125,6 +149,7 @@ const Autocomplete = ({
               {matches.map((name, i) => (
                 <li
                   key={name}
+                  ref={i === active ? activeRef : undefined}
                   id={optionId(i)}
                   role="option"
                   aria-selected={i === active}
@@ -143,6 +168,14 @@ const Autocomplete = ({
                 </li>
               ))}
             </ul>
+            {/* Non-interactive overflow hint: some matches are hidden past the cap,
+                so tell the user typing more narrows them. Outside the listbox so
+                assistive tech doesn't read it as a selectable option. */}
+            {hiddenCount > 0 && (
+              <p className="m-0 border-t border-border px-3 py-1.5 text-xs text-text">
+                {t('moreSuggestions', { count: hiddenCount })}
+              </p>
+            )}
           </div>
         </div>
       )}
