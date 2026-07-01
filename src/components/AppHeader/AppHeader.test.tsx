@@ -94,10 +94,11 @@ describe('AppHeader (mobile menu)', () => {
     await user.click(screen.getByRole('button', { name: 'Открыть меню' }))
     // "Добавить заказ" appears in the bar row (alongside the close toggle), not
     // inside the nav list; "Заказы" stays a plain destination link in the menu.
-    expect(screen.getByRole('link', { name: 'Добавить заказ' })).toHaveAttribute(
-      'href',
-      '/orders/new',
-    )
+    const createLink = screen.getByRole('link', { name: 'Добавить заказ' })
+    expect(createLink).toHaveAttribute('href', '/orders/new')
+    // Single-line (whitespace-nowrap) so it can't wrap to two lines and grow the
+    // mobile bar taller than the closed state — that growth is the content jump.
+    expect(createLink).toHaveClass('whitespace-nowrap')
     expect(mobileMenu().getByRole('link', { name: 'Заказы' })).toHaveAttribute('href', '/orders')
   })
 
