@@ -8,12 +8,13 @@ import Select from '../Select/Select'
 export type SettingsTab = 'appearance' | 'orders' | 'account' | 'admin'
 
 // Section navigation, responsive between two controls that drive the same
-// selection. A horizontal scroll strip tested badly (no cue it scrolls), so
-// instead: on phones a native <Select> — its current section's full label is
-// always legible and a dropdown is the expected small-screen control; from
-// 769px up, a segmented ARIA tablist (the labels fit as equal columns at that
-// width) with roving-tabindex arrow-key navigation. A standalone control that owns
-// the tab refs + keyboard handling; the settings page just tracks the value.
+// selection. On phones a native <Select> — its current section's full label is
+// always legible and a dropdown is the expected small-screen control. From 769px
+// up, a VERTICAL sub-rail (a second-level nav beside the wide content panel): a
+// vertical list stays narrow at any screen width, so the sections never stretch
+// and the content takes the freed width — matching the main sidebar's language.
+// A standalone ARIA tablist (roving-tabindex arrow-key navigation) that owns the
+// tab refs + keyboard handling; the settings page just tracks the value.
 const SettingsTabs = ({
   tabs,
   value,
@@ -31,8 +32,10 @@ const SettingsTabs = ({
   const onTabKeyDown = (e: React.KeyboardEvent, key: SettingsTab) => {
     const idx = tabs.indexOf(key)
     let nextIdx: number | null = null
-    if (e.key === 'ArrowRight') nextIdx = (idx + 1) % tabs.length
-    else if (e.key === 'ArrowLeft') nextIdx = (idx - 1 + tabs.length) % tabs.length
+    // Vertical list → Up/Down are the primary keys; Left/Right kept working too so
+    // either arrow pair moves between sections.
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') nextIdx = (idx + 1) % tabs.length
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') nextIdx = (idx - 1 + tabs.length) % tabs.length
     else if (e.key === 'Home') nextIdx = 0
     else if (e.key === 'End') nextIdx = tabs.length - 1
     if (nextIdx === null) return
@@ -59,14 +62,14 @@ const SettingsTabs = ({
         </Select>
       </div>
 
-      {/* Desktop: segmented tabs as equal columns (3 or 4) so the header reads
-          as one control. */}
+      {/* Desktop: a vertical sub-rail of sections. Each row is full-width within
+          its narrow column and fills (active) exactly like a main-sidebar nav row,
+          so the second level reads as a continuation of the first. */}
       <div
         role="tablist"
         aria-label={t('tabsAria')}
-        className={`hidden gap-1 rounded-lg border border-border bg-primary-bg p-1 min-[769px]:grid ${
-          tabs.length === 4 ? 'min-[769px]:grid-cols-4' : 'min-[769px]:grid-cols-3'
-        }`}
+        aria-orientation="vertical"
+        className="hidden flex-col gap-1 min-[769px]:flex"
       >
         {tabs.map((key) => {
           const selected = key === value
@@ -84,8 +87,8 @@ const SettingsTabs = ({
               tabIndex={selected ? 0 : -1}
               onClick={() => onChange(key)}
               onKeyDown={(e) => onTabKeyDown(e, key)}
-              className={`truncate rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                selected ? 'bg-bg text-heading shadow-sm' : 'text-text hover:text-heading'
+              className={`flex items-center rounded-md px-3 py-2 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                selected ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg'
               }`}
             >
               {t(`tabs.${key}` as const)}
