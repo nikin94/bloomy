@@ -111,6 +111,15 @@ describe('OrderDetailPage', () => {
     expect(within(itemsTable).queryByText('×2')).not.toBeInTheDocument()
   })
 
+  it('also renders each plant as a stacked card (the phone layout of the table)', async () => {
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    // The mobile card shows "<qty> × <unit price>" — a form that appears only in
+    // the card, not the table — so the plant list is readable when the table is
+    // hidden on a narrow screen.
+    expect(screen.getByText(/2 ×/)).toBeInTheDocument()
+  })
+
   it('saves a status change as a partial patch (only the changed field)', async () => {
     const user = userEvent.setup()
     renderPage()

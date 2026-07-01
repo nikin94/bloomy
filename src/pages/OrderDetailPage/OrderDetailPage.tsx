@@ -230,7 +230,7 @@ const OrderDetailPage = () => {
                 </span>
               )}
             </h1>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <span className="text-sm text-text">{formatDate(order.dateCreated)}</span>
               {/* A trashed order is read-only — Restore lives in the banner, so
                   edit/delete are hidden here until it's restored. */}
@@ -319,10 +319,30 @@ const OrderDetailPage = () => {
             {order.comment && <DetailRow label={t('detail.comment')} value={order.comment} />}
           </section>
 
-          {/* Itemized plant list */}
+          {/* Itemized plant list. A 5-column table can't fit a 320px phone, so
+              below `sm` it's broken into one stacked card per plant (name +
+              line-total on top, "qty × unit price" below); from `sm` up the full
+              table shows. Both read from the same value-sorted list. */}
           <section className="flex flex-col gap-2">
             <h2 className="m-0 text-lg font-semibold text-heading">{t('detail.plantsTitle')}</h2>
-            <table className="w-full border-collapse text-[0.8333rem]">
+            <ul className="m-0 flex list-none flex-col p-0 sm:hidden">
+              {plantsByValueDesc(order.plants).map((item, index) => (
+                <li key={index} className="flex flex-col gap-1 border-b border-border py-2">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="min-w-0 break-words text-heading">
+                      {index + 1}. {item.name}
+                    </span>
+                    <span className="shrink-0 font-medium tabular-nums text-heading">
+                      {formatMoney(item.unitPriceMinor * item.quantity, order.currency)}
+                    </span>
+                  </div>
+                  <div className="text-sm tabular-nums text-text">
+                    {item.quantity} × {formatMoney(item.unitPriceMinor, order.currency)}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <table className="hidden w-full border-collapse text-[0.8333rem] sm:table">
               <thead>
                 <tr className="border-b border-border text-left text-sm text-text">
                   <th className="w-8 py-2 pr-3 text-right font-medium tabular-nums">{t('columns.number')}</th>
@@ -350,8 +370,10 @@ const OrderDetailPage = () => {
             </table>
           </section>
 
-          {/* Money breakdown */}
-          <section className="flex flex-col gap-1 self-end text-[0.8333rem]">
+          {/* Money breakdown — full width on a phone (labels left, amounts right)
+              so it lines up with the plant cards; shrink-wrapped to the right from
+              `sm` up. */}
+          <section className="flex w-full flex-col gap-1 text-[0.8333rem] sm:w-auto sm:self-end">
             <Total label={t('detail.subtotal')} value={getSubtotalMinor(order)} currency={order.currency} />
             <Total label={t('detail.delivery')} value={order.deliveryPriceMinor} currency={order.currency} />
             <div className="mt-1 flex justify-between gap-8 border-t border-border pt-2 font-semibold text-heading">
@@ -433,24 +455,24 @@ const InlineStatusField = ({
   onChange: (value: string) => void
   readOnly?: boolean
 }) => (
-  <div className="flex items-center gap-3 border-b border-border py-2">
-    <span className="shrink-0 basis-[200px] text-text">{label}</span>
-    {readOnly ? (
-      <span className="min-w-0 flex-1 text-heading">
-        {options.find((o) => o.value === value)?.label ?? value}
-      </span>
-    ) : (
-      <div className="min-w-0 max-w-[220px] flex-1">
-        <Select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </Select>
-      </div>
-    )}
-  </div>
+  <DetailRow
+    label={label}
+    value={
+      readOnly ? (
+        (options.find((o) => o.value === value)?.label ?? value)
+      ) : (
+        <div className="w-full sm:max-w-[220px]">
+          <Select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
+            {options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )
+    }
+  />
 )
 
 const Total = ({

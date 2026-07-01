@@ -21,11 +21,22 @@ describe('DetailRow', () => {
     expect(screen.getByRole('button', { name: 'Изм.' })).toBeInTheDocument()
   })
 
-  it('applies the default label basis, overridable via labelBasisClass', () => {
+  it('applies the default label basis (from sm: up), overridable via labelBasisClass', () => {
+    // The basis is prefixed `sm:` so the row can stack on a phone (no basis) and
+    // become label-left / value-right only from `sm` up.
     const { rerender } = render(<DetailRow label="L" value="V" />)
-    expect(screen.getByText('L')).toHaveClass('basis-[200px]')
+    expect(screen.getByText('L')).toHaveClass('sm:basis-[200px]')
 
-    rerender(<DetailRow label="L" value="V" labelBasisClass="basis-[160px]" />)
-    expect(screen.getByText('L')).toHaveClass('basis-[160px]')
+    rerender(<DetailRow label="L" value="V" labelBasisClass="sm:basis-[160px]" />)
+    expect(screen.getByText('L')).toHaveClass('sm:basis-[160px]')
+  })
+
+  it('stacks on mobile and becomes a row from sm: up', () => {
+    render(<DetailRow label="L" value="V" />)
+    // The wrapper starts stacked (flex-col) and switches to a row at the sm
+    // breakpoint, so a fixed label basis never squeezes the value on a phone.
+    const wrapper = screen.getByText('L').parentElement as HTMLElement
+    expect(wrapper).toHaveClass('flex-col')
+    expect(wrapper).toHaveClass('sm:flex-row')
   })
 })
