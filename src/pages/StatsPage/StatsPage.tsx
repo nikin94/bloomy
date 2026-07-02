@@ -108,7 +108,7 @@ const StatsPage = () => {
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto p-6">
+    <div className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
       {loading && <Spinner />}
       {error && (
         <p role="alert" className="text-danger">
@@ -118,8 +118,11 @@ const StatsPage = () => {
 
       {!loading && !error && (
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-          <header className="flex flex-wrap items-center justify-between gap-3">
-            <h1 className="m-0 text-2xl font-semibold text-heading">{t('title')}</h1>
+          <header className="flex flex-wrap items-center justify-between gap-3 max-md:justify-end">
+            {/* On a phone the page title lives in the top bar (the sidebar's mobile
+                bar), so it's hidden here to avoid showing it twice; the period
+                selector stays. On desktop (no top bar) the heading shows in place. */}
+            <h1 className="m-0 text-2xl font-semibold text-heading max-md:hidden">{t('title')}</h1>
 
             {/* Period selector — a dropdown of presets plus a "custom range"
                 option (native <select> = the expected mobile control, and it

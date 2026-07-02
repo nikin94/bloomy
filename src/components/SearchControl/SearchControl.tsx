@@ -74,9 +74,13 @@ const SearchControl = ({
 
   return (
     // `min-w-0` lets the whole control shrink below its content width when its
-    // container is tight (the narrow sidebar rail, or a cramped mobile top bar),
-    // so the expanded field caps to the available width instead of distending it.
-    <div className="flex min-w-0 items-center">
+    // container is tight. On the mobile top bar (a flex row, below md) the control
+    // GROWS to fill the free width (`flex-1`) so the expanded field takes the room
+    // between the page title and the burger; on the desktop rail (`md:`, a flex
+    // column) it reverts to `flex-none` so it keeps its natural height. `js-search-open`
+    // is a marker the mobile bar keys off (via :has) to give the control the row and
+    // hide the title while the field is open.
+    <div className={`flex min-w-0 flex-1 items-center md:flex-none ${expanded ? 'js-search-open' : ''}`}>
       {/* Collapsed: just the loupe. Hidden the instant the field opens and not
           shown again until the collapse animation has finished, so it never
           appears mid-reflow. The input (with the X inside it) is the only thing
@@ -105,13 +109,13 @@ const SearchControl = ({
       {/* The input wrapper carries the width transition; the X is absolutely
           positioned at its right edge, inside the field. */}
       <div
-        // `max-w-full` caps the expanded field to the container width, so in a
-        // tight mobile bar the ~224px `sm:w-56` target never overflows — it fills
-        // what room there is and no more. In the desktop rail (md:) it expands to
-        // the FULL rail width (`md:w-full`) and, capped by the rail's own padding,
-        // still can't spill past the sidebar's edges.
+        // Expanded: fill the available width (`w-full`) rather than a fixed size, so
+        // the field stretches into whatever room the growing control has — capped at
+        // `max-w-md` on the mobile bar so it never gets absurdly wide on a large
+        // phone/tablet, and uncapped on the desktop rail (`md:max-w-none md:w-full`)
+        // where it fills the rail exactly.
         className={`relative transition-[width] duration-200 ${
-          expanded ? 'w-40 max-w-full sm:w-56 md:w-full' : 'w-0'
+          expanded ? 'w-full max-w-md md:w-full md:max-w-none' : 'w-0'
         }`}
       >
         <input
@@ -132,7 +136,7 @@ const SearchControl = ({
           // matches the icon buttons (size-5 icon + p-2); without it the input's
           // default 145% line-height makes it a couple of pixels taller and
           // stretches the header when it opens.
-          className={`${FIELD_BASE} ${FIELD_NORMAL} w-full leading-5 transition-[padding,opacity] duration-200 ${
+          className={`${FIELD_BASE} ${FIELD_NORMAL} w-full min-w-0 leading-5 transition-[padding,opacity] duration-200 ${
             expanded ? 'py-2 pl-3 pr-9 opacity-100' : 'border-0 p-0 opacity-0'
           }`}
         />

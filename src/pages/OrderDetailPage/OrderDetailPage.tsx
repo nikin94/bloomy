@@ -194,7 +194,7 @@ const OrderDetailPage = () => {
         </div>
       )}
 
-      <div className="overflow-auto p-6">
+      <div className="overflow-auto p-4 md:p-6">
       {loading && <Spinner />}
       {error && <p className="text-danger">{error}</p>}
       {!loading && !error && !order && <p className="text-text">{t('detail.notFound')}</p>}

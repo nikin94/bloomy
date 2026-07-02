@@ -4,20 +4,23 @@ import { useTranslation } from 'react-i18next'
 import { FONT_SCALE_MAX, FONT_SCALE_MIN, FONT_SCALE_STEP } from '../../types/settings'
 import type { ThemeMode } from '../../types/settings'
 
-// Presentational building blocks of the settings dialog, extracted from
-// SettingsModal so the dialog body reads as a short composition of named
-// controls rather than one long render. None hold settings state — they take
-// the current value and a change callback; the dialog owns the drafts.
+// Presentational building blocks of the settings screen, so its body reads as a
+// short composition of named controls rather than one long render. None hold
+// settings state — they take the current value and a change callback; the
+// settings page owns the drafts.
 
 // A plain vertical list of settings rows separated by hairline dividers — NOT a
 // bordered card. Dropping the card border + rounding (and the rows' own
-// horizontal padding, see Row) lets each control span the dialog's full content
-// width: the Modal panel already pads the edges, so a boxed card here only
-// stacked a second inset that squeezed the usable width on a phone. The
-// between-row hairline keeps the settings scannable (same divider language as
-// DetailRow) without walling them off.
+// horizontal padding, see Row) lets each control span the page's full content
+// width: the page already pads the edges, so a boxed card here only stacked a
+// second inset that squeezed the usable width on a phone. The between-row
+// hairline keeps the settings scannable (same divider language as
+// DetailRow) without walling them off. The FIRST row drops its top padding
+// (`first:pt-0`) so the section content sits flush against the page's top padding
+// — the same start offset as the account/admin sections (which have no Group), so
+// the gap under the top divider is identical across every settings section.
 export const Group = ({ children }: { children: ReactNode }) => (
-  <div className="[&>*+*]:border-t [&>*+*]:border-border">{children}</div>
+  <div className="[&>*+*]:border-t [&>*+*]:border-border [&>*:first-child]:pt-0">{children}</div>
 )
 
 // One settings row: label on the left, control on the right. The label stays on
