@@ -95,10 +95,13 @@ const Modal = ({ title, onClose, children, widthClassName = 'max-w-md' }: ModalP
 
       {/* Panel. Tighter inset on phones (p-4) than desktop (sm:p-6): on a narrow
           viewport the outer margin + panel padding + any inner cell padding
-          compound and starve the content width, so the phone gets back ~16px. */}
+          compound and starve the content width, so the phone gets back ~16px.
+          Capped to the viewport height (`max-h-full`, the outer p-2/p-4 leaving a
+          margin) so a tall dialog — e.g. the order filter on a short phone — never
+          overflows the screen; the header stays fixed and the body scrolls. */}
       <div
         ref={panelRef}
-        className={`relative z-10 flex w-full ${widthClassName} flex-col gap-6 rounded-lg border border-border bg-bg p-4 shadow-xl sm:p-6`}
+        className={`relative z-10 flex max-h-full w-full ${widthClassName} flex-col gap-6 rounded-lg border border-border bg-bg p-4 shadow-xl sm:p-6`}
       >
         <header className="flex items-center justify-between gap-3">
           <h2 id={titleId} className="m-0 text-lg font-semibold text-heading">
@@ -114,7 +117,12 @@ const Modal = ({ title, onClose, children, widthClassName = 'max-w-md' }: ModalP
             <CloseIcon />
           </Button>
         </header>
-        {children}
+        {/* The scrollable body: `min-h-0` lets it shrink below its content height
+            inside the capped flex column so `overflow-y-auto` actually engages
+            (without it a flex item won't scroll — it grows past the cap instead).
+            The negative margin + padding keep a focus ring from being clipped at
+            the scroll edge. */}
+        <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">{children}</div>
       </div>
     </div>
   )
