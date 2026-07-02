@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, useSearchParams } from 'react-router-dom'
+import { createMemoryRouter, RouterProvider, useSearchParams } from 'react-router-dom'
 import type { User } from 'firebase/auth'
 import { AuthContext } from '../../context/authContext'
 import { SettingsContext } from '../../context/settingsContext'
@@ -35,19 +35,57 @@ const settings = (over: Partial<SettingsState> = {}): SettingsState => ({
 
 const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
 
-// The active section now travels in the URL (`?section=`), so the page needs a
-// router. Render at the section under test. Returns the RTL result so tests can
-// unmount to exercise the leave-time preview revert.
-const renderPage = (state = settings(), section = 'appearance') =>
-  render(
+// The active section travels in the URL (`?section=`), and the page arms
+// useBlocker — which requires a DATA router — so tests build a createMemoryRouter
+// (not <MemoryRouter>) at the section under test. Returns the RTL result so tests
+// can unmount to exercise the leave-time preview revert.
+const renderPage = (state = settings(), section = 'appearance') => {
+  const router = createMemoryRouter([{ path: '/settings', element: <SettingsPage /> }], {
+    initialEntries: [`/settings?section=${section}`],
+  })
+  return render(
     <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
       <SettingsContext.Provider value={state}>
-        <MemoryRouter initialEntries={[`/settings?section=${section}`]}>
-          <SettingsPage />
-        </MemoryRouter>
+        <RouterProvider router={router} />
       </SettingsContext.Provider>
     </AuthContext.Provider>,
   )
+}
+
+// Renders the page plus an in-router section switcher (a sibling that flips
+// ?section=account), so a test can switch sections while keeping the page
+// MOUNTED. A same-path ?section= switch is intentionally NOT blocked by useBlocker.
+const renderWithSwitcher = (state = settings()) => {
+  const SectionSwitcher = () => {
+    const [, setParams] = useSearchParams()
+    return (
+      <button type="button" onClick={() => setParams({ section: 'account' })}>
+        go-account
+      </button>
+    )
+  }
+  const router = createMemoryRouter(
+    [
+      {
+        path: '/settings',
+        element: (
+          <>
+            <SettingsPage />
+            <SectionSwitcher />
+          </>
+        ),
+      },
+    ],
+    { initialEntries: ['/settings?section=appearance'] },
+  )
+  return render(
+    <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+      <SettingsContext.Provider value={state}>
+        <RouterProvider router={router} />
+      </SettingsContext.Provider>
+    </AuthContext.Provider>,
+  )
+}
 
 const slider = () => screen.getByRole('slider', { name: 'Размер шрифта' })
 const themeSwitch = () => screen.getByRole('switch', { name: 'Тёмная тема' })
@@ -222,24 +260,7 @@ describe('SettingsPage', () => {
     // Render the page plus an in-router section switcher, so switching from the
     // appearance section (where Save lives) to the account section keeps the page
     // MOUNTED — the in-flight `saving` state must persist across the switch.
-    const SectionSwitcher = () => {
-      const [, setParams] = useSearchParams()
-      return (
-        <button type="button" onClick={() => setParams({ section: 'account' })}>
-          go-account
-        </button>
-      )
-    }
-    render(
-      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-        <SettingsContext.Provider value={settings()}>
-          <MemoryRouter initialEntries={['/settings?section=appearance']}>
-            <SettingsPage />
-            <SectionSwitcher />
-          </MemoryRouter>
-        </SettingsContext.Provider>
-      </AuthContext.Provider>,
-    )
+    renderWithSwitcher()
     fireEvent.change(slider(), { target: { value: '1.25' } })
     await user.click(saveButton())
     await user.click(screen.getByRole('button', { name: 'go-account' }))
@@ -266,28 +287,52 @@ describe('SettingsPage', () => {
     // Edit on Appearance (where Save lives), then switch to the footerless Account
     // section: the drafts survive but the Save/Cancel footer is gone, so the banner
     // reassures the user the change isn't lost.
-    const SectionSwitcher = () => {
-      const [, setParams] = useSearchParams()
-      return (
-        <button type="button" onClick={() => setParams({ section: 'account' })}>
-          go-account
-        </button>
-      )
-    }
-    render(
-      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-        <SettingsContext.Provider value={settings()}>
-          <MemoryRouter initialEntries={['/settings?section=appearance']}>
-            <SettingsPage />
-            <SectionSwitcher />
-          </MemoryRouter>
-        </SettingsContext.Provider>
-      </AuthContext.Provider>,
-    )
+    renderWithSwitcher()
     // Pristine appearance → no hint (footer carries Save there anyway).
     expect(screen.queryByText(/несохранённые изменения/i)).not.toBeInTheDocument()
     await user.click(themeSwitch()) // make the drafts dirty
     await user.click(screen.getByRole('button', { name: 'go-account' }))
+    // The section switch is same-path, so it must NOT trip the leave-guard dialog…
+    expect(screen.queryByRole('button', { name: 'Уйти' })).not.toBeInTheDocument()
+    // …and the drafts survive, so the hint shows on the footerless section.
     expect(screen.getByText(/несохранённые изменения/i)).toBeInTheDocument()
+  })
+
+  it('guards an in-app leave with unsaved changes: Stay cancels, Leave proceeds', async () => {
+    const user = userEvent.setup()
+    const router = createMemoryRouter(
+      [
+        { path: '/settings', element: <SettingsPage /> },
+        { path: '/orders', element: <div>orders-page</div> },
+      ],
+      { initialEntries: ['/settings?section=appearance'] },
+    )
+    render(
+      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+        <SettingsContext.Provider value={settings()}>
+          <RouterProvider router={router} />
+        </SettingsContext.Provider>
+      </AuthContext.Provider>,
+    )
+    // Make the drafts dirty, then attempt to leave /settings entirely.
+    await user.click(themeSwitch())
+    await act(async () => {
+      await router.navigate('/orders')
+    })
+    // The guard holds the navigation and asks to confirm.
+    expect(await screen.findByText(/Уйти со страницы без сохранения/i)).toBeInTheDocument()
+    expect(screen.queryByText('orders-page')).not.toBeInTheDocument()
+
+    // "Остаться" cancels — we stay on the settings page.
+    await user.click(screen.getByRole('button', { name: 'Остаться' }))
+    expect(slider()).toBeInTheDocument()
+    expect(screen.queryByText('orders-page')).not.toBeInTheDocument()
+
+    // Attempt again, then "Уйти" — navigation proceeds to the orders route.
+    await act(async () => {
+      await router.navigate('/orders')
+    })
+    await user.click(await screen.findByRole('button', { name: 'Уйти' }))
+    expect(await screen.findByText('orders-page')).toBeInTheDocument()
   })
 })

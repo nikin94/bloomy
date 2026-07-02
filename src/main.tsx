@@ -1,7 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import * as Sentry from '@sentry/react'
-import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './context/AuthProvider.tsx'
 import { SettingsProvider } from './context/SettingsProvider.tsx'
 import { initSentry } from './observability/sentry.ts'
@@ -29,9 +28,9 @@ createRoot(document.getElementById('root')!).render(
     <Sentry.ErrorBoundary fallback={<AppCrashFallback />}>
       <AuthProvider>
         <SettingsProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
+          {/* App owns the data router (createBrowserRouter + RouterProvider), so
+              the providers sit above it — neither uses router hooks. */}
+          <App />
         </SettingsProvider>
       </AuthProvider>
     </Sentry.ErrorBoundary>

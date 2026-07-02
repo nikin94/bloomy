@@ -31,6 +31,10 @@
   "signOutError": "Couldn't sign out. Please try again.",
   "saved": "Saved",
   "unsavedHint": "You have unsaved changes. Save them in the Appearance or Orders section.",
+  "leaveTitle": "Unsaved changes",
+  "leaveBody": "Your settings changes aren't saved. Leave the page without saving?",
+  "leaveConfirm": "Leave",
+  "leaveStay": "Stay",
   "admin": {
     "title": "Test data (admin)",
     "resetLabel": "Delete old data before seeding",

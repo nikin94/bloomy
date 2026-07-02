@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useBlocker, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/authContext'
 import { useSettings } from '../../context/settingsContext'
@@ -9,6 +9,7 @@ import type { Language, ThemeMode } from '../../types/settings'
 import { currencyOptions, deliveryMethodOptions, paymentMethodOptions } from '../../types/order'
 import type { Currency, DeliveryMethod, PaymentMethod } from '../../types/order'
 import Button from '../../components/Button/Button'
+import Modal from '../../components/Modal/Modal'
 import Select from '../../components/Select/Select'
 import AdminSeedSection from '../../components/Settings/AdminSeedSection'
 import { settingsSectionsFor, isSettingsSection } from '../../components/Settings/sections'
@@ -25,12 +26,15 @@ import { isAdmin } from '../../lib/admin'
 // Theme/font/language update the whole app immediately for preview but are only
 // persisted on "Сохранить".
 //
-// Discard model on a PAGE (vs the old modal): a declarative <BrowserRouter> has no
-// navigation blocker, so instead of a dismiss-confirm we (a) revert the live
-// preview to the saved values when the page UNMOUNTS, so leaving without saving
-// never leaves the app showing an unsaved theme/font/language, and (b) arm the
-// browser's native beforeunload prompt while there are unsaved edits, covering a
-// tab close / refresh. "Отмена" reverts the edits in place; "Сохранить" persists.
+// Discard model on a PAGE (vs the old modal). With the app on a DATA router
+// (createBrowserRouter), leaving with unsaved edits is guarded three ways: (a)
+// useBlocker prompts a confirm dialog on an in-app navigation AWAY from /settings
+// while dirty (a same-page ?section= switch keeps the drafts and is NOT blocked);
+// (b) the live preview (theme/font/language) reverts to the saved values when the
+// page UNMOUNTS, so a leave never leaves the app showing an unsaved appearance;
+// (c) the browser's native beforeunload prompt covers a tab close / refresh — the
+// one navigation an in-app router can't mediate. "Отмена" reverts in place;
+// "Сохранить" persists.
 const SettingsPage = () => {
   const { t } = useTranslation(['settings', 'common'])
   // The default-method pickers show order-domain labels (delivery/payment
@@ -112,6 +116,22 @@ const SettingsPage = () => {
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [isDirty])
+
+  // In-app navigation guard (data router): block a route change that LEAVES
+  // /settings while there are unsaved edits, and confirm via a dialog. A same-path
+  // navigation — switching sections through `?section=` — keeps the pathname, so
+  // it is NOT blocked (drafts are intentionally preserved across sections). When
+  // blocked, the modal below offers Leave (blocker.proceed) / Stay (blocker.reset).
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isDirty && currentLocation.pathname !== nextLocation.pathname,
+  )
+  // Safety valve: if the edits stop being dirty while a block is pending (e.g. a
+  // Save resolved with the dialog still up), release the blocker so navigation
+  // isn't wedged.
+  useEffect(() => {
+    if (blocker.state === 'blocked' && !isDirty) blocker.reset()
+  }, [blocker, isDirty])
 
   const handleTheme = (next: ThemeMode) => {
     setSaved(false)
@@ -382,6 +402,23 @@ const SettingsPage = () => {
           </div>
         )}
       </div>
+
+      {/* Leave-confirm dialog: shown when useBlocker holds an in-app navigation
+          away from /settings with unsaved edits. Leave proceeds (the page then
+          unmounts and its cleanup reverts the live preview); Stay stays put. */}
+      {blocker.state === 'blocked' && (
+        <Modal title={t('settings:leaveTitle')} onClose={() => blocker.reset()}>
+          <p className="m-0 text-text">{t('settings:leaveBody')}</p>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => blocker.reset()}>
+              {t('settings:leaveStay')}
+            </Button>
+            <Button variant="danger" onClick={() => blocker.proceed()}>
+              {t('settings:leaveConfirm')}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
