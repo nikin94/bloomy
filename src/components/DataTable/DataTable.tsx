@@ -9,6 +9,7 @@ import {
 } from '@tanstack/react-table'
 import type { ColumnDef, Row, SortingState } from '@tanstack/react-table'
 import type { Order, OrderColumn } from '../../types/order'
+import { TABLE_CELL_BASE, TABLE_CELL_NOWRAP, TABLE_CELL_WRAP } from '../../styles/tableStyles'
 
 interface DataTableProps {
   orders: Order[]
@@ -94,12 +95,12 @@ const activationProps = (order: Order, onActivate: (order: Order) => void) => ({
 const OrderTableRow = ({
   row,
   highlighted,
-  widthById,
+  columnById,
   onActivate,
 }: {
   row: Row<Order>
   highlighted: boolean
-  widthById: Map<string, string | undefined>
+  columnById: Map<string, OrderColumn>
   onActivate: (order: Order) => void
 }) => (
   <tr
@@ -109,13 +110,14 @@ const OrderTableRow = ({
     {...activationProps(row.original, onActivate)}
   >
     {row.getVisibleCells().map((cell) => {
-      const width = widthById.get(cell.column.id)
+      const column = columnById.get(cell.column.id)
+      // Wrappable columns give up width (reflow) so the table fits a narrow
+      // desktop; the rest stay one line and truncate. See tableStyles.
+      const fit = column?.wrap ? TABLE_CELL_WRAP : TABLE_CELL_NOWRAP
       return (
         <td
           key={cell.id}
-          className={`max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-4 py-2.5 text-text${
-            width ? ` ${width}` : ''
-          }`}
+          className={`${TABLE_CELL_BASE} ${fit} text-text${column?.width ? ` ${column.width}` : ''}`}
         >
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </td>
@@ -240,16 +242,11 @@ const DataTable = ({
   // (TanStack recomputes its models when columns/data identity changes).
   const columnDefs = useMemo(() => columns.map(toColumnDef), [columns])
 
-  // Per-column width hints, keyed by column id. Looked up here (rather than
-  // threaded through TanStack's meta) so the width stays a plain DataTable
-  // concern and OrderColumn doesn't depend on the library's typing.
-  const widthById = useMemo(
-    () => new Map(columns.map((c) => [c.id, c.width])),
-    [columns],
-  )
-
-  // The full column config keyed by id, so the mobile card can pull each value
-  // (customer name, total, statuses, …) from the same source of truth as the table.
+  // The full column config keyed by id — the single source of truth the table
+  // header + rows read for per-column width and wrap hints, and the mobile card
+  // reads for each value (customer name, total, statuses, …). Kept a plain
+  // DataTable concern (not threaded through TanStack's meta) so OrderColumn stays
+  // free of the library's typing.
   const columnById = useMemo(() => new Map(columns.map((c) => [c.id, c])), [columns])
 
   // Sorting is local, ephemeral state: clicking a header sorts the in-memory
@@ -302,7 +299,9 @@ const DataTable = ({
                     key={header.id}
                     aria-sort={header.column.getCanSort() ? ariaSort(sorted) : undefined}
                     className={`sticky top-0 z-10 whitespace-nowrap border-b border-border bg-bg px-4 py-3 text-left font-semibold text-heading${
-                      widthById.get(header.column.id) ? ` ${widthById.get(header.column.id)}` : ''
+                      columnById.get(header.column.id)?.width
+                        ? ` ${columnById.get(header.column.id)?.width}`
+                        : ''
                     }`}
                   >
                     {header.column.getCanSort() ? (
@@ -336,7 +335,7 @@ const DataTable = ({
               key={row.id}
               row={row}
               highlighted={row.original.id === highlightOrderId}
-              widthById={widthById}
+              columnById={columnById}
               onActivate={onRowClick}
             />
           ))}

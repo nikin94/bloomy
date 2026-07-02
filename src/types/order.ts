@@ -273,6 +273,12 @@ interface OrderColumnBase {
   // column's header and cells in the desktop table, so a few columns can be
   // nudged wider/narrower than their content-driven default. Omit for auto width.
   width?: string
+  // When true, this column's cells WRAP long text onto more lines instead of
+  // staying on one line (and being capped + ellipsised). In the auto-layout
+  // table this is what lets a narrow desktop fit without a horizontal scrollbar:
+  // the wrappable columns (customer, address, the plant list) give up width and
+  // reflow, while the short fixed columns (№, date, total, statuses) keep theirs.
+  wrap?: boolean
 }
 
 // A column backed by a raw Order field (default String() rendering).
@@ -381,8 +387,15 @@ export function buildOrderColumns(
       header: t('columns.customer'),
       format: (o) => getCustomerName(o.customerId),
       sortValue: (o) => getCustomerName(o.customerId),
+      wrap: true,
     },
-    { id: 'address', header: t('columns.address'), field: 'address', sortValue: (o) => o.address },
+    {
+      id: 'address',
+      header: t('columns.address'),
+      field: 'address',
+      sortValue: (o) => o.address,
+      wrap: true,
+    },
     // One plant per line, most valuable first. Rendered richly by DataTable
     // (the name in bold, the quantity as a plain number) keyed off this id —
     // bold-name-plus-quantity can't be expressed as a plain format string.
@@ -395,6 +408,9 @@ export function buildOrderColumns(
       id: 'plants',
       header: t('columns.plants'),
       format: (o) => plantsByValueDesc(o.plants).map(plantLineLabel).join('\n'),
+      // Each plant line already renders on its own row; wrapping also lets a long
+      // plant name reflow rather than push the column (and the table) wider.
+      wrap: true,
     },
     {
       id: 'total',
