@@ -203,10 +203,11 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
   const currentSection = isSettingsSection(requestedSection) ? requestedSection : 'appearance'
 
   // The desktop settings flyout: a second-level panel that slides out horizontally
-  // from under the main rail when "Настройки" is toggled. Forced OPEN while on the
-  // settings route (so the section list stays available there) and closed when you
-  // leave it; the toggle flips it in between (e.g. to peek the sections from
-  // another page — navigation happens only when a section is picked).
+  // from under the main rail when "Настройки" is toggled. It STARTS open when you
+  // enter the settings route (so the section list is there on arrival) and closes
+  // when you leave; the toggle flips it in between — including closing it in place
+  // while still on /settings, or peeking the sections from another page.
+  // Navigation happens only when a section is picked.
   const [flyoutOpen, setFlyoutOpen] = useState(onSettings)
   // Sync the flyout to the route by adjusting state during render (the pattern
   // React recommends over an effect): entering /settings forces it open, leaving
