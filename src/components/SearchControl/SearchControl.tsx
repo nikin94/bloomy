@@ -116,8 +116,10 @@ const SearchControl = ({
           aria-expanded={false}
           className={
             'flex shrink-0 items-center justify-center rounded-md border border-border p-2 text-heading transition-colors hover:bg-primary-bg ' +
-            'md:w-full md:border-0 md:py-2 md:text-sm md:font-medium ' +
-            (collapsed ? 'md:justify-center md:px-0 ' : 'md:justify-start md:gap-2 md:px-3 ') +
+            // In the rail the loupe is always left-aligned at the same px-3 offset as
+            // the nav rows; collapsing only drops the label, so the icon stays put
+            // (no slide to centre) and lines up with the icon column.
+            'md:w-full md:justify-start md:gap-2 md:border-0 md:px-3 md:py-2 md:text-sm md:font-medium ' +
             'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
           }
         >

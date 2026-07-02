@@ -217,35 +217,33 @@ const CollapseChevron = ({ className = 'size-4' }: { className?: string }) => (
 )
 
 // A nav destination in the vertical rail/drawer: a full-width row, filled when its
-// route is active. When the rail is collapsed the row centres its icon and drops
-// the label (px-0 + justify-center), so it reads as a compact icon strip.
-const navRowClass = (isActive: boolean, collapsed: boolean) =>
+// route is active. The row is ALWAYS left-aligned (icon at a fixed px-3 offset) —
+// collapsing the rail only drops the label, so the icon keeps its exact position
+// instead of sliding to the centre mid-animation. In the thin strip the icon then
+// reads as a tidy left-aligned column.
+const navRowClass = (isActive: boolean) =>
   [
-    'flex items-center rounded-md py-2 text-sm font-medium no-underline transition-colors',
-    collapsed ? 'justify-center px-0' : 'gap-2 px-3',
+    'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium no-underline transition-colors',
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
     isActive ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg',
   ].join(' ')
 
 // The "Новый заказ" ACTION (it creates) gets the primary treatment so it reads as
-// the main action, not a fifth nav tab. Full-width to match the rail; collapsed it
-// shows just the plus.
-const createClass = (collapsed: boolean) =>
-  [
-    'flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-primary py-2',
-    collapsed ? 'px-0' : 'px-3',
-    'text-sm font-medium text-white no-underline transition-opacity hover:opacity-90',
-    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
-  ].join(' ')
+// the main action, not a fifth nav tab. Left-aligned like the nav rows (same px-3
+// icon offset) so its plus stays put when the rail collapses to icons — the label
+// just drops.
+const createClass =
+  'flex items-center gap-2 whitespace-nowrap rounded-md bg-primary px-3 py-2 ' +
+  'text-sm font-medium text-white no-underline transition-opacity hover:opacity-90 ' +
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 
 // The "Настройки" control. It is no longer a link to /settings — it TOGGLES the
 // section nav (a flyout on desktop, an accordion in the mobile drawer); navigation
 // to /settings happens only when a section is picked. Styled like a nav
-// destination, filled when the settings screen is the active route.
-const settingsToggleClass = (active: boolean, collapsed: boolean) =>
+// destination (same left-aligned px-3 icon offset), filled when settings is active.
+const settingsToggleClass = (active: boolean) =>
   [
-    'flex items-center rounded-md py-2 text-sm font-medium transition-colors',
-    collapsed ? 'justify-center px-0' : 'gap-2 px-3',
+    'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
     active ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg',
   ].join(' ')
@@ -392,7 +390,7 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
           onClick={onNavigate}
           title={collapsed ? label : undefined}
           aria-label={collapsed ? label : undefined}
-          className={({ isActive }) => navRowClass(isActive, collapsed)}
+          className={({ isActive }) => navRowClass(isActive)}
         >
           <Icon className="size-5 shrink-0" />
           {!collapsed && <span className="truncate">{label}</span>}
@@ -430,7 +428,7 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
         data-collapsed={collapsed}
         aria-label={t('menu')}
         className={`relative hidden shrink-0 flex-col gap-2 border-r border-border p-3 transition-[width] duration-300 ease-out motion-reduce:transition-none md:flex ${
-          collapsed ? 'w-16' : 'w-52'
+          collapsed ? 'w-16' : 'w-48'
         }`}
       >
         {/* Collapse toggle: a small chevron button straddling the rail's right edge
@@ -443,7 +441,12 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
           title={collapsed ? t('expandSidebar') : t('collapseSidebar')}
           aria-expanded={!collapsed}
           aria-controls="sidebar-nav"
-          className="absolute right-0 top-1/2 z-30 flex size-6 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full border border-border bg-bg text-text shadow-sm transition-colors hover:bg-primary-bg hover:text-heading focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          // The button straddles the rail's right border, so its fill must stay
+          // OPAQUE — a translucent hover (bg-primary-bg is an alpha tint) would let
+          // the border line show through under it. So keep the solid bg-bg on hover
+          // and signal hover with a colour change instead: the border + icon turn
+          // primary.
+          className="absolute right-0 top-1/2 z-30 flex size-6 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full border border-border bg-bg text-text shadow-sm transition-colors hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           <CollapseChevron
             className={`size-4 transition-transform motion-reduce:transition-none ${collapsed ? 'rotate-180' : ''}`}
@@ -452,11 +455,11 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
 
         <NavLink
           to="/orders/new"
-          className={createClass(collapsed)}
+          className={createClass}
           title={collapsed ? t('newOrder') : undefined}
           aria-label={collapsed ? t('newOrder') : undefined}
         >
-          <PlusIcon />
+          <PlusIcon className="size-4 shrink-0" />
           {!collapsed && t('newOrder')}
         </NavLink>
 
@@ -485,9 +488,9 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
             aria-controls="settings-flyout"
             title={collapsed ? t('settings') : undefined}
             aria-label={collapsed ? t('settings') : undefined}
-            className={settingsToggleClass(onSettings, collapsed)}
+            className={settingsToggleClass(onSettings)}
           >
-            <GearIcon />
+            <GearIcon className="size-5 shrink-0" />
             {!collapsed && t('settings')}
           </button>
         </div>
@@ -505,10 +508,10 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
         aria-label={tSettings('tabsAria')}
         inert={!flyoutOpen}
         className={`hidden shrink-0 overflow-hidden bg-surface transition-[width] duration-300 ease-out motion-reduce:transition-none md:block ${
-          flyoutOpen ? 'w-44 border-r border-border' : 'w-0'
+          flyoutOpen ? 'w-40 border-r border-border' : 'w-0'
         }`}
       >
-        <div className="flex w-44 flex-col gap-1 p-3">{sectionLinks()}</div>
+        <div className="flex w-40 flex-col gap-1 p-3">{sectionLinks()}</div>
       </nav>
 
       {/* Mobile top bar (below md). Left: the current page title (or the back
@@ -586,8 +589,8 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
           menuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <NavLink to="/orders/new" className={createClass(false)} onClick={closeMenu}>
-          <PlusIcon />
+        <NavLink to="/orders/new" className={createClass} onClick={closeMenu}>
+          <PlusIcon className="size-4 shrink-0" />
           {t('addOrder')}
         </NavLink>
 
@@ -604,9 +607,9 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
             onClick={() => setSettingsExpanded((open) => !open)}
             aria-expanded={settingsExpanded}
             aria-controls="drawer-settings-sections"
-            className={settingsToggleClass(onSettings, false)}
+            className={settingsToggleClass(onSettings)}
           >
-            <GearIcon />
+            <GearIcon className="size-5 shrink-0" />
             {t('settings')}
             <ChevronIcon
               className={`ml-auto size-4 transition-transform motion-reduce:transition-none ${settingsExpanded ? 'rotate-180' : ''}`}
