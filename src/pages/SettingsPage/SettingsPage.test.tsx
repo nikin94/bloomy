@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter, useSearchParams } from 'react-router-dom'
 import type { User } from 'firebase/auth'
 import { AuthContext } from '../../context/authContext'
 import { SettingsContext } from '../../context/settingsContext'
 import type { SettingsState } from '../../context/settingsContext'
 
-// The account tab imports signOutUser; keep the real Firebase SDK out of the test.
+// The account section imports signOutUser; keep the real Firebase SDK out of the test.
 const signOutUser = vi.fn()
 vi.mock('../../firebase/auth', () => ({ signOutUser: (...args: unknown[]) => signOutUser(...args) }))
 
@@ -34,14 +35,16 @@ const settings = (over: Partial<SettingsState> = {}): SettingsState => ({
 
 const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
 
-// The page needs no router (it has no links / navigation hooks) — just the auth
-// and settings contexts, like the former dialog. Returns the RTL result so tests
-// can unmount to exercise the leave-time preview revert.
-const renderPage = (state = settings()) =>
+// The active section now travels in the URL (`?section=`), so the page needs a
+// router. Render at the section under test. Returns the RTL result so tests can
+// unmount to exercise the leave-time preview revert.
+const renderPage = (state = settings(), section = 'appearance') =>
   render(
     <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
       <SettingsContext.Provider value={state}>
-        <SettingsPage />
+        <MemoryRouter initialEntries={[`/settings?section=${section}`]}>
+          <SettingsPage />
+        </MemoryRouter>
       </SettingsContext.Provider>
     </AuthContext.Provider>,
   )
@@ -51,10 +54,6 @@ const themeSwitch = () => screen.getByRole('switch', { name: 'Тёмная те�
 const saveButton = () => screen.getByRole('button', { name: 'Сохранить' })
 const cancelButton = () => screen.getByRole('button', { name: 'Отмена' })
 
-// Settings are split across tabs; jump to one by its label.
-const tab = (name: string) => screen.getByRole('tab', { name })
-const goToTab = (user: ReturnType<typeof userEvent.setup>, name: string) => user.click(tab(name))
-
 beforeEach(() => {
   vi.clearAllMocks()
   saveSettings.mockResolvedValue(undefined)
@@ -62,36 +61,24 @@ beforeEach(() => {
 })
 
 describe('SettingsPage', () => {
-  it('opens on the Appearance tab with the font-size slider', () => {
+  it('renders the section from the URL — appearance shows the font-size slider', () => {
     renderPage()
-    expect(tab('Внешний вид')).toHaveAttribute('aria-selected', 'true')
     expect(slider()).toBeInTheDocument()
+    // Appearance is not an account section, so no sign-out here.
+    expect(screen.queryByRole('button', { name: 'Выйти' })).not.toBeInTheDocument()
   })
 
-  it('shows the user name and sign-out on the Account tab', async () => {
-    const user = userEvent.setup()
-    renderPage()
-    expect(screen.queryByRole('button', { name: 'Выйти' })).not.toBeInTheDocument()
-    await goToTab(user, 'Аккаунт')
+  it('shows the user name and sign-out on the account section', () => {
+    renderPage(settings(), 'account')
     expect(screen.getByText('Tester')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Выйти' })).toBeInTheDocument()
+    // Account is action-only → no Save/Cancel footer.
+    expect(screen.queryByRole('button', { name: 'Сохранить' })).not.toBeInTheDocument()
   })
 
-  it('switches tabs with arrow keys (ARIA tabs pattern)', async () => {
-    const user = userEvent.setup()
-    renderPage()
-    tab('Внешний вид').focus()
-    await user.keyboard('{ArrowRight}')
-    expect(tab('Заказы')).toHaveAttribute('aria-selected', 'true')
-    expect(tab('Заказы')).toHaveFocus()
-    expect(screen.getByRole('combobox', { name: 'Способ доставки по умолчанию' })).toBeInTheDocument()
-  })
-
-  it('navigates sections via the phone section picker (mobile control)', async () => {
-    const user = userEvent.setup()
-    renderPage()
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Разделы настроек' }), 'orders')
-    expect(screen.getByRole('combobox', { name: 'Способ доставки по умолчанию' })).toBeInTheDocument()
+  it('falls back to appearance for an unknown section param', () => {
+    renderPage(settings(), 'nope')
+    expect(slider()).toBeInTheDocument()
   })
 
   it('reflects the current theme and toggles it live without persisting', async () => {
@@ -162,8 +149,7 @@ describe('SettingsPage', () => {
 
   it('saves the chosen order defaults (delivery + payment)', async () => {
     const user = userEvent.setup()
-    renderPage()
-    await goToTab(user, 'Заказы')
+    renderPage(settings(), 'orders')
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Способ доставки по умолчанию' }),
       'cdek',
@@ -180,8 +166,7 @@ describe('SettingsPage', () => {
 
   it('saves the chosen default currency', async () => {
     const user = userEvent.setup()
-    renderPage()
-    await goToTab(user, 'Заказы')
+    renderPage(settings(), 'orders')
     await user.selectOptions(screen.getByRole('combobox', { name: 'Валюта по умолчанию' }), 'USD')
     await user.click(saveButton())
     expect(saveSettings).toHaveBeenCalledWith(expect.objectContaining({ defaultCurrency: 'USD' }))
@@ -234,17 +219,36 @@ describe('SettingsPage', () => {
   it('disables sign-out while a save is in flight', async () => {
     const user = userEvent.setup()
     saveSettings.mockReturnValueOnce(new Promise(() => {}))
-    renderPage()
+    // Render the page plus an in-router section switcher, so switching from the
+    // appearance section (where Save lives) to the account section keeps the page
+    // MOUNTED — the in-flight `saving` state must persist across the switch.
+    const SectionSwitcher = () => {
+      const [, setParams] = useSearchParams()
+      return (
+        <button type="button" onClick={() => setParams({ section: 'account' })}>
+          go-account
+        </button>
+      )
+    }
+    render(
+      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+        <SettingsContext.Provider value={settings()}>
+          <MemoryRouter initialEntries={['/settings?section=appearance']}>
+            <SettingsPage />
+            <SectionSwitcher />
+          </MemoryRouter>
+        </SettingsContext.Provider>
+      </AuthContext.Provider>,
+    )
     fireEvent.change(slider(), { target: { value: '1.25' } })
     await user.click(saveButton())
-    await goToTab(user, 'Аккаунт')
+    await user.click(screen.getByRole('button', { name: 'go-account' }))
     expect(screen.getByRole('button', { name: 'Выйти' })).toBeDisabled()
   })
 
-  it('signs out from the account tab', async () => {
+  it('signs out from the account section', async () => {
     const user = userEvent.setup()
-    renderPage()
-    await goToTab(user, 'Аккаунт')
+    renderPage(settings(), 'account')
     await user.click(screen.getByRole('button', { name: 'Выйти' }))
     expect(signOutUser).toHaveBeenCalledTimes(1)
   })
@@ -252,8 +256,7 @@ describe('SettingsPage', () => {
   it('surfaces a sign-out failure inline', async () => {
     const user = userEvent.setup()
     signOutUser.mockRejectedValueOnce(new Error('Сеть недоступна'))
-    renderPage()
-    await goToTab(user, 'Аккаунт')
+    renderPage(settings(), 'account')
     await user.click(screen.getByRole('button', { name: 'Выйти' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Сеть недоступна')
   })

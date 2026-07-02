@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Button from '../Button/Button'
 import SyncStatus from '../SyncStatus/SyncStatus'
+import { useAuth } from '../../context/authContext'
+import { isAdmin } from '../../lib/admin'
+import { settingsSectionsFor, isSettingsSection } from '../Settings/sections'
 
 // Navigation destinations, defined once so a new section is added in ONE place
 // and appears in both the desktop rail and the mobile drawer. `end` keeps
@@ -127,15 +130,42 @@ const createLinkClass =
   'text-sm font-medium text-white no-underline transition-opacity hover:opacity-90 ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
 
-// Settings link, styled like a nav destination (it now lives IN the button list,
-// not as a special right-corner gear). Same active-fill treatment as navLinkClass,
-// plus a gap for its leading gear icon. Navigates to the /settings page (was a
-// dialog before Stage 2).
-const settingsLinkClass = ({ isActive }: { isActive: boolean }) =>
+const ChevronIcon = ({ className = 'size-4' }: { className?: string }) => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+)
+
+// The "Настройки" control. It is no longer a link to /settings — it TOGGLES the
+// section nav (a flyout on desktop, an accordion in the mobile drawer); navigation
+// to /settings happens only when a section is picked. Styled like a nav
+// destination (gap for the leading gear icon), filled when the settings screen is
+// the active route so it still reads as "you are in settings".
+const settingsToggleClass = (active: boolean) =>
   [
-    'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium no-underline transition-colors',
+    'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
-    isActive ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg',
+    active ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg',
+  ].join(' ')
+
+// A section row in the settings nav (flyout / drawer accordion). A LIGHTER register
+// than the main destinations — muted normal-weight text, the active section
+// accent-coloured on a soft bg-primary-bg tint — so the second level reads as
+// subordinate to the main nav rather than a peer of it.
+const sectionLinkClass = (selected: boolean) =>
+  [
+    'flex items-center rounded-md px-3 py-2 text-sm no-underline transition-colors',
+    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+    selected ? 'bg-primary-bg font-semibold text-primary' : 'font-normal text-text hover:text-heading',
   ].join(' ')
 
 // App-wide navigation, as a LEFT sidebar (replaces the former top header). On wide
@@ -152,13 +182,42 @@ const settingsLinkClass = ({ isActive }: { isActive: boolean }) =>
 // stays unaware of what a page contributes.
 const Sidebar = ({ actions }: { actions?: ReactNode }) => {
   const { t } = useTranslation('nav')
+  // Section labels live in the `settings` namespace (shared with the page).
+  const { t: tSettings } = useTranslation('settings')
   const location = useLocation()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const [searchParams] = useSearchParams()
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
   // Inner pages (order/customer detail, the create/edit form) get a mobile "up"
   // control; the top-level nav destinations are the top screen, so they don't.
   const showBack = !TOP_LEVEL_PATHS.includes(location.pathname)
+
+  // The settings sections + the active one (from the URL `?section=`). The nav here
+  // and the settings page read the same param, so the highlight always matches the
+  // shown panel. Admin section only for an admin.
+  const onSettings = location.pathname === '/settings'
+  const sections = settingsSectionsFor(isAdmin(user?.uid) && user !== null)
+  const requestedSection = searchParams.get('section')
+  const currentSection = isSettingsSection(requestedSection) ? requestedSection : 'appearance'
+
+  // The desktop settings flyout: a second-level panel that slides out horizontally
+  // from under the main rail when "Настройки" is toggled. Forced OPEN while on the
+  // settings route (so the section list stays available there) and closed when you
+  // leave it; the toggle flips it in between (e.g. to peek the sections from
+  // another page — navigation happens only when a section is picked).
+  const [flyoutOpen, setFlyoutOpen] = useState(onSettings)
+  // Sync the flyout to the route by adjusting state during render (the pattern
+  // React recommends over an effect): entering /settings forces it open, leaving
+  // forces it closed; the toggle flips it while the route is unchanged.
+  const [wasOnSettings, setWasOnSettings] = useState(onSettings)
+  if (onSettings !== wasOnSettings) {
+    setWasOnSettings(onSettings)
+    setFlyoutOpen(onSettings)
+  }
+  // The mobile drawer's settings accordion — independent of the desktop flyout.
+  const [settingsExpanded, setSettingsExpanded] = useState(onSettings)
 
   // Close the mobile drawer on Escape, so keyboard users aren't trapped with the
   // overlay open. Only listens while the drawer is open.
@@ -180,14 +239,24 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
       </NavLink>
     ))
 
-  // `onNavigate` closes the drawer after a pick (a no-op on the desktop rail),
-  // matching the nav destinations.
-  const settingsLink = (onNavigate?: () => void) => (
-    <NavLink to="/settings" className={settingsLinkClass} onClick={onNavigate}>
-      <GearIcon />
-      {t('settings')}
-    </NavLink>
-  )
+  // The settings section links (flyout / drawer accordion). Each navigates to
+  // /settings?section=<key> — the only way onto the settings screen. `onNavigate`
+  // closes the drawer after a pick (a no-op in the desktop flyout).
+  const sectionLinks = (onNavigate?: () => void) =>
+    sections.map((key) => {
+      const selected = onSettings && currentSection === key
+      return (
+        <Link
+          key={key}
+          to={`/settings?section=${key}`}
+          onClick={onNavigate}
+          aria-current={selected ? 'page' : undefined}
+          className={sectionLinkClass(selected)}
+        >
+          {tSettings(`tabs.${key}` as const)}
+        </Link>
+      )
+    })
 
   return (
     <>
@@ -216,8 +285,35 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
         <div className="mt-auto flex flex-col gap-1 border-t border-border pt-2">
           {actions && <div className="flex flex-col items-stretch gap-1">{actions}</div>}
           <SyncStatus />
-          {settingsLink()}
+          <button
+            type="button"
+            onClick={() => setFlyoutOpen((open) => !open)}
+            aria-expanded={flyoutOpen}
+            aria-controls="settings-flyout"
+            className={settingsToggleClass(onSettings)}
+          >
+            <GearIcon />
+            {t('settings')}
+          </button>
         </div>
+      </nav>
+
+      {/* Desktop settings flyout (md and up): a second-level section nav that slides
+          out horizontally from under the main rail. Animates its width (0 ↔ w-52)
+          so it appears to emerge from behind the rail; the inner column keeps a
+          fixed width so its rows don't reflow mid-animation. `inert` when closed
+          drops its links from the tab order. A section pick navigates to
+          /settings?section=… (the only route onto the settings screen). */}
+      <nav
+        id="settings-flyout"
+        data-testid="settings-flyout"
+        aria-label={tSettings('tabsAria')}
+        inert={!flyoutOpen}
+        className={`hidden shrink-0 overflow-hidden bg-surface transition-[width] duration-200 ease-out motion-reduce:transition-none md:block ${
+          flyoutOpen ? 'w-52 border-r border-border' : 'w-0'
+        }`}
+      >
+        <div className="flex w-52 flex-col gap-1 p-4">{sectionLinks()}</div>
       </nav>
 
       {/* Mobile top bar (below md): burger opens the left drawer; back + page
@@ -289,7 +385,30 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
 
         <div className="flex flex-col gap-1">{destinations(closeMenu)}</div>
 
-        <div className="mt-auto flex flex-col gap-1">{settingsLink(closeMenu)}</div>
+        {/* Settings: a toggle that expands the section list inline (accordion) —
+            no room for a horizontal flyout on a phone. Picking a section navigates
+            to /settings and closes the drawer. */}
+        <div className="mt-auto flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={() => setSettingsExpanded((open) => !open)}
+            aria-expanded={settingsExpanded}
+            aria-controls="drawer-settings-sections"
+            className={settingsToggleClass(onSettings)}
+          >
+            <GearIcon />
+            {t('settings')}
+            <ChevronIcon
+              className={`ml-auto size-4 transition-transform ${settingsExpanded ? 'rotate-180' : ''}`}
+            />
+          </button>
+          <div
+            id="drawer-settings-sections"
+            className={settingsExpanded ? 'flex flex-col gap-1 pl-4' : 'hidden'}
+          >
+            {sectionLinks(closeMenu)}
+          </div>
+        </div>
       </nav>
     </>
   )

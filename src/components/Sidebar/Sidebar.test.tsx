@@ -6,7 +6,7 @@ import type { ReactNode } from 'react'
 import type { User } from 'firebase/auth'
 import { AuthContext } from '../../context/authContext'
 
-// Stub the auth module: the settings dialog (opened from the sidebar) imports
+// Stub the auth module: the settings screen (reached from the sidebar) imports
 // signOutUser, so keep the real Firebase SDK out of the test.
 vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
 
@@ -15,11 +15,12 @@ import Sidebar from './Sidebar'
 
 const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
 
-// Renders the current pathname so the back button's route-parent navigation is
-// observable without mocking the router.
+// Renders the current pathname + search so both the back button's route-parent
+// navigation and the settings section links (/settings?section=…) are observable
+// without mocking the router.
 const LocationProbe = () => {
   const loc = useLocation()
-  return <div data-testid="loc">{loc.pathname}</div>
+  return <div data-testid="loc">{loc.pathname}{loc.search}</div>
 }
 
 const renderSidebar = (path = '/orders', actions?: ReactNode) =>
@@ -44,11 +45,46 @@ beforeEach(() => {
 })
 
 describe('Sidebar (desktop rail)', () => {
-  it('links the settings destination in the button list (a page now, not a dialog)', () => {
+  it('toggles the settings section flyout; sections link to /settings?section=…', async () => {
+    const user = userEvent.setup()
     renderSidebar()
-    // Stage 2: settings is a nav destination — a link to /settings, not a dialog opener.
-    expect(rail().getByRole('link', { name: 'Настройки' })).toHaveAttribute('href', '/settings')
+    // Stage 3: settings is a TOGGLE (not a link) — it reveals the section flyout;
+    // navigation onto the settings screen happens only when a section is picked.
+    const toggle = rail().getByRole('button', { name: 'Настройки' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+
+    const flyout = within(screen.getByTestId('settings-flyout'))
+    expect(flyout.getByRole('link', { name: 'Внешний вид' })).toHaveAttribute(
+      'href',
+      '/settings?section=appearance',
+    )
+    expect(flyout.getByRole('link', { name: 'Заказы' })).toHaveAttribute(
+      'href',
+      '/settings?section=orders',
+    )
+  })
+
+  it('navigates to the settings screen only when a section is picked', async () => {
+    const user = userEvent.setup()
+    renderSidebar()
+    // Opening the flyout does not leave the current page…
+    await user.click(rail().getByRole('button', { name: 'Настройки' }))
+    expect(screen.getByTestId('loc')).toHaveTextContent(/^\/orders$/)
+    // …picking a section does.
+    await user.click(within(screen.getByTestId('settings-flyout')).getByRole('link', { name: 'Заказы' }))
+    expect(screen.getByTestId('loc')).toHaveTextContent('/settings?section=orders')
+  })
+
+  it('opens the flyout and marks the active section when already on /settings', () => {
+    renderSidebar('/settings?section=orders')
+    expect(rail().getByRole('button', { name: 'Настройки' })).toHaveAttribute('aria-expanded', 'true')
+    const flyout = within(screen.getByTestId('settings-flyout'))
+    expect(flyout.getByRole('link', { name: 'Заказы' })).toHaveAttribute('aria-current', 'page')
+    expect(flyout.getByRole('link', { name: 'Внешний вид' })).not.toHaveAttribute('aria-current')
   })
 
   it('links the primary create action and the nav destinations', () => {
@@ -84,14 +120,38 @@ describe('Sidebar (mobile drawer)', () => {
     )
   })
 
-  it('holds the create action, destinations, and settings in the drawer', () => {
+  it('holds the create action, destinations, and a settings accordion in the drawer', async () => {
+    const user = userEvent.setup()
     renderSidebar()
     expect(drawer().getByRole('link', { name: 'Добавить заказ' })).toHaveAttribute(
       'href',
       '/orders/new',
     )
-    expect(drawer().getByRole('link', { name: 'Заказы' })).toHaveAttribute('href', '/orders')
-    expect(drawer().getByRole('link', { name: 'Настройки' })).toHaveAttribute('href', '/settings')
+    // Assert a destination whose name doesn't collide with a settings section
+    // ("Клиенты" — vs "Заказы", which is both a destination and a section).
+    expect(drawer().getByRole('link', { name: 'Клиенты' })).toHaveAttribute('href', '/customers')
+    // Settings is a toggle expanding the section list; a section links to /settings?section=…
+    const settingsToggle = drawer().getByRole('button', { name: 'Настройки' })
+    expect(settingsToggle).toHaveAttribute('aria-expanded', 'false')
+    await user.click(settingsToggle)
+    expect(settingsToggle).toHaveAttribute('aria-expanded', 'true')
+    expect(drawer().getByRole('link', { name: 'Внешний вид' })).toHaveAttribute(
+      'href',
+      '/settings?section=appearance',
+    )
+  })
+
+  it('closes the drawer when a settings section is picked', async () => {
+    const user = userEvent.setup()
+    renderSidebar()
+    await user.click(burger())
+    await user.click(drawer().getByRole('button', { name: 'Настройки' }))
+    await user.click(drawer().getByRole('link', { name: 'Внешний вид' }))
+    expect(screen.getByTestId('loc')).toHaveTextContent('/settings?section=appearance')
+    expect(screen.getByRole('button', { name: 'Открыть меню' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
   })
 
   it('closes the drawer after a destination is chosen', async () => {
