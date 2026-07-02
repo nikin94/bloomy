@@ -25,11 +25,15 @@ const LocationProbe = () => {
   return <div data-testid="loc">{loc.pathname}{loc.search}</div>
 }
 
-const renderSidebar = (path = '/orders', actions?: ReactNode) =>
+const renderSidebar = (
+  path = '/orders',
+  actions?: ReactNode,
+  onDrawerOpenChange?: (open: boolean) => void,
+) =>
   render(
     <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
       <MemoryRouter initialEntries={[path]}>
-        <Sidebar actions={actions} />
+        <Sidebar actions={actions} onDrawerOpenChange={onDrawerOpenChange} />
         <LocationProbe />
       </MemoryRouter>
     </AuthContext.Provider>,
@@ -180,6 +184,24 @@ describe('Sidebar (desktop rail)', () => {
 })
 
 describe('Sidebar (mobile drawer)', () => {
+  it('reports open-state to the host and locks body scroll while the drawer is open', async () => {
+    const user = userEvent.setup()
+    const onDrawerOpenChange = vi.fn()
+    renderSidebar('/orders', undefined, onDrawerOpenChange)
+    // Reported closed on mount; body scroll unlocked.
+    expect(onDrawerOpenChange).toHaveBeenLastCalledWith(false)
+
+    await user.click(burger())
+    // Open → host is told (so it can inert the content) and body scroll is locked.
+    expect(onDrawerOpenChange).toHaveBeenLastCalledWith(true)
+    expect(document.body.style.overflow).toBe('hidden')
+
+    await user.click(screen.getByRole('button', { name: 'Закрыть меню' }))
+    // Close → reported closed and the scroll lock is released.
+    expect(onDrawerOpenChange).toHaveBeenLastCalledWith(false)
+    expect(document.body.style.overflow).not.toBe('hidden')
+  })
+
   it('toggles the drawer open and closed from the burger', async () => {
     const user = userEvent.setup()
     renderSidebar()

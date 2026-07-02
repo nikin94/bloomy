@@ -29,12 +29,15 @@ vi.mock('../../firebase/orders', () => ({
   fetchOrders: (...a: unknown[]) => fetchOrders(...a),
   newOrderId: () => 'pre-generated-order-id',
 }))
-// The create form mounts the OrderPhotos gallery, which talks to the Storage
-// layer; stub it so no real Firebase Storage is touched.
+// The create form's photo picker holds files locally and uploads them on SUBMIT;
+// stub the Storage layer so no real Firebase is touched, and expose the mocks so
+// the deferred-upload flow can be asserted.
+const uploadOrderPhoto = vi.fn()
+const deleteOrderPhoto = vi.fn().mockResolvedValue(undefined)
 vi.mock('../../firebase/photos', () => ({
-  uploadOrderPhoto: vi.fn(),
+  uploadOrderPhoto: (...a: unknown[]) => uploadOrderPhoto(...a),
   getPhotoUrl: vi.fn(),
-  deleteOrderPhoto: vi.fn().mockResolvedValue(undefined),
+  deleteOrderPhoto: (...a: unknown[]) => deleteOrderPhoto(...a),
 }))
 // Stub signOutUser so the real Firebase SDK stays out of the test.
 vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
@@ -105,6 +108,10 @@ beforeEach(() => {
   fetchCustomer.mockResolvedValue(null)
   fetchOrders.mockResolvedValue([])
   createCustomer.mockResolvedValue('new-customer-id')
+  deleteOrderPhoto.mockResolvedValue(undefined)
+  // jsdom has no object-URL support; the local photo previews need it.
+  globalThis.URL.createObjectURL = vi.fn(() => 'blob:preview')
+  globalThis.URL.revokeObjectURL = vi.fn()
 })
 
 describe('OrderForm', () => {
@@ -125,12 +132,63 @@ describe('OrderForm', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('mounts the photo gallery on a create form (an order id is known up front)', async () => {
+  it('mounts the local photo picker on a create form', async () => {
     renderForm()
     await screen.findByLabelText('Имя клиента')
-    // The OrderPhotos gallery renders its "Фото" heading + an add-photo tile.
+    // The picker renders its "Фото" heading + an add-photo tile.
     expect(screen.getByRole('heading', { name: 'Фото' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Добавить фото' })).toBeInTheDocument()
+  })
+
+  it('holds picked photos locally and only uploads them on submit, saving their paths', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    uploadOrderPhoto.mockResolvedValue('orders/owner-1/pre-generated-order-id/p.jpg')
+    const { container } = renderForm({ onSubmit })
+    await screen.findByLabelText('Имя клиента')
+    await user.type(screen.getByLabelText('Имя клиента'), 'Борис')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Цена'), '100')
+
+    const file = new File(['x'], 'p.jpg', { type: 'image/jpeg' })
+    await user.upload(container.querySelector('input[type="file"]') as HTMLInputElement, file)
+    // Nothing uploaded yet — the pick is deferred to submit.
+    expect(uploadOrderPhoto).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    // Uploaded under the pre-generated order id, and the paths ride on the order.
+    expect(uploadOrderPhoto).toHaveBeenCalledWith('owner-1', 'pre-generated-order-id', file)
+    const [orderArg, orderIdArg] = onSubmit.mock.calls[0]
+    expect(orderArg.photos).toEqual(['orders/owner-1/pre-generated-order-id/p.jpg'])
+    expect(orderIdArg).toBe('pre-generated-order-id')
+  })
+
+  it('rolls back a partially-uploaded set on failure, shows an error, and does not submit', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    // First file uploads, second fails — the succeeded one must be rolled back so
+    // no orphan is left behind an order that never gets created.
+    uploadOrderPhoto
+      .mockResolvedValueOnce('orders/owner-1/pre-generated-order-id/a.jpg')
+      .mockRejectedValueOnce(new Error('offline'))
+    const { container } = renderForm({ onSubmit })
+    await screen.findByLabelText('Имя клиента')
+    await user.type(screen.getByLabelText('Имя клиента'), 'Борис')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Цена'), '100')
+
+    await user.upload(container.querySelector('input[type="file"]') as HTMLInputElement, [
+      new File(['a'], 'a.jpg', { type: 'image/jpeg' }),
+      new File(['b'], 'b.jpg', { type: 'image/jpeg' }),
+    ])
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(deleteOrderPhoto).toHaveBeenCalledWith('orders/owner-1/pre-generated-order-id/a.jpg'),
+    )
   })
 
   it('does NOT mount the photo gallery when editing (photos are managed on the detail page)', async () => {

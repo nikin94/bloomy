@@ -23,11 +23,16 @@ import { HeaderActionsContext } from '../../context/headerActionsContext'
 // unaware of the slot.
 const AppLayout = () => {
   const [actions, setActions] = useState<ReactNode>(null)
+  // Mirror of the sidebar's mobile-drawer open state, reported up via
+  // onDrawerOpenChange. While the drawer overlays the content, the page content is
+  // marked `inert` so keyboard/screen-reader users can't reach what's visually
+  // hidden behind the drawer (the backdrop only blocks pointer taps, not focus).
+  const [drawerOpen, setDrawerOpen] = useState(false)
   return (
     <HeaderActionsContext.Provider value={setActions}>
       <div className="flex h-full flex-col md:flex-row">
-        <Sidebar actions={actions} />
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <Sidebar actions={actions} onDrawerOpenChange={setDrawerOpen} />
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col" inert={drawerOpen}>
           <Outlet />
         </div>
       </div>
