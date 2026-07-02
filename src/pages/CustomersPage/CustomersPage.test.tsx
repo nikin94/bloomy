@@ -51,6 +51,11 @@ const renderPage = () =>
     </AuthContext.Provider>,
   )
 
+// The list renders BOTH the desktop table and the mobile card stack — jsdom has
+// no media queries, so both are in the DOM. Scope content/action assertions to
+// the desktop table to act on a single copy.
+const table = () => within(screen.getByTestId('customers-table'))
+
 beforeEach(() => {
   vi.clearAllMocks()
   fetchCustomers.mockResolvedValue([])
@@ -63,10 +68,12 @@ describe('CustomersPage', () => {
     fetchCustomers.mockResolvedValue([customer({ id: 'c2', name: 'Борис' }), customer({ name: 'Анна' })])
     renderPage()
 
-    const items = await screen.findAllByRole('listitem')
-    expect(items.map((li) => within(li).getByText(/Анна|Борис/).textContent)).toEqual([
-      'Анна',
-      'Борис',
+    await screen.findByTestId('customers-table')
+    // Each table row is a link named "Открыть клиента <name>"; they read in name order.
+    const rows = table().getAllByRole('link')
+    expect(rows.map((r) => r.getAttribute('aria-label'))).toEqual([
+      'Открыть клиента Анна',
+      'Открыть клиента Борис',
     ])
     // The list fetch asks for active customers only (no includeDeleted).
     expect(fetchCustomers).toHaveBeenCalledWith('owner-1')
@@ -75,10 +82,10 @@ describe('CustomersPage', () => {
   it('exposes each row as a keyboard-activatable link to the customer page', async () => {
     fetchCustomers.mockResolvedValue([customer({ name: 'Анна' })])
     renderPage()
-    // The name/details block is a link (role + accessible name), focusable so a
-    // keyboard user can open the customer page; the edit/delete icons stay
-    // separate buttons.
-    const link = await screen.findByRole('link', { name: 'Открыть клиента Анна' })
+    await screen.findByTestId('customers-table')
+    // The row is a link (role + accessible name), focusable so a keyboard user
+    // can open the customer page; the edit/delete icons stay separate buttons.
+    const link = table().getByRole('link', { name: 'Открыть клиента Анна' })
     expect(link).toHaveAttribute('tabindex', '0')
   })
 
@@ -88,11 +95,12 @@ describe('CustomersPage', () => {
     ])
     renderPage()
 
-    const item = await screen.findByRole('listitem')
-    expect(within(item).getByText('Анна')).toBeInTheDocument()
-    expect(within(item).getByText('+700')).toBeInTheDocument()
-    expect(within(item).getByText('ул. Пушкина, 1')).toBeInTheDocument()
-    expect(within(item).getByText('Любит пионы')).toBeInTheDocument()
+    await screen.findByTestId('customers-table')
+    const row = table().getByRole('link', { name: 'Открыть клиента Анна' })
+    expect(within(row).getByText('Анна')).toBeInTheDocument()
+    expect(within(row).getByText('+700')).toBeInTheDocument()
+    expect(within(row).getByText('ул. Пушкина, 1')).toBeInTheDocument()
+    expect(within(row).getByText('Любит пионы')).toBeInTheDocument()
   })
 
   it('shows an empty state when there are no customers', async () => {
@@ -106,7 +114,8 @@ describe('CustomersPage', () => {
     fetchCustomers.mockResolvedValue([customer({ name: 'Анна' })])
     renderPage()
 
-    await user.click(await screen.findByRole('button', { name: 'Удалить клиента Анна' }))
+    await screen.findByTestId('customers-table')
+    await user.click(table().getByRole('button', { name: 'Удалить клиента Анна' }))
     // A confirmation dialog opens; confirming there calls the data layer.
     const dialog = within(screen.getByRole('dialog', { name: 'Удалить клиента Анна?' }))
     await user.click(dialog.getByRole('button', { name: 'Удалить' }))
@@ -120,7 +129,8 @@ describe('CustomersPage', () => {
     fetchCustomers.mockResolvedValue([customer({ name: 'Анна', phone: '+700' })])
     renderPage()
 
-    await user.click(await screen.findByRole('button', { name: 'Редактировать клиента Анна' }))
+    await screen.findByTestId('customers-table')
+    await user.click(table().getByRole('button', { name: 'Редактировать клиента Анна' }))
     // Editing opens a dialog prefilled with the current values.
     const dialog = within(screen.getByRole('dialog', { name: 'Редактирование клиента' }))
     const nameField = dialog.getByLabelText('Имя клиента')
@@ -138,7 +148,7 @@ describe('CustomersPage', () => {
       ),
     )
     // The list updates and the dialog closes.
-    expect(await screen.findByText('Анна Петрова')).toBeInTheDocument()
+    await waitFor(() => expect(table().getByText('Анна Петрова')).toBeInTheDocument())
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
@@ -150,10 +160,11 @@ describe('CustomersPage', () => {
     ])
     renderPage()
 
-    await user.click(await screen.findByRole('button', { name: 'Редактировать клиента Анна' }))
+    await screen.findByTestId('customers-table')
+    await user.click(table().getByRole('button', { name: 'Редактировать клиента Анна' }))
     // Switching to another customer replaces the dialog rather than stacking a
     // second one — the page holds a single editing target.
-    await user.click(screen.getByRole('button', { name: 'Редактировать клиента Борис' }))
+    await user.click(table().getByRole('button', { name: 'Редактировать клиента Борис' }))
 
     const dialogs = screen.getAllByRole('dialog')
     expect(dialogs).toHaveLength(1)
@@ -165,7 +176,8 @@ describe('CustomersPage', () => {
     fetchCustomers.mockResolvedValue([customer({ name: 'Анна' })])
     renderPage()
 
-    await user.click(await screen.findByRole('button', { name: 'Редактировать клиента Анна' }))
+    await screen.findByTestId('customers-table')
+    await user.click(table().getByRole('button', { name: 'Редактировать клиента Анна' }))
     const dialog = within(screen.getByRole('dialog', { name: 'Редактирование клиента' }))
     await user.clear(dialog.getByLabelText('Имя клиента'))
     await user.click(dialog.getByRole('button', { name: 'Сохранить' }))
@@ -180,11 +192,12 @@ describe('CustomersPage', () => {
     fetchCustomers.mockResolvedValue([customer({ name: 'Анна' })])
     renderPage()
 
-    await user.click(await screen.findByRole('button', { name: 'Удалить клиента Анна' }))
+    await screen.findByTestId('customers-table')
+    await user.click(table().getByRole('button', { name: 'Удалить клиента Анна' }))
     await user.click(screen.getByRole('button', { name: 'Отмена' }))
 
     expect(softDeleteCustomer).not.toHaveBeenCalled()
-    expect(screen.getByText('Анна')).toBeInTheDocument()
+    expect(table().getByText('Анна')).toBeInTheDocument()
   })
 
   it('narrows the list to customers matching the search (by name or phone)', async () => {
@@ -194,7 +207,7 @@ describe('CustomersPage', () => {
       customer({ id: 'c2', name: 'Борис', phone: '+711' }),
     ])
     renderPage()
-    await screen.findByText('Анна')
+    await screen.findByTestId('customers-table')
 
     // The header renders both layouts (desktop + mobile) in jsdom, so scope the
     // search to the desktop bar to act on a single copy. It's collapsed behind a
@@ -203,15 +216,15 @@ describe('CustomersPage', () => {
     await user.click(header.getByRole('button', { name: 'Поиск' }))
     await user.type(header.getByRole('textbox', { name: 'Поиск клиентов' }), 'Борис')
 
-    expect(screen.getByText('Борис')).toBeInTheDocument()
-    expect(screen.queryByText('Анна')).not.toBeInTheDocument()
+    expect(table().getByText('Борис')).toBeInTheDocument()
+    expect(table().queryByText('Анна')).not.toBeInTheDocument()
   })
 
   it('shows a "nothing found" message when the search matches no customer', async () => {
     const user = userEvent.setup()
     fetchCustomers.mockResolvedValue([customer({ name: 'Анна' })])
     renderPage()
-    await screen.findByText('Анна')
+    await screen.findByTestId('customers-table')
 
     const header = within(screen.getByTestId('sidebar-desktop'))
     await user.click(header.getByRole('button', { name: 'Поиск' }))

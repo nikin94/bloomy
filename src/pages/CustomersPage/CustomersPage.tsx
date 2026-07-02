@@ -15,11 +15,67 @@ import { useHeaderActions } from '../../context/headerActionsContext'
 import { filterCustomers } from '../../types/customer'
 import type { Customer } from '../../types/customer'
 
-// One customer row: name/details with edit and delete actions. Both buttons ask
-// the parent to open a dialog (edit / delete confirmation) so only one is ever
-// open at a time and the confirmation matches the order page's modal pattern.
-// Extracted from the map so the loop body is its own component.
-const CustomerRow = ({
+const TrashIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="size-5"
+  >
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    <line x1="10" y1="11" x2="10" y2="17" />
+    <line x1="14" y1="11" x2="14" y2="17" />
+  </svg>
+)
+
+// The edit + delete controls for a customer, shared by the desktop row and the
+// mobile card. Wrapped in a container that STOPS click propagation so pressing a
+// button never also triggers the surrounding open-customer target — the buttons
+// stay independent of the row/card link.
+const RowActions = ({
+  customer,
+  t,
+  onEdit,
+  onRequestDelete,
+}: {
+  customer: Customer
+  t: TFunction<['customer', 'common']>
+  onEdit: (customer: Customer) => void
+  onRequestDelete: (customer: Customer) => void
+}) => (
+  <div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
+    <Button
+      variant="secondary"
+      size="icon"
+      onClick={() => onEdit(customer)}
+      aria-label={t('editAria', { name: customer.name })}
+      title={t('edit')}
+    >
+      <PencilIcon />
+    </Button>
+    <Button
+      variant="secondary"
+      size="icon"
+      onClick={() => onRequestDelete(customer)}
+      aria-label={t('deleteAria', { name: customer.name })}
+      title={t('delete')}
+    >
+      <TrashIcon />
+    </Button>
+  </div>
+)
+
+// One customer as a desktop table row, mirroring the orders table look. The whole
+// row navigates to the customer page (a link, keyboard-activatable); the trailing
+// actions cell holds edit/delete and stops click propagation so those buttons
+// don't also open the row. The keyboard handler guards on `e.target === row` so a
+// key press while a focused action button has focus doesn't double-fire the open.
+const CustomerTableRow = ({
   customer,
   t,
   onOpen,
@@ -27,19 +83,59 @@ const CustomerRow = ({
   onRequestDelete,
 }: {
   customer: Customer
-  // Passed from the parent (single i18next subscription) so each customer row
-  // doesn't open its own useTranslation.
   t: TFunction<['customer', 'common']>
   onOpen: (customer: Customer) => void
   onEdit: (customer: Customer) => void
   onRequestDelete: (customer: Customer) => void
-}) => {
-  return (
-  <li className="flex items-center gap-3 border-b border-border py-3">
-    {/* The name/details block navigates to the customer page (acts as a link,
-        focusable and Enter/Space-activatable). The edit/delete icons are
-        SIBLINGS, not nested inside this target, so they stay independently
-        clickable without an interactive-inside-interactive nesting. */}
+}) => (
+  <tr
+    role="link"
+    tabIndex={0}
+    aria-label={t('openAria', { name: customer.name })}
+    onClick={() => onOpen(customer)}
+    onKeyDown={(e) => {
+      if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault()
+        onOpen(customer)
+      }
+    }}
+    className="cursor-pointer transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
+  >
+    <td className="max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-4 py-2.5 text-heading">
+      {customer.name}
+    </td>
+    <td className="max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-4 py-2.5 text-text">
+      {customer.phone ?? '—'}
+    </td>
+    <td className="max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-4 py-2.5 text-text">
+      {customer.address ?? '—'}
+    </td>
+    <td className="max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-4 py-2.5 text-text">
+      {customer.note ?? '—'}
+    </td>
+    <td className="w-px whitespace-nowrap border-b border-border px-4 py-2.5 text-right">
+      <RowActions customer={customer} t={t} onEdit={onEdit} onRequestDelete={onRequestDelete} />
+    </td>
+  </tr>
+)
+
+// The same customer as a card (mobile layout). The name/details block is the
+// link (a SIBLING of the action buttons, never nesting them) — keeping the open
+// target and the edit/delete buttons independently operable.
+const CustomerCard = ({
+  customer,
+  t,
+  onOpen,
+  onEdit,
+  onRequestDelete,
+}: {
+  customer: Customer
+  t: TFunction<['customer', 'common']>
+  onOpen: (customer: Customer) => void
+  onEdit: (customer: Customer) => void
+  onRequestDelete: (customer: Customer) => void
+}) => (
+  <div className="flex items-start gap-3 rounded-lg border border-border bg-surface p-4">
     <div
       role="link"
       tabIndex={0}
@@ -51,57 +147,22 @@ const CustomerRow = ({
           onOpen(customer)
         }
       }}
-      className="-mx-2 min-w-0 flex-1 cursor-pointer rounded-md px-2 py-1 transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
+      className="-m-1 min-w-0 flex-1 cursor-pointer rounded-md p-1 transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
     >
-      <p className="m-0 truncate text-heading">{customer.name}</p>
-      {/* The rest of the customer's details. Phone/address are usually short
-          (truncate to one line); the note can be long, so it wraps in full so
-          all the saved information is visible at a glance. */}
+      <p className="m-0 truncate font-semibold text-heading">{customer.name}</p>
       {customer.phone && <p className="m-0 truncate text-sm text-text">{customer.phone}</p>}
       {customer.address && <p className="m-0 truncate text-sm text-text">{customer.address}</p>}
       {customer.note && <p className="m-0 break-words text-sm text-text">{customer.note}</p>}
     </div>
-
-    <div className="flex shrink-0 items-center gap-2">
-      <Button
-        variant="secondary"
-        size="icon"
-        onClick={() => onEdit(customer)}
-        aria-label={t('editAria', { name: customer.name })}
-        title={t('edit')}
-      >
-        <PencilIcon />
-      </Button>
-      <Button
-        variant="secondary"
-        size="icon"
-        onClick={() => onRequestDelete(customer)}
-        aria-label={t('deleteAria', { name: customer.name })}
-        title={t('delete')}
-      >
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="size-5"
-        >
-          <polyline points="3 6 5 6 21 6" />
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-          <line x1="10" y1="11" x2="10" y2="17" />
-          <line x1="14" y1="11" x2="14" y2="17" />
-        </svg>
-      </Button>
-    </div>
-  </li>
-  )
-}
+    <RowActions customer={customer} t={t} onEdit={onEdit} onRequestDelete={onRequestDelete} />
+  </div>
+)
 
 // Address-book screen: lists the signed-in user's active customers and lets each
 // be edited (in a modal, one at a time) or removed (soft delete — see softDeleteCustomer).
+// The list uses the same full-width table (desktop) / card stack (mobile) look as
+// the orders and trash screens, so all list pages read consistently and fill the
+// width the sidebar freed up.
 const CustomersPage = () => {
   const { t } = useTranslation(['customer', 'common'])
   const navigate = useNavigate()
@@ -193,6 +254,13 @@ const CustomersPage = () => {
   )
   useHeaderActions(headerActions)
 
+  const rowProps = {
+    t,
+    onOpen: (c: Customer) => navigate(`/customers/${c.id}`),
+    onEdit: setEditing,
+    onRequestDelete: setDeletingCustomer,
+  }
+
   return (
     <>
       {loading && <Spinner />}
@@ -203,27 +271,47 @@ const CustomersPage = () => {
       )}
 
       {!loading && !loadError && (
-        <div className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
-          <div className="mx-auto flex max-w-2xl flex-col gap-3">
-            {visibleCustomers.length === 0 ? (
-              <p className="m-0 text-text">
-                {searchActive ? t('common:nothingFound') : t('list.empty')}
-              </p>
-            ) : (
-              <ul className="m-0 flex list-none flex-col p-0">
+        <div className="min-h-0 flex-1 overflow-auto">
+          {visibleCustomers.length === 0 ? (
+            <p className="px-4 py-8 text-center text-text">
+              {searchActive ? t('common:nothingFound') : t('list.empty')}
+            </p>
+          ) : (
+            <>
+              {/* Desktop: a full-width table matching the orders/trash lists. */}
+              <table
+                data-testid="customers-table"
+                className="hidden w-full border-collapse text-[0.8333rem] lg:table"
+              >
+                <thead>
+                  <tr>
+                    {(['name', 'phone', 'address', 'note'] as const).map((col) => (
+                      <th
+                        key={col}
+                        className="sticky top-0 z-10 whitespace-nowrap border-b border-border bg-bg px-4 py-3 text-left font-semibold text-heading"
+                      >
+                        {t(`columns.${col}` as const)}
+                      </th>
+                    ))}
+                    {/* Actions column — header intentionally blank (icon buttons). */}
+                    <th className="sticky top-0 z-10 w-px border-b border-border bg-bg px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleCustomers.map((customer) => (
+                    <CustomerTableRow key={customer.id} customer={customer} {...rowProps} />
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Mobile: one card per customer. */}
+              <div data-testid="customers-cards" className="flex flex-col gap-3 p-4 lg:hidden">
                 {visibleCustomers.map((customer) => (
-                  <CustomerRow
-                    key={customer.id}
-                    customer={customer}
-                    t={t}
-                    onOpen={(c) => navigate(`/customers/${c.id}`)}
-                    onEdit={setEditing}
-                    onRequestDelete={setDeletingCustomer}
-                  />
+                  <CustomerCard key={customer.id} customer={customer} {...rowProps} />
                 ))}
-              </ul>
-            )}
-          </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 

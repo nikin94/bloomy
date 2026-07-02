@@ -12,6 +12,12 @@
     "search": "Search customers",
     "loadError": "Couldn't load customers"
   },
+  "columns": {
+    "name": "Name",
+    "phone": "Phone",
+    "address": "Address",
+    "note": "Note"
+  },
   "page": {
     "notFound": "Customer not found",
     "loadError": "Couldn't load the customer",

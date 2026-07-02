@@ -129,7 +129,10 @@ const StatsPage = () => {
                 scales to more presets without crowding the header). Hidden when
                 there is no data to scope. */}
             {orders.length > 0 && (
-              <div className="w-48 shrink-0">
+              // Below 425px the preset picker stretches to the full screen width
+              // (a comfortable tap target on the narrowest phones) instead of the
+              // fixed 224px it keeps from there up.
+              <div className="w-48 shrink-0 max-[424px]:w-full">
                 <Select
                   aria-label={t('period.aria')}
                   value={preset}
@@ -155,7 +158,10 @@ const StatsPage = () => {
               label would never settle down — keep them plain. */}
           {orders.length > 0 && preset === 'custom' && (
             <div className="flex flex-wrap items-end gap-4">
-              <label className="flex flex-col gap-1 text-sm text-text">
+              {/* Below 425px each field spans the full width (stacked) so the
+                  native date pickers stay comfortably tappable on the narrowest
+                  phones; from there up they sit side by side. */}
+              <label className="flex flex-col gap-1 text-sm text-text max-[424px]:w-full">
                 {t('period.from')}
                 <input
                   type="date"
@@ -163,10 +169,10 @@ const StatsPage = () => {
                   min={minDateInput}
                   max={customTo || maxDateInput}
                   onChange={(e) => setCustomFrom(e.target.value)}
-                  className={`${FIELD_BASE} ${FIELD_NORMAL} px-3 py-2 text-heading`}
+                  className={`${FIELD_BASE} ${FIELD_NORMAL} px-3 py-2 text-heading max-[424px]:w-full`}
                 />
               </label>
-              <label className="flex flex-col gap-1 text-sm text-text">
+              <label className="flex flex-col gap-1 text-sm text-text max-[424px]:w-full">
                 {t('period.to')}
                 <input
                   type="date"
@@ -174,7 +180,7 @@ const StatsPage = () => {
                   min={customFrom || minDateInput}
                   max={maxDateInput}
                   onChange={(e) => setCustomTo(e.target.value)}
-                  className={`${FIELD_BASE} ${FIELD_NORMAL} px-3 py-2 text-heading`}
+                  className={`${FIELD_BASE} ${FIELD_NORMAL} px-3 py-2 text-heading max-[424px]:w-full`}
                 />
               </label>
             </div>
