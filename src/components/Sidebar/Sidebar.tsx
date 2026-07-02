@@ -222,16 +222,27 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
   // while still on /settings, or peeking the sections from another page.
   // Navigation happens only when a section is picked.
   const [flyoutOpen, setFlyoutOpen] = useState(onSettings)
-  // Sync the flyout to the route by adjusting state during render (the pattern
-  // React recommends over an effect): entering /settings forces it open, leaving
-  // forces it closed; the toggle flips it while the route is unchanged.
+  // The mobile drawer's settings accordion — independent of the desktop flyout.
+  const [settingsExpanded, setSettingsExpanded] = useState(onSettings)
+  // Sync BOTH to the route by adjusting state during render (the pattern React
+  // recommends over an effect): entering /settings forces them open, leaving
+  // forces them closed; the toggle flips them while the route is unchanged. So
+  // navigating to a non-settings page always collapses the section nav.
   const [wasOnSettings, setWasOnSettings] = useState(onSettings)
   if (onSettings !== wasOnSettings) {
     setWasOnSettings(onSettings)
     setFlyoutOpen(onSettings)
+    setSettingsExpanded(onSettings)
   }
-  // The mobile drawer's settings accordion — independent of the desktop flyout.
-  const [settingsExpanded, setSettingsExpanded] = useState(onSettings)
+  // Collapse the drawer accordion whenever the drawer closes on a non-settings
+  // page, so a section list left expanded isn't still open the next time the
+  // drawer is opened there. (On /settings it stays expanded — that's where it
+  // belongs.) Same render-time adjustment, keyed on the drawer's open state.
+  const [wasMenuOpen, setWasMenuOpen] = useState(menuOpen)
+  if (menuOpen !== wasMenuOpen) {
+    setWasMenuOpen(menuOpen)
+    if (!menuOpen && !onSettings) setSettingsExpanded(false)
+  }
 
   // Close the mobile drawer on Escape, so keyboard users aren't trapped with the
   // overlay open. Only listens while the drawer is open.
@@ -333,13 +344,14 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
       {/* Mobile top bar (below md). Left: the current page title (or the back
           control on an inner page) — it names the screen, since there's no visible
           sidebar highlight on a phone. Then any page controls (search / filter),
-          the sync indicator, then the burger far right (as everywhere). Both the
-          title (min-w-0 flex-1) and the page-controls wrapper (min-w-0 shrink) give
-          way under pressure — so an expanded search on the narrowest viewport
-          shrinks alongside the title rather than pushing sync/burger off-screen.
-          Sync + burger stay fixed (shrink-0) as the anchored right edge. */}
-      <div className="flex items-center gap-2 border-b border-border bg-bg px-4 py-3 md:hidden">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+          the sync indicator, then the burger far right (as everywhere).
+          When the search field is OPEN it should own the row: the control marks
+          itself `.js-search-open`, so `group-has` hides the title (freeing the whole
+          width) and `has-…:flex-1` lets the page-controls wrapper grow to fill it.
+          While closed the title keeps its flex-1 (pushing the controls + burger to
+          the right edge). Sync + burger stay fixed (shrink-0) as the anchored edge. */}
+      <div className="group flex items-center gap-2 border-b border-border bg-bg px-4 py-3 md:hidden">
+        <div className="flex min-w-0 flex-1 items-center gap-2 group-has-[.js-search-open]:hidden">
           {showBack && (
             <Button
               variant="secondary"
@@ -356,7 +368,11 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
             <h1 className="m-0 min-w-0 truncate text-lg font-semibold text-heading">{pageTitle}</h1>
           )}
         </div>
-        {actions && <div className="flex min-w-0 shrink items-center gap-2">{actions}</div>}
+        {actions && (
+          <div className="flex min-w-0 items-center justify-end gap-2 has-[.js-search-open]:flex-1">
+            {actions}
+          </div>
+        )}
         <div className="flex shrink-0 items-center gap-2">
           <SyncStatus />
           <Button
