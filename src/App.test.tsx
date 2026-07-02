@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import type { User } from 'firebase/auth'
 import { AuthContext } from './context/authContext'
 import type { AuthState } from './context/authContext'
@@ -14,17 +14,19 @@ vi.mock('./firebase/orders', () => ({
 vi.mock('./firebase/customers', () => ({ fetchCustomers: vi.fn().mockResolvedValue([]) }))
 vi.mock('./firebase/auth', () => ({ signInWithGoogle: vi.fn(), signOutUser: vi.fn() }))
 
-// Imported after the mocks above are registered.
-import App from './App'
+// Imported after the mocks above are registered. The app is a data router now
+// (createBrowserRouter), so tests build a memory router from the SAME route
+// config instead of wrapping <App/> in a MemoryRouter. Auth is injected above the
+// router, exactly as the providers sit above RouterProvider in main.
+import { routes } from './routes'
 
 const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
 
 function renderAt(path: string, auth: AuthState) {
+  const router = createMemoryRouter(routes, { initialEntries: [path] })
   return render(
     <AuthContext.Provider value={auth}>
-      <MemoryRouter initialEntries={[path]}>
-        <App />
-      </MemoryRouter>
+      <RouterProvider router={router} />
     </AuthContext.Provider>,
   )
 }
