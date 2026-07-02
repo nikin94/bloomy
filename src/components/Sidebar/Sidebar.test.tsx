@@ -84,6 +84,21 @@ describe('Sidebar (desktop rail)', () => {
     expect(screen.getByTestId('loc')).toHaveTextContent('/settings?section=orders')
   })
 
+  it('collapses a peeked-open flyout when navigating between non-settings pages', async () => {
+    const user = userEvent.setup()
+    renderSidebar()
+    // Peek the section flyout open while still on /orders…
+    const toggle = rail().getByRole('button', { name: 'Настройки' })
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    // …then move to another non-settings destination — the flyout must collapse,
+    // even though we never touched the settings route (the route sync keys on the
+    // pathname, not just the on-settings flag).
+    await user.click(rail().getByRole('link', { name: 'Клиенты' }))
+    expect(screen.getByTestId('loc')).toHaveTextContent(/^\/customers$/)
+    expect(rail().getByRole('button', { name: 'Настройки' })).toHaveAttribute('aria-expanded', 'false')
+  })
+
   it('opens the flyout and marks the active section when already on /settings', () => {
     renderSidebar('/settings?section=orders')
     expect(rail().getByRole('button', { name: 'Настройки' })).toHaveAttribute('aria-expanded', 'true')

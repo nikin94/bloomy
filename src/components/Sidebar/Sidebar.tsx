@@ -353,13 +353,17 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
   const [flyoutOpen, setFlyoutOpen] = useState(onSettings)
   // The mobile drawer's settings accordion — independent of the desktop flyout.
   const [settingsExpanded, setSettingsExpanded] = useState(onSettings)
-  // Sync BOTH to the route by adjusting state during render (the pattern React
-  // recommends over an effect): entering /settings forces them open, leaving
-  // forces them closed; the toggle flips them while the route is unchanged. So
-  // navigating to a non-settings page always collapses the section nav.
-  const [wasOnSettings, setWasOnSettings] = useState(onSettings)
-  if (onSettings !== wasOnSettings) {
-    setWasOnSettings(onSettings)
+  // Sync BOTH to the route on ANY navigation by adjusting state during render (the
+  // pattern React recommends over an effect): each route change re-derives the
+  // open state from whether the new route is /settings — so entering /settings
+  // opens them, and navigating to ANY other route collapses them. Keying on the
+  // pathname (not just the onSettings boolean) is what closes a flyout peeked open
+  // on one non-settings page when moving to another non-settings page — there the
+  // boolean never changes, so a boolean-only guard would leave it open. Switching
+  // sections within /settings keeps the same pathname, so it doesn't re-sync.
+  const [syncedPath, setSyncedPath] = useState(location.pathname)
+  if (location.pathname !== syncedPath) {
+    setSyncedPath(location.pathname)
     setFlyoutOpen(onSettings)
     setSettingsExpanded(onSettings)
   }
