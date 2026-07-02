@@ -183,13 +183,14 @@ const SettingsPage = () => {
 
   return (
     // Content-only settings screen — the section nav lives in the sidebar now. A
-    // single scrolling column: the active section's content, then (for the editable
-    // sections) the Save/Cancel footer flowing directly under it (no fixed height,
-    // so the buttons sit at the bottom of the actual content rather than a padded
-    // block). Appearance/orders stretch to the full width; account/admin stay
-    // capped to a comfortable reading width.
+    // single scrolling column that fills the height (min-h-full): the active
+    // section's content sits at the top and the Save/Cancel footer is pushed to the
+    // BOTTOM of the column via mt-auto (so on a short section it rests at the bottom
+    // of the screen, not glued under the last row); when the content is tall enough
+    // to fill, mt-auto collapses and the footer just flows after it. Appearance/orders
+    // stretch to the full width; account/admin stay capped to a comfortable width.
     <div className="min-h-0 flex-1 overflow-auto p-6">
-      <div className={`flex flex-col gap-6 ${wide ? '' : 'max-w-2xl'}`}>
+      <div className={`flex min-h-full flex-col gap-6 ${wide ? '' : 'max-w-2xl'}`}>
         <div
           role="region"
           // Named by the section's own label so the region announces which
@@ -348,7 +349,7 @@ const SettingsPage = () => {
             the sections that actually have settings to save (appearance / orders);
             account and admin are action-only, so no footer. */}
         {wide && (
-          <div className="mt-2 flex flex-col gap-2 min-[769px]:flex-row min-[769px]:items-center min-[769px]:justify-end">
+          <div className="mt-auto flex flex-col gap-2 min-[769px]:flex-row min-[769px]:items-center min-[769px]:justify-end">
             {saved && (
               <span role="status" className="text-sm text-text min-[769px]:mr-auto">
                 {t('settings:saved')}
