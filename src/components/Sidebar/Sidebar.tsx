@@ -216,45 +216,58 @@ const CollapseChevron = ({ className = 'size-4' }: { className?: string }) => (
   </svg>
 )
 
-// Collapsed-rail row layout, shared by every rail row (nav, create, settings). The
-// row is a FIXED-width box (`w-10` = the collapsed strip's inner content width: the
-// 64px rail minus its 12px×2 padding) that CENTRES the icon in itself, so it sits
-// dead-centre in the thin strip (icon centre at 32px = half the 64px rail). Expanded
-// uses `px-2.5` (10px), NOT `px-3`, so the icon's centre lands at that SAME 32px
-// (rail pad 12 + 10 + half a 20px icon) — so toggling collapse neither slides the
-// icon (its x is identical in both states) nor leaves it off-centre in the strip.
-const railRowLayout = (collapsed: boolean) => (collapsed ? 'w-10 justify-center px-0' : 'gap-2 px-2.5')
+// Shared horizontal layout for every rail row (nav, create, settings). The row is
+// ALWAYS icon-left at a fixed `px-2.5` inset — collapsing no longer switches it to a
+// centred icon box (which dropped the label instantly). Instead the label fades and
+// the narrowing rail clips it away (`overflow-hidden` + the fading RailLabel). The
+// icon keeps its `px-2.5` offset, so its centre sits at 32px in BOTH the full rail
+// and the 64px collapsed strip (12px rail pad + 10px row pad + half a 20px icon = 32
+// = half of 64) — it never slides. `overflow-hidden` lets the rail swallow the label.
+const RAIL_ROW = 'gap-2 px-2.5 overflow-hidden'
 
 // A nav destination in the vertical rail/drawer: a row, filled when its route is
-// active. Collapsed it becomes an icon-only, centred box (see railRowLayout).
-const navRowClass = (isActive: boolean, collapsed: boolean) =>
+// active. Collapsing fades its label out (see RailLabel), not the row itself.
+const navRowClass = (isActive: boolean) =>
   [
     'flex items-center rounded-md py-2 text-sm font-medium no-underline transition-colors',
-    railRowLayout(collapsed),
+    RAIL_ROW,
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
     isActive ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg',
   ].join(' ')
 
 // The "Новый заказ" ACTION (it creates) gets the primary treatment so it reads as
-// the main action, not a fifth nav tab. Collapsed it centres to just its plus icon.
-const createRowClass = (collapsed: boolean) =>
-  [
-    'flex items-center whitespace-nowrap rounded-md bg-primary py-2 text-sm font-medium text-white no-underline transition-opacity hover:opacity-90',
-    railRowLayout(collapsed),
-    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
-  ].join(' ')
+// the main action, not a fifth nav tab. Its plus stays put; the label fades on collapse.
+const createRowClass = [
+  'flex items-center whitespace-nowrap rounded-md bg-primary py-2 text-sm font-medium text-white no-underline transition-opacity hover:opacity-90',
+  RAIL_ROW,
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+].join(' ')
 
 // The "Настройки" control. It is no longer a link to /settings — it TOGGLES the
 // section nav (a flyout on desktop, an accordion in the mobile drawer); navigation
 // to /settings happens only when a section is picked. Styled like a nav destination,
-// filled when settings is active; collapsed it centres to just its gear icon.
-const settingsToggleClass = (active: boolean, collapsed: boolean) =>
+// filled when settings is active; its gear stays put and the label fades on collapse.
+const settingsToggleClass = (active: boolean) =>
   [
     'flex items-center rounded-md py-2 text-sm font-medium transition-colors',
-    railRowLayout(collapsed),
+    RAIL_ROW,
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
     active ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg',
   ].join(' ')
+
+// A rail row's text label. Kept ALWAYS MOUNTED so collapsing the rail can FADE it
+// (opacity, over the same 300ms as the rail's width animation) and let the narrowing
+// rail clip it away, instead of unmounting it instantly. `whitespace-nowrap` keeps it
+// one line so it's swallowed cleanly from the right rather than reflowing.
+const RailLabel = ({ collapsed, children }: { collapsed: boolean; children: ReactNode }) => (
+  <span
+    className={`whitespace-nowrap transition-opacity duration-300 ease-out motion-reduce:transition-none ${
+      collapsed ? 'opacity-0' : 'opacity-100'
+    }`}
+  >
+    {children}
+  </span>
+)
 
 // A section row in the settings nav (flyout / drawer accordion). A LIGHTER register
 // than the main destinations — muted normal-weight text, the active section
@@ -401,11 +414,10 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
           end={end}
           onClick={onNavigate}
           title={collapsed ? label : undefined}
-          aria-label={collapsed ? label : undefined}
-          className={({ isActive }) => navRowClass(isActive, collapsed)}
+          className={({ isActive }) => navRowClass(isActive)}
         >
           <Icon className="size-5 shrink-0" />
-          {!collapsed && <span className="truncate">{label}</span>}
+          <RailLabel collapsed={collapsed}>{label}</RailLabel>
         </NavLink>
       )
     })
@@ -467,12 +479,12 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
 
         <NavLink
           to="/orders/new"
-          className={createRowClass(collapsed)}
+          className={createRowClass}
           title={collapsed ? t('newOrder') : undefined}
-          aria-label={collapsed ? t('newOrder') : undefined}
+          aria-label={t('newOrder')}
         >
           <PlusIcon className="size-5 shrink-0" />
-          {!collapsed && t('newOrder')}
+          <RailLabel collapsed={collapsed}>{t('newOrder')}</RailLabel>
         </NavLink>
 
         <span aria-hidden="true" className="my-1 h-px w-full bg-border" />
@@ -499,11 +511,11 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
             aria-expanded={flyoutOpen}
             aria-controls="settings-flyout"
             title={collapsed ? t('settings') : undefined}
-            aria-label={collapsed ? t('settings') : undefined}
-            className={settingsToggleClass(onSettings, collapsed)}
+            aria-label={t('settings')}
+            className={settingsToggleClass(onSettings)}
           >
             <GearIcon className="size-5 shrink-0" />
-            {!collapsed && t('settings')}
+            <RailLabel collapsed={collapsed}>{t('settings')}</RailLabel>
           </button>
         </div>
       </nav>
@@ -601,7 +613,7 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
           menuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <NavLink to="/orders/new" className={createRowClass(false)} onClick={closeMenu}>
+        <NavLink to="/orders/new" className={createRowClass} onClick={closeMenu}>
           <PlusIcon className="size-5 shrink-0" />
           {t('addOrder')}
         </NavLink>
@@ -619,7 +631,7 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
             onClick={() => setSettingsExpanded((open) => !open)}
             aria-expanded={settingsExpanded}
             aria-controls="drawer-settings-sections"
-            className={settingsToggleClass(onSettings, false)}
+            className={settingsToggleClass(onSettings)}
           >
             <GearIcon className="size-5 shrink-0" />
             {t('settings')}

@@ -113,12 +113,11 @@ const OrderFilterControl = ({
         aria-pressed={modalFilterActive}
         className={[
           'flex shrink-0 items-center justify-center rounded-md border p-2 transition-colors',
-          'md:border-0 md:py-2 md:text-sm md:font-medium',
-          // Collapsed rail: a fixed-width (`w-10`, the strip's inner width) centred icon
-          // box — matching the nav/settings rows, so the funnel sits dead-centre in the
-          // strip. Expanded uses `md:px-2.5` (not `md:px-3`) so the icon's x matches that
-          // centre — it neither slides nor sits off-centre on collapse.
-          collapsed ? 'md:w-10 md:justify-center md:px-0' : 'md:w-full md:justify-start md:gap-2 md:px-2.5',
+          // In the rail the funnel is ALWAYS icon-left at `md:px-2.5` (matching the nav
+          // rows, so the icon's centre sits at 32px in the collapsed strip and never
+          // slides). Collapsing doesn't switch the layout — the label just fades and
+          // `md:overflow-hidden` lets the narrowing rail swallow it.
+          'md:w-full md:justify-start md:gap-2 md:overflow-hidden md:border-0 md:px-2.5 md:py-2 md:text-sm md:font-medium',
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
           modalFilterActive
             ? collapsed
@@ -128,7 +127,15 @@ const OrderFilterControl = ({
         ].join(' ')}
       >
         <FilterIcon />
-        {!collapsed && <span className="hidden md:inline">{t('filters.open')}</span>}
+        {/* Always mounted so it can fade with the rail (not unmount instantly);
+            `hidden md:inline` keeps it out of the mobile icon button entirely. */}
+        <span
+          className={`hidden whitespace-nowrap transition-opacity duration-300 ease-out motion-reduce:transition-none md:inline ${
+            collapsed ? 'md:opacity-0' : 'md:opacity-100'
+          }`}
+        >
+          {t('filters.open')}
+        </span>
       </button>
 
       {open && (

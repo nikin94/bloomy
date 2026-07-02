@@ -136,16 +136,18 @@ describe('Sidebar (desktop rail)', () => {
 
     await user.click(rail().getByRole('button', { name: 'Свернуть меню' }))
 
-    // Collapsed: the rail is marked collapsed and the visible label text is gone…
+    // Collapsed: the rail is marked collapsed and the label has FADED (it stays
+    // mounted so it can transition with the rail, so we assert the fade class rather
+    // than its removal)…
     expect(screen.getByTestId('sidebar-desktop')).toHaveAttribute('data-collapsed', 'true')
-    expect(rail().queryByText('Клиенты')).not.toBeInTheDocument()
-    // …but the destination stays a named, reachable link (name via aria-label).
+    expect(rail().getByText('Клиенты')).toHaveClass('opacity-0')
+    // …and the destination stays a named, reachable link.
     expect(rail().getByRole('link', { name: 'Клиенты' })).toHaveAttribute('href', '/customers')
 
     // The same control now expands it back out.
     await user.click(rail().getByRole('button', { name: 'Развернуть меню' }))
     expect(screen.getByTestId('sidebar-desktop')).toHaveAttribute('data-collapsed', 'false')
-    expect(rail().getByText('Клиенты')).toBeInTheDocument()
+    expect(rail().getByText('Клиенты')).toHaveClass('opacity-100')
   })
 
   it('a hosted search control opens the collapsed rail and closing it restores collapsed', async () => {
