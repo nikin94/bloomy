@@ -14,6 +14,7 @@ import { useAuth } from '../../context/authContext'
 import { useHeaderActions } from '../../context/headerActionsContext'
 import { filterCustomers } from '../../types/customer'
 import type { Customer } from '../../types/customer'
+import { TABLE_CELL_BASE, TABLE_CELL_NOWRAP, TABLE_CELL_WRAP } from '../../styles/tableStyles'
 
 const TrashIcon = () => (
   <svg
@@ -101,19 +102,13 @@ const CustomerTableRow = ({
     }}
     className="cursor-pointer transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
   >
-    <td className="max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-4 py-2.5 text-heading">
-      {customer.name}
-    </td>
-    <td className="max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-4 py-2.5 text-text">
-      {customer.phone ?? '—'}
-    </td>
-    <td className="max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-4 py-2.5 text-text">
-      {customer.address ?? '—'}
-    </td>
-    <td className="max-w-[320px] overflow-hidden text-ellipsis whitespace-nowrap border-b border-border px-4 py-2.5 text-text">
-      {customer.note ?? '—'}
-    </td>
-    <td className="w-px whitespace-nowrap border-b border-border px-4 py-2.5 text-right">
+    {/* Name / address / note WRAP so a narrow desktop reflows instead of
+        scrolling sideways; the short phone column stays one line. See tableStyles. */}
+    <td className={`${TABLE_CELL_BASE} ${TABLE_CELL_WRAP} text-heading`}>{customer.name}</td>
+    <td className={`${TABLE_CELL_BASE} ${TABLE_CELL_NOWRAP} text-text`}>{customer.phone ?? '—'}</td>
+    <td className={`${TABLE_CELL_BASE} ${TABLE_CELL_WRAP} text-text`}>{customer.address ?? '—'}</td>
+    <td className={`${TABLE_CELL_BASE} ${TABLE_CELL_WRAP} text-text`}>{customer.note ?? '—'}</td>
+    <td className="w-px whitespace-nowrap border-b border-border px-4 py-2.5 text-right align-top">
       <RowActions customer={customer} t={t} onEdit={onEdit} onRequestDelete={onRequestDelete} />
     </td>
   </tr>
