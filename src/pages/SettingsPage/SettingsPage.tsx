@@ -168,17 +168,13 @@ const SettingsPage = () => {
   }
 
   return (
-    // Full-width settings screen. A title bar with a bottom hairline frames the top
-    // (same "title, then a full-width divider" language as the main sidebar), and
-    // below it the body fills the remaining height. On a phone the sections collapse
-    // to a <Select> above the content and the whole body scrolls as one column; from
-    // 769px they become a FLUSH full-height sub-rail beside a wide content panel,
-    // each column with its own scroll so the rail runs edge-to-edge, top to bottom.
+    // Full-width settings screen. There is NO full-width title bar — on desktop the
+    // sub-rail runs flush from the very top to the bottom on the left, and the page
+    // title lives at the top of the CONTENT column (capped to it), not spanning the
+    // rail. On a phone the sections collapse to a <Select> and the whole body scrolls
+    // as one column; from 769px they become the flush full-height sub-rail beside a
+    // wide content panel, each column with its own scroll.
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <h1 className="m-0 shrink-0 border-b border-border px-6 py-4 text-2xl font-semibold text-heading">
-        {t('settings:title')}
-      </h1>
-
       <div className="flex min-h-0 flex-1 flex-col overflow-auto min-[769px]:flex-row min-[769px]:overflow-hidden">
         {/* Section nav: a <Select> on phones, a flush full-height sub-rail from
             769px — a lifted background (bg-surface) + a right hairline divide it
@@ -192,6 +188,7 @@ const SettingsPage = () => {
             splay apart, and Save/Cancel align to that column. */}
         <div className="min-w-0 p-6 min-[769px]:flex-1 min-[769px]:overflow-auto">
           <div className="flex max-w-2xl flex-col gap-6">
+            <h1 className="m-0 text-2xl font-semibold text-heading">{t('settings:title')}</h1>
             {/* A fixed min-height sized to the tallest everyday tab (appearance /
                 orders, three rows each) so the panel doesn't jump as the user
                 switches tabs — a shorter tab (account) just pads to the same
