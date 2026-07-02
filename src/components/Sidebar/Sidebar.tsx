@@ -332,10 +332,12 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
 
       {/* Mobile top bar (below md). Left: the current page title (or the back
           control on an inner page) — it names the screen, since there's no visible
-          sidebar highlight on a phone. Right cluster, pinned to the edge: any page
-          controls (search / filter), the sync indicator, then the burger far right
-          (as everywhere). The title truncates first (min-w-0 flex-1), so the icons
-          never get pushed off a narrow viewport. */}
+          sidebar highlight on a phone. Then any page controls (search / filter),
+          the sync indicator, then the burger far right (as everywhere). Both the
+          title (min-w-0 flex-1) and the page-controls wrapper (min-w-0 shrink) give
+          way under pressure — so an expanded search on the narrowest viewport
+          shrinks alongside the title rather than pushing sync/burger off-screen.
+          Sync + burger stay fixed (shrink-0) as the anchored right edge. */}
       <div className="flex items-center gap-2 border-b border-border bg-bg px-4 py-3 md:hidden">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {showBack && (
@@ -354,8 +356,8 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
             <h1 className="m-0 min-w-0 truncate text-lg font-semibold text-heading">{pageTitle}</h1>
           )}
         </div>
+        {actions && <div className="flex min-w-0 shrink items-center gap-2">{actions}</div>}
         <div className="flex shrink-0 items-center gap-2">
-          {actions}
           <SyncStatus />
           <Button
             variant="secondary"

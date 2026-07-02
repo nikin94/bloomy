@@ -178,6 +178,24 @@ describe('Sidebar (mobile drawer)', () => {
   })
 })
 
+describe('Sidebar (mobile top bar title)', () => {
+  it('names the current destination on a top-level page', () => {
+    renderSidebar('/orders')
+    expect(screen.getByRole('heading', { name: 'Заказы' })).toBeInTheDocument()
+  })
+
+  it('names the active settings section on the settings screen', () => {
+    renderSidebar('/settings?section=orders')
+    expect(screen.getByRole('heading', { name: 'Заказы' })).toBeInTheDocument()
+  })
+
+  it('shows no bar title on an inner page (the page keeps its own heading)', () => {
+    // Sidebar renders no heading here; the inner page supplies its own in-content h1.
+    renderSidebar('/orders/o1')
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument()
+  })
+})
+
 describe('Sidebar (mobile back button)', () => {
   it('shows a back control on an inner page and returns UP the route hierarchy', async () => {
     const user = userEvent.setup()
