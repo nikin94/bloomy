@@ -334,7 +334,7 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
         data-testid="settings-flyout"
         aria-label={tSettings('tabsAria')}
         inert={!flyoutOpen}
-        className={`hidden shrink-0 overflow-hidden bg-surface transition-[width] duration-200 ease-out motion-reduce:transition-none md:block ${
+        className={`hidden shrink-0 overflow-hidden bg-surface transition-[width] duration-300 ease-out motion-reduce:transition-none md:block ${
           flyoutOpen ? 'w-52 border-r border-border' : 'w-0'
         }`}
       >
