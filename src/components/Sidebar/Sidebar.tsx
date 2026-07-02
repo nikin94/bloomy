@@ -126,7 +126,7 @@ const BackIcon = () => (
   </svg>
 )
 
-const PlusIcon = ({ className = 'size-4' }: { className?: string }) => (
+const PlusIcon = ({ className = 'size-5' }: { className?: string }) => (
   <svg
     aria-hidden="true"
     viewBox="0 0 24 24"
@@ -218,11 +218,12 @@ const CollapseChevron = ({ className = 'size-4' }: { className?: string }) => (
 
 // Collapsed-rail row layout, shared by every rail row (nav, create, settings). The
 // row is a FIXED-width box (`w-10` = the collapsed strip's inner content width: the
-// 64px rail minus its 12px×2 padding) so it doesn't reflow while the rail width
-// animates from 192px → 64px. The icon keeps the SAME left inset as expanded
-// (`pl-3` mirrors the expanded `px-3`), so toggling collapse doesn't slide it left or
-// right — the rail just shrinks around a stationary icon. Expanded: icon + label.
-const railRowLayout = (collapsed: boolean) => (collapsed ? 'w-10 pl-3' : 'gap-2 px-3')
+// 64px rail minus its 12px×2 padding) that CENTRES the icon in itself, so it sits
+// dead-centre in the thin strip (icon centre at 32px = half the 64px rail). Expanded
+// uses `px-2.5` (10px), NOT `px-3`, so the icon's centre lands at that SAME 32px
+// (rail pad 12 + 10 + half a 20px icon) — so toggling collapse neither slides the
+// icon (its x is identical in both states) nor leaves it off-centre in the strip.
+const railRowLayout = (collapsed: boolean) => (collapsed ? 'w-10 justify-center px-0' : 'gap-2 px-2.5')
 
 // A nav destination in the vertical rail/drawer: a row, filled when its route is
 // active. Collapsed it becomes an icon-only, centred box (see railRowLayout).
