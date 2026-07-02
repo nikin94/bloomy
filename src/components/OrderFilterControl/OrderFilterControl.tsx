@@ -41,7 +41,7 @@ const FilterIcon = () => (
     strokeWidth={2}
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="size-5"
+    className="size-5 shrink-0"
   >
     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
   </svg>
@@ -114,11 +114,11 @@ const OrderFilterControl = ({
         className={[
           'flex shrink-0 items-center justify-center rounded-md border p-2 transition-colors',
           'md:border-0 md:py-2 md:text-sm md:font-medium',
-          // Collapsed rail: a fixed-width (`w-10`, the strip's inner width) icon box that
-          // keeps the SAME left inset as expanded (`pl-3` mirrors `px-3`) — matching the
-          // nav/settings rows, so the funnel stays put instead of sliding as the rail
-          // animates. Expanded: full-width labelled row.
-          collapsed ? 'md:w-10 md:justify-start md:pl-3' : 'md:w-full md:justify-start md:gap-2 md:px-3',
+          // Collapsed rail: a fixed-width (`w-10`, the strip's inner width) centred icon
+          // box — matching the nav/settings rows, so the funnel sits dead-centre in the
+          // strip. Expanded uses `md:px-2.5` (not `md:px-3`) so the icon's x matches that
+          // centre — it neither slides nor sits off-centre on collapse.
+          collapsed ? 'md:w-10 md:justify-center md:px-0' : 'md:w-full md:justify-start md:gap-2 md:px-2.5',
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
           modalFilterActive
             ? collapsed
