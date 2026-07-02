@@ -62,9 +62,8 @@ beforeEach(() => {
 })
 
 describe('SettingsPage', () => {
-  it('renders the settings heading and opens on the Appearance tab', () => {
+  it('opens on the Appearance tab with the font-size slider', () => {
     renderPage()
-    expect(screen.getByRole('heading', { name: 'Настройки' })).toBeInTheDocument()
     expect(tab('Внешний вид')).toHaveAttribute('aria-selected', 'true')
     expect(slider()).toBeInTheDocument()
   })

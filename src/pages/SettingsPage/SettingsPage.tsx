@@ -167,6 +167,12 @@ const SettingsPage = () => {
     }
   }
 
+  // The appearance/orders sections hold editable settings, so they stretch to the
+  // full content width and carry the Save/Cancel footer. Account/admin are just
+  // actions (sign-out / seed) with nothing to persist, so they stay at a
+  // comfortable reading width and show no footer.
+  const wide = tab === 'appearance' || tab === 'orders'
+
   return (
     // Full-width settings screen. There is NO full-width title bar — on desktop the
     // sub-rail runs flush from the very top to the bottom on the left, and the page
@@ -179,22 +185,16 @@ const SettingsPage = () => {
       <div className="flex min-h-0 flex-1 flex-col overflow-auto min-[769px]:flex-row min-[769px]:overflow-hidden">
         {/* Section nav: a <Select> on phones, a flush full-height sub-rail from
             769px — a lifted background (bg-surface) + a right hairline divide it
-            from the content, and it owns its own scroll so it spans top to bottom.
-            The page title sits at its top, split off by a bottom hairline. */}
+            from the content, and it owns its own scroll so it spans top to bottom. */}
         <div className="shrink-0 px-6 pt-6 min-[769px]:w-52 min-[769px]:overflow-auto min-[769px]:border-r min-[769px]:border-border min-[769px]:bg-surface min-[769px]:px-3 min-[769px]:py-4">
-          <h1 className="m-0 border-b border-border pb-4 text-2xl font-semibold text-heading">
-            {t('settings:title')}
-          </h1>
-          <div className="pt-4">
-            <SettingsTabs tabs={tabs} value={tab} onChange={setTab} />
-          </div>
+          <SettingsTabs tabs={tabs} value={tab} onChange={setTab} />
         </div>
 
-        {/* Content column: scrolls independently on desktop. The rows inside cap to
-            a comfortable reading width (max-w-2xl) so a label and its control don't
-            splay apart, and Save/Cancel align to that column. */}
+        {/* Content column: scrolls independently on desktop. Appearance/orders
+            stretch to the full width; account/admin stay capped to a comfortable
+            reading width. */}
         <div className="min-w-0 p-6 min-[769px]:flex-1 min-[769px]:overflow-auto">
-          <div className="flex max-w-2xl flex-col gap-6">
+          <div className={`flex flex-col gap-6 ${wide ? '' : 'max-w-2xl'}`}>
             {/* A fixed min-height sized to the tallest everyday tab (appearance /
                 orders, three rows each) so the panel doesn't jump as the user
                 switches tabs — a shorter tab (account) just pads to the same
@@ -354,20 +354,24 @@ const SettingsPage = () => {
 
             {/* Save persists every tab's drafts; Cancel discards the unsaved edits in
                 place (reverting the live preview). A brief saved note confirms a
-                successful persist, cleared the moment a new edit is made. */}
-            <div className="mt-2 flex flex-col gap-2 min-[769px]:flex-row min-[769px]:items-center min-[769px]:justify-end">
-              {saved && (
-                <span role="status" className="text-sm text-text min-[769px]:mr-auto">
-                  {t('settings:saved')}
-                </span>
-              )}
-              <Button variant="secondary" onClick={handleCancel} disabled={saving || !isDirty}>
-                {t('common:cancel')}
-              </Button>
-              <Button variant="primary" onClick={handleSave} isLoading={saving} disabled={!isDirty}>
-                {t('common:save')}
-              </Button>
-            </div>
+                successful persist, cleared the moment a new edit is made. Shown only
+                for the sections that actually have settings to save (appearance /
+                orders); account and admin are action-only, so no footer. */}
+            {wide && (
+              <div className="mt-2 flex flex-col gap-2 min-[769px]:flex-row min-[769px]:items-center min-[769px]:justify-end">
+                {saved && (
+                  <span role="status" className="text-sm text-text min-[769px]:mr-auto">
+                    {t('settings:saved')}
+                  </span>
+                )}
+                <Button variant="secondary" onClick={handleCancel} disabled={saving || !isDirty}>
+                  {t('common:cancel')}
+                </Button>
+                <Button variant="primary" onClick={handleSave} isLoading={saving} disabled={!isDirty}>
+                  {t('common:save')}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -36,52 +36,49 @@ const AdminSeedSection = ({ ownerId }: { ownerId: string }) => {
   }
 
   return (
-    <>
-      <span aria-hidden="true" className="h-px w-full bg-border" />
-      <section className="flex flex-col gap-2">
-        <p className="m-0 text-sm font-medium text-heading">{t('admin.title')}</p>
+    <section className="flex flex-col gap-2">
+      <p className="m-0 text-sm font-medium text-heading">{t('admin.title')}</p>
 
-        <label className="flex items-center gap-2 text-sm text-text">
-          <input
-            type="checkbox"
-            checked={reset}
-            onChange={(e) => setReset(e.target.checked)}
-            disabled={busy}
-          />
-          {t('admin.resetLabel')}
-        </label>
+      <label className="flex items-center gap-2 text-sm text-text">
+        <input
+          type="checkbox"
+          checked={reset}
+          onChange={(e) => setReset(e.target.checked)}
+          disabled={busy}
+        />
+        {t('admin.resetLabel')}
+      </label>
 
-        <Button variant="secondary" onClick={run} isLoading={busy} className="self-start">
-          {t('admin.seed')}
-        </Button>
+      <Button variant="secondary" onClick={run} isLoading={busy} className="self-start">
+        {t('admin.seed')}
+      </Button>
 
-        {result && (
-          <p role="status" className="m-0 text-sm text-text">
-            {/* One complete, translatable sentence per case (with vs without
-                reset) — no fragile cross-key concatenation that would break a
-                language whose word order differs. */}
-            {result.reset
-              ? t('admin.resultReset', {
-                  customers: result.customers,
-                  orders: result.orders,
-                  trashed: result.trashed,
-                  removedOrders: result.removedOrders,
-                  removedCustomers: result.removedCustomers,
-                })
-              : t('admin.result', {
-                  customers: result.customers,
-                  orders: result.orders,
-                  trashed: result.trashed,
-                })}
-          </p>
-        )}
-        {error && (
-          <p role="alert" className="m-0 text-sm text-danger">
-            {error}
-          </p>
-        )}
-      </section>
-    </>
+      {result && (
+        <p role="status" className="m-0 text-sm text-text">
+          {/* One complete, translatable sentence per case (with vs without
+              reset) — no fragile cross-key concatenation that would break a
+              language whose word order differs. */}
+          {result.reset
+            ? t('admin.resultReset', {
+                customers: result.customers,
+                orders: result.orders,
+                trashed: result.trashed,
+                removedOrders: result.removedOrders,
+                removedCustomers: result.removedCustomers,
+              })
+            : t('admin.result', {
+                customers: result.customers,
+                orders: result.orders,
+                trashed: result.trashed,
+              })}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="m-0 text-sm text-danger">
+          {error}
+        </p>
+      )}
+    </section>
   )
 }
 
