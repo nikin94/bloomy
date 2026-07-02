@@ -117,10 +117,11 @@ const SearchControl = ({
           className={
             'flex shrink-0 items-center justify-center rounded-md border border-border p-2 text-heading transition-colors hover:bg-primary-bg ' +
             'md:border-0 md:py-2 md:text-sm md:font-medium ' +
-            // Collapsed rail: a fixed-width (`w-10`, the strip's inner width) centred
-            // icon box — matching the nav/settings rows, so the loupe sits dead-centre
-            // and doesn't drift as the rail animates. Expanded: full-width labelled row.
-            (collapsed ? 'md:w-10 md:justify-center md:px-0 ' : 'md:w-full md:justify-start md:gap-2 md:px-3 ') +
+            // Collapsed rail: a fixed-width (`w-10`, the strip's inner width) icon box
+            // that keeps the SAME left inset as expanded (`pl-3` mirrors `px-3`) —
+            // matching the nav/settings rows, so the loupe stays put instead of sliding
+            // as the rail animates. Expanded: full-width labelled row.
+            (collapsed ? 'md:w-10 md:justify-start md:pl-3 ' : 'md:w-full md:justify-start md:gap-2 md:px-3 ') +
             'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
           }
         >

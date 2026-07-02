@@ -218,13 +218,11 @@ const CollapseChevron = ({ className = 'size-4' }: { className?: string }) => (
 
 // Collapsed-rail row layout, shared by every rail row (nav, create, settings). The
 // row is a FIXED-width box (`w-10` = the collapsed strip's inner content width: the
-// 64px rail minus its 12px×2 padding) that CENTRES the icon in itself. Because the
-// width is fixed — not stretched to the rail, which animates from 192px → 64px on
-// collapse — the icon sits at a constant position and the rail simply shrinks around
-// it, so it stays put instead of sliding. And `justify-center` centres the icon in
-// that box symmetrically, for any icon size (unlike a `px-3` offset, which leaves an
-// asymmetric 12px/8px gap that reads as a rightward shift). Expanded: icon + label.
-const railRowLayout = (collapsed: boolean) => (collapsed ? 'w-10 justify-center px-0' : 'gap-2 px-3')
+// 64px rail minus its 12px×2 padding) so it doesn't reflow while the rail width
+// animates from 192px → 64px. The icon keeps the SAME left inset as expanded
+// (`pl-3` mirrors the expanded `px-3`), so toggling collapse doesn't slide it left or
+// right — the rail just shrinks around a stationary icon. Expanded: icon + label.
+const railRowLayout = (collapsed: boolean) => (collapsed ? 'w-10 pl-3' : 'gap-2 px-3')
 
 // A nav destination in the vertical rail/drawer: a row, filled when its route is
 // active. Collapsed it becomes an icon-only, centred box (see railRowLayout).
@@ -472,7 +470,7 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
           title={collapsed ? t('newOrder') : undefined}
           aria-label={collapsed ? t('newOrder') : undefined}
         >
-          <PlusIcon className="size-4 shrink-0" />
+          <PlusIcon className="size-5 shrink-0" />
           {!collapsed && t('newOrder')}
         </NavLink>
 
@@ -603,7 +601,7 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
         }`}
       >
         <NavLink to="/orders/new" className={createRowClass(false)} onClick={closeMenu}>
-          <PlusIcon className="size-4 shrink-0" />
+          <PlusIcon className="size-5 shrink-0" />
           {t('addOrder')}
         </NavLink>
 
