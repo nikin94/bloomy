@@ -16,7 +16,7 @@ import {
   trashDaysLeft,
   EMPTY_ORDER_FILTER,
 } from '../../types/order'
-import type { Order, OrderColumn, OrderFilter } from '../../types/order'
+import type { Order, OrderColumn, OrderFilter, OrderSort } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
 // Trash screen: the signed-in user's soft-deleted orders, shown in the SAME
@@ -42,6 +42,9 @@ const DeletedOrdersPage = () => {
   // Search + status/currency/price filter over the trash — the same OrderFilter
   // shape as the main list, so the trash filters exactly like the active list.
   const [filter, setFilter] = useState<OrderFilter>(EMPTY_ORDER_FILTER)
+  // List sort, lifted so the DataTable headers and the filter dialog's sort
+  // control drive the same order (phones have no headers) — as on the active list.
+  const [sort, setSort] = useState<OrderSort | null>(null)
   // "Now" for the purge countdown, captured once on mount (see purgeColumn below).
   const [now] = useState(() => Date.now())
 
@@ -70,25 +73,32 @@ const DeletedOrdersPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerId])
 
-  const customerNameById = new Map(customers.map((c) => [c.id, c.name]))
-  const getCustomerName = (id: string) => customerNameById.get(id) ?? '—'
+  // Memoised so their identity is stable across renders: `columns` now feeds the
+  // header-actions node (its memo would loop setActions on a fresh array every
+  // render — see useHeaderActions), and DataTable keys its column-def memo off it.
+  const getCustomerName = useMemo(() => {
+    const nameById = new Map(customers.map((c) => [c.id, c.name]))
+    return (id: string) => nameById.get(id) ?? '—'
+  }, [customers])
   // The active-list columns plus a trash-only "auto-purge countdown" so the user
   // sees, per order, how long until it is permanently deleted. `now` is captured
   // once on mount (day-granularity, so it needn't be reactive — and a render-time
   // Date.now() isn't pure). Uses the page's multi-namespace `t` (the column built
   // inside buildOrderColumns is bound to `order` and couldn't reach `common:days`).
-  const purgeColumn: OrderColumn = {
-    id: 'purgeCountdown',
-    header: t('trash.purgeColumn'),
-    format: (o) => {
-      const days = trashDaysLeft(o, now)
-      return days === null ? '—' : t('common:days', { count: days })
-    },
-    // Sort soonest-to-purge first; a legacy delete with no countdown sorts last.
-    sortValue: (o) => trashDaysLeft(o, now) ?? Number.MAX_SAFE_INTEGER,
-    width: 'w-32',
-  }
-  const columns = [...buildOrderColumns(getCustomerName, tOrder), purgeColumn]
+  const columns = useMemo(() => {
+    const purgeColumn: OrderColumn = {
+      id: 'purgeCountdown',
+      header: t('trash.purgeColumn'),
+      format: (o) => {
+        const days = trashDaysLeft(o, now)
+        return days === null ? '—' : t('common:days', { count: days })
+      },
+      // Sort soonest-to-purge first; a legacy delete with no countdown sorts last.
+      sortValue: (o) => trashDaysLeft(o, now) ?? Number.MAX_SAFE_INTEGER,
+      width: 'w-32',
+    }
+    return [...buildOrderColumns(getCustomerName, tOrder), purgeColumn]
+  }, [getCustomerName, tOrder, t, now])
 
   // Reuse the orders predicate — the trash filters exactly like the active list
   // (search + status/currency/price), no extra logic.
@@ -105,10 +115,17 @@ const DeletedOrdersPage = () => {
           onChange={(query) => setFilter((f) => ({ ...f, query }))}
           label={t('trash.search')}
         />
-        <OrderFilterControl orders={orders} filter={filter} onChange={setFilter} />
+        <OrderFilterControl
+          orders={orders}
+          filter={filter}
+          onChange={setFilter}
+          columns={columns}
+          sort={sort}
+          onSortChange={setSort}
+        />
       </>
     ),
-    [filter, orders, t],
+    [filter, orders, t, columns, sort],
   )
   useHeaderActions(headerActions)
 
@@ -136,6 +153,8 @@ const DeletedOrdersPage = () => {
           columns={columns}
           onRowClick={(order) => navigate(`/orders/${order.id}`)}
           emptyMessage={filterActive ? t('common:nothingFound') : t('trash.empty')}
+          sort={sort}
+          onSortChange={setSort}
         />
       )}
     </>

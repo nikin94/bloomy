@@ -3,8 +3,9 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import OrderFilterControl from './OrderFilterControl'
-import { EMPTY_ORDER_FILTER } from '../../types/order'
-import type { Order, OrderFilter } from '../../types/order'
+import { EMPTY_ORDER_FILTER, buildOrderColumns } from '../../types/order'
+import type { Order, OrderFilter, OrderSort } from '../../types/order'
+import i18n from '../../i18n/config'
 
 // The shared funnel button + filter dialog used by the orders list and the trash.
 // It reads the default currency from settings (the context's default value, RUB)
@@ -33,6 +34,24 @@ const order = (over: Partial<Order> = {}): Order => ({
 const Harness = ({ orders }: { orders: Order[] }) => {
   const [filter, setFilter] = useState<OrderFilter>(EMPTY_ORDER_FILTER)
   return <OrderFilterControl orders={orders} filter={filter} onChange={setFilter} />
+}
+
+// A harness that also lifts the sort, the way a list page does — so the dialog's
+// sort control is rendered (columns + handler present) and round-trips its value.
+const columns = buildOrderColumns((id) => (id === 'c1' ? 'Анна' : '—'), i18n.getFixedT(null, 'order'))
+const SortHarness = ({ orders }: { orders: Order[] }) => {
+  const [filter, setFilter] = useState<OrderFilter>(EMPTY_ORDER_FILTER)
+  const [sort, setSort] = useState<OrderSort | null>(null)
+  return (
+    <OrderFilterControl
+      orders={orders}
+      filter={filter}
+      onChange={setFilter}
+      columns={columns}
+      sort={sort}
+      onSortChange={setSort}
+    />
+  )
 }
 
 const funnel = () => screen.getByRole('button', { name: 'Фильтры' })
@@ -104,5 +123,34 @@ describe('OrderFilterControl', () => {
     expect(screen.getByLabelText('С')).toHaveValue('')
     expect(screen.getByLabelText('По')).toHaveValue('')
     expect(funnel()).not.toHaveClass('bg-primary')
+  })
+
+  it('drives the list sort from the dialog (the phone stand-in for header clicks)', async () => {
+    const user = userEvent.setup()
+    render(<SortHarness orders={[order()]} />)
+
+    await user.click(funnel())
+    // Only the field picker shows until a field is chosen (no direction yet).
+    const field = screen.getByRole('combobox', { name: 'Сортировать по' })
+    expect(screen.queryByRole('combobox', { name: 'Направление сортировки' })).not.toBeInTheDocument()
+
+    // Picking a column reveals the direction select (defaulting to descending).
+    await user.selectOptions(field, 'total')
+    const dir = screen.getByRole('combobox', { name: 'Направление сортировки' })
+    expect(dir).toHaveValue('desc')
+
+    await user.selectOptions(dir, 'asc')
+    expect(dir).toHaveValue('asc')
+
+    // Choosing "default" clears the sort back to the natural order.
+    await user.selectOptions(field, '')
+    expect(screen.queryByRole('combobox', { name: 'Направление сортировки' })).not.toBeInTheDocument()
+  })
+
+  it('does not render a sort control when the caller doesn\'t lift the sort', async () => {
+    const user = userEvent.setup()
+    render(<Harness orders={[order()]} />)
+    await user.click(funnel())
+    expect(screen.queryByRole('combobox', { name: 'Сортировать по' })).not.toBeInTheDocument()
   })
 })

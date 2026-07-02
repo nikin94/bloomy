@@ -295,6 +295,25 @@ interface FormatOrderColumn extends OrderColumnBase {
 
 export type OrderColumn = FieldOrderColumn | FormatOrderColumn
 
+// The list's active sort, lifted OUT of the DataTable so a second control (the
+// filter dialog, for phones with no column headers to click) can drive it too.
+// `field` is a sortable column's id (one that carries a `sortValue`); `dir` is
+// the direction. `null` means "no explicit sort" — the list keeps its natural
+// (as-loaded) order. Kept a plain domain shape so neither the pages nor the
+// filter dialog depend on TanStack's SortingState — the DataTable adapts between
+// the two internally.
+export interface OrderSort {
+  field: string
+  dir: 'asc' | 'desc'
+}
+
+// The columns a list can be sorted by: those with a `sortValue` (a stacked
+// multi-line column like "plants" has no single key, so it is non-sortable and
+// excluded). Returns id + header so a picker can label each option. Shared by the
+// filter dialog's "sort by" select so its options always match the real columns.
+export const sortableColumns = (columns: OrderColumn[]): { id: string; header: string }[] =>
+  columns.filter((c) => c.sortValue).map((c) => ({ id: c.id, header: c.header }))
+
 // Canonical option values, in display order. Status/method values keep their
 // workflow order (e.g. new → shipped → delivered). Labels are NOT stored here:
 // they are resolved per render from the `order` i18n namespace, so the UI follows

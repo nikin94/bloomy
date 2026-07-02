@@ -57,6 +57,12 @@
     "dateRange": "Order date",
     "dateFrom": "From",
     "dateTo": "To",
+    "sortBy": "Sort",
+    "sortByAria": "Sort by",
+    "sortDefault": "Default",
+    "sortDirAria": "Sort direction",
+    "sortDesc": "Descending",
+    "sortAsc": "Ascending",
     "reset": "Reset",
     "done": "Done"
   },

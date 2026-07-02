@@ -57,6 +57,12 @@
     "dateRange": "Дата заказа",
     "dateFrom": "С",
     "dateTo": "По",
+    "sortBy": "Сортировка",
+    "sortByAria": "Сортировать по",
+    "sortDefault": "По умолчанию",
+    "sortDirAria": "Направление сортировки",
+    "sortDesc": "По убыванию",
+    "sortAsc": "По возрастанию",
     "reset": "Сбросить",
     "done": "Готово"
   },
