@@ -168,28 +168,30 @@ const SettingsPage = () => {
   }
 
   return (
-    // Full-width page (no centred column): the sidebar freed the horizontal space,
-    // so we use it. On a phone the sections collapse to the <Select> above the
-    // content; from 769px up they become a vertical sub-rail beside a wide content
-    // panel. The content ROWS themselves stay capped to a comfortable reading width
-    // (max-w-2xl) so a label and its control don't splay apart across the screen.
-    <div className="min-h-0 flex-1 overflow-auto p-6">
-      <div className="flex w-full flex-col gap-6">
-        <h1 className="m-0 text-2xl font-semibold text-heading">{t('settings:title')}</h1>
+    // Full-width settings screen. A title bar with a bottom hairline frames the top
+    // (same "title, then a full-width divider" language as the main sidebar), and
+    // below it the body fills the remaining height. On a phone the sections collapse
+    // to a <Select> above the content and the whole body scrolls as one column; from
+    // 769px they become a FLUSH full-height sub-rail beside a wide content panel,
+    // each column with its own scroll so the rail runs edge-to-edge, top to bottom.
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <h1 className="m-0 shrink-0 border-b border-border px-6 py-4 text-2xl font-semibold text-heading">
+        {t('settings:title')}
+      </h1>
 
-        <div className="flex flex-col gap-6 min-[769px]:flex-row min-[769px]:items-start min-[769px]:gap-8">
-          {/* Section nav: a <Select> on phones, a vertical sub-rail from 769px.
-              From 769px the rail is a full-height side panel — a slightly lifted
-              background (bg-surface) so it reads apart from the page, and a right
-              hairline as an explicit vertical divider from the content beside it.
-              `self-stretch` runs the panel (and its divider) the full row height. */}
-          <div className="min-[769px]:w-52 min-[769px]:shrink-0 min-[769px]:self-stretch min-[769px]:border-r min-[769px]:border-border min-[769px]:bg-surface min-[769px]:py-2 min-[769px]:pr-3">
-            <SettingsTabs tabs={tabs} value={tab} onChange={setTab} />
-          </div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-auto min-[769px]:flex-row min-[769px]:overflow-hidden">
+        {/* Section nav: a <Select> on phones, a flush full-height sub-rail from
+            769px — a lifted background (bg-surface) + a right hairline divide it
+            from the content, and it owns its own scroll so it spans top to bottom. */}
+        <div className="shrink-0 px-6 pt-6 min-[769px]:w-52 min-[769px]:overflow-auto min-[769px]:border-r min-[769px]:border-border min-[769px]:bg-surface min-[769px]:px-3 min-[769px]:py-4">
+          <SettingsTabs tabs={tabs} value={tab} onChange={setTab} />
+        </div>
 
-          {/* Content column: takes the freed width but caps to max-w-2xl so the
-              label/control rows read comfortably and Save/Cancel align to them. */}
-          <div className="flex min-w-0 max-w-2xl flex-1 flex-col gap-6">
+        {/* Content column: scrolls independently on desktop. The rows inside cap to
+            a comfortable reading width (max-w-2xl) so a label and its control don't
+            splay apart, and Save/Cancel align to that column. */}
+        <div className="min-w-0 p-6 min-[769px]:flex-1 min-[769px]:overflow-auto">
+          <div className="flex max-w-2xl flex-col gap-6">
             {/* A fixed min-height sized to the tallest everyday tab (appearance /
                 orders, three rows each) so the panel doesn't jump as the user
                 switches tabs — a shorter tab (account) just pads to the same
