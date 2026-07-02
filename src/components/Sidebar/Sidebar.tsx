@@ -216,34 +216,43 @@ const CollapseChevron = ({ className = 'size-4' }: { className?: string }) => (
   </svg>
 )
 
-// A nav destination in the vertical rail/drawer: a full-width row, filled when its
-// route is active. The row is ALWAYS left-aligned (icon at a fixed px-3 offset) —
-// collapsing the rail only drops the label, so the icon keeps its exact position
-// instead of sliding to the centre mid-animation. In the thin strip the icon then
-// reads as a tidy left-aligned column.
-const navRowClass = (isActive: boolean) =>
+// Collapsed-rail row layout, shared by every rail row (nav, create, settings). The
+// row is a FIXED-width box (`w-10` = the collapsed strip's inner content width: the
+// 64px rail minus its 12px×2 padding) that CENTRES the icon in itself. Because the
+// width is fixed — not stretched to the rail, which animates from 192px → 64px on
+// collapse — the icon sits at a constant position and the rail simply shrinks around
+// it, so it stays put instead of sliding. And `justify-center` centres the icon in
+// that box symmetrically, for any icon size (unlike a `px-3` offset, which leaves an
+// asymmetric 12px/8px gap that reads as a rightward shift). Expanded: icon + label.
+const railRowLayout = (collapsed: boolean) => (collapsed ? 'w-10 justify-center px-0' : 'gap-2 px-3')
+
+// A nav destination in the vertical rail/drawer: a row, filled when its route is
+// active. Collapsed it becomes an icon-only, centred box (see railRowLayout).
+const navRowClass = (isActive: boolean, collapsed: boolean) =>
   [
-    'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium no-underline transition-colors',
+    'flex items-center rounded-md py-2 text-sm font-medium no-underline transition-colors',
+    railRowLayout(collapsed),
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
     isActive ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg',
   ].join(' ')
 
 // The "Новый заказ" ACTION (it creates) gets the primary treatment so it reads as
-// the main action, not a fifth nav tab. Left-aligned like the nav rows (same px-3
-// icon offset) so its plus stays put when the rail collapses to icons — the label
-// just drops.
-const createClass =
-  'flex items-center gap-2 whitespace-nowrap rounded-md bg-primary px-3 py-2 ' +
-  'text-sm font-medium text-white no-underline transition-opacity hover:opacity-90 ' +
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+// the main action, not a fifth nav tab. Collapsed it centres to just its plus icon.
+const createRowClass = (collapsed: boolean) =>
+  [
+    'flex items-center whitespace-nowrap rounded-md bg-primary py-2 text-sm font-medium text-white no-underline transition-opacity hover:opacity-90',
+    railRowLayout(collapsed),
+    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+  ].join(' ')
 
 // The "Настройки" control. It is no longer a link to /settings — it TOGGLES the
 // section nav (a flyout on desktop, an accordion in the mobile drawer); navigation
-// to /settings happens only when a section is picked. Styled like a nav
-// destination (same left-aligned px-3 icon offset), filled when settings is active.
-const settingsToggleClass = (active: boolean) =>
+// to /settings happens only when a section is picked. Styled like a nav destination,
+// filled when settings is active; collapsed it centres to just its gear icon.
+const settingsToggleClass = (active: boolean, collapsed: boolean) =>
   [
-    'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+    'flex items-center rounded-md py-2 text-sm font-medium transition-colors',
+    railRowLayout(collapsed),
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
     active ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg',
   ].join(' ')
@@ -390,7 +399,7 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
           onClick={onNavigate}
           title={collapsed ? label : undefined}
           aria-label={collapsed ? label : undefined}
-          className={({ isActive }) => navRowClass(isActive)}
+          className={({ isActive }) => navRowClass(isActive, collapsed)}
         >
           <Icon className="size-5 shrink-0" />
           {!collapsed && <span className="truncate">{label}</span>}
@@ -455,7 +464,7 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
 
         <NavLink
           to="/orders/new"
-          className={createClass}
+          className={createRowClass(collapsed)}
           title={collapsed ? t('newOrder') : undefined}
           aria-label={collapsed ? t('newOrder') : undefined}
         >
@@ -488,7 +497,7 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
             aria-controls="settings-flyout"
             title={collapsed ? t('settings') : undefined}
             aria-label={collapsed ? t('settings') : undefined}
-            className={settingsToggleClass(onSettings)}
+            className={settingsToggleClass(onSettings, collapsed)}
           >
             <GearIcon className="size-5 shrink-0" />
             {!collapsed && t('settings')}
@@ -589,7 +598,7 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
           menuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <NavLink to="/orders/new" className={createClass} onClick={closeMenu}>
+        <NavLink to="/orders/new" className={createRowClass(false)} onClick={closeMenu}>
           <PlusIcon className="size-4 shrink-0" />
           {t('addOrder')}
         </NavLink>
@@ -607,7 +616,7 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
             onClick={() => setSettingsExpanded((open) => !open)}
             aria-expanded={settingsExpanded}
             aria-controls="drawer-settings-sections"
-            className={settingsToggleClass(onSettings)}
+            className={settingsToggleClass(onSettings, false)}
           >
             <GearIcon className="size-5 shrink-0" />
             {t('settings')}
