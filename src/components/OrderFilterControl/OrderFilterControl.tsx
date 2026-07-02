@@ -98,10 +98,13 @@ const OrderFilterControl = ({
     <>
       {/* Responsive trigger. In the cramped mobile top bar (base) it's a compact
           icon button that fills in (primary) when a filter is active — the same
-          language as an active nav button. From md: up (the desktop rail) it
-          becomes a borderless full-width "icon + label" row matching the sidebar's
-          settings/nav rows; there the active state is shown as primary TEXT, since
-          a full fill would read like an active nav destination beside them. */}
+          language as an active nav button. From md: up (the EXPANDED desktop rail)
+          it becomes a borderless full-width "icon + label" row matching the
+          sidebar's settings/nav rows; there the active state is shown as primary
+          TEXT, since a full fill would read like an active nav destination beside
+          them. But once the rail COLLAPSES the label is gone, and primary text on a
+          soft tint reads like a plain hover — so collapsed keeps the solid
+          bg-primary fill, the only unambiguous "active" cue without a label. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -114,7 +117,9 @@ const OrderFilterControl = ({
           collapsed ? 'md:justify-center md:px-0' : 'md:justify-start md:gap-2 md:px-3',
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
           modalFilterActive
-            ? 'border-primary bg-primary text-white md:bg-transparent md:text-primary md:hover:bg-primary-bg'
+            ? collapsed
+              ? 'border-primary bg-primary text-white'
+              : 'border-primary bg-primary text-white md:bg-transparent md:text-primary md:hover:bg-primary-bg'
             : 'border-border text-heading hover:bg-primary-bg',
         ].join(' ')}
       >

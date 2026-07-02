@@ -46,8 +46,9 @@ const SearchControl = ({
 }) => {
   const { t } = useTranslation()
   // When hosted in a COLLAPSED desktop rail the loupe shows icon-only; activating
-  // it first re-opens the rail (`expandRail`) so the field has room to slide out.
-  const { collapsed, expand: expandRail } = useSidebarCollapse()
+  // it first re-opens the rail (`expandRail`) so the field has room to slide out,
+  // and closing it restores the rail to how it was (`collapseRail`).
+  const { collapsed, expand: expandRail, collapse: collapseRail } = useSidebarCollapse()
   const [expanded, setExpanded] = useState(value.trim() !== '')
   // The loupe shows only once the field is FULLY collapsed (not mid-animation),
   // so it appears calmly in its resting spot instead of riding the width
@@ -55,9 +56,16 @@ const SearchControl = ({
   const [loupeVisible, setLoupeVisible] = useState(value.trim() === '')
   const inputRef = useRef<HTMLInputElement>(null)
   const collapseTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  // Whether the rail was collapsed when the field was opened. If so, closing the
+  // field re-collapses the rail so the user gets their compact layout back
+  // instead of being left with a fully expanded rail after a one-off search. A
+  // ref (not state) so capturing it doesn't re-render.
+  const wasCollapsedBeforeSearch = useRef(false)
 
   const expand = () => {
-    // In a collapsed rail there's no room for the field — widen the rail first.
+    // In a collapsed rail there's no room for the field — widen the rail first,
+    // remembering it was collapsed so close() can restore that.
+    wasCollapsedBeforeSearch.current = collapsed
     if (collapsed) expandRail()
     clearTimeout(collapseTimer.current)
     setLoupeVisible(false)
@@ -68,10 +76,14 @@ const SearchControl = ({
 
   // Clear the field and collapse back to the loupe. Used by the X button and
   // Escape. The loupe is revealed only after the collapse animation finishes
-  // (SEARCH_TRANSITION_MS), so it doesn't appear to fly into place.
+  // (SEARCH_TRANSITION_MS), so it doesn't appear to fly into place. If opening
+  // the field had widened a collapsed rail, put the rail back so the field close
+  // returns the layout to its previous (collapsed) state.
   const close = () => {
     onChange('')
     setExpanded(false)
+    if (wasCollapsedBeforeSearch.current) collapseRail()
+    wasCollapsedBeforeSearch.current = false
     collapseTimer.current = setTimeout(() => setLoupeVisible(true), SEARCH_TRANSITION_MS)
   }
 

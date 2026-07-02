@@ -297,11 +297,20 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
       return false
     })
   }, [])
+  // Collapse the rail again — used by a page control that widened it for itself
+  // (the search field) to restore the user's collapsed layout when it closes.
+  const collapseSidebar = useCallback(() => {
+    setCollapsed((c) => {
+      if (!c) writeCollapsed(true)
+      return true
+    })
+  }, [])
   // The context passed to the hosted page controls (search / filter), so they can
-  // drop their labels when collapsed and re-open the rail on activation.
+  // drop their labels when collapsed and re-open / re-collapse the rail around
+  // their own activation.
   const collapseValue = useMemo(
-    () => ({ collapsed, expand: expandSidebar }),
-    [collapsed, expandSidebar],
+    () => ({ collapsed, expand: expandSidebar, collapse: collapseSidebar }),
+    [collapsed, expandSidebar, collapseSidebar],
   )
   // Inner pages (order/customer detail, the create/edit form) get a mobile "up"
   // control; the top-level nav destinations are the top screen, so they don't.
@@ -405,7 +414,7 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
           aria-current={selected ? 'page' : undefined}
           className={sectionLinkClass(selected)}
         >
-          {tSettings(`tabs.${key}` as const)}
+          <span className="truncate">{tSettings(`tabs.${key}` as const)}</span>
         </Link>
       )
     })
@@ -416,6 +425,7 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
           anchors the collapse toggle on its right edge. Its width animates between
           the full rail and a thin icon strip. */}
       <nav
+        id="sidebar-nav"
         data-testid="sidebar-desktop"
         data-collapsed={collapsed}
         aria-label={t('menu')}
@@ -424,16 +434,20 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
         }`}
       >
         {/* Collapse toggle: a small chevron button straddling the rail's right edge
-            at its vertical middle. Click collapses the rail to icons / expands it. */}
+            at its vertical middle. Click collapses the rail to icons / expands it.
+            `aria-controls` ties it to the rail it collapses so AT announces the link. */}
         <button
           type="button"
           onClick={toggleCollapsed}
           aria-label={collapsed ? t('expandSidebar') : t('collapseSidebar')}
           title={collapsed ? t('expandSidebar') : t('collapseSidebar')}
           aria-expanded={!collapsed}
+          aria-controls="sidebar-nav"
           className="absolute right-0 top-1/2 z-30 flex size-6 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full border border-border bg-bg text-text shadow-sm transition-colors hover:bg-primary-bg hover:text-heading focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
-          <CollapseChevron className={`size-4 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
+          <CollapseChevron
+            className={`size-4 transition-transform motion-reduce:transition-none ${collapsed ? 'rotate-180' : ''}`}
+          />
         </button>
 
         <NavLink
@@ -595,7 +609,7 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
             <GearIcon />
             {t('settings')}
             <ChevronIcon
-              className={`ml-auto size-4 transition-transform ${settingsExpanded ? 'rotate-180' : ''}`}
+              className={`ml-auto size-4 transition-transform motion-reduce:transition-none ${settingsExpanded ? 'rotate-180' : ''}`}
             />
           </button>
           {/* The section list reveals with a smooth height animation (max-height,

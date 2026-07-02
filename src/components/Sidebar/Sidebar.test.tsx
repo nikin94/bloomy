@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router-dom'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { User } from 'firebase/auth'
 import { AuthContext } from '../../context/authContext'
@@ -12,6 +13,7 @@ vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
 
 // Imported after the mock above is registered.
 import Sidebar from './Sidebar'
+import SearchControl from '../SearchControl/SearchControl'
 
 const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
 
@@ -129,6 +131,26 @@ describe('Sidebar (desktop rail)', () => {
     await user.click(rail().getByRole('button', { name: 'Развернуть меню' }))
     expect(screen.getByTestId('sidebar-desktop')).toHaveAttribute('data-collapsed', 'false')
     expect(rail().getByText('Клиенты')).toBeInTheDocument()
+  })
+
+  it('a hosted search control opens the collapsed rail and closing it restores collapsed', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem('bloomy-sidebar-collapsed', '1')
+    const Harness = () => {
+      const [q, setQ] = useState('')
+      return <SearchControl value={q} onChange={setQ} label="Поиск заказов" />
+    }
+    renderSidebar('/orders', <Harness />)
+    expect(screen.getByTestId('sidebar-desktop')).toHaveAttribute('data-collapsed', 'true')
+
+    // Loupe is icon-only in a collapsed rail; activating it re-opens the rail so
+    // the field has room to slide out (rather than expanding into a 0px strip).
+    await user.click(rail().getByRole('button', { name: 'Поиск' }))
+    expect(screen.getByTestId('sidebar-desktop')).toHaveAttribute('data-collapsed', 'false')
+
+    // Closing the field (X) puts the rail back to the user's collapsed layout.
+    await user.click(rail().getByRole('button', { name: 'Очистить и закрыть поиск' }))
+    expect(screen.getByTestId('sidebar-desktop')).toHaveAttribute('data-collapsed', 'true')
   })
 
   it('restores the persisted collapsed state on mount', () => {
