@@ -20,12 +20,21 @@ const navigate = vi.fn()
 
 vi.mock('../../firebase/orders', () => ({
   createOrder: (...args: unknown[]) => createOrder(...args),
-  // OrderForm fetches orders to build the plant-name autocomplete list.
+  // OrderForm fetches orders to build the plant-name autocomplete list, and
+  // pre-generates the create order's id (photos are stored under it up front).
   fetchOrders: (...args: unknown[]) => fetchOrders(...args),
+  newOrderId: () => 'pre-generated-order-id',
 }))
 vi.mock('../../firebase/customers', () => ({
   createCustomer: (...args: unknown[]) => createCustomer(...args),
   fetchCustomers: (...args: unknown[]) => fetchCustomers(...args),
+}))
+// The create form mounts the OrderPhotos gallery (Storage layer); stub it so no
+// real Firebase Storage is touched.
+vi.mock('../../firebase/photos', () => ({
+  uploadOrderPhoto: vi.fn(),
+  getPhotoUrl: vi.fn(),
+  deleteOrderPhoto: vi.fn().mockResolvedValue(undefined),
 }))
 // Stub signOutUser so the real Firebase SDK stays out of the test.
 vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
@@ -305,6 +314,9 @@ describe('NewOrderPage', () => {
         deliveryPriceMinor: 30000,
         plants: [{ name: 'Роза', quantity: 1, unitPriceMinor: 14990 }],
       }),
+      // The form's pre-generated id rides along so the doc lands on the id the
+      // photos were stored under.
+      'pre-generated-order-id',
     )
     await waitFor(() =>
       expect(navigate).toHaveBeenCalledWith('/orders', { state: { highlightId: 'new-order-id' } }),
@@ -383,6 +395,7 @@ describe('NewOrderPage', () => {
     expect(createOrder).toHaveBeenCalledTimes(2)
     expect(createOrder).toHaveBeenLastCalledWith(
       expect.objectContaining({ customerId: 'new-customer-id' }),
+      'pre-generated-order-id',
     )
   })
 

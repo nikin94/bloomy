@@ -94,13 +94,24 @@ export async function fetchOrder(
 // (the promise only resolves once the server confirms). So the create never
 // blocks the UI. A genuinely failed write (e.g. an online permission-denied)
 // has no caller to catch it, so it is routed to reportError (Sentry).
-export function createOrder(order: NewOrder): string {
-  const orderRef = doc(collection(db, ORDERS_COLLECTION))
+//
+// `id` is optional: the create form pre-generates it (via newOrderId) so photos
+// can be uploaded under orders/{ownerId}/{id}/ BEFORE the doc exists, then passes
+// the SAME id here — keeping the photo path's orderId in lockstep with the doc id
+// (the cleanup function keys photo deletion off that segment). Omitted elsewhere,
+// where a fresh local id is generated.
+export function createOrder(order: NewOrder, id?: string): string {
+  const orderRef = id ? doc(db, ORDERS_COLLECTION, id) : doc(collection(db, ORDERS_COLLECTION))
   void setDoc(orderRef, { ...order, number: null }).catch((err) =>
     reportError(err, 'createOrder'),
   )
   return orderRef.id
 }
+
+// A fresh, locally-generated order document id (no network). The create form
+// uses this to know an order's id up front, so photos can be uploaded under its
+// storage path before the order document is written (see createOrder's `id`).
+export const newOrderId = (): string => doc(collection(db, ORDERS_COLLECTION)).id
 
 // Assign real per-owner numbers to any of the owner's orders still created
 // offline (number === null). Runs online (it uses transactions). For each

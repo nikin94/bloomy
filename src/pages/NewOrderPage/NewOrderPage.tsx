@@ -22,10 +22,12 @@ const NewOrderPage = () => {
       heading={t('form.newHeading')}
       seed={seed}
       onCancel={() => navigate('/orders')}
-      onSubmit={async (order) => {
+      onSubmit={async (order, orderId) => {
         // Stamp the creation time here; the form leaves `dateCreated` to the
         // caller so edit can preserve the original instead of overwriting it.
-        const id = await createOrder({ ...order, dateCreated: Date.now() })
+        // Create the doc on the form's pre-generated id so it matches the id any
+        // attached photos were stored under (orders/{ownerId}/{orderId}/...).
+        const id = await createOrder({ ...order, dateCreated: Date.now() }, orderId)
         // Go to the list (not the order page) and pass the new id so the list
         // can briefly highlight the freshly created order at the top.
         navigate('/orders', { state: { highlightId: id } })

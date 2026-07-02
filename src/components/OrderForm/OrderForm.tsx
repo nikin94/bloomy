@@ -18,12 +18,15 @@ import Select from '../Select/Select'
 import Button from '../Button/Button'
 import Input from '../Input/Input'
 import Textarea from '../Textarea/Textarea'
+import OrderPhotos from '../OrderPhotos/OrderPhotos'
 import PlantItemRow from './PlantItemRow'
 import CustomerPicker from './CustomerPicker'
 import { emptyItem, initialItems } from './items'
 import type { ItemInput } from './items'
 import type { CustomerMode } from './CustomerPicker'
-import { fetchOrders } from '../../firebase/orders'
+import { fetchOrders, newOrderId } from '../../firebase/orders'
+import { deleteOrderPhoto } from '../../firebase/photos'
+import { reportError } from '../../observability/reportError'
 import type { NewOrder } from '../../firebase/orders'
 import type {
   Currency,
@@ -57,7 +60,11 @@ interface OrderFormProps {
   // surfaces the message as a form error and keeps the user on the page — a
   // newly created customer is already switched to the "existing" branch so a
   // retry reuses it instead of duplicating.
-  onSubmit: (order: Omit<NewOrder, 'dateCreated'>) => Promise<void>
+  //
+  // `orderId` is the create form's pre-generated document id (undefined on edit):
+  // photos were uploaded under it, so the caller must create the order with THIS
+  // id (createOrder's `id`) to keep the photo storage path in lockstep.
+  onSubmit: (order: Omit<NewOrder, 'dateCreated'>, orderId?: string) => Promise<void>
   // Leave the form without saving (the caller decides where to).
   onCancel: () => void
 }
@@ -81,6 +88,18 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // an EDIT additionally carries the per-instance state (statuses, comment),
   // so those read from `initialOrder` alone and stay pristine on a repeat.
   const source = initialOrder ?? seed
+
+  // Photo attachments are offered on CREATE only (an existing order edits its
+  // photos on the detail page). A repeat seed does NOT carry the original's
+  // photos — they belong to that order — so the list starts empty.
+  const isCreate = initialOrder === undefined
+  // The order's document id, known UP FRONT so photos can be stored under
+  // orders/{ownerId}/{orderId}/ before the order document is written. Pre-generated
+  // for a create (and passed to createOrder so the doc lands on the same id);
+  // an edit already has its id. `useState` initializer so it's stable across renders.
+  const [createId] = useState(newOrderId)
+  const orderId = initialOrder?.id ?? createId
+  const [photos, setPhotos] = useState<string[]>([])
 
   // Customer selection. New orders default to "new"; an edited order already has
   // a customer, so it starts in "existing" mode with that customer selected.
@@ -351,14 +370,34 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
         shipmentStatus,
         ...(comment.trim() !== '' ? { comment: comment.trim() } : {}),
         ...(completedAt !== undefined ? { completedAt } : {}),
+        // Photos are create-only here and were uploaded under `orderId`; include
+        // the paths only when there are any (keeps the field absent otherwise).
+        ...(isCreate && photos.length > 0 ? { photos } : {}),
       }
 
-      // The caller persists the order (create vs update) and navigates.
-      await onSubmit(order)
+      // The caller persists the order (create vs update) and navigates. The
+      // pre-generated create id rides along so the doc lands on the same id the
+      // photos were stored under (undefined/ignored on edit).
+      await onSubmit(order, isCreate ? orderId : undefined)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('form.errors.saveFailed'))
       setSaving(false)
     }
+  }
+
+  // Leaving a create form WITHOUT saving orphans any photos already uploaded
+  // under the pre-generated id (no order doc will ever exist for it, so the
+  // cleanup function — which fires on order-doc deletion — never reclaims them).
+  // Best-effort delete them here before navigating away. Fire-and-forget so the
+  // cancel never blocks; a failed delete just leaves an orphan (a hard refresh /
+  // tab close mid-create can still orphan — that's the known cloud-cleanup gap).
+  const handleCancel = () => {
+    if (isCreate) {
+      photos.forEach((path) => {
+        deleteOrderPhoto(path).catch((err) => reportError(err, 'orderFormCancelPhotoCleanup'))
+      })
+    }
+    onCancel()
   }
 
   // Wait for the customer fetch before painting the form, so the slider starts
@@ -369,7 +408,10 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
     <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
         {/* Scrollable body — the footer below stays pinned. */}
         <div className="flex-1 overflow-auto p-6">
-          <div className="mx-auto flex max-w-2xl flex-col gap-5">
+          {/* Full-width form (the sidebar freed the horizontal space); the
+              method/status selects already lay out in 3-column grids that spread
+              across it. */}
+          <div className="flex w-full flex-col gap-5">
             <h1 className="m-0 text-[1.2222rem] font-semibold text-heading">{heading}</h1>
 
           <CustomerPicker
@@ -508,13 +550,32 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
             onChange={(e) => setComment(e.target.value)}
           />
 
+          {/* Photo attachments — create only (an edit manages photos on the order
+              detail page). The order id is known up front (pre-generated), so the
+              same OrderPhotos gallery used on the detail page works here: each
+              pick uploads under orders/{ownerId}/{orderId}/ immediately and reports
+              its paths via onChange, which the submit then saves on the order.
+              Uploads need a connection (Storage has no offline queue); that's
+              surfaced inline by OrderPhotos. */}
+          {isCreate && ownerId && (
+            <>
+              <span aria-hidden="true" className="h-px w-full bg-border" />
+              <OrderPhotos
+                ownerId={ownerId}
+                orderId={orderId}
+                photos={photos}
+                onChange={setPhotos}
+              />
+            </>
+          )}
+
           </div>
         </div>
 
         {/* Pinned footer: the running total and actions stay visible while the
             plant list grows, so the user never has to scroll to see the total. */}
         <div className="border-t border-border bg-bg px-6 py-4">
-          <div className="mx-auto flex max-w-2xl flex-col gap-3">
+          <div className="flex w-full flex-col gap-3">
             {error && (
               <p role="alert" className="m-0 text-danger">
                 {error}
@@ -538,7 +599,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                 >
                   {t('common:save')}
                 </Button>
-                <Button variant="secondary" onClick={onCancel} className="w-full sm:w-auto">
+                <Button variant="secondary" onClick={handleCancel} className="w-full sm:w-auto">
                   {t('common:cancel')}
                 </Button>
               </div>

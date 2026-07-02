@@ -148,4 +148,34 @@ describe('OrderPhotos', () => {
 
     expect(await screen.findByRole('dialog', { name: 'Просмотр фото' })).toBeInTheDocument()
   })
+
+  it('closes the viewer when the backdrop (area around the photo) is clicked', async () => {
+    const user = userEvent.setup()
+    getPhotoUrl.mockResolvedValue('https://cdn/a.jpg')
+    renderGallery(['orders/owner-1/o1/a.jpg'])
+    await waitFor(() => expect(screen.getAllByRole('img')).toHaveLength(1))
+
+    await user.click(screen.getByRole('button', { name: 'Открыть фото' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Просмотр фото' })
+
+    // Tapping the dialog backdrop (not the photo) dismisses the viewer…
+    await user.click(dialog)
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Просмотр фото' })).not.toBeInTheDocument(),
+    )
+  })
+
+  it('keeps the viewer open when the photo itself is clicked', async () => {
+    const user = userEvent.setup()
+    getPhotoUrl.mockResolvedValue('https://cdn/a.jpg')
+    renderGallery(['orders/owner-1/o1/a.jpg'])
+    await waitFor(() => expect(screen.getAllByRole('img')).toHaveLength(1))
+
+    await user.click(screen.getByRole('button', { name: 'Открыть фото' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Просмотр фото' })
+
+    // …but clicking the photo (which stops propagation) does not close it.
+    await user.click(within(dialog).getByRole('img'))
+    expect(screen.getByRole('dialog', { name: 'Просмотр фото' })).toBeInTheDocument()
+  })
 })

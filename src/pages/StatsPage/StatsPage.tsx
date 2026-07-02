@@ -117,7 +117,10 @@ const StatsPage = () => {
       )}
 
       {!loading && !error && (
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+        // Full-width (the sidebar freed the horizontal space): the KPI cards flow
+        // into an auto-fill grid that fills the width, the status bar and the
+        // month chart stretch to it. No centred max-width column with empty gutters.
+        <div className="flex w-full flex-col gap-6">
           <header className="flex flex-wrap items-center justify-between gap-3 max-md:justify-end">
             {/* On a phone the page title lives in the top bar (the sidebar's mobile
                 bar), so it's hidden here to avoid showing it twice; the period
@@ -191,8 +194,10 @@ const StatsPage = () => {
           ) : (
             <>
               {/* KPI cards: order count + per-currency money broken into
-                  plants / delivery / total (total = plants + delivery). */}
-              <section className="grid gap-3 sm:grid-cols-2">
+                  plants / delivery / total (total = plants + delivery). An
+                  auto-fill grid (min 16rem/card) fills the freed width with as
+                  many columns as fit, instead of a fixed two that stretch huge. */}
+              <section className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(16rem,1fr))]">
                 <div className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-4">
                   <span className="text-sm text-text">{t('totalOrders')}</span>
                   <span className="text-3xl font-semibold tabular-nums text-heading">

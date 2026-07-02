@@ -31,6 +31,28 @@ const CameraIcon = () => (
   </svg>
 )
 
+// Viewer nav chevron. A stroked SVG (not the ‹/› glyphs, which sit off-centre in
+// their em-box) so `flex items-center justify-center` centres it exactly in the
+// round button. `direction` flips it left/right.
+const ViewerChevron = ({ direction }: { direction: 'left' | 'right' }) => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="size-6"
+  >
+    {direction === 'left' ? (
+      <polyline points="15 18 9 12 15 6" />
+    ) : (
+      <polyline points="9 18 15 12 9 6" />
+    )}
+  </svg>
+)
+
 // A single resolved thumbnail. Resolves its download URL lazily (cached in the
 // photos layer) and shows a loader until then. The image opens the viewer; the
 // × requests deletion.
@@ -125,6 +147,10 @@ const PhotoViewer = ({
       role="dialog"
       aria-modal="true"
       aria-label={t('photos.view')}
+      // A tap anywhere on the backdrop (the empty area around the photo, and the
+      // header/footer gaps) closes the viewer. The photo itself and the nav
+      // buttons stop propagation, so tapping them doesn't also close.
+      onClick={onClose}
       className="fixed inset-0 z-50 flex flex-col bg-black/90"
     >
       <div className="flex justify-end p-3">
@@ -144,7 +170,12 @@ const PhotoViewer = ({
         {urls.map((url, i) => (
           <div key={i} className="flex w-full shrink-0 snap-center items-center justify-center p-4">
             {url ? (
-              <img src={url} alt={t('photos.alt')} className="max-h-full max-w-full object-contain" />
+              <img
+                src={url}
+                alt={t('photos.alt')}
+                onClick={(e) => e.stopPropagation()}
+                className="max-h-full max-w-full object-contain"
+              />
             ) : (
               <span className="text-white">
                 <Loader size="md" />
@@ -154,22 +185,24 @@ const PhotoViewer = ({
         ))}
       </div>
       {urls.length > 1 && (
-        <div className="flex justify-center gap-6 p-4">
+        // stopPropagation so stepping through photos doesn't bubble to the
+        // backdrop's close handler.
+        <div className="flex justify-center gap-6 p-4" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
             onClick={() => step(-1)}
             aria-label={t('photos.prev')}
-            className="flex size-11 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="flex size-11 items-center justify-center rounded-full bg-white/10 text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
-            <span aria-hidden="true">‹</span>
+            <ViewerChevron direction="left" />
           </button>
           <button
             type="button"
             onClick={() => step(1)}
             aria-label={t('photos.next')}
-            className="flex size-11 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="flex size-11 items-center justify-center rounded-full bg-white/10 text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
-            <span aria-hidden="true">›</span>
+            <ViewerChevron direction="right" />
           </button>
         </div>
       )}
