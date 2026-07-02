@@ -170,17 +170,24 @@ const SettingsPage = () => {
   return (
     // Full-width settings screen. There is NO full-width title bar — on desktop the
     // sub-rail runs flush from the very top to the bottom on the left, and the page
-    // title lives at the top of the CONTENT column (capped to it), not spanning the
-    // rail. On a phone the sections collapse to a <Select> and the whole body scrolls
+    // TITLE lives at the top of that sub-rail (with a divider under it, the same
+    // "title, then a hairline" language as the main sidebar), not spanning the whole
+    // width. On a phone the sections collapse to a <Select> and the whole body scrolls
     // as one column; from 769px they become the flush full-height sub-rail beside a
     // wide content panel, each column with its own scroll.
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex min-h-0 flex-1 flex-col overflow-auto min-[769px]:flex-row min-[769px]:overflow-hidden">
         {/* Section nav: a <Select> on phones, a flush full-height sub-rail from
             769px — a lifted background (bg-surface) + a right hairline divide it
-            from the content, and it owns its own scroll so it spans top to bottom. */}
+            from the content, and it owns its own scroll so it spans top to bottom.
+            The page title sits at its top, split off by a bottom hairline. */}
         <div className="shrink-0 px-6 pt-6 min-[769px]:w-52 min-[769px]:overflow-auto min-[769px]:border-r min-[769px]:border-border min-[769px]:bg-surface min-[769px]:px-3 min-[769px]:py-4">
-          <SettingsTabs tabs={tabs} value={tab} onChange={setTab} />
+          <h1 className="m-0 border-b border-border pb-4 text-2xl font-semibold text-heading">
+            {t('settings:title')}
+          </h1>
+          <div className="pt-4">
+            <SettingsTabs tabs={tabs} value={tab} onChange={setTab} />
+          </div>
         </div>
 
         {/* Content column: scrolls independently on desktop. The rows inside cap to
@@ -188,7 +195,6 @@ const SettingsPage = () => {
             splay apart, and Save/Cancel align to that column. */}
         <div className="min-w-0 p-6 min-[769px]:flex-1 min-[769px]:overflow-auto">
           <div className="flex max-w-2xl flex-col gap-6">
-            <h1 className="m-0 text-2xl font-semibold text-heading">{t('settings:title')}</h1>
             {/* A fixed min-height sized to the tallest everyday tab (appearance /
                 orders, three rows each) so the panel doesn't jump as the user
                 switches tabs — a shorter tab (account) just pads to the same
