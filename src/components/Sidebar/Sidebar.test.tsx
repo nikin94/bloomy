@@ -202,6 +202,19 @@ describe('Sidebar (mobile drawer)', () => {
     expect(document.body.style.overflow).not.toBe('hidden')
   })
 
+  it('moves focus into the drawer on open and returns it to the burger on close', async () => {
+    const user = userEvent.setup()
+    renderSidebar('/orders')
+
+    await user.click(burger())
+    // Focus lands on the drawer's first control so keyboard/SR users start inside it.
+    expect(drawer().getByRole('link', { name: 'Добавить заказ' })).toHaveFocus()
+
+    await user.keyboard('{Escape}')
+    // On close, focus returns to the burger — never stranded on now-hidden content.
+    expect(burger()).toHaveFocus()
+  })
+
   it('toggles the drawer open and closed from the burger', async () => {
     const user = userEvent.setup()
     renderSidebar()

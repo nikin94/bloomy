@@ -260,4 +260,34 @@ describe('SettingsPage', () => {
     await user.click(screen.getByRole('button', { name: 'Выйти' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Сеть недоступна')
   })
+
+  it('shows the unsaved-changes hint on a footerless section when drafts are dirty', async () => {
+    const user = userEvent.setup()
+    // Edit on Appearance (where Save lives), then switch to the footerless Account
+    // section: the drafts survive but the Save/Cancel footer is gone, so the banner
+    // reassures the user the change isn't lost.
+    const SectionSwitcher = () => {
+      const [, setParams] = useSearchParams()
+      return (
+        <button type="button" onClick={() => setParams({ section: 'account' })}>
+          go-account
+        </button>
+      )
+    }
+    render(
+      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+        <SettingsContext.Provider value={settings()}>
+          <MemoryRouter initialEntries={['/settings?section=appearance']}>
+            <SettingsPage />
+            <SectionSwitcher />
+          </MemoryRouter>
+        </SettingsContext.Provider>
+      </AuthContext.Provider>,
+    )
+    // Pristine appearance → no hint (footer carries Save there anyway).
+    expect(screen.queryByText(/несохранённые изменения/i)).not.toBeInTheDocument()
+    await user.click(themeSwitch()) // make the drafts dirty
+    await user.click(screen.getByRole('button', { name: 'go-account' }))
+    expect(screen.getByText(/несохранённые изменения/i)).toBeInTheDocument()
+  })
 })

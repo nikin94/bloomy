@@ -333,6 +333,11 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
     }
 
     setSaving(true)
+    // Tracks photos that made it into Storage this attempt, so the catch below can
+    // roll them back if the order write itself fails (all uploads succeeded but
+    // onSubmit throws) — the doc never lands, so cloud-cleanup (#110) would never
+    // fire for these, and abandoning the form now would orphan them permanently.
+    const uploadedPhotoPaths: string[] = []
     try {
       // Resolve the customer id: reuse the selected one, or create a new
       // customer first. The delivery address also seeds the new customer's
@@ -384,6 +389,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
           return
         }
         photoPaths = results.map((r) => (r as PromiseFulfilledResult<string>).value)
+        uploadedPhotoPaths.push(...photoPaths)
       }
 
       // `dateCreated` is set by the caller (Date.now() on create, original on
@@ -411,6 +417,12 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
       // photos were stored under (undefined/ignored on edit).
       await onSubmit(order, isCreate ? orderId : undefined)
     } catch (err: unknown) {
+      // Roll back any photos already in Storage — the order doc will never exist
+      // to trigger cloud-cleanup, so abandoning the form now would orphan them.
+      // Best-effort: a failed rollback is logged, symmetric to the partial-upload path.
+      uploadedPhotoPaths.forEach((path) =>
+        deleteOrderPhoto(path).catch((e) => reportError(e, 'orderFormSubmitPhotoRollback')),
+      )
       setError(err instanceof Error ? err.message : t('form.errors.saveFailed'))
       setSaving(false)
     }

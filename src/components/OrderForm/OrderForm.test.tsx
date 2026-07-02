@@ -191,6 +191,30 @@ describe('OrderForm', () => {
     )
   })
 
+  it('rolls back uploaded photos when every upload succeeds but the order write fails', async () => {
+    // All uploads land, but onSubmit throws (rules-reject / quota / transient during
+    // finalize). The order doc never exists, so cloud-cleanup would never fire — the
+    // catch must delete the just-uploaded photos itself to avoid a permanent orphan.
+    const onSubmit = vi.fn().mockRejectedValue(new Error('order write failed'))
+    const user = userEvent.setup()
+    uploadOrderPhoto.mockResolvedValue('orders/owner-1/pre-generated-order-id/p.jpg')
+    const { container } = renderForm({ onSubmit })
+    await screen.findByLabelText('Имя клиента')
+    await user.type(screen.getByLabelText('Имя клиента'), 'Борис')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Цена'), '100')
+
+    const file = new File(['x'], 'p.jpg', { type: 'image/jpeg' })
+    await user.upload(container.querySelector('input[type="file"]') as HTMLInputElement, file)
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(deleteOrderPhoto).toHaveBeenCalledWith('orders/owner-1/pre-generated-order-id/p.jpg'),
+    )
+  })
+
   it('does NOT mount the photo gallery when editing (photos are managed on the detail page)', async () => {
     fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
     renderForm({ initialOrder: order({ customerId: 'c1' }) })
