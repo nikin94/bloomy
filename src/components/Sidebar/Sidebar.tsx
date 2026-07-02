@@ -440,11 +440,18 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
               className={`ml-auto size-4 transition-transform ${settingsExpanded ? 'rotate-180' : ''}`}
             />
           </button>
+          {/* The section list reveals with a smooth height animation (max-height,
+              same easing as the drawer itself) instead of snapping in/out, so it
+              feels like part of the main menu. `inert` when collapsed keeps the
+              (clipped) links out of the tab order and the a11y tree. */}
           <div
             id="drawer-settings-sections"
-            className={settingsExpanded ? 'flex flex-col gap-1 pl-4' : 'hidden'}
+            inert={!settingsExpanded}
+            className={`overflow-hidden transition-[max-height] duration-300 ease-out motion-reduce:transition-none ${
+              settingsExpanded ? 'max-h-96' : 'max-h-0'
+            }`}
           >
-            {sectionLinks(closeMenu)}
+            <div className="flex flex-col gap-1 pl-4 pt-1">{sectionLinks(closeMenu)}</div>
           </div>
         </div>
       </nav>
