@@ -291,7 +291,16 @@ const sectionLinkClass = (selected: boolean) =>
 // `actions` is the per-page controls slot (e.g. the orders search + filter),
 // published by the page via useHeaderActions and rendered here so the sidebar
 // stays unaware of what a page contributes.
-const Sidebar = ({ actions }: { actions?: ReactNode }) => {
+const Sidebar = ({
+  actions,
+  // Reports the mobile-drawer open state up to AppLayout, which marks the page
+  // content `inert` while the drawer overlays it. Optional so the Sidebar renders
+  // standalone (its own tests) without a host.
+  onDrawerOpenChange,
+}: {
+  actions?: ReactNode
+  onDrawerOpenChange?: (open: boolean) => void
+}) => {
   const { t } = useTranslation('nav')
   // Section labels live in the `settings` namespace (shared with the page).
   const { t: tSettings } = useTranslation('settings')
@@ -399,6 +408,28 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [menuOpen])
+
+  // Drawer a11y + host notification, all keyed on the open state:
+  //  • report open→AppLayout so it can `inert` the page content behind the overlay;
+  //  • lock body scroll while open so the content underneath can't scroll away;
+  //  • move focus INTO the drawer on open (first control) and RETURN it to the
+  //    burger on close, so keyboard focus is never stranded on hidden content.
+  // The drawer's own `id` is used to find its first control and the burger (by its
+  // aria-controls) without threading refs through the Button component.
+  useEffect(() => {
+    onDrawerOpenChange?.(menuOpen)
+    if (!menuOpen) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    document
+      .getElementById('mobile-drawer')
+      ?.querySelector<HTMLElement>('a, button')
+      ?.focus()
+    return () => {
+      document.body.style.overflow = prevOverflow
+      document.querySelector<HTMLElement>('[aria-controls="mobile-drawer"]')?.focus()
+    }
+  }, [menuOpen, onDrawerOpenChange])
 
   // The nav destinations, shared by the rail and the drawer. `onNavigate` closes
   // the drawer after a pick (a no-op on the desktop rail). `collapsed` drops the

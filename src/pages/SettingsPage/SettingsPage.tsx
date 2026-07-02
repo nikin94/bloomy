@@ -191,6 +191,24 @@ const SettingsPage = () => {
     // stretch to the full width; account/admin stay capped to a comfortable width.
     <div className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
       <div className={`flex min-h-full flex-col gap-6 ${wide ? '' : 'max-w-2xl'}`}>
+        {/* Visually-hidden page heading: the screen shows no visible title (the
+            section nav lives in the sidebar), so a screen reader landing here via a
+            direct link (/settings?section=…) still hears the page name. */}
+        <h1 className="sr-only">{t('settings:title')}</h1>
+
+        {/* Account/admin have no Save/Cancel footer (they're action-only), so an
+            edit made on another section could look lost when the user switches here.
+            This banner reassures them the drafts survive — they persist from the
+            Appearance/Orders footer. Only shown on the footerless sections. */}
+        {!wide && isDirty && (
+          <p
+            role="status"
+            className="m-0 rounded-md border border-border bg-primary-bg px-3 py-2 text-sm text-text"
+          >
+            {t('settings:unsavedHint')}
+          </p>
+        )}
+
         <div
           role="region"
           // Named by the section's own label so the region announces which

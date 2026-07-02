@@ -15,7 +15,7 @@ import Modal from '../Modal/Modal'
 // the parent (`photos`) — every add/remove calls `onChange` with the new full
 // list, which the page persists via patchOrder.
 
-const CameraIcon = () => (
+export const CameraIcon = () => (
   <svg
     aria-hidden="true"
     viewBox="0 0 24 24"
@@ -56,7 +56,7 @@ const ViewerChevron = ({ direction }: { direction: 'left' | 'right' }) => (
 // A single resolved thumbnail. Resolves its download URL lazily (cached in the
 // photos layer) and shows a loader until then. The image opens the viewer; the
 // × requests deletion.
-const Thumb = ({
+export const Thumb = ({
   url,
   t,
   onOpen,
@@ -106,7 +106,7 @@ const Thumb = ({
 // Full-screen swiper. A horizontal scroll-snap track of full images; Esc closes,
 // arrows step. `pointer-events` stay on the controls so a tap on the backdrop
 // (outside an image) closes it.
-const PhotoViewer = ({
+export const PhotoViewer = ({
   urls,
   startIndex,
   onClose,
