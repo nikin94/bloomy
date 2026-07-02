@@ -42,6 +42,9 @@ const burger = () => screen.getByRole('button', { name: 'Открыть меню
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // The rail's collapsed state persists to localStorage — clear it so each test
+  // starts from the default (expanded) rail.
+  localStorage.clear()
 })
 
 describe('Sidebar (desktop rail)', () => {
@@ -105,6 +108,35 @@ describe('Sidebar (desktop rail)', () => {
     expect(rail().getByTestId('page-actions')).toBeInTheDocument()
     // ...and mirrored in the mobile top bar, so both layouts get the controls.
     expect(screen.getAllByTestId('page-actions')).toHaveLength(2)
+  })
+
+  it('collapses the rail to an icon strip and back via the chevron toggle', async () => {
+    const user = userEvent.setup()
+    renderSidebar()
+    // Starts expanded: labels present, the toggle offers to collapse.
+    expect(screen.getByTestId('sidebar-desktop')).toHaveAttribute('data-collapsed', 'false')
+    expect(rail().getByText('Клиенты')).toBeInTheDocument()
+
+    await user.click(rail().getByRole('button', { name: 'Свернуть меню' }))
+
+    // Collapsed: the rail is marked collapsed and the visible label text is gone…
+    expect(screen.getByTestId('sidebar-desktop')).toHaveAttribute('data-collapsed', 'true')
+    expect(rail().queryByText('Клиенты')).not.toBeInTheDocument()
+    // …but the destination stays a named, reachable link (name via aria-label).
+    expect(rail().getByRole('link', { name: 'Клиенты' })).toHaveAttribute('href', '/customers')
+
+    // The same control now expands it back out.
+    await user.click(rail().getByRole('button', { name: 'Развернуть меню' }))
+    expect(screen.getByTestId('sidebar-desktop')).toHaveAttribute('data-collapsed', 'false')
+    expect(rail().getByText('Клиенты')).toBeInTheDocument()
+  })
+
+  it('restores the persisted collapsed state on mount', () => {
+    localStorage.setItem('bloomy-sidebar-collapsed', '1')
+    renderSidebar()
+    expect(screen.getByTestId('sidebar-desktop')).toHaveAttribute('data-collapsed', 'true')
+    // A collapsed rail shows the expand affordance from the start.
+    expect(rail().getByRole('button', { name: 'Развернуть меню' })).toBeInTheDocument()
   })
 })
 

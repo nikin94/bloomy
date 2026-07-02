@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
+import { useSidebarCollapse } from '../../context/sidebarCollapseContext'
 import CloseIcon from '../icons/CloseIcon'
 
 const SearchIcon = () => (
@@ -44,6 +45,9 @@ const SearchControl = ({
   label: string
 }) => {
   const { t } = useTranslation()
+  // When hosted in a COLLAPSED desktop rail the loupe shows icon-only; activating
+  // it first re-opens the rail (`expandRail`) so the field has room to slide out.
+  const { collapsed, expand: expandRail } = useSidebarCollapse()
   const [expanded, setExpanded] = useState(value.trim() !== '')
   // The loupe shows only once the field is FULLY collapsed (not mid-animation),
   // so it appears calmly in its resting spot instead of riding the width
@@ -53,6 +57,8 @@ const SearchControl = ({
   const collapseTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const expand = () => {
+    // In a collapsed rail there's no room for the field — widen the rail first.
+    if (collapsed) expandRail()
     clearTimeout(collapseTimer.current)
     setLoupeVisible(false)
     setExpanded(true)
@@ -98,12 +104,13 @@ const SearchControl = ({
           aria-expanded={false}
           className={
             'flex shrink-0 items-center justify-center rounded-md border border-border p-2 text-heading transition-colors hover:bg-primary-bg ' +
-            'md:w-full md:justify-start md:gap-2 md:border-0 md:px-3 md:py-2 md:text-sm md:font-medium ' +
+            'md:w-full md:border-0 md:py-2 md:text-sm md:font-medium ' +
+            (collapsed ? 'md:justify-center md:px-0 ' : 'md:justify-start md:gap-2 md:px-3 ') +
             'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
           }
         >
           <SearchIcon />
-          <span className="hidden md:inline">{t('search')}</span>
+          {!collapsed && <span className="hidden md:inline">{t('search')}</span>}
         </button>
       )}
       {/* The input wrapper carries the width transition; the X is absolutely

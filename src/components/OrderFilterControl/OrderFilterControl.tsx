@@ -6,6 +6,7 @@ import Button from '../Button/Button'
 import Select from '../Select/Select'
 import Modal from '../Modal/Modal'
 import { useSettings } from '../../context/settingsContext'
+import { useSidebarCollapse } from '../../context/sidebarCollapseContext'
 import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
 import { formatMoney, parseDateInput, toDateInputValue } from '../../utils/format'
 import {
@@ -70,6 +71,9 @@ const OrderFilterControl = ({
   // The price-range bounds aren't tied to one order; show them in the user's
   // default currency when no currency filter narrows the scope.
   const { defaultCurrency } = useSettings()
+  // Collapsed desktop rail → the funnel shows icon-only, centred like the other
+  // collapsed rows.
+  const { collapsed } = useSidebarCollapse()
   const [open, setOpen] = useState(false)
 
   const modalFilterActive = isModalFilterActive(filter)
@@ -106,7 +110,8 @@ const OrderFilterControl = ({
         aria-pressed={modalFilterActive}
         className={[
           'flex shrink-0 items-center justify-center rounded-md border p-2 transition-colors',
-          'md:w-full md:justify-start md:gap-2 md:border-0 md:px-3 md:py-2 md:text-sm md:font-medium',
+          'md:w-full md:border-0 md:py-2 md:text-sm md:font-medium',
+          collapsed ? 'md:justify-center md:px-0' : 'md:justify-start md:gap-2 md:px-3',
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
           modalFilterActive
             ? 'border-primary bg-primary text-white md:bg-transparent md:text-primary md:hover:bg-primary-bg'
@@ -114,7 +119,7 @@ const OrderFilterControl = ({
         ].join(' ')}
       >
         <FilterIcon />
-        <span className="hidden md:inline">{t('filters.open')}</span>
+        {!collapsed && <span className="hidden md:inline">{t('filters.open')}</span>}
       </button>
 
       {open && (
