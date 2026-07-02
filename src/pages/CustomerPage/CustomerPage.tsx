@@ -119,7 +119,7 @@ const CustomerPage = () => {
 
   return (
     <>
-      <div className="min-h-0 flex-1 overflow-auto p-6">
+      <div className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
         {loading && <Spinner />}
         {error && (
           <p role="alert" className="text-danger">

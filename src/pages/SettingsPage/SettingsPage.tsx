@@ -189,7 +189,7 @@ const SettingsPage = () => {
     // of the screen, not glued under the last row); when the content is tall enough
     // to fill, mt-auto collapses and the footer just flows after it. Appearance/orders
     // stretch to the full width; account/admin stay capped to a comfortable width.
-    <div className="min-h-0 flex-1 overflow-auto p-6">
+    <div className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
       <div className={`flex min-h-full flex-col gap-6 ${wide ? '' : 'max-w-2xl'}`}>
         <div
           role="region"

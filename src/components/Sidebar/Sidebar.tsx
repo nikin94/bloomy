@@ -202,6 +202,19 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
   const requestedSection = searchParams.get('section')
   const currentSection = isSettingsSection(requestedSection) ? requestedSection : 'appearance'
 
+  // The mobile top bar names the current page on its far left — the phone has no
+  // visible sidebar highlight to tell you where you are (unlike the desktop rail).
+  // Derived from the route: a nav destination's label, or — on /settings — the
+  // active section's label. Inner pages (detail / create-edit forms) show the
+  // back control there instead and keep their own in-content <h1>, so they get no
+  // bar title (null).
+  const navLink = NAV_LINKS.find((link) => link.to === location.pathname)
+  const pageTitle = onSettings
+    ? tSettings(`tabs.${currentSection}` as const)
+    : navLink
+      ? t(navLink.labelKey)
+      : null
+
   // The desktop settings flyout: a second-level panel that slides out horizontally
   // from under the main rail when "Настройки" is toggled. It STARTS open when you
   // enter the settings route (so the section list is there on arrival) and closes
@@ -317,38 +330,44 @@ const Sidebar = ({ actions }: { actions?: ReactNode }) => {
         <div className="flex w-52 flex-col gap-1 p-4">{sectionLinks()}</div>
       </nav>
 
-      {/* Mobile top bar (below md): burger opens the left drawer; back + page
-          actions sit beside it, the sync indicator on the right. */}
+      {/* Mobile top bar (below md). Left: the current page title (or the back
+          control on an inner page) — it names the screen, since there's no visible
+          sidebar highlight on a phone. Right cluster, pinned to the edge: any page
+          controls (search / filter), the sync indicator, then the burger far right
+          (as everywhere). The title truncates first (min-w-0 flex-1), so the icons
+          never get pushed off a narrow viewport. */}
       <div className="flex items-center gap-2 border-b border-border bg-bg px-4 py-3 md:hidden">
-        <Button
-          variant="secondary"
-          size="icon"
-          onClick={() => setMenuOpen((open) => !open)}
-          aria-label={menuOpen ? t('closeMenu') : t('openMenu')}
-          aria-expanded={menuOpen}
-          aria-controls="mobile-drawer"
-          className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border"
-        >
-          <BurgerIcon open={menuOpen} />
-        </Button>
-        {showBack && (
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {showBack && (
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={() => navigate(parentPath(location.pathname))}
+              aria-label={t('back')}
+              title={t('back')}
+              className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border"
+            >
+              <BackIcon />
+            </Button>
+          )}
+          {pageTitle && (
+            <h1 className="m-0 min-w-0 truncate text-lg font-semibold text-heading">{pageTitle}</h1>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {actions}
+          <SyncStatus />
           <Button
             variant="secondary"
             size="icon"
-            onClick={() => navigate(parentPath(location.pathname))}
-            aria-label={t('back')}
-            title={t('back')}
-            className="shrink-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-label={menuOpen ? t('closeMenu') : t('openMenu')}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-drawer"
+            className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border"
           >
-            <BackIcon />
+            <BurgerIcon open={menuOpen} />
           </Button>
-        )}
-        {/* Page controls take the remaining room and may shrink (`min-w-0`), so an
-            expanded search caps to the free space instead of pushing the sync
-            indicator off a 320px viewport. */}
-        {actions && <div className="flex min-w-0 flex-1 items-center gap-2">{actions}</div>}
-        <div className="ml-auto flex items-center gap-2">
-          <SyncStatus />
         </div>
       </div>
 
