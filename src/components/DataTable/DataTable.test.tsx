@@ -173,6 +173,39 @@ describe('DataTable (sorting)', () => {
     expect(table().queryByRole('button', { name: 'Растения' })).not.toBeInTheDocument()
     expect(table().getByText('Растения')).toBeInTheDocument()
   })
+
+  it('runs controlled: a header click reports the sort and the sort prop drives the order', async () => {
+    const user = userEvent.setup()
+    const onSortChange = vi.fn()
+    const list = [order({ id: 'a', number: 13 }), order({ id: 'b', number: 2 })]
+    // Controlled with no sort → natural (data) order, and a header click reports
+    // the new sort to the caller (descending first) rather than sorting locally.
+    const { rerender } = render(
+      <DataTable
+        orders={list}
+        columns={sortColumns}
+        onRowClick={vi.fn()}
+        sort={null}
+        onSortChange={onSortChange}
+      />,
+    )
+    expect(rowNumbers()).toEqual(['13', '2'])
+    await user.click(table().getByRole('button', { name: '№' }))
+    expect(onSortChange).toHaveBeenCalledWith({ field: 'number', dir: 'desc' })
+
+    // Driving the sort prop (as the page would from the reported value) orders
+    // the rows — ascending puts 2 before 13.
+    rerender(
+      <DataTable
+        orders={list}
+        columns={sortColumns}
+        onRowClick={vi.fn()}
+        sort={{ field: 'number', dir: 'asc' }}
+        onSortChange={onSortChange}
+      />,
+    )
+    expect(rowNumbers()).toEqual(['2', '13'])
+  })
 })
 
 describe('DataTable (mobile card layout)', () => {

@@ -15,8 +15,17 @@ import {
   isModalFilterActive,
   paymentStatusOptions,
   shipmentStatusOptions,
+  sortableColumns,
 } from '../../types/order'
-import type { Currency, Order, OrderFilter, PaymentStatus, ShipmentStatus } from '../../types/order'
+import type {
+  Currency,
+  Order,
+  OrderColumn,
+  OrderFilter,
+  OrderSort,
+  PaymentStatus,
+  ShipmentStatus,
+} from '../../types/order'
 
 // react-range-slider-input ships CommonJS (`exports.default = Component`).
 // Depending on the bundler's interop the default import can arrive wrapped one
@@ -60,10 +69,20 @@ const OrderFilterControl = ({
   orders,
   filter,
   onChange,
+  columns,
+  sort,
+  onSortChange,
 }: {
   orders: Order[]
   filter: OrderFilter
   onChange: Dispatch<SetStateAction<OrderFilter>>
+  // Sort, lifted from the DataTable so this dialog can drive it too — the phone
+  // has no column headers to click. Optional so a caller that doesn't lift the
+  // sort simply gets no sort control (the dialog stays filter-only). `columns`
+  // supplies the sortable options; `sort`/`onSortChange` are the controlled pair.
+  columns?: OrderColumn[]
+  sort?: OrderSort | null
+  onSortChange?: (sort: OrderSort | null) => void
 }) => {
   const { t } = useTranslation(['order', 'common'])
   // Order-bound t for the option helpers (typed TFunction<'order'>).
@@ -141,6 +160,46 @@ const OrderFilterControl = ({
       {open && (
         <Modal title={t('filters.title')} onClose={() => setOpen(false)}>
           <div className="flex flex-col gap-4">
+            {/* Sort — the phone's stand-in for clicking a column header (there are
+                no headers in the card layout). A field picker plus a direction
+                select shown only once a field is chosen; "default" clears it back
+                to the list's natural order. Rendered only when the caller lifts the
+                sort (columns + handler present). */}
+            {onSortChange && columns && (
+              <div className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-heading">{t('filters.sortBy')}</span>
+                <div className="flex gap-2">
+                  <Select
+                    aria-label={t('filters.sortByAria')}
+                    value={sort?.field ?? ''}
+                    onChange={(e) => {
+                      const field = e.target.value
+                      onSortChange(field ? { field, dir: sort?.dir ?? 'desc' } : null)
+                    }}
+                  >
+                    <option value="">{t('filters.sortDefault')}</option>
+                    {sortableColumns(columns).map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.header}
+                      </option>
+                    ))}
+                  </Select>
+                  {sort && (
+                    <Select
+                      aria-label={t('filters.sortDirAria')}
+                      value={sort.dir}
+                      onChange={(e) =>
+                        onSortChange({ field: sort.field, dir: e.target.value as 'asc' | 'desc' })
+                      }
+                    >
+                      <option value="desc">{t('filters.sortDesc')}</option>
+                      <option value="asc">{t('filters.sortAsc')}</option>
+                    </Select>
+                  )}
+                </div>
+              </div>
+            )}
+
             <Select
               label={t('filters.paymentStatus')}
               value={filter.paymentStatus}

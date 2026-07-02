@@ -667,7 +667,7 @@ const Sidebar = ({
             <GearIcon className="size-5 shrink-0" />
             {t('settings')}
             <ChevronIcon
-              className={`ml-auto size-4 transition-transform motion-reduce:transition-none ${settingsExpanded ? 'rotate-180' : ''}`}
+              className={`ml-auto size-4 transition-transform motion-reduce:transition-none ${settingsExpanded ? '' : 'rotate-180'}`}
             />
           </button>
           {/* The section list reveals with a smooth height animation (max-height,

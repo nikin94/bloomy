@@ -7,8 +7,8 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import type { ColumnDef, Row, SortingState } from '@tanstack/react-table'
-import type { Order, OrderColumn } from '../../types/order'
+import type { ColumnDef, OnChangeFn, Row, SortingState } from '@tanstack/react-table'
+import type { Order, OrderColumn, OrderSort } from '../../types/order'
 import { TABLE_CELL_BASE, TABLE_CELL_NOWRAP, TABLE_CELL_WRAP } from '../../styles/tableStyles'
 
 interface DataTableProps {
@@ -21,6 +21,13 @@ interface DataTableProps {
   // Shown when there are no rows. The caller distinguishes "no orders yet" from
   // "nothing matched the active filter".
   emptyMessage?: string
+  // Controlled sort. When `onSortChange` is passed the table's sort is owned by
+  // the caller (a page that also exposes it in the filter dialog for phones);
+  // clicking a header calls `onSortChange`, and `sort` drives what's displayed.
+  // When omitted the table keeps its own ephemeral sort (header clicks only),
+  // preserving the original uncontrolled behaviour for callers that don't lift it.
+  sort?: OrderSort | null
+  onSortChange?: (sort: OrderSort | null) => void
 }
 
 // Raw string value of a column for an order: the column's format function when
@@ -236,6 +243,8 @@ const DataTable = ({
   onRowClick,
   highlightOrderId,
   emptyMessage,
+  sort,
+  onSortChange,
 }: DataTableProps) => {
   const { t } = useTranslation()
   // Memoize the column defs so the table instance keeps a stable reference
@@ -249,9 +258,26 @@ const DataTable = ({
   // free of the library's typing.
   const columnById = useMemo(() => new Map(columns.map((c) => [c.id, c])), [columns])
 
-  // Sorting is local, ephemeral state: clicking a header sorts the in-memory
-  // list, but we don't persist the choice (it resets when the page remounts).
-  const [sorting, setSorting] = useState<SortingState>([])
+  // Sorting. When the caller controls it (`onSortChange` passed), the sort lives
+  // on the page — shared with the filter dialog — and we adapt the domain
+  // `OrderSort` to/from TanStack's `SortingState`. Otherwise it is local,
+  // ephemeral state (header clicks only), as before.
+  const controlled = onSortChange !== undefined
+  const [internalSorting, setInternalSorting] = useState<SortingState>([])
+  const sorting: SortingState = controlled
+    ? sort
+      ? [{ id: sort.field, desc: sort.dir === 'desc' }]
+      : []
+    : internalSorting
+  const setSorting: OnChangeFn<SortingState> = (updater) => {
+    const next = typeof updater === 'function' ? updater(sorting) : updater
+    if (onSortChange) {
+      const first = next[0]
+      onSortChange(first ? { field: first.id, dir: first.desc ? 'desc' : 'asc' } : null)
+    } else {
+      setInternalSorting(next)
+    }
+  }
 
   // React Compiler bails out of memoizing this component because useReactTable
   // returns fresh functions each render (react-hooks/incompatible-library). That

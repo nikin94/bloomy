@@ -25,7 +25,26 @@ export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(APP_VERSION) },
   // Generate source maps only when we're going to upload (and then delete) them,
   // so they're never shipped publicly alongside the bundle.
-  build: SENTRY_AUTH_TOKEN ? { sourcemap: true } : {},
+  build: {
+    // Generate source maps only when we're going to upload (and then delete)
+    // them, so they're never shipped publicly alongside the bundle.
+    ...(SENTRY_AUTH_TOKEN ? { sourcemap: true } : {}),
+    rollupOptions: {
+      output: {
+        // Split the two heaviest startup dependencies into their own chunks so the
+        // app-code entry isn't one ~780 kB monolith. Both load eagerly anyway
+        // (Firebase via AuthProvider at boot, Sentry via initSentry — now carrying
+        // Session Replay), but as separate files they cache independently of app
+        // code and download in parallel, and the entry drops well under the 500 kB
+        // warning. Only these two are peeled — the lazy PAGE chunks keep Vite's
+        // default per-route splitting, so nothing lazy-only is pulled in eagerly.
+        manualChunks: (id: string) => {
+          if (id.includes('@firebase') || /node_modules\/firebase\//.test(id)) return 'firebase'
+          if (id.includes('@sentry')) return 'sentry'
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),

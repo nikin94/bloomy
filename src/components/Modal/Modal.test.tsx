@@ -54,6 +54,20 @@ describe('Modal', () => {
     expect(inner).toHaveFocus()
   })
 
+  it('caps the panel to the viewport and scrolls the body when content is tall', () => {
+    renderModal(<p>Тело</p>)
+    // The panel is height-capped so a tall dialog (e.g. the order filter on a
+    // short phone) never overflows the screen…
+    const panel = screen.getByRole('dialog').querySelector('.max-h-full')
+    expect(panel).not.toBeNull()
+    // …and the body sits in its own scroll region (min-h-0 so overflow engages
+    // inside the capped flex column) while the header stays fixed.
+    const body = panel!.querySelector('.overflow-y-auto')
+    expect(body).not.toBeNull()
+    expect(body).toHaveClass('min-h-0')
+    expect(body).toHaveTextContent('Тело')
+  })
+
   it('restores focus to the opener when it unmounts', async () => {
     const user = userEvent.setup()
     const Harness = () => {

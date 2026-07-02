@@ -15,7 +15,7 @@ import {
   isOrderFilterActive,
   EMPTY_ORDER_FILTER,
 } from '../../types/order'
-import type { Order, OrderFilter } from '../../types/order'
+import type { Order, OrderFilter, OrderSort } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
 const OrdersPage = () => {
@@ -30,6 +30,10 @@ const OrdersPage = () => {
   const ownerId = user?.uid
   const [orders, setOrders] = useState<Order[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
+  // List sort, lifted here so BOTH the DataTable headers (desktop) and the filter
+  // dialog's sort control (phones, no headers) drive the same order. Ephemeral —
+  // resets to the natural order on remount, matching the old header-only sort.
+  const [sort, setSort] = useState<OrderSort | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   // Navigation state, set by another screen:
@@ -112,9 +116,14 @@ const OrdersPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerId])
 
-  const customerNameById = new Map(customers.map((c) => [c.id, c.name]))
-  const getCustomerName = (id: string) => customerNameById.get(id) ?? '—'
-  const columns = buildOrderColumns(getCustomerName, tOrder)
+  // Memoised so their identity is stable across renders: `columns` now feeds the
+  // header-actions node (its memo would loop setActions on a fresh array every
+  // render — see useHeaderActions), and DataTable keys its column-def memo off it.
+  const getCustomerName = useMemo(() => {
+    const nameById = new Map(customers.map((c) => [c.id, c.name]))
+    return (id: string) => nameById.get(id) ?? '—'
+  }, [customers])
+  const columns = useMemo(() => buildOrderColumns(getCustomerName, tOrder), [getCustomerName, tOrder])
 
   // Filtering is in memory: the whole list is already loaded, the dataset is
   // small, and it keeps search instant with no extra reads.
@@ -133,10 +142,17 @@ const OrdersPage = () => {
           onChange={(query) => setFilter((f) => ({ ...f, query }))}
           label={t('list.search')}
         />
-        <OrderFilterControl orders={orders} filter={filter} onChange={setFilter} />
+        <OrderFilterControl
+          orders={orders}
+          filter={filter}
+          onChange={setFilter}
+          columns={columns}
+          sort={sort}
+          onSortChange={setSort}
+        />
       </>
     ),
-    [filter, orders, t],
+    [filter, orders, t, columns, sort],
   )
   useHeaderActions(headerActions)
 
@@ -152,6 +168,8 @@ const OrdersPage = () => {
           onRowClick={(order) => navigate(`/orders/${order.id}`)}
           highlightOrderId={highlightOrderId}
           emptyMessage={filterActive ? t('common:nothingFound') : t('list.empty')}
+          sort={sort}
+          onSortChange={setSort}
         />
       )}
     </>
