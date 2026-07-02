@@ -23,6 +23,15 @@ vi.mock('../../firebase/orders', () => ({
   // OrderForm fetches orders to build the plant-name autocomplete list; stub it
   // empty so the form renders with no suggestions and Firestore stays untouched.
   fetchOrders: () => Promise.resolve([]),
+  // OrderForm imports newOrderId (used only in create mode; unused on edit).
+  newOrderId: () => 'pre-generated-order-id',
+}))
+// OrderForm imports the Storage layer (only mounts the gallery in create mode);
+// stub it so no real Firebase Storage is touched.
+vi.mock('../../firebase/photos', () => ({
+  uploadOrderPhoto: vi.fn(),
+  getPhotoUrl: vi.fn(),
+  deleteOrderPhoto: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('../../firebase/customers', () => ({
   fetchCustomers: (...args: unknown[]) => fetchCustomers(...args),

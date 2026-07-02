@@ -24,8 +24,17 @@ vi.mock('../../firebase/customers', () => ({
   fetchCustomers: (...a: unknown[]) => fetchCustomers(...a),
 }))
 vi.mock('../../firebase/orders', () => ({
-  // OrderForm fetches orders only to build the plant-name autocomplete list.
+  // OrderForm fetches orders only to build the plant-name autocomplete list, and
+  // pre-generates the create order's id so photos can be stored under it up front.
   fetchOrders: (...a: unknown[]) => fetchOrders(...a),
+  newOrderId: () => 'pre-generated-order-id',
+}))
+// The create form mounts the OrderPhotos gallery, which talks to the Storage
+// layer; stub it so no real Firebase Storage is touched.
+vi.mock('../../firebase/photos', () => ({
+  uploadOrderPhoto: vi.fn(),
+  getPhotoUrl: vi.fn(),
+  deleteOrderPhoto: vi.fn().mockResolvedValue(undefined),
 }))
 // Stub signOutUser so the real Firebase SDK stays out of the test.
 vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
@@ -114,6 +123,21 @@ describe('OrderForm', () => {
 
     await user.click(screen.getByRole('button', { name: 'Отмена' }))
     expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('mounts the photo gallery on a create form (an order id is known up front)', async () => {
+    renderForm()
+    await screen.findByLabelText('Имя клиента')
+    // The OrderPhotos gallery renders its "Фото" heading + an add-photo tile.
+    expect(screen.getByRole('heading', { name: 'Фото' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Добавить фото' })).toBeInTheDocument()
+  })
+
+  it('does NOT mount the photo gallery when editing (photos are managed on the detail page)', async () => {
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    renderForm({ initialOrder: order({ customerId: 'c1' }) })
+    await screen.findByRole('combobox', { name: 'Существующий клиент' })
+    expect(screen.queryByRole('heading', { name: 'Фото' })).not.toBeInTheDocument()
   })
 
   it('prefills the plant rows and existing-customer selection from initialOrder', async () => {
