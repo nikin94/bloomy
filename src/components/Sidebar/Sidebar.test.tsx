@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router-dom'
+import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { User } from 'firebase/auth'
 import { AuthContext } from '../../context/authContext'
@@ -12,6 +13,7 @@ vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
 
 // Imported after the mock above is registered.
 import Sidebar from './Sidebar'
+import SearchControl from '../SearchControl/SearchControl'
 
 const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
 
@@ -42,6 +44,9 @@ const burger = () => screen.getByRole('button', { name: 'Открыть меню
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // The rail's collapsed state persists to localStorage — clear it so each test
+  // starts from the default (expanded) rail.
+  localStorage.clear()
 })
 
 describe('Sidebar (desktop rail)', () => {
@@ -79,6 +84,21 @@ describe('Sidebar (desktop rail)', () => {
     expect(screen.getByTestId('loc')).toHaveTextContent('/settings?section=orders')
   })
 
+  it('collapses a peeked-open flyout when navigating between non-settings pages', async () => {
+    const user = userEvent.setup()
+    renderSidebar()
+    // Peek the section flyout open while still on /orders…
+    const toggle = rail().getByRole('button', { name: 'Настройки' })
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    // …then move to another non-settings destination — the flyout must collapse,
+    // even though we never touched the settings route (the route sync keys on the
+    // pathname, not just the on-settings flag).
+    await user.click(rail().getByRole('link', { name: 'Клиенты' }))
+    expect(screen.getByTestId('loc')).toHaveTextContent(/^\/customers$/)
+    expect(rail().getByRole('button', { name: 'Настройки' })).toHaveAttribute('aria-expanded', 'false')
+  })
+
   it('opens the flyout and marks the active section when already on /settings', () => {
     renderSidebar('/settings?section=orders')
     expect(rail().getByRole('button', { name: 'Настройки' })).toHaveAttribute('aria-expanded', 'true')
@@ -105,6 +125,57 @@ describe('Sidebar (desktop rail)', () => {
     expect(rail().getByTestId('page-actions')).toBeInTheDocument()
     // ...and mirrored in the mobile top bar, so both layouts get the controls.
     expect(screen.getAllByTestId('page-actions')).toHaveLength(2)
+  })
+
+  it('collapses the rail to an icon strip and back via the chevron toggle', async () => {
+    const user = userEvent.setup()
+    renderSidebar()
+    // Starts expanded: labels present, the toggle offers to collapse.
+    expect(screen.getByTestId('sidebar-desktop')).toHaveAttribute('data-collapsed', 'false')
+    expect(rail().getByText('Клиенты')).toBeInTheDocument()
+
+    await user.click(rail().getByRole('button', { name: 'Свернуть меню' }))
+
+    // Collapsed: the rail is marked collapsed and the label has FADED (it stays
+    // mounted so it can transition with the rail, so we assert the fade class rather
+    // than its removal)…
+    expect(screen.getByTestId('sidebar-desktop')).toHaveAttribute('data-collapsed', 'true')
+    expect(rail().getByText('Клиенты')).toHaveClass('opacity-0')
+    // …and the destination stays a named, reachable link.
+    expect(rail().getByRole('link', { name: 'Клиенты' })).toHaveAttribute('href', '/customers')
+
+    // The same control now expands it back out.
+    await user.click(rail().getByRole('button', { name: 'Развернуть меню' }))
+    expect(screen.getByTestId('sidebar-desktop')).toHaveAttribute('data-collapsed', 'false')
+    expect(rail().getByText('Клиенты')).toHaveClass('opacity-100')
+  })
+
+  it('a hosted search control opens the collapsed rail and closing it restores collapsed', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem('bloomy-sidebar-collapsed', '1')
+    const Harness = () => {
+      const [q, setQ] = useState('')
+      return <SearchControl value={q} onChange={setQ} label="Поиск заказов" />
+    }
+    renderSidebar('/orders', <Harness />)
+    expect(screen.getByTestId('sidebar-desktop')).toHaveAttribute('data-collapsed', 'true')
+
+    // Loupe is icon-only in a collapsed rail; activating it re-opens the rail so
+    // the field has room to slide out (rather than expanding into a 0px strip).
+    await user.click(rail().getByRole('button', { name: 'Поиск' }))
+    expect(screen.getByTestId('sidebar-desktop')).toHaveAttribute('data-collapsed', 'false')
+
+    // Closing the field (X) puts the rail back to the user's collapsed layout.
+    await user.click(rail().getByRole('button', { name: 'Очистить и закрыть поиск' }))
+    expect(screen.getByTestId('sidebar-desktop')).toHaveAttribute('data-collapsed', 'true')
+  })
+
+  it('restores the persisted collapsed state on mount', () => {
+    localStorage.setItem('bloomy-sidebar-collapsed', '1')
+    renderSidebar()
+    expect(screen.getByTestId('sidebar-desktop')).toHaveAttribute('data-collapsed', 'true')
+    // A collapsed rail shows the expand affordance from the start.
+    expect(rail().getByRole('button', { name: 'Развернуть меню' })).toBeInTheDocument()
   })
 })
 

@@ -9,5 +9,7 @@
   "back": "Back",
   "menu": "Menu",
   "openMenu": "Open menu",
-  "closeMenu": "Close menu"
+  "closeMenu": "Close menu",
+  "collapseSidebar": "Collapse menu",
+  "expandSidebar": "Expand menu"
 }

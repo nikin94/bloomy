@@ -6,6 +6,7 @@ import Button from '../Button/Button'
 import Select from '../Select/Select'
 import Modal from '../Modal/Modal'
 import { useSettings } from '../../context/settingsContext'
+import { useSidebarCollapse } from '../../context/sidebarCollapseContext'
 import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
 import { formatMoney, parseDateInput, toDateInputValue } from '../../utils/format'
 import {
@@ -40,7 +41,7 @@ const FilterIcon = () => (
     strokeWidth={2}
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="size-5"
+    className="size-5 shrink-0"
   >
     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
   </svg>
@@ -70,6 +71,9 @@ const OrderFilterControl = ({
   // The price-range bounds aren't tied to one order; show them in the user's
   // default currency when no currency filter narrows the scope.
   const { defaultCurrency } = useSettings()
+  // Collapsed desktop rail → the funnel shows icon-only, centred like the other
+  // collapsed rows.
+  const { collapsed } = useSidebarCollapse()
   const [open, setOpen] = useState(false)
 
   const modalFilterActive = isModalFilterActive(filter)
@@ -94,10 +98,13 @@ const OrderFilterControl = ({
     <>
       {/* Responsive trigger. In the cramped mobile top bar (base) it's a compact
           icon button that fills in (primary) when a filter is active — the same
-          language as an active nav button. From md: up (the desktop rail) it
-          becomes a borderless full-width "icon + label" row matching the sidebar's
-          settings/nav rows; there the active state is shown as primary TEXT, since
-          a full fill would read like an active nav destination beside them. */}
+          language as an active nav button. From md: up (the EXPANDED desktop rail)
+          it becomes a borderless full-width "icon + label" row matching the
+          sidebar's settings/nav rows; there the active state is shown as primary
+          TEXT, since a full fill would read like an active nav destination beside
+          them. But once the rail COLLAPSES the label is gone, and primary text on a
+          soft tint reads like a plain hover — so collapsed keeps the solid
+          bg-primary fill, the only unambiguous "active" cue without a label. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -106,15 +113,29 @@ const OrderFilterControl = ({
         aria-pressed={modalFilterActive}
         className={[
           'flex shrink-0 items-center justify-center rounded-md border p-2 transition-colors',
-          'md:w-full md:justify-start md:gap-2 md:border-0 md:px-3 md:py-2 md:text-sm md:font-medium',
+          // In the rail the funnel is ALWAYS icon-left at `md:px-2.5` (matching the nav
+          // rows, so the icon's centre sits at 32px in the collapsed strip and never
+          // slides). Collapsing doesn't switch the layout — the label just fades and
+          // `md:overflow-hidden` lets the narrowing rail swallow it.
+          'md:w-full md:justify-start md:gap-2 md:overflow-hidden md:border-0 md:px-2.5 md:py-2 md:text-sm md:font-medium',
           'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
           modalFilterActive
-            ? 'border-primary bg-primary text-white md:bg-transparent md:text-primary md:hover:bg-primary-bg'
+            ? collapsed
+              ? 'border-primary bg-primary text-white'
+              : 'border-primary bg-primary text-white md:bg-transparent md:text-primary md:hover:bg-primary-bg'
             : 'border-border text-heading hover:bg-primary-bg',
         ].join(' ')}
       >
         <FilterIcon />
-        <span className="hidden md:inline">{t('filters.open')}</span>
+        {/* Always mounted so it can fade with the rail (not unmount instantly);
+            `hidden md:inline` keeps it out of the mobile icon button entirely. */}
+        <span
+          className={`hidden whitespace-nowrap transition-opacity duration-300 ease-out motion-reduce:transition-none md:inline ${
+            collapsed ? 'md:opacity-0' : 'md:opacity-100'
+          }`}
+        >
+          {t('filters.open')}
+        </span>
       </button>
 
       {open && (

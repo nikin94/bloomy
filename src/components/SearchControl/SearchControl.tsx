@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
+import { useSidebarCollapse } from '../../context/sidebarCollapseContext'
 import CloseIcon from '../icons/CloseIcon'
 
 const SearchIcon = () => (
@@ -12,7 +13,7 @@ const SearchIcon = () => (
     strokeWidth={2}
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="size-5"
+    className="size-5 shrink-0"
   >
     <circle cx="11" cy="11" r="8" />
     <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -44,6 +45,10 @@ const SearchControl = ({
   label: string
 }) => {
   const { t } = useTranslation()
+  // When hosted in a COLLAPSED desktop rail the loupe shows icon-only; activating
+  // it first re-opens the rail (`expandRail`) so the field has room to slide out,
+  // and closing it restores the rail to how it was (`collapseRail`).
+  const { collapsed, expand: expandRail, collapse: collapseRail } = useSidebarCollapse()
   const [expanded, setExpanded] = useState(value.trim() !== '')
   // The loupe shows only once the field is FULLY collapsed (not mid-animation),
   // so it appears calmly in its resting spot instead of riding the width
@@ -51,8 +56,17 @@ const SearchControl = ({
   const [loupeVisible, setLoupeVisible] = useState(value.trim() === '')
   const inputRef = useRef<HTMLInputElement>(null)
   const collapseTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  // Whether the rail was collapsed when the field was opened. If so, closing the
+  // field re-collapses the rail so the user gets their compact layout back
+  // instead of being left with a fully expanded rail after a one-off search. A
+  // ref (not state) so capturing it doesn't re-render.
+  const wasCollapsedBeforeSearch = useRef(false)
 
   const expand = () => {
+    // In a collapsed rail there's no room for the field — widen the rail first,
+    // remembering it was collapsed so close() can restore that.
+    wasCollapsedBeforeSearch.current = collapsed
+    if (collapsed) expandRail()
     clearTimeout(collapseTimer.current)
     setLoupeVisible(false)
     setExpanded(true)
@@ -62,10 +76,14 @@ const SearchControl = ({
 
   // Clear the field and collapse back to the loupe. Used by the X button and
   // Escape. The loupe is revealed only after the collapse animation finishes
-  // (SEARCH_TRANSITION_MS), so it doesn't appear to fly into place.
+  // (SEARCH_TRANSITION_MS), so it doesn't appear to fly into place. If opening
+  // the field had widened a collapsed rail, put the rail back so the field close
+  // returns the layout to its previous (collapsed) state.
   const close = () => {
     onChange('')
     setExpanded(false)
+    if (wasCollapsedBeforeSearch.current) collapseRail()
+    wasCollapsedBeforeSearch.current = false
     collapseTimer.current = setTimeout(() => setLoupeVisible(true), SEARCH_TRANSITION_MS)
   }
 
@@ -98,12 +116,24 @@ const SearchControl = ({
           aria-expanded={false}
           className={
             'flex shrink-0 items-center justify-center rounded-md border border-border p-2 text-heading transition-colors hover:bg-primary-bg ' +
-            'md:w-full md:justify-start md:gap-2 md:border-0 md:px-3 md:py-2 md:text-sm md:font-medium ' +
+            // In the rail the loupe is ALWAYS icon-left at `md:px-2.5` (matching the
+            // nav rows, so the icon's centre sits at 32px in the collapsed strip and
+            // never slides). Collapsing doesn't switch the layout — the label just
+            // fades and `md:overflow-hidden` lets the narrowing rail swallow it.
+            'md:w-full md:justify-start md:gap-2 md:overflow-hidden md:border-0 md:px-2.5 md:py-2 md:text-sm md:font-medium ' +
             'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
           }
         >
           <SearchIcon />
-          <span className="hidden md:inline">{t('search')}</span>
+          {/* Always mounted so it can fade with the rail (not unmount instantly);
+              `hidden md:inline` keeps it out of the mobile icon button entirely. */}
+          <span
+            className={`hidden whitespace-nowrap transition-opacity duration-300 ease-out motion-reduce:transition-none md:inline ${
+              collapsed ? 'md:opacity-0' : 'md:opacity-100'
+            }`}
+          >
+            {t('search')}
+          </span>
         </button>
       )}
       {/* The input wrapper carries the width transition; the X is absolutely
