@@ -6,6 +6,7 @@ import Button from '../Button/Button'
 import SyncStatus from '../SyncStatus/SyncStatus'
 import { useAuth } from '../../context/authContext'
 import { SidebarCollapseContext } from '../../context/sidebarCollapseContext'
+import { useMediaQuery } from '../../lib/useMediaQuery'
 import { isAdmin } from '../../lib/admin'
 import { settingsSectionsFor, isSettingsSection } from '../Settings/sections'
 
@@ -310,6 +311,13 @@ const Sidebar = ({
   const [searchParams] = useSearchParams()
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = () => setMenuOpen(false)
+  // The rail (md+) and the mobile top bar are BOTH in the DOM (CSS toggles which
+  // is visible), but the page's `actions` node (search + filter — stateful, with
+  // its own input, timers, focus handling and modal) must render in only ONE of
+  // them at a time: mounting it in both spins up two independent instances bound
+  // to one shared value. Gate on a live media query (Tailwind's md breakpoint) so
+  // exactly one instance is ever alive.
+  const isDesktop = useMediaQuery('(min-width: 768px)')
   // Desktop rail collapse (icon-only strip). Persisted so it survives reloads.
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const toggleCollapsed = () =>
@@ -530,7 +538,7 @@ const Sidebar = ({
             icon-only via the collapse context. Sync is hidden while collapsed (its
             badge carries text that can't fit the thin strip). */}
         <div className="mt-auto flex flex-col gap-1 border-t border-border pt-2">
-          {actions && (
+          {actions && isDesktop && (
             <SidebarCollapseContext.Provider value={collapseValue}>
               <div className="flex flex-col items-stretch gap-1">{actions}</div>
             </SidebarCollapseContext.Provider>
@@ -596,7 +604,7 @@ const Sidebar = ({
             <h1 className="m-0 min-w-0 truncate text-lg font-semibold text-heading">{pageTitle}</h1>
           )}
         </div>
-        {actions && (
+        {actions && !isDesktop && (
           <div className="flex min-w-0 items-center justify-end gap-2 has-[.js-search-open]:flex-1">
             {actions}
           </div>

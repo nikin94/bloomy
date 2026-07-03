@@ -13,6 +13,24 @@ import { cleanup } from '@testing-library/react'
 import i18n from '../i18n/config.ts'
 import { DEFAULT_LANGUAGE } from '../types/settings'
 
+// jsdom has no matchMedia; useMediaQuery needs it (the sidebar gates its
+// per-page actions on the md breakpoint). Stub it to report DESKTOP — the page
+// tests scope their search/filter queries to the desktop rail — with the full
+// MediaQueryList surface so subscribe/getSnapshot work.
+if (!window.matchMedia) {
+  window.matchMedia = (query: string) =>
+    ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList
+}
+
 afterEach(() => {
   cleanup()
   // i18next state is global; a test that switches language (via the provider or
