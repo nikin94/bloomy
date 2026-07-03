@@ -43,3 +43,20 @@ export const filterCustomers = (customers: Customer[], query: string): Customer[
     `${c.name} ${c.phone ?? ''} ${c.address ?? ''} ${c.note ?? ''}`.toLowerCase().includes(q),
   )
 }
+
+// Resolve an order's customerId to a display name from a loaded customer list —
+// the shared basis for the orders/trash lists' `getCustomerName` (each wraps this
+// in a useMemo keyed on the list, for a stable identity). Builds a name-by-id map
+// once; an unknown id (e.g. a hard-deleted customer) falls back to an em dash.
+export const buildCustomerNameResolver = (customers: Customer[]): ((id: string) => string) => {
+  const nameById = new Map(customers.map((c) => [c.id, c.name]))
+  return (id: string) => nameById.get(id) ?? '—'
+}
+
+// An optional customer field for the OPTIMISTIC UI mirror after an edit: a blank
+// (whitespace-only) value becomes undefined so a cleared field also clears in the
+// view. Shared by the customer-edit handlers on the customers/customer/order pages.
+// (The firestore layer's own `optional` writes deleteField() instead — a different
+// concern: clearing the STORED field vs the in-memory value.)
+export const trimOptional = (value: string | undefined): string | undefined =>
+  value && value.trim() !== '' ? value.trim() : undefined

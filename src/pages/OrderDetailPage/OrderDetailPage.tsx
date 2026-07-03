@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { fetchOrder, patchOrder, softDeleteOrder, restoreOrder } from '@/firebase/orders'
+import { patchOrder, softDeleteOrder, restoreOrder } from '@/firebase/orders'
 import type { OrderPatch } from '@/firebase/orders'
-import { fetchCustomer, updateCustomer } from '@/firebase/customers'
+import { updateCustomer } from '@/firebase/customers'
 import type { CustomerEdits } from '@/firebase/customers'
+import { useOrder, useOrderCache } from '@/queries/orders'
+import { useCustomer, useCustomerCache } from '@/queries/customers'
 import { formatDate, formatMoney } from '@/utils/format'
 import {
   getSubtotalMinor,
@@ -20,6 +22,7 @@ import {
   trashDaysLeft,
   TRASH_RETENTION_DAYS,
 } from '@/types/order'
+import { trimOptional } from '@/types/customer'
 import { useAuth } from '@/context/authContext'
 import Spinner from '@/components/Spinner/Spinner'
 import Button from '@/components/Button/Button'
@@ -31,7 +34,6 @@ import PencilIcon from '@/components/icons/PencilIcon'
 import InlineStatusField from './InlineStatusField'
 import Total from './Total'
 import type { Order } from '@/types/order'
-import type { Customer } from '@/types/customer'
 
 const OrderDetailPage = () => {
   const { t } = useTranslation(['order', 'common'])
@@ -41,48 +43,28 @@ const OrderDetailPage = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
   const ownerId = user?.uid
-  const [order, setOrder] = useState<Order | null>(null)
+  // Order (incl. a trashed one, opened read-only) + its customer from the shared
+  // query cache. `includeDeleted` so a stale trash link opens the deleted banner +
+  // Restore instead of dead-ending. The customer query enables once the order
+  // resolves its customerId; it stays null when the customer was deleted (a
+  // dangling customerId must not crash the page).
+  const orderQuery = useOrder(id, ownerId, { includeDeleted: true })
+  const order = orderQuery.data ?? null
+  const customerQuery = useCustomer(order?.customerId)
+  const customer = customerQuery.data ?? null
+  const orderCache = useOrderCache()
+  const customerCache = useCustomerCache()
+  // Loading until the order resolves and — for a found order — its customer too.
+  const loading = orderQuery.isLoading || (order !== null && customerQuery.isLoading)
+  const error = orderQuery.error ?? customerQuery.error
   // "Now" for the trash purge countdown, captured once on mount (see daysLeft).
   const [mountNow] = useState(() => Date.now())
-  // Resolved live from the customers collection. Stays null when the customer
-  // was deleted (a dangling customerId must not crash the page).
-  const [customer, setCustomer] = useState<Customer | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   // Delete is confirmed in a modal (destructive, so not a one-click action).
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   // The customer's name lives on the customer record, not the order, so it's
   // edited here in a dialog (the shared CustomerForm) — fixing it where it's seen
   // rather than sending the user to the customers page.
   const [editingCustomer, setEditingCustomer] = useState(false)
-
-  useEffect(() => {
-    if (!id || !ownerId) return
-    let active = true
-    // includeDeleted: a trashed order opens here read-only (deleted banner +
-    // Restore) instead of dead-ending on "not found".
-    fetchOrder(id, ownerId, { includeDeleted: true })
-      .then(async (data) => {
-        if (!active) return
-        setOrder(data)
-        if (data) {
-          const c = await fetchCustomer(data.customerId)
-          if (active) setCustomer(c)
-        }
-      })
-      .catch((err: unknown) => {
-        if (active) setError(err instanceof Error ? err.message : t('detail.loadError'))
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-    return () => {
-      active = false
-    }
-    // `t` is only read in the error fallback; depending on it would refetch on a
-    // language switch, so it's intentionally excluded.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, ownerId])
 
   // Save a single status change inline, optimistically: update the local order
   // right away so the UI feels instant, then write ONLY the changed field(s)
@@ -110,8 +92,13 @@ const OrderDetailPage = () => {
         writePatch.completedAt = completedAt
       }
     }
-    setOrder(next)
+    // Optimistically hold the change in the order-detail cache (what this page
+    // reads), then persist just the changed field(s) and invalidate the list caches
+    // so returning to a list within the stale window shows the new status. The
+    // `includeDeleted: true` flag matches this page's useOrder read — same cache key.
+    orderCache.setOrder(ownerId, next.id, true, () => next)
     patchOrder(next.id, writePatch)
+    orderCache.invalidateLists()
   }
 
   // Persist the customer's edited fields, then mirror them onto the local
@@ -122,15 +109,17 @@ const OrderDetailPage = () => {
   const handleSaveCustomer = async (edits: CustomerEdits) => {
     if (!customer) return
     updateCustomer(customer.id, edits)
-    const trimmed = (value: string | undefined) =>
-      value && value.trim() !== '' ? value.trim() : undefined
-    setCustomer({
-      ...customer,
+    // Optimistically update the single-customer cache (the page's "Customer"/"Phone"
+    // rows), then invalidate the list caches so the address book + orders name
+    // resolution re-read it.
+    customerCache.setCustomer(customer.id, (prev) => ({
+      ...(prev ?? customer),
       name: edits.name.trim(),
-      phone: trimmed(edits.phone),
-      address: trimmed(edits.address),
-      note: trimmed(edits.note),
-    })
+      phone: trimOptional(edits.phone),
+      address: trimOptional(edits.address),
+      note: trimOptional(edits.note),
+    }))
+    customerCache.invalidateLists()
     setEditingCustomer(false)
   }
 
@@ -140,25 +129,30 @@ const OrderDetailPage = () => {
   // the image bytes is handled inside OrderPhotos.
   const handlePhotosChange = (photos: string[]) => {
     if (!order) return
-    setOrder({ ...order, photos })
+    orderCache.setOrder(ownerId, order.id, true, () => ({ ...order, photos }))
     patchOrder(order.id, { photos })
+    orderCache.invalidateLists()
   }
 
   // Soft-delete the order, then return to the list (where it no longer appears).
   // The write is fire-and-forget (offline-safe) so deleting never blocks; the
-  // order moves to the trash locally at once and syncs on reconnect.
+  // order moves to the trash locally at once and syncs on reconnect. Invalidate
+  // every order cache — the row leaves the active list and joins the trash.
   const handleDelete = () => {
     if (!order) return
     softDeleteOrder(order.id)
+    orderCache.invalidateAll()
     navigate('/orders')
   }
 
   // Restore a trashed order back to the active list, then return to the trash
   // (where it no longer appears). Fire-and-forget, same offline semantics as
-  // delete — the optimistic navigation never waits on the write.
+  // delete — the optimistic navigation never waits on the write. Invalidate every
+  // order cache — the row leaves the trash and rejoins the active list.
   const handleRestore = () => {
     if (!order) return
     restoreOrder(order.id)
+    orderCache.invalidateAll()
     navigate('/orders/deleted')
   }
 
@@ -197,7 +191,7 @@ const OrderDetailPage = () => {
 
       <div className="overflow-auto p-4 md:p-6">
       {loading && <Spinner />}
-      {error && <p className="text-danger">{error}</p>}
+      {error && <p className="text-danger">{error.message || t('detail.loadError')}</p>}
       {!loading && !error && !order && <p className="text-text">{t('detail.notFound')}</p>}
 
       {/* Gate the body on `!loading`, not just `order`: the customer is fetched

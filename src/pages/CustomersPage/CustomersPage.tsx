@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Spinner from '@/components/Spinner/Spinner'
@@ -6,11 +6,12 @@ import Button from '@/components/Button/Button'
 import Modal from '@/components/Modal/Modal'
 import SearchControl from '@/components/SearchControl/SearchControl'
 import CustomerForm from '@/components/CustomerForm/CustomerForm'
-import { fetchCustomers, softDeleteCustomer, updateCustomer } from '@/firebase/customers'
+import { softDeleteCustomer, updateCustomer } from '@/firebase/customers'
 import type { CustomerEdits } from '@/firebase/customers'
+import { useCustomers, useCustomerCache, EMPTY_CUSTOMERS } from '@/queries/customers'
 import { useAuth } from '@/context/authContext'
 import { useHeaderActions } from '@/context/headerActionsContext'
-import { filterCustomers } from '@/types/customer'
+import { filterCustomers, trimOptional } from '@/types/customer'
 import type { Customer } from '@/types/customer'
 import CustomerTableRow from './CustomerTableRow'
 import CustomerCard from './CustomerCard'
@@ -26,75 +27,61 @@ const CustomersPage = () => {
   // Guaranteed non-null under ProtectedRoute, but read defensively and gate on it.
   const { user } = useAuth()
   const ownerId = user?.uid
-  const [customers, setCustomers] = useState<Customer[]>([])
+  // Active address book from the shared query cache. Sorted alphabetically (no
+  // natural order) from the cached, stable query array — an optimistic rename
+  // updates the cache and this re-sorts.
+  const customersQuery = useCustomers(ownerId)
+  const customerCache = useCustomerCache()
+  const customers = useMemo(
+    () =>
+      [...(customersQuery.data ?? EMPTY_CUSTOMERS)].sort((a, b) =>
+        a.name.localeCompare(b.name, 'ru'),
+      ),
+    [customersQuery.data],
+  )
+  const loading = customersQuery.isLoading
+  const loadError = customersQuery.error
   // The customer currently being edited, or null. Holding it on the page (not
   // per row) means only ONE edit dialog is ever open at a time.
   const [editing, setEditing] = useState<Customer | null>(null)
   // The customer pending a delete confirmation.
   const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null)
-  const [loading, setLoading] = useState(true)
-  // A load failure means there is no list to show, so it replaces the content.
-  const [loadError, setLoadError] = useState<string | null>(null)
   // Inline search over the address book (name / phone).
   const [query, setQuery] = useState('')
 
-  useEffect(() => {
-    if (!ownerId) return
-    let active = true
-    fetchCustomers(ownerId)
-      .then((data) => {
-        if (!active) return
-        // Show the address book alphabetically — there is no natural order.
-        setCustomers([...data].sort((a, b) => a.name.localeCompare(b.name, 'ru')))
-      })
-      .catch((err: unknown) => {
-        if (active)
-          setLoadError(err instanceof Error ? err.message : t('list.loadError'))
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-    return () => {
-      active = false
-    }
-    // `t` is only read in the error fallback; depending on it would refetch on a
-    // language switch, so it's intentionally excluded.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerId])
-
-  // Persist an edit, then update the in-memory list. Optional fields that came
-  // in empty are dropped (mirroring updateCustomer) so a cleared field also
-  // clears in the UI; the list is re-sorted because the name may have changed.
-  // updateCustomer is fire-and-forget (offline-safe), so this never blocks and
-  // the dialog closes at once; a failed write is reported to Sentry.
+  // Persist an edit, then optimistically reflect it in the active-list cache and
+  // invalidate the customer caches (so the WITH-deleted list the orders page reads
+  // re-resolves the name too). Optional fields that came in empty are dropped,
+  // mirroring updateCustomer. updateCustomer is fire-and-forget (offline-safe), so
+  // this never blocks and the dialog closes at once; a failed write goes to Sentry.
   const handleSave = async (id: string, edits: CustomerEdits) => {
     updateCustomer(id, edits)
-    const trimmed = (value: string | undefined) =>
-      value && value.trim() !== '' ? value.trim() : undefined
-    setCustomers((prev) =>
-      prev
-        .map((c) =>
-          c.id === id
-            ? {
-                ...c,
-                name: edits.name.trim(),
-                phone: trimmed(edits.phone),
-                address: trimmed(edits.address),
-                note: trimmed(edits.note),
-              }
-            : c,
-        )
-        .sort((a, b) => a.name.localeCompare(b.name, 'ru')),
+    customerCache.setActiveList(ownerId, (prev) =>
+      (prev ?? []).map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              name: edits.name.trim(),
+              phone: trimOptional(edits.phone),
+              address: trimOptional(edits.address),
+              note: trimOptional(edits.note),
+            }
+          : c,
+      ),
     )
+    customerCache.invalidateDerived(ownerId)
   }
 
-  // Soft-delete the confirmed customer, drop it from the list and close the
-  // dialog. The write is fire-and-forget (offline-safe), so it never blocks and
-  // the removal is optimistic; a failed write is reported to Sentry.
+  // Soft-delete the confirmed customer, drop it from the active-list cache and
+  // close the dialog. The write is fire-and-forget (offline-safe), so it never
+  // blocks and the removal is optimistic; a failed write goes to Sentry.
   const handleDelete = () => {
     if (!deletingCustomer) return
     softDeleteCustomer(deletingCustomer.id)
-    setCustomers((prev) => prev.filter((c) => c.id !== deletingCustomer.id))
+    customerCache.setActiveList(ownerId, (prev) =>
+      (prev ?? []).filter((c) => c.id !== deletingCustomer.id),
+    )
+    customerCache.invalidateDerived(ownerId)
     setDeletingCustomer(null)
   }
 
@@ -123,7 +110,7 @@ const CustomersPage = () => {
       {loading && <Spinner />}
       {loadError && (
         <p role="alert" className="px-6 py-8 text-danger">
-          {loadError}
+          {loadError.message || t('list.loadError')}
         </p>
       )}
 

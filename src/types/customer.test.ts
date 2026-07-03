@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { STORED_CUSTOMER_SCHEMA, filterCustomers } from './customer'
+import {
+  STORED_CUSTOMER_SCHEMA,
+  filterCustomers,
+  buildCustomerNameResolver,
+  trimOptional,
+} from './customer'
 import type { Customer } from './customer'
 
 describe('STORED_CUSTOMER_SCHEMA', () => {
@@ -73,5 +78,41 @@ describe('filterCustomers', () => {
   it('does not match on an absent field (no phone/address/note)', () => {
     const bare = make({ id: 'c3', name: 'Виктор' })
     expect(filterCustomers([bare], '900')).toEqual([])
+  })
+})
+
+describe('buildCustomerNameResolver', () => {
+  const make = (id: string, name: string): Customer => ({
+    id,
+    ownerId: 'owner-1',
+    name,
+    createdAt: 0,
+  })
+
+  it('resolves a known id to its name', () => {
+    const resolve = buildCustomerNameResolver([make('c1', 'Анна'), make('c2', 'Борис')])
+    expect(resolve('c1')).toBe('Анна')
+    expect(resolve('c2')).toBe('Борис')
+  })
+
+  it('falls back to an em dash for an unknown id', () => {
+    const resolve = buildCustomerNameResolver([make('c1', 'Анна')])
+    expect(resolve('missing')).toBe('—')
+  })
+
+  it('resolves against an empty list to the em dash', () => {
+    expect(buildCustomerNameResolver([])('c1')).toBe('—')
+  })
+})
+
+describe('trimOptional', () => {
+  it('trims surrounding whitespace', () => {
+    expect(trimOptional('  Анна  ')).toBe('Анна')
+  })
+
+  it('returns undefined for empty / whitespace-only / undefined input', () => {
+    expect(trimOptional('')).toBeUndefined()
+    expect(trimOptional('   ')).toBeUndefined()
+    expect(trimOptional(undefined)).toBeUndefined()
   })
 })

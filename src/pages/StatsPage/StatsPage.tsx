@@ -1,15 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import LegendItem from './LegendItem'
 import Spinner from '@/components/Spinner/Spinner'
 import Select from '@/components/Select/Select'
 import { FIELD_BASE, FIELD_NORMAL } from '@/styles/fieldStyles'
-import { fetchOrders } from '@/firebase/orders'
+import { useOrders, EMPTY_ORDERS } from '@/queries/orders'
 import { useAuth } from '@/context/authContext'
 import { formatMoney, toDateInputValue } from '@/utils/format'
 import { revenueByCurrencyMinor, CURRENCIES } from '@/types/order'
-import type { Order } from '@/types/order'
 import {
   STATS_PRESETS,
   presetRange,
@@ -46,30 +45,12 @@ const StatsPage = () => {
   // while `preset === 'custom'`; an empty side leaves that bound open.
   const [customFrom, setCustomFrom] = useState('')
   const [customTo, setCustomTo] = useState('')
-  const [orders, setOrders] = useState<Order[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!ownerId) return
-    let active = true
-    fetchOrders(ownerId)
-      .then((data) => {
-        if (active) setOrders(data)
-      })
-      .catch((err: unknown) => {
-        if (active) setError(err instanceof Error ? err.message : t('loadError'))
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-    return () => {
-      active = false
-    }
-    // `t` is only read in the error fallback; depending on it would refetch on a
-    // language switch, so it's intentionally excluded.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerId])
+  // Orders come from the shared query cache: navigating away and back reuses the
+  // already-parsed list instead of re-querying + re-parsing (see @/queries/orders).
+  const ordersQuery = useOrders(ownerId)
+  const orders = ordersQuery.data ?? EMPTY_ORDERS
+  const loading = ordersQuery.isLoading
+  const error = ordersQuery.error
 
   // Everything below is derived per render from the loaded orders (cheap — the
   // list is small). The KPIs + breakdown follow the selected period; the chart
@@ -113,7 +94,7 @@ const StatsPage = () => {
       {loading && <Spinner />}
       {error && (
         <p role="alert" className="text-danger">
-          {error}
+          {error.message || t('loadError')}
         </p>
       )}
 

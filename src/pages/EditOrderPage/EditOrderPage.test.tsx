@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { User } from 'firebase/auth'
+import { QueryWrapper } from '@/test/queryWrapper'
+import { queryKeys } from '@/queries/keys'
 import { AuthContext } from '@/context/authContext'
 import type { Order } from '@/types/order'
 import type { Customer } from '@/types/customer'
@@ -79,11 +82,13 @@ const customer = (over: Partial<Customer> = {}): Customer => ({
 
 function renderPage() {
   return render(
-    <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-      <MemoryRouter>
-        <EditOrderPage />
-      </MemoryRouter>
-    </AuthContext.Provider>,
+    <QueryWrapper>
+      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+        <MemoryRouter>
+          <EditOrderPage />
+        </MemoryRouter>
+      </AuthContext.Provider>
+    </QueryWrapper>,
   )
 }
 
@@ -155,5 +160,38 @@ describe('EditOrderPage', () => {
     fetchOrder.mockResolvedValue(null)
     renderPage()
     expect(await screen.findByText('Заказ не найден')).toBeInTheDocument()
+  })
+
+  it('does not reuse the detail page cache for a trashed order', async () => {
+    // OrderDetailPage caches a trashed order under the `includeDeleted: true` key
+    // (it opens trash read-only). EditOrderPage reads WITHOUT that flag — a
+    // different key — so a cached trashed order must NOT satisfy the edit read;
+    // fetchOrder is called, returns null (active-only), and the edit page shows
+    // not-found instead of prefilling a form that would write to a soft-deleted doc.
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, networkMode: 'always', refetchOnReconnect: false },
+      },
+    })
+    const trashed = order({ deletedAt: 2000 })
+    // Seed exactly what OrderDetailPage would have cached (includeDeleted: true).
+    client.setQueryData(queryKeys.order('o1', 'owner-1', true), trashed)
+    // The edit read (includeDeleted falsy) resolves to null, as real fetchOrder does.
+    fetchOrder.mockResolvedValue(null)
+
+    render(
+      <QueryClientProvider client={client}>
+        <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+          <MemoryRouter>
+            <EditOrderPage />
+          </MemoryRouter>
+        </AuthContext.Provider>
+      </QueryClientProvider>,
+    )
+
+    // Cache miss on the edit key → fetchOrder ran → null → not-found (no form).
+    expect(await screen.findByText('Заказ не найден')).toBeInTheDocument()
+    expect(fetchOrder).toHaveBeenCalled()
+    expect(screen.queryByRole('heading', { name: /Редактирование/ })).not.toBeInTheDocument()
   })
 })

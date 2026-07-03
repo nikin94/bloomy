@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import type { User } from 'firebase/auth'
+import { QueryWrapper } from '@/test/queryWrapper'
 import { AuthContext } from '@/context/authContext'
 import AppLayout from '@/components/AppLayout/AppLayout'
 import type { Customer } from '@/types/customer'
@@ -40,15 +41,17 @@ const customer = (over: Partial<Customer> = {}): Customer => ({
 // its actions to render.
 const renderPage = () =>
   render(
-    <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-      <MemoryRouter>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="*" element={<CustomersPage />} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
-    </AuthContext.Provider>,
+    <QueryWrapper>
+      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+        <MemoryRouter>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="*" element={<CustomersPage />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>
+    </QueryWrapper>,
   )
 
 // The list renders BOTH the desktop table and the mobile card stack — jsdom has

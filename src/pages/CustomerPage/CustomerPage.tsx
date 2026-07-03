@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -9,9 +9,10 @@ import Modal from '@/components/Modal/Modal'
 import CustomerForm from '@/components/CustomerForm/CustomerForm'
 import DetailRow from '@/components/DetailRow/DetailRow'
 import PencilIcon from '@/components/icons/PencilIcon'
-import { fetchCustomer, updateCustomer } from '@/firebase/customers'
+import { updateCustomer } from '@/firebase/customers'
 import type { CustomerEdits } from '@/firebase/customers'
-import { fetchOrders } from '@/firebase/orders'
+import { useCustomer, useCustomerCache } from '@/queries/customers'
+import { useOrders, EMPTY_ORDERS } from '@/queries/orders'
 import { useAuth } from '@/context/authContext'
 import { formatDate, formatMoney } from '@/utils/format'
 import {
@@ -20,8 +21,7 @@ import {
   topPlantsByQuantity,
   CURRENCIES,
 } from '@/types/order'
-import type { Order } from '@/types/order'
-import type { Customer } from '@/types/customer'
+import { trimOptional } from '@/types/customer'
 
 // How many "frequent plants" to surface in the summary.
 const TOP_PLANTS = 3
@@ -48,63 +48,56 @@ const CustomerPage = () => {
   // Guaranteed non-null under ProtectedRoute, but read defensively and gate on it.
   const { user } = useAuth()
   const ownerId = user?.uid
-  const [customer, setCustomer] = useState<Customer | null>(null)
-  const [orders, setOrders] = useState<Order[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // Customer + the owner's orders from the shared query cache. Defense-in-depth: a
+  // foreign customer is treated as not found, mirroring fetchOrder's owner re-check
+  // (owner-scoped rules remain the real boundary). The order list is filtered to
+  // this customer in memory (fetchOrders already drops deleted ones).
+  const customerQuery = useCustomer(id)
+  const ordersQuery = useOrders(ownerId)
+  const customerCache = useCustomerCache()
+  const customer =
+    customerQuery.data && customerQuery.data.ownerId === ownerId ? customerQuery.data : null
+  // Memoized so a fresh `.filter()` array each render doesn't make DataTable's
+  // TanStack Table reconcile its row models on an unstable reference (the #133
+  // lesson — matches how OrdersPage/DeletedOrdersPage already memoize their lists).
+  const orders = useMemo(
+    () => (ordersQuery.data ?? EMPTY_ORDERS).filter((o) => o.customerId === id),
+    [ordersQuery.data, id],
+  )
+  const loading = customerQuery.isLoading || ordersQuery.isLoading
+  const error = customerQuery.error ?? ordersQuery.error
   // Edit happens in the shared dialog (same as the Customers list), so the page
   // doesn't duplicate the customer form.
   const [editing, setEditing] = useState(false)
 
-  useEffect(() => {
-    if (!id || !ownerId) return
-    let active = true
-    // Load the customer and the owner's orders together; the order list is
-    // filtered to this customer in memory (fetchOrders already drops deleted ones).
-    Promise.all([fetchCustomer(id), fetchOrders(ownerId)])
-      .then(([customerData, orderData]) => {
-        if (!active) return
-        // Defense-in-depth: a foreign customer is treated as not found, mirroring
-        // fetchOrder's owner re-check (owner-scoped rules remain the real boundary).
-        setCustomer(customerData && customerData.ownerId === ownerId ? customerData : null)
-        setOrders(orderData.filter((o) => o.customerId === id))
-      })
-      .catch((err: unknown) => {
-        if (active) setError(err instanceof Error ? err.message : t('page.loadError'))
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-    return () => {
-      active = false
-    }
-    // `t` is only read in the error fallback; depending on it would refetch on a
-    // language switch, so it's intentionally excluded.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, ownerId])
-
-  // Persist an edit, then mirror it onto the local customer so the page updates
-  // live without a refetch (same pattern as the order detail page). Empty
-  // optional fields drop to undefined, matching updateCustomer. Fire-and-forget
-  // (offline-safe), so the dialog closes at once; a failed write goes to Sentry.
+  // Persist an edit, then optimistically mirror it onto the single-customer cache
+  // (what this page reads) so the page updates live, and invalidate the LIST caches
+  // (address book + orders-page name resolution) — not the single cache, which we
+  // just wrote. Empty optional fields drop to undefined, matching updateCustomer.
+  // Fire-and-forget (offline-safe), so the dialog closes at once; a failed write
+  // goes to Sentry.
   const handleSave = async (edits: CustomerEdits) => {
     if (!customer) return
     updateCustomer(customer.id, edits)
-    const trimmed = (value: string | undefined) =>
-      value && value.trim() !== '' ? value.trim() : undefined
-    setCustomer({
-      ...customer,
+    customerCache.setCustomer(customer.id, (prev) => ({
+      ...(prev ?? customer),
       name: edits.name.trim(),
-      phone: trimmed(edits.phone),
-      address: trimmed(edits.address),
-      note: trimmed(edits.note),
-    })
+      phone: trimOptional(edits.phone),
+      address: trimOptional(edits.address),
+      note: trimOptional(edits.note),
+    }))
+    customerCache.invalidateLists()
     setEditing(false)
   }
 
   // The column config the orders list uses. Every row here is THIS customer, so
   // the resolver can return the loaded name directly (no per-id lookup needed).
-  const columns = buildOrderColumns(() => customer?.name ?? '—', tOrder)
+  // Memoized on the same principle as `orders` — a fresh columns array each render
+  // would make DataTable rebuild its column defs needlessly.
+  const columns = useMemo(
+    () => buildOrderColumns(() => customer?.name ?? '—', tOrder),
+    [customer?.name, tOrder],
+  )
 
   // Derived stats — recomputed each render from the loaded orders (cheap; the
   // list is small). Revenue is per-currency and paid-only; dates span the orders.
@@ -123,7 +116,7 @@ const CustomerPage = () => {
         {loading && <Spinner />}
         {error && (
           <p role="alert" className="text-danger">
-            {error}
+            {error.message || t('page.loadError')}
           </p>
         )}
         {!loading && !error && !customer && <p className="text-text">{t('page.notFound')}</p>}

@@ -4,6 +4,7 @@ import { render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import type { User } from 'firebase/auth'
+import { QueryWrapper } from '@/test/queryWrapper'
 import { AuthContext } from '@/context/authContext'
 import AppLayout from '@/components/AppLayout/AppLayout'
 import type { Order } from '@/types/order'
@@ -57,9 +58,11 @@ const renderPage = () => {
   )
   return render(
     <StrictMode>
-      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-        <RouterProvider router={router} />
-      </AuthContext.Provider>
+      <QueryWrapper>
+        <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+          <RouterProvider router={router} />
+        </AuthContext.Provider>
+      </QueryWrapper>
     </StrictMode>,
   )
 }

@@ -3,6 +3,7 @@ import { render, screen, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
+import { QueryWrapper } from '@/test/queryWrapper'
 import { AuthContext } from '@/context/authContext'
 import { formatMoney } from '@/utils/format'
 import type { Order } from '@/types/order'
@@ -46,11 +47,13 @@ const order = (over: Partial<Order> = {}): Order => ({
 
 const renderPage = () =>
   render(
-    <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-      <MemoryRouter>
-        <StatsPage />
-      </MemoryRouter>
-    </AuthContext.Provider>,
+    <QueryWrapper>
+      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+        <MemoryRouter>
+          <StatsPage />
+        </MemoryRouter>
+      </AuthContext.Provider>
+    </QueryWrapper>,
   )
 
 // The total-orders KPI card holds the count next to its label; scope to it so the

@@ -1,8 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import * as Sentry from '@sentry/react'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/context/AuthProvider.tsx'
 import { SettingsProvider } from '@/context/SettingsProvider.tsx'
+import { createQueryClient } from '@/queries/queryClient.ts'
 import { initSentry } from '@/observability/sentry.ts'
 import { registerServiceWorker } from '@/lib/registerServiceWorker.ts'
 import AppCrashFallback from '@/components/AppCrashFallback/AppCrashFallback.tsx'
@@ -20,19 +22,25 @@ initSentry()
 // start (no-op in dev/test; see registerServiceWorker).
 registerServiceWorker()
 
+// One QueryClient for the app's lifetime (module scope, like the router), so the
+// data cache survives navigation instead of resetting per render.
+const queryClient = createQueryClient()
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {/* Top-level boundary: report a render crash to Sentry and show a recovery
         screen instead of a blank white page. Wraps the providers too, so a
         failure while auth/settings mount is caught. */}
     <Sentry.ErrorBoundary fallback={<AppCrashFallback />}>
-      <AuthProvider>
-        <SettingsProvider>
-          {/* App owns the data router (createBrowserRouter + RouterProvider), so
-              the providers sit above it — neither uses router hooks. */}
-          <App />
-        </SettingsProvider>
-      </AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <SettingsProvider>
+            {/* App owns the data router (createBrowserRouter + RouterProvider), so
+                the providers sit above it — neither uses router hooks. */}
+            <App />
+          </SettingsProvider>
+        </AuthProvider>
+      </QueryClientProvider>
     </Sentry.ErrorBoundary>
   </StrictMode>
 )

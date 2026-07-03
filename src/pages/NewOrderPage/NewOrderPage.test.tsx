@@ -3,6 +3,7 @@ import { render, screen, waitFor, fireEvent, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
+import { QueryWrapper } from '@/test/queryWrapper'
 import { AuthContext } from '@/context/authContext'
 import { SettingsContext } from '@/context/settingsContext'
 import type { SettingsState } from '@/context/settingsContext'
@@ -84,13 +85,15 @@ const settingsState = (over: Partial<SettingsState> = {}): SettingsState => ({
 
 function renderForm(settings: SettingsState = settingsState()) {
   return render(
-    <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-      <SettingsContext.Provider value={settings}>
-        <MemoryRouter>
-          <NewOrderPage />
-        </MemoryRouter>
-      </SettingsContext.Provider>
-    </AuthContext.Provider>,
+    <QueryWrapper>
+      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+        <SettingsContext.Provider value={settings}>
+          <MemoryRouter>
+            <NewOrderPage />
+          </MemoryRouter>
+        </SettingsContext.Provider>
+      </AuthContext.Provider>
+    </QueryWrapper>,
   )
 }
 
@@ -166,13 +169,15 @@ describe('NewOrderPage', () => {
       comment: 'был особый',
     }
     render(
-      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-        <SettingsContext.Provider value={settingsState()}>
-          <MemoryRouter initialEntries={[{ pathname: '/orders/new', state: { repeatOrder } }]}>
-            <NewOrderPage />
-          </MemoryRouter>
-        </SettingsContext.Provider>
-      </AuthContext.Provider>,
+      <QueryWrapper>
+        <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+          <SettingsContext.Provider value={settingsState()}>
+            <MemoryRouter initialEntries={[{ pathname: '/orders/new', state: { repeatOrder } }]}>
+              <NewOrderPage />
+            </MemoryRouter>
+          </SettingsContext.Provider>
+        </AuthContext.Provider>
+      </QueryWrapper>,
     )
 
     // Customer is pre-selected (existing mode) and the plant line is cloned…
