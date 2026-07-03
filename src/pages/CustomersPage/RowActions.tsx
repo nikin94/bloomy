@@ -1,8 +1,8 @@
 import type { TFunction } from 'i18next'
-import Button from '../../components/Button/Button'
-import PencilIcon from '../../components/icons/PencilIcon'
-import TrashIcon from '../../components/icons/TrashIcon'
-import type { Customer } from '../../types/customer'
+import Button from '@/components/Button/Button'
+import PencilIcon from '@/components/icons/PencilIcon'
+import TrashIcon from '@/components/icons/TrashIcon'
+import type { Customer } from '@/types/customer'
 
 // The edit + delete controls for a customer, shared by the desktop row and the
 // mobile card. Wrapped in a container that STOPS click propagation so pressing a

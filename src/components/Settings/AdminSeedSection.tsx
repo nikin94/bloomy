@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '../Button/Button'
-import type { SeedResult } from '../../firebase/seed'
+import Button from '@/components/Button/Button'
+import type { SeedResult } from '@/firebase/seed'
 
 // Admin-only test-data tool, rendered in the settings page's admin tab for the
 // admin account (see isAdmin). The heavy seeder (and its fixtures) is loaded
@@ -26,7 +26,7 @@ const AdminSeedSection = ({ ownerId }: { ownerId: string }) => {
     setError(null)
     setResult(null)
     try {
-      const { seedMockData } = await import('../../firebase/seed')
+      const { seedMockData } = await import('@/firebase/seed')
       setResult(await seedMockData(ownerId, { reset }))
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('admin.error'))

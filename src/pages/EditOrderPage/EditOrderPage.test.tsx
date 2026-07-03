@@ -3,9 +3,9 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
-import { AuthContext } from '../../context/authContext'
-import type { Order } from '../../types/order'
-import type { Customer } from '../../types/customer'
+import { AuthContext } from '@/context/authContext'
+import type { Order } from '@/types/order'
+import type { Customer } from '@/types/customer'
 
 // Firebase-touching modules are mocked so the data layer never initializes the
 // real SDK. We test that the edit page loads an order, prefills the shared form,

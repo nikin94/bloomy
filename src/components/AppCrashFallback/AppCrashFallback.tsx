@@ -1,5 +1,5 @@
-import i18n from '../../i18n/config'
-import Button from '../Button/Button'
+import i18n from '@/i18n/config'
+import Button from '@/components/Button/Button'
 
 // Shown by the top-level Sentry ErrorBoundary when a render error escapes the
 // app. Sentry has already captured the exception by the time this renders, so

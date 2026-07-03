@@ -3,9 +3,9 @@ import { render, screen, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider, useSearchParams } from 'react-router-dom'
 import type { User } from 'firebase/auth'
-import { AuthContext } from '../../context/authContext'
-import { SettingsContext } from '../../context/settingsContext'
-import type { SettingsState } from '../../context/settingsContext'
+import { AuthContext } from '@/context/authContext'
+import { SettingsContext } from '@/context/settingsContext'
+import type { SettingsState } from '@/context/settingsContext'
 
 // The account section imports signOutUser; keep the real Firebase SDK out of the test.
 const signOutUser = vi.fn()

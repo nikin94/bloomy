@@ -1,4 +1,4 @@
-import type { Order, OrderColumn } from '../../types/order'
+import type { Order, OrderColumn } from '@/types/order'
 import { cellValue, activationProps } from './rowHelpers'
 import CardField from './CardField'
 

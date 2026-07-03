@@ -23,7 +23,7 @@ import {
   STORED_ORDER_SCHEMA,
 } from './order'
 import type { Order } from './order'
-import i18n from '../i18n/config'
+import i18n from '@/i18n/config'
 
 // Label/header lookups need a translate fn bound to the `order` namespace; the
 // shared test i18n instance defaults to ru, so labels resolve to Russian.

@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import type { ReactNode } from 'react'
 import type { User } from 'firebase/auth'
-import { auth } from '../firebase/client'
-import { clearIntentionalSignOut, wasSignOutIntentional } from '../firebase/auth'
+import { auth } from '@/firebase/client'
+import { clearIntentionalSignOut, wasSignOutIntentional } from '@/firebase/auth'
 import { AuthContext } from './authContext'
 
 // Subscribes to the Firebase auth session for the whole app. onAuthStateChanged

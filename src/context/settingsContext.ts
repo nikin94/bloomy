@@ -6,9 +6,9 @@ import {
   DEFAULT_LANGUAGE,
   DEFAULT_PAYMENT_METHOD,
   DEFAULT_THEME,
-} from '../types/settings'
-import type { Language, ThemeMode } from '../types/settings'
-import type { Currency, DeliveryMethod, PaymentMethod } from '../types/order'
+} from '@/types/settings'
+import type { Language, ThemeMode } from '@/types/settings'
+import type { Currency, DeliveryMethod, PaymentMethod } from '@/types/order'
 
 // The settings persisted by the dialog's Save. Theme/font/language preview live
 // before they are saved; the order defaults don't change the live app (they only

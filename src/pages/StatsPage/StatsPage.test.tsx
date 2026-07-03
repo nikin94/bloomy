@@ -3,9 +3,9 @@ import { render, screen, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
-import { AuthContext } from '../../context/authContext'
-import { formatMoney } from '../../utils/format'
-import type { Order } from '../../types/order'
+import { AuthContext } from '@/context/authContext'
+import { formatMoney } from '@/utils/format'
+import type { Order } from '@/types/order'
 
 // Firebase is mocked so the page never touches the real SDK. We test the derived
 // KPIs, the period selector, and the empty state — not Firestore.

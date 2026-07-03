@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { fetchOrder, patchOrder, softDeleteOrder, restoreOrder } from '../../firebase/orders'
-import type { OrderPatch } from '../../firebase/orders'
-import { fetchCustomer, updateCustomer } from '../../firebase/customers'
-import type { CustomerEdits } from '../../firebase/customers'
-import { formatDate, formatMoney } from '../../utils/format'
+import { fetchOrder, patchOrder, softDeleteOrder, restoreOrder } from '@/firebase/orders'
+import type { OrderPatch } from '@/firebase/orders'
+import { fetchCustomer, updateCustomer } from '@/firebase/customers'
+import type { CustomerEdits } from '@/firebase/customers'
+import { formatDate, formatMoney } from '@/utils/format'
 import {
   getSubtotalMinor,
   getTotalMinor,
@@ -19,19 +19,19 @@ import {
   isOrderDeleted,
   trashDaysLeft,
   TRASH_RETENTION_DAYS,
-} from '../../types/order'
-import { useAuth } from '../../context/authContext'
-import Spinner from '../../components/Spinner/Spinner'
-import Button from '../../components/Button/Button'
-import Modal from '../../components/Modal/Modal'
-import CustomerForm from '../../components/CustomerForm/CustomerForm'
-import OrderPhotos from '../../components/OrderPhotos/OrderPhotos'
-import DetailRow from '../../components/DetailRow/DetailRow'
-import PencilIcon from '../../components/icons/PencilIcon'
+} from '@/types/order'
+import { useAuth } from '@/context/authContext'
+import Spinner from '@/components/Spinner/Spinner'
+import Button from '@/components/Button/Button'
+import Modal from '@/components/Modal/Modal'
+import CustomerForm from '@/components/CustomerForm/CustomerForm'
+import OrderPhotos from '@/components/OrderPhotos/OrderPhotos'
+import DetailRow from '@/components/DetailRow/DetailRow'
+import PencilIcon from '@/components/icons/PencilIcon'
 import InlineStatusField from './InlineStatusField'
 import Total from './Total'
-import type { Order } from '../../types/order'
-import type { Customer } from '../../types/customer'
+import type { Order } from '@/types/order'
+import type { Customer } from '@/types/customer'
 
 const OrderDetailPage = () => {
   const { t } = useTranslation(['order', 'common'])

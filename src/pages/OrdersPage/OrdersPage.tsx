@@ -1,22 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
-import DataTable from '../../components/DataTable/DataTable'
-import Spinner from '../../components/Spinner/Spinner'
-import SearchControl from '../../components/SearchControl/SearchControl'
-import OrderFilterControl from '../../components/OrderFilterControl/OrderFilterControl'
-import { fetchOrders, reconcileOrderNumbers } from '../../firebase/orders'
-import { fetchCustomers } from '../../firebase/customers'
-import { useAuth } from '../../context/authContext'
-import { useHeaderActions } from '../../context/headerActionsContext'
+import DataTable from '@/components/DataTable/DataTable'
+import Spinner from '@/components/Spinner/Spinner'
+import SearchControl from '@/components/SearchControl/SearchControl'
+import OrderFilterControl from '@/components/OrderFilterControl/OrderFilterControl'
+import { fetchOrders, reconcileOrderNumbers } from '@/firebase/orders'
+import { fetchCustomers } from '@/firebase/customers'
+import { useAuth } from '@/context/authContext'
+import { useHeaderActions } from '@/context/headerActionsContext'
 import {
   buildOrderColumns,
   filterOrders,
   isOrderFilterActive,
   EMPTY_ORDER_FILTER,
-} from '../../types/order'
-import type { Order, OrderFilter, OrderSort } from '../../types/order'
-import type { Customer } from '../../types/customer'
+} from '@/types/order'
+import type { Order, OrderFilter, OrderSort } from '@/types/order'
+import type { Customer } from '@/types/customer'
 
 const OrdersPage = () => {
   const { t } = useTranslation(['order', 'common'])

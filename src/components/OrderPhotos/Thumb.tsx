@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import Loader from '../Loader/Loader'
+import Loader from '@/components/Loader/Loader'
 
 // A single resolved thumbnail. Resolves its download URL lazily (cached in the
 // photos layer) and shows a loader until then. The image opens the viewer; the

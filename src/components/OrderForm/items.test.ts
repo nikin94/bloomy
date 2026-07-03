@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { emptyItem, initialItems } from './items'
-import type { Order } from '../../types/order'
+import type { Order } from '@/types/order'
 
 const order = (over: Partial<Order> = {}): Order => ({
   id: 'o1',

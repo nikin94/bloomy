@@ -17,8 +17,8 @@ vi.mock('firebase/firestore', () => ({
 }))
 
 import { buildSeedCustomers, buildSeedOrders, SEED_ORDER_COUNT } from './seed'
-import { STORED_CUSTOMER_SCHEMA } from '../types/customer'
-import { STORED_ORDER_SCHEMA } from '../types/order'
+import { STORED_CUSTOMER_SCHEMA } from '@/types/customer'
+import { STORED_ORDER_SCHEMA } from '@/types/order'
 
 const NOW = 1_700_000_000_000
 

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { waitForPendingWrites } from 'firebase/firestore'
-import { db } from '../../firebase/client'
-import { formatDateTime } from '../../utils/format'
-import Tooltip from '../Tooltip/Tooltip'
+import { db } from '@/firebase/client'
+import { formatDateTime } from '@/utils/format'
+import Tooltip from '@/components/Tooltip/Tooltip'
 
 // localStorage key for the last moment Firestore confirmed our queued writes
 // reached the server. Persisted so the indicator can show a real "last synced"

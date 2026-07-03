@@ -1,6 +1,6 @@
-import type { ThemeMode } from '../../types/settings'
-import SunIcon from '../icons/SunIcon'
-import MoonIcon from '../icons/MoonIcon'
+import type { ThemeMode } from '@/types/settings'
+import SunIcon from '@/components/icons/SunIcon'
+import MoonIcon from '@/components/icons/MoonIcon'
 
 // Theme switch styled as a pill track with a sun (light) and a moon (dark) at
 // its ends; the sliding knob carries the ACTIVE theme's icon, so the visible

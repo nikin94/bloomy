@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import type { SelectHTMLAttributes } from 'react'
-import { FIELD_BASE, FIELD_INVALID, FIELD_NORMAL } from '../../styles/fieldStyles'
+import { FIELD_BASE, FIELD_INVALID, FIELD_NORMAL } from '@/styles/fieldStyles'
 
 // Floating label for a <select>. Unlike an input, a select ALWAYS shows a value
 // (its selected option, or a placeholder option), so there is no "resting in the

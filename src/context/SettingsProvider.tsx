@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useAuth } from './authContext'
-import { fetchSettings, saveSettings as persistSettings } from '../firebase/settings'
+import { fetchSettings, saveSettings as persistSettings } from '@/firebase/settings'
 import {
   clampFontScale,
   DEFAULT_CURRENCY,
@@ -10,10 +10,10 @@ import {
   DEFAULT_LANGUAGE,
   DEFAULT_PAYMENT_METHOD,
   DEFAULT_THEME,
-} from '../types/settings'
-import type { Language, ThemeMode } from '../types/settings'
-import type { Currency, DeliveryMethod, PaymentMethod } from '../types/order'
-import i18n, { LANGUAGE_CACHE_KEY } from '../i18n/config'
+} from '@/types/settings'
+import type { Language, ThemeMode } from '@/types/settings'
+import type { Currency, DeliveryMethod, PaymentMethod } from '@/types/order'
+import i18n, { LANGUAGE_CACHE_KEY } from '@/i18n/config'
 import { SettingsContext } from './settingsContext'
 import type { SettingsDraft } from './settingsContext'
 

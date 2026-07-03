@@ -3,6 +3,6 @@
 // so the data layer exercises a real Firestore (real transactions) without
 // touching the cloud project. `db` is the same singleton the data layer imports.
 import { connectFirestoreEmulator } from 'firebase/firestore'
-import { db } from '../firebase/client'
+import { db } from '@/firebase/client'
 
 connectFirestoreEmulator(db, '127.0.0.1', 8080)

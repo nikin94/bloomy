@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import i18next, { type TFunction } from 'i18next'
-import { formatDate, formatTime, formatMoney, currencySymbol } from '../utils/format'
+import { formatDate, formatTime, formatMoney, currencySymbol } from '@/utils/format'
 
 // Status/method unions are defined as Zod enums so the runtime validator (used
 // when reading Firestore documents) and the TypeScript types share a single

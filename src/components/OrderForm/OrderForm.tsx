@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { createCustomer, fetchCustomer, fetchCustomers } from '../../firebase/customers'
-import { useAuth } from '../../context/authContext'
-import { useSettings } from '../../context/settingsContext'
-import { formatMinorToInput, formatMoney, parseRublesToMinor } from '../../utils/format'
+import { createCustomer, fetchCustomer, fetchCustomers } from '@/firebase/customers'
+import { useAuth } from '@/context/authContext'
+import { useSettings } from '@/context/settingsContext'
+import { formatMinorToInput, formatMoney, parseRublesToMinor } from '@/utils/format'
 import {
   currencyOptions,
   deliveryMethodOptions,
@@ -12,22 +12,22 @@ import {
   shipmentStatusOptions,
   resolveCompletedAt,
   collectPlantNames,
-} from '../../types/order'
-import Spinner from '../Spinner/Spinner'
-import Select from '../Select/Select'
-import Button from '../Button/Button'
-import Input from '../Input/Input'
-import Textarea from '../Textarea/Textarea'
-import PendingPhotos from '../OrderPhotos/PendingPhotos'
+} from '@/types/order'
+import Spinner from '@/components/Spinner/Spinner'
+import Select from '@/components/Select/Select'
+import Button from '@/components/Button/Button'
+import Input from '@/components/Input/Input'
+import Textarea from '@/components/Textarea/Textarea'
+import PendingPhotos from '@/components/OrderPhotos/PendingPhotos'
 import PlantItemRow from './PlantItemRow'
 import CustomerPicker from './CustomerPicker'
 import { emptyItem, initialItems } from './items'
 import type { ItemInput } from './items'
 import type { CustomerMode } from './CustomerPicker'
-import { fetchOrders, newOrderId } from '../../firebase/orders'
-import { deleteOrderPhoto, uploadOrderPhoto } from '../../firebase/photos'
-import { reportError } from '../../observability/reportError'
-import type { NewOrder } from '../../firebase/orders'
+import { fetchOrders, newOrderId } from '@/firebase/orders'
+import { deleteOrderPhoto, uploadOrderPhoto } from '@/firebase/photos'
+import { reportError } from '@/observability/reportError'
+import type { NewOrder } from '@/firebase/orders'
 import type {
   Currency,
   DeliveryMethod,
@@ -36,8 +36,8 @@ import type {
   PaymentMethod,
   PaymentStatus,
   ShipmentStatus,
-} from '../../types/order'
-import type { Customer, NewCustomer } from '../../types/customer'
+} from '@/types/order'
+import type { Customer, NewCustomer } from '@/types/customer'
 
 interface OrderFormProps {
   // Screen heading, e.g. "New order" / "Edit order".

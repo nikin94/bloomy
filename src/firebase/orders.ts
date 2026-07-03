@@ -12,9 +12,9 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from './client'
-import { STORED_ORDER_SCHEMA, TRASH_RETENTION_DAYS, isOrderDeleted } from '../types/order'
-import type { Order, PaymentStatus, ShipmentStatus } from '../types/order'
-import { reportError } from '../observability/reportError'
+import { STORED_ORDER_SCHEMA, TRASH_RETENTION_DAYS, isOrderDeleted } from '@/types/order'
+import type { Order, PaymentStatus, ShipmentStatus } from '@/types/order'
+import { reportError } from '@/observability/reportError'
 
 const ORDERS_COLLECTION = 'orders'
 // Per-owner counters: counters/{ownerId}.lastOrderNumber holds the highest

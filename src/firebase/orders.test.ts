@@ -26,7 +26,7 @@ import {
   updateOrder,
 } from './orders'
 import type { NewOrder } from './orders'
-import type { Order } from '../types/order'
+import type { Order } from '@/types/order'
 
 vi.mock('./client', () => ({ db: {} }))
 vi.mock('firebase/firestore', () => ({

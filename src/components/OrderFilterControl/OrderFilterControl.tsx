@@ -2,14 +2,14 @@ import { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'
 import RangeSliderImport from 'react-range-slider-input'
-import Button from '../Button/Button'
-import Select from '../Select/Select'
-import Modal from '../Modal/Modal'
-import FilterIcon from '../icons/FilterIcon'
-import { useSettings } from '../../context/settingsContext'
-import { useSidebarCollapse } from '../../context/sidebarCollapseContext'
-import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
-import { formatMoney, parseDateInput, toDateInputValue } from '../../utils/format'
+import Button from '@/components/Button/Button'
+import Select from '@/components/Select/Select'
+import Modal from '@/components/Modal/Modal'
+import FilterIcon from '@/components/icons/FilterIcon'
+import { useSettings } from '@/context/settingsContext'
+import { useSidebarCollapse } from '@/context/sidebarCollapseContext'
+import { FIELD_BASE, FIELD_NORMAL } from '@/styles/fieldStyles'
+import { formatMoney, parseDateInput, toDateInputValue } from '@/utils/format'
 import {
   currencyOptions,
   getTotalMinor,
@@ -17,7 +17,7 @@ import {
   paymentStatusOptions,
   shipmentStatusOptions,
   sortableColumns,
-} from '../../types/order'
+} from '@/types/order'
 import type {
   Currency,
   Order,
@@ -26,7 +26,7 @@ import type {
   OrderSort,
   PaymentStatus,
   ShipmentStatus,
-} from '../../types/order'
+} from '@/types/order'
 
 // react-range-slider-input ships CommonJS (`exports.default = Component`).
 // Depending on the bundler's interop the default import can arrive wrapped one

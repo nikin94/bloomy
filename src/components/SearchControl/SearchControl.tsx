@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
-import { useSidebarCollapse } from '../../context/sidebarCollapseContext'
-import CloseIcon from '../icons/CloseIcon'
-import SearchIcon from '../icons/SearchIcon'
+import { FIELD_BASE, FIELD_NORMAL } from '@/styles/fieldStyles'
+import { useSidebarCollapse } from '@/context/sidebarCollapseContext'
+import CloseIcon from '@/components/icons/CloseIcon'
+import SearchIcon from '@/components/icons/SearchIcon'
 
 // Width/opacity transition duration for the search field, kept in sync with the
 // `duration-200` utilities below so the loupe is revealed exactly when the

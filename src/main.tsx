@@ -1,15 +1,15 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import * as Sentry from '@sentry/react'
-import { AuthProvider } from './context/AuthProvider.tsx'
-import { SettingsProvider } from './context/SettingsProvider.tsx'
-import { initSentry } from './observability/sentry.ts'
-import { registerServiceWorker } from './lib/registerServiceWorker.ts'
-import AppCrashFallback from './components/AppCrashFallback/AppCrashFallback.tsx'
+import { AuthProvider } from '@/context/AuthProvider.tsx'
+import { SettingsProvider } from '@/context/SettingsProvider.tsx'
+import { initSentry } from '@/observability/sentry.ts'
+import { registerServiceWorker } from '@/lib/registerServiceWorker.ts'
+import AppCrashFallback from '@/components/AppCrashFallback/AppCrashFallback.tsx'
 import App from './App.tsx'
 // Initialise i18next before anything renders, so the first paint is already in
 // the user's language (resources are bundled, so this is synchronous).
-import './i18n/config.ts'
+import '@/i18n/config.ts'
 import './index.css'
 
 // Start error monitoring before anything renders, so an exception during the

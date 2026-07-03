@@ -3,11 +3,11 @@ import { render, screen, waitFor, fireEvent, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
-import { AuthContext } from '../../context/authContext'
-import { SettingsContext } from '../../context/settingsContext'
-import type { SettingsState } from '../../context/settingsContext'
-import type { Customer } from '../../types/customer'
-import type { Order } from '../../types/order'
+import { AuthContext } from '@/context/authContext'
+import { SettingsContext } from '@/context/settingsContext'
+import type { SettingsState } from '@/context/settingsContext'
+import type { Customer } from '@/types/customer'
+import type { Order } from '@/types/order'
 
 // Firebase-touching modules are mocked so the data layer never initializes the
 // real SDK. The form's behaviour (validation, item rows, prefill, submit

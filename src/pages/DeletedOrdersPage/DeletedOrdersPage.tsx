@@ -1,23 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import DataTable from '../../components/DataTable/DataTable'
-import Spinner from '../../components/Spinner/Spinner'
-import SearchControl from '../../components/SearchControl/SearchControl'
-import OrderFilterControl from '../../components/OrderFilterControl/OrderFilterControl'
-import { fetchDeletedOrders } from '../../firebase/orders'
-import { fetchCustomers } from '../../firebase/customers'
-import { useAuth } from '../../context/authContext'
-import { useHeaderActions } from '../../context/headerActionsContext'
+import DataTable from '@/components/DataTable/DataTable'
+import Spinner from '@/components/Spinner/Spinner'
+import SearchControl from '@/components/SearchControl/SearchControl'
+import OrderFilterControl from '@/components/OrderFilterControl/OrderFilterControl'
+import { fetchDeletedOrders } from '@/firebase/orders'
+import { fetchCustomers } from '@/firebase/customers'
+import { useAuth } from '@/context/authContext'
+import { useHeaderActions } from '@/context/headerActionsContext'
 import {
   buildOrderColumns,
   filterOrders,
   isOrderFilterActive,
   trashDaysLeft,
   EMPTY_ORDER_FILTER,
-} from '../../types/order'
-import type { Order, OrderColumn, OrderFilter, OrderSort } from '../../types/order'
-import type { Customer } from '../../types/customer'
+} from '@/types/order'
+import type { Order, OrderColumn, OrderFilter, OrderSort } from '@/types/order'
+import type { Customer } from '@/types/customer'
 
 // Trash screen: the signed-in user's soft-deleted orders, shown in the SAME
 // table/card layout as the active list (DataTable) so it reads identically. Two

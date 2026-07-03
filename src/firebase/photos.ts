@@ -1,6 +1,6 @@
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import { storage } from './client'
-import { compressImage } from '../utils/image'
+import { compressImage } from '@/utils/image'
 
 // Order-photo storage layer. Photos live under
 //   orders/{ownerId}/{orderId}/{photoId}.jpg

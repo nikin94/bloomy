@@ -2,26 +2,26 @@ import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import DataTable from '../../components/DataTable/DataTable'
-import Spinner from '../../components/Spinner/Spinner'
-import Button from '../../components/Button/Button'
-import Modal from '../../components/Modal/Modal'
-import CustomerForm from '../../components/CustomerForm/CustomerForm'
-import DetailRow from '../../components/DetailRow/DetailRow'
-import PencilIcon from '../../components/icons/PencilIcon'
-import { fetchCustomer, updateCustomer } from '../../firebase/customers'
-import type { CustomerEdits } from '../../firebase/customers'
-import { fetchOrders } from '../../firebase/orders'
-import { useAuth } from '../../context/authContext'
-import { formatDate, formatMoney } from '../../utils/format'
+import DataTable from '@/components/DataTable/DataTable'
+import Spinner from '@/components/Spinner/Spinner'
+import Button from '@/components/Button/Button'
+import Modal from '@/components/Modal/Modal'
+import CustomerForm from '@/components/CustomerForm/CustomerForm'
+import DetailRow from '@/components/DetailRow/DetailRow'
+import PencilIcon from '@/components/icons/PencilIcon'
+import { fetchCustomer, updateCustomer } from '@/firebase/customers'
+import type { CustomerEdits } from '@/firebase/customers'
+import { fetchOrders } from '@/firebase/orders'
+import { useAuth } from '@/context/authContext'
+import { formatDate, formatMoney } from '@/utils/format'
 import {
   buildOrderColumns,
   revenueByCurrencyMinor,
   topPlantsByQuantity,
   CURRENCIES,
-} from '../../types/order'
-import type { Order } from '../../types/order'
-import type { Customer } from '../../types/customer'
+} from '@/types/order'
+import type { Order } from '@/types/order'
+import type { Customer } from '@/types/customer'
 
 // How many "frequent plants" to surface in the summary.
 const TOP_PLANTS = 3

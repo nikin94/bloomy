@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loader from '../Loader/Loader'
-import ViewerChevron from '../icons/ViewerChevron'
+import Loader from '@/components/Loader/Loader'
+import ViewerChevron from '@/components/icons/ViewerChevron'
 
 // Full-screen swiper. A horizontal scroll-snap track of full images; Esc closes,
 // arrows step. `pointer-events` stay on the controls so a tap on the backdrop

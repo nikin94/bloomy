@@ -4,7 +4,7 @@
 // needs no schema change or extra reads. `now` is passed in (never read from the
 // clock here) so the helpers are deterministic and unit-testable, and so the page
 // can capture a single mount-time timestamp (a render-time Date.now() isn't pure).
-import { parseDateInput } from '../utils/format'
+import { parseDateInput } from '@/utils/format'
 import type { Currency, Order } from './order'
 
 // The period presets offered in the tab's dropdown, ordered by widening window.

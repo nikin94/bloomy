@@ -5,7 +5,7 @@ import { MemoryRouter, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import type { User } from 'firebase/auth'
-import { AuthContext } from '../../context/authContext'
+import { AuthContext } from '@/context/authContext'
 
 // Stub the auth module: the settings screen (reached from the sidebar) imports
 // signOutUser, so keep the real Firebase SDK out of the test.
@@ -13,7 +13,7 @@ vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
 
 // Imported after the mock above is registered.
 import Sidebar from './Sidebar'
-import SearchControl from '../SearchControl/SearchControl'
+import SearchControl from '@/components/SearchControl/SearchControl'
 
 const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
 

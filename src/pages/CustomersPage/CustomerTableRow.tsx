@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next'
-import type { Customer } from '../../types/customer'
-import { TABLE_CELL_BASE, TABLE_CELL_NOWRAP, TABLE_CELL_WRAP } from '../../styles/tableStyles'
+import type { Customer } from '@/types/customer'
+import { TABLE_CELL_BASE, TABLE_CELL_NOWRAP, TABLE_CELL_WRAP } from '@/styles/tableStyles'
 import RowActions from './RowActions'
 
 // One customer as a desktop table row, mirroring the orders table look. The whole

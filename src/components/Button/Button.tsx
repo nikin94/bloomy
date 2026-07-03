@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes } from 'react'
-import Loader from '../Loader/Loader'
+import Loader from '@/components/Loader/Loader'
 
 // Shared button. The app has three visual kinds — a filled brand button, an
 // outlined neutral one, and a tinted `danger` for destructive actions — so they

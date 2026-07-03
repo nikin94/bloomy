@@ -2,7 +2,7 @@
 // Kept in one place so the table and the detail page use the same
 // format (currency, date).
 import i18next from 'i18next'
-import type { Currency } from '../types/order'
+import type { Currency } from '@/types/order'
 
 // BCP-47 locale for Intl number/currency formatting, derived from the active UI
 // language so the grouping and decimal separators follow the chosen language

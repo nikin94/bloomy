@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '../Input/Input'
-import Textarea from '../Textarea/Textarea'
-import Button from '../Button/Button'
-import type { CustomerEdits } from '../../firebase/customers'
+import Input from '@/components/Input/Input'
+import Textarea from '@/components/Textarea/Textarea'
+import Button from '@/components/Button/Button'
+import type { CustomerEdits } from '@/firebase/customers'
 
 interface CustomerFormProps {
   // Prefill values (editing an existing customer). Omit for a blank form.
