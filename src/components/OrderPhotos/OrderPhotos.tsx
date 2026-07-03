@@ -6,6 +6,8 @@ import { reportError } from '../../observability/reportError'
 import Button from '../Button/Button'
 import Loader from '../Loader/Loader'
 import Modal from '../Modal/Modal'
+import CameraIcon from '../icons/CameraIcon'
+import ViewerChevron from '../icons/ViewerChevron'
 
 // Photo gallery for an order: a horizontal strip of thumbnails plus an "add"
 // tile, and a full-screen swiper to view them. Lives on the order detail page,
@@ -14,44 +16,6 @@ import Modal from '../Modal/Modal'
 // has no offline queue); a failure is surfaced inline. Photo paths are owned by
 // the parent (`photos`) — every add/remove calls `onChange` with the new full
 // list, which the page persists via patchOrder.
-
-export const CameraIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-6"
-  >
-    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z" />
-    <circle cx="12" cy="13" r="3" />
-  </svg>
-)
-
-// Viewer nav chevron. A stroked SVG (not the ‹/› glyphs, which sit off-centre in
-// their em-box) so `flex items-center justify-center` centres it exactly in the
-// round button. `direction` flips it left/right.
-const ViewerChevron = ({ direction }: { direction: 'left' | 'right' }) => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-6"
-  >
-    {direction === 'left' ? (
-      <polyline points="15 18 9 12 15 6" />
-    ) : (
-      <polyline points="9 18 15 12 9 6" />
-    )}
-  </svg>
-)
 
 // A single resolved thumbnail. Resolves its download URL lazily (cached in the
 // photos layer) and shows a loader until then. The image opens the viewer; the
@@ -318,7 +282,7 @@ const OrderPhotos = ({
     deleteOrderPhoto(path).catch((err: unknown) => reportError(err, 'deleteOrderPhoto'))
   }
 
-  // Read-only with nothing to show: skip the section entirely (no empty "Фото"
+  // Read-only with nothing to show: skip the section entirely (no empty "Photos"
   // heading on a deleted order that never had photos).
   if (readOnly && photos.length === 0) return null
 

@@ -21,7 +21,7 @@ const FLOATING_LABEL =
 // arrow (hence the custom padding instead of px-3).
 // `min-w-0` is essential: a native <select> won't shrink below its widest
 // <option> by default (its intrinsic min-width is the longest option), so a long
-// option — e.g. the customer picker's "Имя (+телефон)" — would otherwise pin the
+// option — e.g. the customer picker's "Name (+phone)" — would otherwise pin the
 // whole form to that width and refuse to shrink on narrow screens. With `min-w-0`
 // the control shrinks to its assigned width and clips the shown value (`truncate`).
 const selectClass = `${FIELD_BASE} w-full min-w-0 truncate appearance-none py-2 pl-3 pr-9`

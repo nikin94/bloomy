@@ -5,6 +5,7 @@ import RangeSliderImport from 'react-range-slider-input'
 import Button from '../Button/Button'
 import Select from '../Select/Select'
 import Modal from '../Modal/Modal'
+import FilterIcon from '../icons/FilterIcon'
 import { useSettings } from '../../context/settingsContext'
 import { useSidebarCollapse } from '../../context/sidebarCollapseContext'
 import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
@@ -41,21 +42,6 @@ const PRICE_STEP_MINOR = 100
 
 // Funnel icon for the filter button. The button itself fills in (primary) when a
 // filter is active, so the closed dialog still signals that filtering is on.
-const FilterIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-5 shrink-0"
-  >
-    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-  </svg>
-)
-
 // Reusable status / currency / price filter for an order list. The main orders
 // list and the trash share the identical OrderFilter shape, so they share this
 // control instead of duplicating the funnel button + dialog. It renders BOTH the

@@ -27,7 +27,7 @@ import type { Customer } from '../../types/customer'
 const TOP_PLANTS = 3
 
 // The shared DetailRow with this page's narrower label column (its labels —
-// "Телефон" / "Всего заказов" — are shorter than the order page's). A thin
+// "Phone" / "Total orders" — are shorter than the order page's). A thin
 // local alias so the call sites below stay terse and don't repeat the basis.
 const Field = ({ label, value }: { label: string; value: ReactNode }) => (
   <DetailRow label={label} value={value} labelBasisClass="sm:basis-[160px]" />

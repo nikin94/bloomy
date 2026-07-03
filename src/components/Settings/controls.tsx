@@ -3,6 +3,8 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FONT_SCALE_MAX, FONT_SCALE_MIN, FONT_SCALE_STEP } from '../../types/settings'
 import type { ThemeMode } from '../../types/settings'
+import SunIcon from '../icons/SunIcon'
+import MoonIcon from '../icons/MoonIcon'
 
 // Presentational building blocks of the settings screen, so its body reads as a
 // short composition of named controls rather than one long render. None hold
@@ -40,54 +42,6 @@ export const Row = ({ label, children }: { label: string; children: ReactNode })
     </span>
     {children}
   </div>
-)
-
-const SunIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-4"
-  >
-    <circle cx="12" cy="12" r="4" />
-    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-  </svg>
-)
-
-const MoonIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-4"
-  >
-    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-  </svg>
-)
-
-export const LogoutIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-5"
-  >
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-    <polyline points="16 17 21 12 16 7" />
-    <line x1="21" y1="12" x2="9" y2="12" />
-  </svg>
 )
 
 // Theme switch styled as a pill track with a sun (light) and a moon (dark) at
@@ -152,7 +106,7 @@ const sliderClass =
   '[&::-moz-range-thumb]:size-6 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-bg [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:shadow'
 
 // Translation key (under settings:fontScale) describing the current scale for
-// screen readers, so the slider announces "уменьшен"/"по умолчанию"/"увеличен"
+// screen readers, so the slider announces "decreased"/"default"/"increased"
 // (localised) rather than a raw number.
 const fontScaleLabelKey = (scale: number): 'decreased' | 'default' | 'increased' => {
   if (scale < 1) return 'decreased'
@@ -232,7 +186,7 @@ export const FontSizeSlider = ({
             onPointerCancel={handleDragEnd}
             onLostPointerCapture={handleDragEnd}
             aria-label={t('fontSize')}
-            // Screen readers announce a human-readable label (e.g. "увеличен")
+            // Screen readers announce a human-readable label (e.g. "increased")
             // instead of the raw scale number (0.875, 1.25).
             aria-valuetext={t(`fontScale.${fontScaleLabelKey(value)}` as const)}
             className={sliderClass}

@@ -30,7 +30,7 @@ export type Language = (typeof LANGUAGES)[number]
 export const DEFAULT_LANGUAGE: Language = 'ru'
 
 // Defaults used to prefill a NEW order's delivery/payment method when the user
-// has not set a preference: post (Почта) for delivery, card (Карта) for payment.
+// has not set a preference: post (Post) for delivery, card (Card) for payment.
 export const DEFAULT_DELIVERY_METHOD: DeliveryMethod = 'post'
 export const DEFAULT_PAYMENT_METHOD: PaymentMethod = 'card'
 

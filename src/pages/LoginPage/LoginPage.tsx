@@ -14,40 +14,11 @@ import { reportError } from '../../observability/reportError'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
 import Input from '../../components/Input/Input'
+import EyeIcon from '../../components/icons/EyeIcon'
 
 // Which action the email form performs: sign in to an existing account, or
 // register a new one. A toggle below the form switches between the two.
 type AuthMode = 'signin' | 'register'
-
-// Show/hide-password icon: a plain eye when the password is masked (click to
-// reveal), a struck-through eye when it's visible (click to hide). Drawn from
-// `currentColor` so it inherits the button's text colour in both themes.
-const EyeIcon = ({ crossed }: { crossed: boolean }) => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-5"
-  >
-    {crossed ? (
-      <>
-        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-        <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-        <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
-        <line x1="2" x2="22" y1="2" y2="22" />
-      </>
-    ) : (
-      <>
-        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-        <circle cx="12" cy="12" r="3" />
-      </>
-    )}
-  </svg>
-)
 
 // Map an auth failure (sign-in OR registration) to a message the user can act
 // on. Firebase throws a FirebaseError carrying a string `code`; the raw
@@ -69,7 +40,7 @@ const authErrorMessage = (t: TFunction<'auth'>, err: unknown, mode: AuthMode): s
       return t('errors.popupClosed')
     // Sign-in failures: Firebase collapses wrong-email and wrong-password into
     // one code, so the message stays deliberately vague (no account
-    // enumeration) — "почта или пароль неверны".
+    // enumeration) — "email or password is incorrect".
     case 'auth/invalid-credential':
     case 'auth/invalid-login-credentials':
     case 'auth/wrong-password':
@@ -111,7 +82,7 @@ const LoginPage = () => {
   // flag, and on failure reports the raw FirebaseError to Sentry (so we see the
   // real `code` rather than guessing from screenshots) before showing the
   // friendly message. `context` distinguishes the paths in Sentry; `errorMode`
-  // picks the right generic fallback (вход vs регистрация). On success
+  // picks the right generic fallback (sign-in vs registration). On success
   // onAuthStateChanged flips `user`, which triggers the redirect above.
   const run = async (fn: () => Promise<unknown>, context: string, errorMode: AuthMode = 'signin') => {
     if (signingIn) return

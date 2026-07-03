@@ -8,6 +8,7 @@ import Modal from '../../components/Modal/Modal'
 import SearchControl from '../../components/SearchControl/SearchControl'
 import CustomerForm from '../../components/CustomerForm/CustomerForm'
 import PencilIcon from '../../components/icons/PencilIcon'
+import TrashIcon from '../../components/icons/TrashIcon'
 import { fetchCustomers, softDeleteCustomer, updateCustomer } from '../../firebase/customers'
 import type { CustomerEdits } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
@@ -15,24 +16,6 @@ import { useHeaderActions } from '../../context/headerActionsContext'
 import { filterCustomers } from '../../types/customer'
 import type { Customer } from '../../types/customer'
 import { TABLE_CELL_BASE, TABLE_CELL_NOWRAP, TABLE_CELL_WRAP } from '../../styles/tableStyles'
-
-const TrashIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-5"
-  >
-    <polyline points="3 6 5 6 21 6" />
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-    <line x1="10" y1="11" x2="10" y2="17" />
-    <line x1="14" y1="11" x2="14" y2="17" />
-  </svg>
-)
 
 // The edit + delete controls for a customer, shared by the desktop row and the
 // mobile card. Wrapped in a container that STOPS click propagation so pressing a

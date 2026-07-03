@@ -7,7 +7,7 @@ import { useVersionCheck } from './useVersionCheck'
 // corner (with a margin). It is deliberately NOT a modal: a centred dialog over
 // a half-filled order form would force the user to deal with it and risks a
 // stray reload losing unsaved work. The toast sits out of the way, can be
-// dismissed ("Позже"), and only reloads on an explicit "Обновить" — which
+// dismissed ("Later"), and only reloads on an explicit "Update" — which
 // fetches a fresh index.html and so the new hashed assets. `role="status"`
 // announces it politely to screen readers.
 const UpdatePrompt = () => {

@@ -12,7 +12,7 @@ const NewOrderPage = () => {
   const location = useLocation()
   const { t } = useTranslation('order')
 
-  // "Повторить" (repeat order) navigates here with the source order in history
+  // "Repeat" (repeat order) navigates here with the source order in history
   // state; OrderForm seeds a fresh create form from its contents. Absent on a
   // normal "new order" navigation (and after a refresh, which drops the state).
   const seed = (location.state as { repeatOrder?: Order } | null)?.repeatOrder

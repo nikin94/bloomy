@@ -10,6 +10,7 @@ import {
 import type { ColumnDef, OnChangeFn, Row, SortingState } from '@tanstack/react-table'
 import type { Order, OrderColumn, OrderSort } from '../../types/order'
 import { TABLE_CELL_BASE, TABLE_CELL_NOWRAP, TABLE_CELL_WRAP } from '../../styles/tableStyles'
+import SortChevron from '../icons/SortChevron'
 
 // One shared empty sorting array for the "no explicit sort" case, so a controlled
 // table hands TanStack the SAME reference every render instead of a fresh `[]`
@@ -70,20 +71,6 @@ const toColumnDef = (column: OrderColumn): ColumnDef<Order> => ({
 // A filled triangle next to a sorted header: up for ascending, down for
 // descending. Rendered only on the column currently sorted, so the chevron
 // itself signals which column drives the order and in which direction.
-const SortChevron = ({ direction }: { direction: false | 'asc' | 'desc' }) => {
-  if (!direction) return null
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 12 12"
-      className="size-3 shrink-0"
-      fill="currentColor"
-    >
-      {direction === 'asc' ? <path d="M6 3 1 9h10z" /> : <path d="M6 9 1 3h10z" />}
-    </svg>
-  )
-}
-
 // Map TanStack's sort state to the `aria-sort` value assistive tech expects.
 const ariaSort = (direction: false | 'asc' | 'desc') =>
   direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'

@@ -3,22 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
 import { useSidebarCollapse } from '../../context/sidebarCollapseContext'
 import CloseIcon from '../icons/CloseIcon'
-
-const SearchIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-5 shrink-0"
-  >
-    <circle cx="11" cy="11" r="8" />
-    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-  </svg>
-)
+import SearchIcon from '../icons/SearchIcon'
 
 // Width/opacity transition duration for the search field, kept in sync with the
 // `duration-200` utilities below so the loupe is revealed exactly when the
@@ -32,8 +17,8 @@ const SEARCH_TRANSITION_MS = 200
 // field (also via Escape). While collapsed the input is removed from the tab
 // order and the accessibility tree, so only the loupe button is reachable.
 //
-// `label` is the input's accessible name (e.g. "Поиск заказов" / "Поиск
-// клиентов") so each list announces what it searches; the matching predicate
+// `label` is the input's accessible name (e.g. "Search orders" / "Search
+// customers") so each list announces what it searches; the matching predicate
 // stays the caller's concern.
 const SearchControl = ({
   value,

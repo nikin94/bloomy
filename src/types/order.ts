@@ -340,7 +340,7 @@ export const paymentMethodLabel = (t: OrderT, value: PaymentMethod): string =>
 export const deliveryMethodLabel = (t: OrderT, value: DeliveryMethod): string =>
   t(`deliveryMethod.${value}`)
 // Currency option label: the localized NAME plus the universal symbol glyph, e.g.
-// "Рубли (₽)" / "Dollars ($)". The name is translated (order ns); the symbol
+// "Rubles (₽)" / "Dollars ($)". The name is translated (order ns); the symbol
 // comes from currencySymbol (the same Intl source formatMoney uses) so the value
 // in the dropdown and a formatted amount can never disagree on the symbol.
 export const currencyLabel = (t: OrderT, value: Currency): string =>

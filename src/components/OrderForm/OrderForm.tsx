@@ -40,13 +40,13 @@ import type {
 import type { Customer, NewCustomer } from '../../types/customer'
 
 interface OrderFormProps {
-  // Screen heading, e.g. "Новый заказ" / "Редактирование заказа".
+  // Screen heading, e.g. "New order" / "Edit order".
   heading: string
   // When editing, the existing order to prefill every field from. Omitted when
   // creating (the form starts blank). Read once on mount — the caller must load
   // the order before rendering the form, not swap this prop in later.
   initialOrder?: Order
-  // Repeat-order ("Повторить") seed: an existing order whose CONTENTS prefill a
+  // Repeat-order ("Repeat") seed: an existing order whose CONTENTS prefill a
   // fresh create form (customer, plants, address, methods, currency). Unlike
   // `initialOrder` it does NOT carry over the per-instance state — statuses,
   // comment, number and dates start pristine — so the result is a brand-new
@@ -172,7 +172,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
         // When editing (or repeating) an order whose customer was soft-deleted,
         // that customer is absent from the active list — so the picker would drop
         // the current selection. Fetch it directly and keep it in the options
-        // (labelled "(удалён)") so the order stays linked to it unless changed.
+        // (labelled "(deleted)") so the order stays linked to it unless changed.
         const seededId = source?.customerId
         let list = data
         if (seededId && !data.some((c) => c.id === seededId)) {
@@ -270,7 +270,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
     setSelectedCustomerId(id)
     // Reset prefilled fields, then fill from the newly picked customer. Always
     // resetting first means a previous customer's data can't linger when the new
-    // pick (or the "— выберите клиента —" placeholder, id === '') lacks it.
+    // pick (or the "— select a customer —" placeholder, id === '') lacks it.
     applyCustomerToForm(customers.find((c) => c.id === id))
     // Picking a real customer clears the "select a customer" validation error.
     if (id !== '') setError((prev) => (prev === t('form.errors.selectCustomer') ? null : prev))
