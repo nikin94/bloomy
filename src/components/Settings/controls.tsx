@@ -106,7 +106,7 @@ const sliderClass =
   '[&::-moz-range-thumb]:size-6 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-bg [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:shadow'
 
 // Translation key (under settings:fontScale) describing the current scale for
-// screen readers, so the slider announces "уменьшен"/"по умолчанию"/"увеличен"
+// screen readers, so the slider announces "decreased"/"default"/"increased"
 // (localised) rather than a raw number.
 const fontScaleLabelKey = (scale: number): 'decreased' | 'default' | 'increased' => {
   if (scale < 1) return 'decreased'
@@ -186,7 +186,7 @@ export const FontSizeSlider = ({
             onPointerCancel={handleDragEnd}
             onLostPointerCapture={handleDragEnd}
             aria-label={t('fontSize')}
-            // Screen readers announce a human-readable label (e.g. "увеличен")
+            // Screen readers announce a human-readable label (e.g. "increased")
             // instead of the raw scale number (0.875, 1.25).
             aria-valuetext={t(`fontScale.${fontScaleLabelKey(value)}` as const)}
             className={sliderClass}

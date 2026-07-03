@@ -1,4 +1,4 @@
-// The "Клиенты" nav glyph — a two-people icon for the customers destination.
+// The "Customers" nav glyph — a two-people icon for the customers destination.
 // Decorative (`aria-hidden`): the surrounding nav row carries the label.
 const CustomersIcon = ({ className = 'size-5' }: { className?: string }) => (
   <svg

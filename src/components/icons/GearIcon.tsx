@@ -1,4 +1,4 @@
-// The gear (settings) glyph — the sidebar's "Настройки" toggle. Decorative
+// The gear (settings) glyph — the sidebar's "Settings" toggle. Decorative
 // (`aria-hidden`): the surrounding control carries the accessible name.
 const GearIcon = ({ className = 'size-5' }: { className?: string }) => (
   <svg

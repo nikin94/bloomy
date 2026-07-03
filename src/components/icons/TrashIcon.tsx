@@ -1,5 +1,5 @@
 // The shared trash (delete) glyph — a single source of truth for the bin icon
-// used by the sidebar's "Корзина" nav destination and the customers list's
+// used by the sidebar's "Trash" nav destination and the customers list's
 // per-row delete action (both rendered the identical SVG inline before).
 // Decorative (`aria-hidden`): the surrounding control carries the label.
 const TrashIcon = ({ className = 'size-5' }: { className?: string }) => (

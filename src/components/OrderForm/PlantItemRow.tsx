@@ -30,7 +30,7 @@ const PlantItemRow = ({
   // doesn't open its own useTranslation.
   t: TFunction<['order', 'common']>
   // Focus the name input on mount — set only for a row just added via the
-  // "+ Добавить растение" button, so the user can type the name right away.
+  // "+ Add plant" button, so the user can type the name right away.
   autoFocus: boolean
   // Known plant names from prior orders, offered as autocomplete suggestions on
   // the name input so re-typing an existing plant reuses one spelling.

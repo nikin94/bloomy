@@ -40,7 +40,7 @@ const authErrorMessage = (t: TFunction<'auth'>, err: unknown, mode: AuthMode): s
       return t('errors.popupClosed')
     // Sign-in failures: Firebase collapses wrong-email and wrong-password into
     // one code, so the message stays deliberately vague (no account
-    // enumeration) — "почта или пароль неверны".
+    // enumeration) — "email or password is incorrect".
     case 'auth/invalid-credential':
     case 'auth/invalid-login-credentials':
     case 'auth/wrong-password':
@@ -82,7 +82,7 @@ const LoginPage = () => {
   // flag, and on failure reports the raw FirebaseError to Sentry (so we see the
   // real `code` rather than guessing from screenshots) before showing the
   // friendly message. `context` distinguishes the paths in Sentry; `errorMode`
-  // picks the right generic fallback (вход vs регистрация). On success
+  // picks the right generic fallback (sign-in vs registration). On success
   // onAuthStateChanged flips `user`, which triggers the redirect above.
   const run = async (fn: () => Promise<unknown>, context: string, errorMode: AuthMode = 'signin') => {
     if (signingIn) return

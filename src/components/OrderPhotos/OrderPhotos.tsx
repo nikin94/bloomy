@@ -282,7 +282,7 @@ const OrderPhotos = ({
     deleteOrderPhoto(path).catch((err: unknown) => reportError(err, 'deleteOrderPhoto'))
   }
 
-  // Read-only with nothing to show: skip the section entirely (no empty "Фото"
+  // Read-only with nothing to show: skip the section entirely (no empty "Photos"
   // heading on a deleted order that never had photos).
   if (readOnly && photos.length === 0) return null
 

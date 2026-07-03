@@ -31,13 +31,13 @@ const writeLastSynced = (ms: number) => {
 // Connection / sync indicator for the offline-capable data layer. Renders ONLY
 // when there is something worth saying — the browser is offline, or queued
 // writes are still flushing — so the header stays clean while everything is in
-// sync. Offline shows just "Не в сети" to stay compact; WHEN the local data last
+// sync. Offline shows just "Offline" to stay compact; WHEN the local data last
 // reached the server is in a hover tooltip (a custom Tooltip that shows instantly,
 // not the native `title` which the browser delays ~1s) instead of inline, so the
 // header doesn't widen. The freshness is taken from waitForPendingWrites (a real
 // server acknowledgement), not navigator.onLine alone, so it stays honest in the
 // case that matters most here: the network is up but Firebase itself is blocked —
-// then writes never flush and the indicator keeps showing "Синхронизация…"
+// then writes never flush and the indicator keeps showing "Syncing…"
 // instead of falsely claiming a sync.
 const SyncStatus = () => {
   const { t } = useTranslation()
@@ -63,7 +63,7 @@ const SyncStatus = () => {
   // then stamp the sync time. waitForPendingWrites resolves immediately when
   // nothing is queued (a clean load just stamps "now"); it stays pending while
   // writes are still flushing. We only flip `flushing` true after a short delay,
-  // so a clean load doesn't flash "Синхронизация…" — the label appears only for
+  // so a clean load doesn't flash "Syncing…" — the label appears only for
   // a genuinely slow flush (e.g. a backlog, or Firebase blocked despite a link).
   useEffect(() => {
     if (!online) return
@@ -95,7 +95,7 @@ const SyncStatus = () => {
   if (online && !flushing) return null
 
   // Last-synced time lives in the tooltip (hover), not inline, so offline shows
-  // just "Не в сети" and the header stays compact.
+  // just "Offline" and the header stays compact.
   const lastSyncedHint =
     !online && lastSyncedAt !== null
       ? t('sync.lastSynced', { time: formatDateTime(lastSyncedAt) })

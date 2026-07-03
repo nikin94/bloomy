@@ -27,7 +27,7 @@ type IconProps = { className?: string }
 // Navigation destinations, defined once so a new section is added in ONE place
 // and appears in both the desktop rail and the mobile drawer. Each carries an
 // `Icon` so a row reads icon + label (and, collapsed, the icon stands alone).
-// `end` keeps "Заказы" active only on the exact list route, not on /orders/new.
+// `end` keeps "Orders" active only on the exact list route, not on /orders/new.
 const NAV_LINKS: {
   to: string
   labelKey: 'orders' | 'customers' | 'stats' | 'trash'
@@ -95,7 +95,7 @@ const navRowClass = (isActive: boolean) =>
     isActive ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg',
   ].join(' ')
 
-// The "Новый заказ" ACTION (it creates) gets the primary treatment so it reads as
+// The "New order" ACTION (it creates) gets the primary treatment so it reads as
 // the main action, not a fifth nav tab. Its plus stays put; the label fades on collapse.
 const createRowClass = [
   'flex items-center whitespace-nowrap rounded-md bg-primary py-2 text-sm font-medium text-white no-underline transition-opacity hover:opacity-90',
@@ -103,7 +103,7 @@ const createRowClass = [
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
 ].join(' ')
 
-// The "Настройки" control. It is no longer a link to /settings — it TOGGLES the
+// The "Settings" control. It is no longer a link to /settings — it TOGGLES the
 // section nav (a flyout on desktop, an accordion in the mobile drawer); navigation
 // to /settings happens only when a section is picked. Styled like a nav destination,
 // filled when settings is active; its gear stays put and the label fades on collapse.
@@ -233,7 +233,7 @@ const Sidebar = ({
       : null
 
   // The desktop settings flyout: a second-level panel that slides out horizontally
-  // from under the main rail when "Настройки" is toggled. It STARTS open when you
+  // from under the main rail when "Settings" is toggled. It STARTS open when you
   // enter the settings route (so the section list is there on arrival) and closes
   // when you leave; the toggle flips it in between — including closing it in place
   // while still on /settings, or peeking the sections from another page.

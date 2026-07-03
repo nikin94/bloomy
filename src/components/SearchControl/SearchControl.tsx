@@ -17,8 +17,8 @@ const SEARCH_TRANSITION_MS = 200
 // field (also via Escape). While collapsed the input is removed from the tab
 // order and the accessibility tree, so only the loupe button is reachable.
 //
-// `label` is the input's accessible name (e.g. "Поиск заказов" / "Поиск
-// клиентов") so each list announces what it searches; the matching predicate
+// `label` is the input's accessible name (e.g. "Search orders" / "Search
+// customers") so each list announces what it searches; the matching predicate
 // stays the caller's concern.
 const SearchControl = ({
   value,

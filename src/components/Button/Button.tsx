@@ -39,7 +39,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: ButtonSize
   // When true the button shows a Loader IN PLACE of its children and disables
   // itself, so a busy caller passes `isLoading={saving}` plain children instead
-  // of hand-rolling the `saving ? <Loader/> : 'Сохранить'` ternary and a
+  // of hand-rolling the `saving ? <Loader/> : 'Save'` ternary and a
   // matching `disabled`. The Loader draws from currentColor, so it stays legible
   // on every variant (white on primary, danger-red on danger).
   isLoading?: boolean

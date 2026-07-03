@@ -8,7 +8,7 @@ import type { ReactNode } from 'react'
 // `action` is an optional slot pinned to the row's end — e.g. the "edit
 // customer" button on the order page's customer row. `labelBasisClass` sets the
 // label column width FROM `sm:` up (must carry the `sm:` prefix so it's a literal
-// Tailwind can emit): the order page uses wide labels ("Способ доставки") so it
+// Tailwind can emit): the order page uses wide labels ("Delivery method") so it
 // keeps the 200px default; the customer page passes a narrower basis. The value
 // carries `break-words` so a long unbroken string (e.g. an address) wraps
 // instead of overflowing — a no-op for ordinary content.

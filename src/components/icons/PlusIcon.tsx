@@ -1,4 +1,4 @@
-// The plus glyph — the sidebar's "Новый заказ" create action. Decorative
+// The plus glyph — the sidebar's "New order" create action. Decorative
 // (`aria-hidden`): the surrounding row/button carries the accessible name.
 const PlusIcon = ({ className = 'size-5' }: { className?: string }) => (
   <svg

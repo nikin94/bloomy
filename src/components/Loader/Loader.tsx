@@ -8,7 +8,7 @@
 // library — the same Tailwind `animate-spin` the full-page spinner used.
 //
 // `size` covers the three places it's needed: `sm` inside buttons (replacing the
-// "Сохранение…" text), `lg` as the full-page overlay (see Spinner). Carries the
+// "Saving…" text), `lg` as the full-page overlay (see Spinner). Carries the
 // `status` role + a translated label so a button in its loading state announces it.
 import { useTranslation } from 'react-i18next'
 

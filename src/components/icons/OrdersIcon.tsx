@@ -1,4 +1,4 @@
-// The "Заказы" nav glyph — a clipboard/list icon for the orders destination.
+// The "Orders" nav glyph — a clipboard/list icon for the orders destination.
 // Decorative (`aria-hidden`): the surrounding nav row carries the label.
 const OrdersIcon = ({ className = 'size-5' }: { className?: string }) => (
   <svg

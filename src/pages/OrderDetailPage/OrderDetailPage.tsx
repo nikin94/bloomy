@@ -114,7 +114,7 @@ const OrderDetailPage = () => {
   }
 
   // Persist the customer's edited fields, then mirror them onto the local
-  // customer so the page (the "Клиент"/"Телефон" rows) updates live without a
+  // customer so the page (the "Customer"/"Phone" rows) updates live without a
   // refetch. Empty optional fields drop to undefined, matching updateCustomer.
   // updateCustomer is fire-and-forget (offline-safe), so this never blocks and
   // the dialog closes at once; a failed write is reported to Sentry.

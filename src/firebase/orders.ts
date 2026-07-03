@@ -194,7 +194,7 @@ export function updateOrder(id: string, order: Omit<Order, 'id'>): void {
 // an order leaves a terminal status); any other value is written as-is.
 //
 // This is the strongest case for the per-field merge: a single inline toggle
-// ("отметить оплачено/отправлен") writes just that one field, so it merges
+// ("mark paid/shipped") writes just that one field, so it merges
 // cleanly with a concurrent edit to any OTHER field on another device — the
 // frequent two-device action. updateOrder would instead resend the whole order.
 export type OrderPatch = Partial<{

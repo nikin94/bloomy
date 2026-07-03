@@ -25,7 +25,7 @@ import { isAdmin } from '../../lib/admin'
 // refresh / is linkable). Holds the colour theme, per-user font size, language,
 // the new-order defaults, the account (name + sign-out) and the admin seeder.
 // Theme/font/language update the whole app immediately for preview but are only
-// persisted on "Сохранить".
+// persisted on "Save".
 //
 // Discard model on a PAGE (vs the old modal). With the app on a DATA router
 // (createBrowserRouter), leaving with unsaved edits is guarded three ways: (a)
@@ -34,8 +34,8 @@ import { isAdmin } from '../../lib/admin'
 // (b) the live preview (theme/font/language) reverts to the saved values when the
 // page UNMOUNTS, so a leave never leaves the app showing an unsaved appearance;
 // (c) the browser's native beforeunload prompt covers a tab close / refresh — the
-// one navigation an in-app router can't mediate. "Отмена" reverts in place;
-// "Сохранить" persists.
+// one navigation an in-app router can't mediate. "Cancel" reverts in place;
+// "Save" persists.
 const SettingsPage = () => {
   const { t } = useTranslation(['settings', 'common'])
   // The default-method pickers show order-domain labels (delivery/payment
@@ -137,7 +137,7 @@ const SettingsPage = () => {
   const handleTheme = (next: ThemeMode) => {
     setSaved(false)
     setThemeDraft(next)
-    previewTheme(next) // live page update; not persisted until "Сохранить"
+    previewTheme(next) // live page update; not persisted until "Save"
   }
 
   const handleLanguage = (next: Language) => {

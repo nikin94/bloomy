@@ -32,7 +32,7 @@ export const formatMoney = (minor: number, currency: Currency) =>
 
 // The currency's symbol glyph for the active locale (e.g. "₽", "$", "€"), pulled
 // from the SAME Intl formatter as formatMoney so it's a single source of truth —
-// the option label "Рубли (₽)" and a formatted amount can never disagree on the
+// the option label "Rubles (₽)" and a formatted amount can never disagree on the
 // symbol. Falls back to the code if a locale exposes no distinct symbol part.
 export const currencySymbol = (currency: Currency): string =>
   new Intl.NumberFormat(intlLocale(), currencyFormatOptions(currency))

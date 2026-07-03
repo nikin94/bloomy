@@ -1,4 +1,4 @@
-// The "Статистика" nav glyph — a bar-chart icon for the stats destination.
+// The "Statistics" nav glyph — a bar-chart icon for the stats destination.
 // Decorative (`aria-hidden`): the surrounding nav row carries the label.
 const StatsIcon = ({ className = 'size-5' }: { className?: string }) => (
   <svg
