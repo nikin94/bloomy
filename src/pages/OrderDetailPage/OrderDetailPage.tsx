@@ -22,14 +22,15 @@ import {
 } from '../../types/order'
 import { useAuth } from '../../context/authContext'
 import Spinner from '../../components/Spinner/Spinner'
-import Select from '../../components/Select/Select'
 import Button from '../../components/Button/Button'
 import Modal from '../../components/Modal/Modal'
 import CustomerForm from '../../components/CustomerForm/CustomerForm'
 import OrderPhotos from '../../components/OrderPhotos/OrderPhotos'
 import DetailRow from '../../components/DetailRow/DetailRow'
 import PencilIcon from '../../components/icons/PencilIcon'
-import type { Currency, Order } from '../../types/order'
+import InlineStatusField from './InlineStatusField'
+import Total from './Total'
+import type { Order } from '../../types/order'
 import type { Customer } from '../../types/customer'
 
 const OrderDetailPage = () => {
@@ -429,59 +430,5 @@ const OrderDetailPage = () => {
     </>
   )
 }
-
-// A status row that's editable in place: same layout as DetailRow, but the value is
-// a Select. Selecting an option calls onChange, which saves optimistically on
-// the page (the write is fire-and-forget, so there's no in-flight disabled
-// state). Used for both order statuses. `readOnly` (a trashed order) renders the
-// resolved label as plain text instead — the same row layout as Field, so a
-// deleted order reads as a static archive rather than an editable record.
-const InlineStatusField = ({
-  label,
-  value,
-  options,
-  onChange,
-  readOnly = false,
-}: {
-  label: string
-  value: string
-  options: { value: string; label: string }[]
-  onChange: (value: string) => void
-  readOnly?: boolean
-}) => (
-  <DetailRow
-    label={label}
-    value={
-      readOnly ? (
-        (options.find((o) => o.value === value)?.label ?? value)
-      ) : (
-        <div className="w-full sm:max-w-[220px]">
-          <Select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
-            {options.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
-        </div>
-      )
-    }
-  />
-)
-
-const Total = ({
-  label,
-  value,
-  currency,
-}: {
-  label: string
-  value: number
-  currency: Currency
-}) => (
-  <div className="flex justify-between gap-8 text-text">
-    <span>{label}</span>
-    <span className="text-heading tabular-nums">{formatMoney(value, currency)}</span>
-  </div>
-)
 
 export default OrderDetailPage

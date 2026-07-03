@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PhotoViewer, Thumb } from './OrderPhotos'
+import PhotoViewer from './PhotoViewer'
+import Thumb from './Thumb'
 import CameraIcon from '../icons/CameraIcon'
 
 // Local (deferred-upload) photo picker for the CREATE order form. Unlike OrderPhotos

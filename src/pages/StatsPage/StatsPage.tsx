@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
+import LegendItem from './LegendItem'
 import Spinner from '../../components/Spinner/Spinner'
 import Select from '../../components/Select/Select'
 import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
@@ -363,15 +364,5 @@ const StatsPage = () => {
     </div>
   )
 }
-
-// One legend row for the status bar: a colour dot (matching a bar segment) plus
-// the label and exact count.
-const LegendItem = ({ dot, label, value }: { dot: string; label: string; value: number }) => (
-  <li className="flex items-center gap-2">
-    <span aria-hidden="true" className={`size-2.5 shrink-0 rounded-full ${dot}`} />
-    <span className="text-text">{label}</span>
-    <span className="tabular-nums font-medium text-heading">{value}</span>
-  </li>
-)
 
 export default StatsPage

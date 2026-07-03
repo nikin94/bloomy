@@ -9,6 +9,7 @@ import { SidebarCollapseContext } from '../../context/sidebarCollapseContext'
 import { useMediaQuery } from '../../lib/useMediaQuery'
 import { isAdmin } from '../../lib/admin'
 import { settingsSectionsFor, isSettingsSection } from '../Settings/sections'
+import RailLabel from './RailLabel'
 import OrdersIcon from '../icons/OrdersIcon'
 import CustomersIcon from '../icons/CustomersIcon'
 import StatsIcon from '../icons/StatsIcon'
@@ -114,20 +115,6 @@ const settingsToggleClass = (active: boolean) =>
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
     active ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg',
   ].join(' ')
-
-// A rail row's text label. Kept ALWAYS MOUNTED so collapsing the rail can FADE it
-// (opacity, over the same 300ms as the rail's width animation) and let the narrowing
-// rail clip it away, instead of unmounting it instantly. `whitespace-nowrap` keeps it
-// one line so it's swallowed cleanly from the right rather than reflowing.
-const RailLabel = ({ collapsed, children }: { collapsed: boolean; children: ReactNode }) => (
-  <span
-    className={`whitespace-nowrap transition-opacity duration-300 ease-out motion-reduce:transition-none ${
-      collapsed ? 'opacity-0' : 'opacity-100'
-    }`}
-  >
-    {children}
-  </span>
-)
 
 // A section row in the settings nav (flyout / drawer accordion). A LIGHTER register
 // than the main destinations — muted normal-weight text, the active section
