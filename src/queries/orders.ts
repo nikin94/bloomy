@@ -47,7 +47,7 @@ export const useOrder = (
   options?: { includeDeleted?: boolean },
 ) =>
   useQuery({
-    queryKey: queryKeys.order(id, ownerId),
+    queryKey: queryKeys.order(id, ownerId, options?.includeDeleted ?? false),
     queryFn: () => fetchOrder(id as string, ownerId as string, options),
     enabled: id !== undefined && ownerId !== undefined,
   })
@@ -64,8 +64,13 @@ export const useOrderCache = () => {
     setOrder: (
       ownerId: string | undefined,
       id: string,
+      includeDeleted: boolean,
       updater: (prev: Order | null | undefined) => Order,
-    ) => queryClient.setQueryData<Order | null>(queryKeys.order(id, ownerId), updater),
+    ) =>
+      queryClient.setQueryData<Order | null>(
+        queryKeys.order(id, ownerId, includeDeleted),
+        updater,
+      ),
     // The list caches are now stale (a row's status/photo changed) — refetch them
     // so returning to a list within the stale window shows the change. NOT the
     // order-detail cache (setOrder already holds the optimistic value there).

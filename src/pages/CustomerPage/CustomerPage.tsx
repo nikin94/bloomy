@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -57,7 +57,13 @@ const CustomerPage = () => {
   const customerCache = useCustomerCache()
   const customer =
     customerQuery.data && customerQuery.data.ownerId === ownerId ? customerQuery.data : null
-  const orders = (ordersQuery.data ?? EMPTY_ORDERS).filter((o) => o.customerId === id)
+  // Memoized so a fresh `.filter()` array each render doesn't make DataTable's
+  // TanStack Table reconcile its row models on an unstable reference (the #133
+  // lesson — matches how OrdersPage/DeletedOrdersPage already memoize their lists).
+  const orders = useMemo(
+    () => (ordersQuery.data ?? EMPTY_ORDERS).filter((o) => o.customerId === id),
+    [ordersQuery.data, id],
+  )
   const loading = customerQuery.isLoading || ordersQuery.isLoading
   const error = customerQuery.error ?? ordersQuery.error
   // Edit happens in the shared dialog (same as the Customers list), so the page
@@ -86,7 +92,12 @@ const CustomerPage = () => {
 
   // The column config the orders list uses. Every row here is THIS customer, so
   // the resolver can return the loaded name directly (no per-id lookup needed).
-  const columns = buildOrderColumns(() => customer?.name ?? '—', tOrder)
+  // Memoized on the same principle as `orders` — a fresh columns array each render
+  // would make DataTable rebuild its column defs needlessly.
+  const columns = useMemo(
+    () => buildOrderColumns(() => customer?.name ?? '—', tOrder),
+    [customer?.name, tOrder],
+  )
 
   // Derived stats — recomputed each render from the loaded orders (cheap; the
   // list is small). Revenue is per-currency and paid-only; dates span the orders.

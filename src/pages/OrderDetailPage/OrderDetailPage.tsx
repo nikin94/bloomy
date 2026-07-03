@@ -94,8 +94,9 @@ const OrderDetailPage = () => {
     }
     // Optimistically hold the change in the order-detail cache (what this page
     // reads), then persist just the changed field(s) and invalidate the list caches
-    // so returning to a list within the stale window shows the new status.
-    orderCache.setOrder(ownerId, next.id, () => next)
+    // so returning to a list within the stale window shows the new status. The
+    // `includeDeleted: true` flag matches this page's useOrder read — same cache key.
+    orderCache.setOrder(ownerId, next.id, true, () => next)
     patchOrder(next.id, writePatch)
     orderCache.invalidateLists()
   }
@@ -128,7 +129,7 @@ const OrderDetailPage = () => {
   // the image bytes is handled inside OrderPhotos.
   const handlePhotosChange = (photos: string[]) => {
     if (!order) return
-    orderCache.setOrder(ownerId, order.id, () => ({ ...order, photos }))
+    orderCache.setOrder(ownerId, order.id, true, () => ({ ...order, photos }))
     patchOrder(order.id, { photos })
     orderCache.invalidateLists()
   }
