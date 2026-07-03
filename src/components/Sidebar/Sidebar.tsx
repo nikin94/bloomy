@@ -9,55 +9,20 @@ import { SidebarCollapseContext } from '../../context/sidebarCollapseContext'
 import { useMediaQuery } from '../../lib/useMediaQuery'
 import { isAdmin } from '../../lib/admin'
 import { settingsSectionsFor, isSettingsSection } from '../Settings/sections'
+import OrdersIcon from '../icons/OrdersIcon'
+import CustomersIcon from '../icons/CustomersIcon'
+import StatsIcon from '../icons/StatsIcon'
+import TrashIcon from '../icons/TrashIcon'
+import BackIcon from '../icons/BackIcon'
+import PlusIcon from '../icons/PlusIcon'
+import GearIcon from '../icons/GearIcon'
+import BurgerIcon from '../icons/BurgerIcon'
+import ChevronIcon from '../icons/ChevronIcon'
+import CollapseChevron from '../icons/CollapseChevron'
 
-// A leading nav icon: 24-grid line icons matching the app's stroke style, sized
-// by the caller. Kept small (size-5) so a row reads icon + label, and — when the
-// rail is collapsed — the icon alone identifies the destination.
+// The nav-icon prop shape, kept for the NAV_LINKS `Icon` typing below. The icon
+// components themselves now live one-per-file under ../icons.
 type IconProps = { className?: string }
-const iconBase = {
-  'aria-hidden': true,
-  viewBox: '0 0 24 24',
-  fill: 'none',
-  stroke: 'currentColor',
-  strokeWidth: 2,
-  strokeLinecap: 'round' as const,
-  strokeLinejoin: 'round' as const,
-}
-
-const OrdersIcon: FC<IconProps> = ({ className = 'size-5' }) => (
-  <svg {...iconBase} className={className}>
-    <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
-    <rect x="9" y="3" width="6" height="4" rx="1" />
-    <line x1="9" y1="12" x2="15" y2="12" />
-    <line x1="9" y1="16" x2="13" y2="16" />
-  </svg>
-)
-
-const CustomersIcon: FC<IconProps> = ({ className = 'size-5' }) => (
-  <svg {...iconBase} className={className}>
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-    <circle cx="9" cy="7" r="4" />
-    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-  </svg>
-)
-
-const StatsIcon: FC<IconProps> = ({ className = 'size-5' }) => (
-  <svg {...iconBase} className={className}>
-    <line x1="18" y1="20" x2="18" y2="10" />
-    <line x1="12" y1="20" x2="12" y2="4" />
-    <line x1="6" y1="20" x2="6" y2="14" />
-  </svg>
-)
-
-const TrashIcon: FC<IconProps> = ({ className = 'size-5' }) => (
-  <svg {...iconBase} className={className}>
-    <polyline points="3 6 5 6 21 6" />
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-    <line x1="10" y1="11" x2="10" y2="17" />
-    <line x1="14" y1="11" x2="14" y2="17" />
-  </svg>
-)
 
 // Navigation destinations, defined once so a new section is added in ONE place
 // and appears in both the desktop rail and the mobile drawer. Each carries an
@@ -110,112 +75,6 @@ const parentPath = (pathname: string): string => {
   const cut = trimmed.lastIndexOf('/')
   return cut > 0 ? trimmed.slice(0, cut) : '/orders'
 }
-
-const BackIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-6"
-  >
-    <line x1="19" y1="12" x2="5" y2="12" />
-    <polyline points="12 19 5 12 12 5" />
-  </svg>
-)
-
-const PlusIcon = ({ className = 'size-5' }: { className?: string }) => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <line x1="12" y1="5" x2="12" y2="19" />
-    <line x1="5" y1="12" x2="19" y2="12" />
-  </svg>
-)
-
-const GearIcon = ({ className = 'size-5' }: { className?: string }) => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <circle cx="12" cy="12" r="3" />
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-  </svg>
-)
-
-const BurgerIcon = ({ open }: { open: boolean }) => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="size-6"
-  >
-    {open ? (
-      <>
-        <line x1="18" y1="6" x2="6" y2="18" />
-        <line x1="6" y1="6" x2="18" y2="18" />
-      </>
-    ) : (
-      <>
-        <line x1="3" y1="6" x2="21" y2="6" />
-        <line x1="3" y1="12" x2="21" y2="12" />
-        <line x1="3" y1="18" x2="21" y2="18" />
-      </>
-    )}
-  </svg>
-)
-
-const ChevronIcon = ({ className = 'size-4' }: { className?: string }) => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <polyline points="6 9 12 15 18 9" />
-  </svg>
-)
-
-// The collapse toggle's chevron: points LEFT (toward the content edge) to collapse
-// the rail; rotated 180° it points right, to expand it back out.
-const CollapseChevron = ({ className = 'size-4' }: { className?: string }) => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <polyline points="15 18 9 12 15 6" />
-  </svg>
-)
 
 // Shared horizontal layout for every rail row (nav, create, settings). The row is
 // ALWAYS icon-left at a fixed `px-2.5` inset — collapsing no longer switches it to a

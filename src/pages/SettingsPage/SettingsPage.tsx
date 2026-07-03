@@ -13,7 +13,8 @@ import Modal from '../../components/Modal/Modal'
 import Select from '../../components/Select/Select'
 import AdminSeedSection from '../../components/Settings/AdminSeedSection'
 import { settingsSectionsFor, isSettingsSection } from '../../components/Settings/sections'
-import { Group, Row, ThemeToggle, FontSizeSlider, LogoutIcon } from '../../components/Settings/controls'
+import { Group, Row, ThemeToggle, FontSizeSlider } from '../../components/Settings/controls'
+import LogoutIcon from '../../components/icons/LogoutIcon'
 import { isAdmin } from '../../lib/admin'
 
 // Settings screen (was a modal until Stage 2, then a page with its own sub-rail;
