@@ -123,12 +123,15 @@ describe('Sidebar (desktop rail)', () => {
     expect(rail().getByRole('link', { name: 'Новый заказ' })).toHaveClass('whitespace-nowrap')
   })
 
-  it('renders published page actions in the rail (and mirrors them in the mobile bar)', () => {
+  it('renders published page actions in ONE layout only (the matching one)', () => {
+    // matchMedia is stubbed to desktop in the test setup, so the actions render in
+    // the rail and NOT in the mobile bar — exactly one live instance. Mounting the
+    // stateful search/filter node in both layouts at once spun up two instances
+    // bound to one shared value (the search-hang defect); gating on the breakpoint
+    // keeps a single instance alive.
     renderSidebar('/orders', <div data-testid="page-actions">search</div>)
-    // Present in the desktop rail's per-page controls slot...
     expect(rail().getByTestId('page-actions')).toBeInTheDocument()
-    // ...and mirrored in the mobile top bar, so both layouts get the controls.
-    expect(screen.getAllByTestId('page-actions')).toHaveLength(2)
+    expect(screen.getAllByTestId('page-actions')).toHaveLength(1)
   })
 
   it('collapses the rail to an icon strip and back via the chevron toggle', async () => {
