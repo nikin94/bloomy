@@ -1,91 +1,6 @@
 import { useRef } from 'react'
-import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FONT_SCALE_MAX, FONT_SCALE_MIN, FONT_SCALE_STEP } from '../../types/settings'
-import type { ThemeMode } from '../../types/settings'
-import SunIcon from '../icons/SunIcon'
-import MoonIcon from '../icons/MoonIcon'
-
-// Presentational building blocks of the settings screen, so its body reads as a
-// short composition of named controls rather than one long render. None hold
-// settings state — they take the current value and a change callback; the
-// settings page owns the drafts.
-
-// A plain vertical list of settings rows separated by hairline dividers — NOT a
-// bordered card. Dropping the card border + rounding (and the rows' own
-// horizontal padding, see Row) lets each control span the page's full content
-// width: the page already pads the edges, so a boxed card here only stacked a
-// second inset that squeezed the usable width on a phone. The between-row
-// hairline keeps the settings scannable (same divider language as
-// DetailRow) without walling them off. The FIRST row drops its top padding
-// (`first:pt-0`) so the section content sits flush against the page's top padding
-// — the same start offset as the account/admin sections (which have no Group), so
-// the gap under the top divider is identical across every settings section.
-export const Group = ({ children }: { children: ReactNode }) => (
-  <div className="[&>*+*]:border-t [&>*+*]:border-border [&>*:first-child]:pt-0">{children}</div>
-)
-
-// One settings row: label on the left, control on the right. The label stays on
-// one line (shrink-0 + nowrap) so a wide control can't squeeze it into a wrap.
-// No horizontal padding — the row runs edge to edge inside the Group (the Modal
-// panel already insets it), so the control gets the full width; only vertical
-// padding sets the row rhythm.
-export const Row = ({ label, children }: { label: string; children: ReactNode }) => (
-  <div
-    // ≤768px: stack label over control (two lines) so a fixed-width control can't
-    // push the row wider than a phone viewport. ≥769px: the original label-left /
-    // control-right row.
-    className="flex flex-col items-start gap-1.5 py-3 min-[769px]:flex-row min-[769px]:items-center min-[769px]:justify-between min-[769px]:gap-3"
-  >
-    <span className="text-sm font-medium text-heading min-[769px]:shrink-0 min-[769px]:whitespace-nowrap">
-      {label}
-    </span>
-    {children}
-  </div>
-)
-
-// Theme switch styled as a pill track with a sun (light) and a moon (dark) at
-// its ends; the sliding knob carries the ACTIVE theme's icon, so the visible
-// track icon is the other option. A real `role="switch"` (checked = dark) so it
-// is keyboard- and screen-reader-operable.
-export const ThemeToggle = ({
-  value,
-  label,
-  onChange,
-}: {
-  value: ThemeMode
-  label: string
-  onChange: (next: ThemeMode) => void
-}) => {
-  const isDark = value === 'dark'
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={isDark}
-      aria-label={label}
-      onClick={() => onChange(isDark ? 'light' : 'dark')}
-      className="relative inline-flex h-9 w-[4.5rem] shrink-0 items-center rounded-full border border-border bg-primary-bg p-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-    >
-      {/* Track icons at each end (the not-selected option stays visible). */}
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 flex items-center justify-between px-2 text-text"
-      >
-        <SunIcon />
-        <MoonIcon />
-      </span>
-      {/* Sliding knob carrying the active theme's icon. */}
-      <span
-        className={`relative z-10 flex size-7 items-center justify-center rounded-full bg-bg text-primary shadow transition-transform ${
-          isDark ? 'translate-x-[2.25rem]' : 'translate-x-0'
-        }`}
-      >
-        {isDark ? <MoonIcon /> : <SunIcon />}
-      </span>
-    </button>
-  )
-}
 
 // Number of discrete positions on the slider (one notch each), so the iOS-style
 // ticks below the track always match the actual snap points.
@@ -121,7 +36,7 @@ const fontScaleLabelKey = (scale: number): 'decreased' | 'default' | 'increased'
 // the thumb out from under the held pointer. Keyboard arrows (no pointer down)
 // preview each discrete step live. `onDraftChange` updates the draft; `onPreview`
 // applies the live page font scale.
-export const FontSizeSlider = ({
+const FontSizeSlider = ({
   value,
   onDraftChange,
   onPreview,
@@ -199,3 +114,5 @@ export const FontSizeSlider = ({
     </div>
   )
 }
+
+export default FontSizeSlider

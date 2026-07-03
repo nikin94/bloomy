@@ -1,140 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
 import Spinner from '../../components/Spinner/Spinner'
 import Button from '../../components/Button/Button'
 import Modal from '../../components/Modal/Modal'
 import SearchControl from '../../components/SearchControl/SearchControl'
 import CustomerForm from '../../components/CustomerForm/CustomerForm'
-import PencilIcon from '../../components/icons/PencilIcon'
-import TrashIcon from '../../components/icons/TrashIcon'
 import { fetchCustomers, softDeleteCustomer, updateCustomer } from '../../firebase/customers'
 import type { CustomerEdits } from '../../firebase/customers'
 import { useAuth } from '../../context/authContext'
 import { useHeaderActions } from '../../context/headerActionsContext'
 import { filterCustomers } from '../../types/customer'
 import type { Customer } from '../../types/customer'
-import { TABLE_CELL_BASE, TABLE_CELL_NOWRAP, TABLE_CELL_WRAP } from '../../styles/tableStyles'
-
-// The edit + delete controls for a customer, shared by the desktop row and the
-// mobile card. Wrapped in a container that STOPS click propagation so pressing a
-// button never also triggers the surrounding open-customer target — the buttons
-// stay independent of the row/card link.
-const RowActions = ({
-  customer,
-  t,
-  onEdit,
-  onRequestDelete,
-}: {
-  customer: Customer
-  t: TFunction<['customer', 'common']>
-  onEdit: (customer: Customer) => void
-  onRequestDelete: (customer: Customer) => void
-}) => (
-  <div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
-    <Button
-      variant="secondary"
-      size="icon"
-      onClick={() => onEdit(customer)}
-      aria-label={t('editAria', { name: customer.name })}
-      title={t('edit')}
-    >
-      <PencilIcon />
-    </Button>
-    <Button
-      variant="secondary"
-      size="icon"
-      onClick={() => onRequestDelete(customer)}
-      aria-label={t('deleteAria', { name: customer.name })}
-      title={t('delete')}
-    >
-      <TrashIcon />
-    </Button>
-  </div>
-)
-
-// One customer as a desktop table row, mirroring the orders table look. The whole
-// row navigates to the customer page (a link, keyboard-activatable); the trailing
-// actions cell holds edit/delete and stops click propagation so those buttons
-// don't also open the row. The keyboard handler guards on `e.target === row` so a
-// key press while a focused action button has focus doesn't double-fire the open.
-const CustomerTableRow = ({
-  customer,
-  t,
-  onOpen,
-  onEdit,
-  onRequestDelete,
-}: {
-  customer: Customer
-  t: TFunction<['customer', 'common']>
-  onOpen: (customer: Customer) => void
-  onEdit: (customer: Customer) => void
-  onRequestDelete: (customer: Customer) => void
-}) => (
-  <tr
-    role="link"
-    tabIndex={0}
-    aria-label={t('openAria', { name: customer.name })}
-    onClick={() => onOpen(customer)}
-    onKeyDown={(e) => {
-      if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
-        e.preventDefault()
-        onOpen(customer)
-      }
-    }}
-    className="cursor-pointer transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
-  >
-    {/* Name / address / note WRAP so a narrow desktop reflows instead of
-        scrolling sideways; the short phone column stays one line. See tableStyles. */}
-    <td className={`${TABLE_CELL_BASE} ${TABLE_CELL_WRAP} text-heading`}>{customer.name}</td>
-    <td className={`${TABLE_CELL_BASE} ${TABLE_CELL_NOWRAP} text-text`}>{customer.phone ?? '—'}</td>
-    <td className={`${TABLE_CELL_BASE} ${TABLE_CELL_WRAP} text-text`}>{customer.address ?? '—'}</td>
-    <td className={`${TABLE_CELL_BASE} ${TABLE_CELL_WRAP} text-text`}>{customer.note ?? '—'}</td>
-    <td className="w-px whitespace-nowrap border-b border-border px-4 py-2.5 text-right align-top">
-      <RowActions customer={customer} t={t} onEdit={onEdit} onRequestDelete={onRequestDelete} />
-    </td>
-  </tr>
-)
-
-// The same customer as a card (mobile layout). The name/details block is the
-// link (a SIBLING of the action buttons, never nesting them) — keeping the open
-// target and the edit/delete buttons independently operable.
-const CustomerCard = ({
-  customer,
-  t,
-  onOpen,
-  onEdit,
-  onRequestDelete,
-}: {
-  customer: Customer
-  t: TFunction<['customer', 'common']>
-  onOpen: (customer: Customer) => void
-  onEdit: (customer: Customer) => void
-  onRequestDelete: (customer: Customer) => void
-}) => (
-  <div className="flex items-start gap-3 rounded-lg border border-border bg-surface p-4">
-    <div
-      role="link"
-      tabIndex={0}
-      aria-label={t('openAria', { name: customer.name })}
-      onClick={() => onOpen(customer)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onOpen(customer)
-        }
-      }}
-      className="-m-1 min-w-0 flex-1 cursor-pointer rounded-md p-1 transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
-    >
-      <p className="m-0 truncate font-semibold text-heading">{customer.name}</p>
-      {customer.phone && <p className="m-0 truncate text-sm text-text">{customer.phone}</p>}
-      {customer.address && <p className="m-0 truncate text-sm text-text">{customer.address}</p>}
-      {customer.note && <p className="m-0 break-words text-sm text-text">{customer.note}</p>}
-    </div>
-    <RowActions customer={customer} t={t} onEdit={onEdit} onRequestDelete={onRequestDelete} />
-  </div>
-)
+import CustomerTableRow from './CustomerTableRow'
+import CustomerCard from './CustomerCard'
 
 // Address-book screen: lists the signed-in user's active customers and lets each
 // be edited (in a modal, one at a time) or removed (soft delete — see softDeleteCustomer).

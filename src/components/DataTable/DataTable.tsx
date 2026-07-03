@@ -7,10 +7,12 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import type { ColumnDef, OnChangeFn, Row, SortingState } from '@tanstack/react-table'
+import type { ColumnDef, OnChangeFn, SortingState } from '@tanstack/react-table'
 import type { Order, OrderColumn, OrderSort } from '../../types/order'
-import { TABLE_CELL_BASE, TABLE_CELL_NOWRAP, TABLE_CELL_WRAP } from '../../styles/tableStyles'
 import SortChevron from '../icons/SortChevron'
+import { cellValue } from './rowHelpers'
+import OrderTableRow from './OrderTableRow'
+import OrderCard from './OrderCard'
 
 // One shared empty sorting array for the "no explicit sort" case, so a controlled
 // table hands TanStack the SAME reference every render instead of a fresh `[]`
@@ -35,13 +37,6 @@ interface DataTableProps {
   sort?: OrderSort | null
   onSortChange?: (sort: OrderSort | null) => void
 }
-
-// Raw string value of a column for an order: the column's format function when
-// present, otherwise the stringified raw field. Derived columns (no `field`)
-// must provide `format`. Shared by the table (renderCell) and the mobile card so
-// both read the same OrderColumn source of truth.
-const cellValue = (order: Order, column: OrderColumn): string =>
-  column.format ? column.format(order) : column.field ? String(order[column.field]) : ''
 
 // Cell value for the table. A formatted value may contain newlines (e.g. the
 // stacked plant list); render each line on its own row so it reads as a column,
@@ -74,156 +69,6 @@ const toColumnDef = (column: OrderColumn): ColumnDef<Order> => ({
 // Map TanStack's sort state to the `aria-sort` value assistive tech expects.
 const ariaSort = (direction: false | 'asc' | 'desc') =>
   direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'
-
-// Shared interaction for a clickable order (table row or mobile card): acts as a
-// link, focusable and activatable with Enter/Space for keyboard users.
-const activationProps = (order: Order, onActivate: (order: Order) => void) => ({
-  role: 'link' as const,
-  tabIndex: 0,
-  onClick: () => onActivate(order),
-  onKeyDown: (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      onActivate(order)
-    }
-  },
-})
-
-// One order as a table row (desktop layout). Extracted from the map so the loop
-// body is a real component with a stable render boundary.
-const OrderTableRow = ({
-  row,
-  highlighted,
-  columnById,
-  onActivate,
-}: {
-  row: Row<Order>
-  highlighted: boolean
-  columnById: Map<string, OrderColumn>
-  onActivate: (order: Order) => void
-}) => (
-  <tr
-    className={`cursor-pointer transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary${
-      highlighted ? ' row-highlight' : ''
-    }`}
-    {...activationProps(row.original, onActivate)}
-  >
-    {row.getVisibleCells().map((cell) => {
-      const column = columnById.get(cell.column.id)
-      // Wrappable columns give up width (reflow) so the table fits a narrow
-      // desktop; the rest stay one line and truncate. See tableStyles.
-      const fit = column?.wrap ? TABLE_CELL_WRAP : TABLE_CELL_NOWRAP
-      return (
-        <td
-          key={cell.id}
-          className={`${TABLE_CELL_BASE} ${fit} text-text${column?.width ? ` ${column.width}` : ''}`}
-        >
-          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-        </td>
-      )
-    })}
-  </tr>
-)
-
-// A small "label above, value below" pair used by the mobile card for the
-// customer, address and the paired payment/shipment statuses.
-const CardField = ({
-  label,
-  value,
-  className = '',
-}: {
-  label: string
-  value: string
-  className?: string
-}) => (
-  <div className={`flex min-w-0 flex-col gap-0.5 ${className}`}>
-    <span className="text-xs font-medium uppercase tracking-wide text-text">{label}</span>
-    <span className="break-words text-sm text-heading">{value}</span>
-  </div>
-)
-
-// The same order as a card (mobile layout). Unlike the desktop table — a flat
-// "label → value" row per column — the card regroups the SAME column values into
-// a richer phone layout: a number/date header, stacked customer + address, each
-// plant in its own bordered block, the total on one line, and payment/shipment
-// side by side. Every value still comes from the OrderColumn config (looked up by
-// id), so customer-name resolution, the order's currency, status labels and plant
-// formatting stay the single source of truth shared with the table.
-const OrderCard = ({
-  order,
-  columnById,
-  highlighted,
-  onActivate,
-}: {
-  order: Order
-  columnById: Map<string, OrderColumn>
-  highlighted: boolean
-  onActivate: (order: Order) => void
-}) => {
-  const value = (id: string) => {
-    const column = columnById.get(id)
-    return column ? cellValue(order, column) : ''
-  }
-  const label = (id: string) => columnById.get(id)?.header ?? ''
-  // The date column packs date + time on two lines (for the table); collapse them
-  // onto one line for the card's header.
-  const dateText = value('dateCreated').split('\n').join(' · ')
-  // The plants column is newline-joined "name ×qty" lines — one bordered block each.
-  const plantLines = value('plants').split('\n').filter(Boolean)
-  return (
-    <div
-      className={`flex cursor-pointer flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary${
-        highlighted ? ' row-highlight' : ''
-      }`}
-      {...activationProps(order, onActivate)}
-    >
-      {/* Header: order number on the left, creation date on the right. */}
-      <div className="flex items-baseline justify-between gap-3 border-b border-border pb-3">
-        <span className="font-semibold text-heading">
-          {label('number')} {value('number')}
-        </span>
-        <span className="shrink-0 text-sm text-text">{dateText}</span>
-      </div>
-
-      <CardField label={label('customer')} value={value('customer')} />
-      <CardField label={label('address')} value={value('address')} />
-
-      {/* Plants: each line its own bordered block, not one joined string. */}
-      <div className="flex flex-col gap-1">
-        <span className="text-xs font-medium uppercase tracking-wide text-text">
-          {label('plants')}
-        </span>
-        <ul className="m-0 flex list-none flex-col gap-1 p-0">
-          {plantLines.map((line, i) => (
-            <li
-              key={i}
-              className="rounded-md border border-border px-3 py-1.5 text-sm text-heading"
-            >
-              {line}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Payment status on the left, shipment pushed to the right edge
-          (right-aligned, label over value). */}
-      <div className="flex items-start justify-between gap-4">
-        <CardField label={label('paymentStatus')} value={value('paymentStatus')} />
-        <CardField
-          label={label('shipmentStatus')}
-          value={value('shipmentStatus')}
-          className="items-end text-right"
-        />
-      </div>
-
-      {/* Total at the bottom, set off by a divider: label and amount on one line. */}
-      <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3">
-        <span className="text-sm font-medium text-text">{label('total')}</span>
-        <span className="font-semibold text-heading tabular-nums">{value('total')}</span>
-      </div>
-    </div>
-  )
-}
 
 // Renders the orders as a sticky-header table on wider screens (lg+) and as a
 // stack of cards below that (the eight columns don't fit a tablet/phone width).
