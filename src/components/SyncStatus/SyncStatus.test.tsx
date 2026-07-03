@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, act } from '@testing-library/react'
-import { formatDateTime } from '../../utils/format'
+import { formatDateTime } from '@/utils/format'
 
 // Mock the Firestore SDK so the component never touches the real client. The
 // `db` singleton is a bare stub; waitForPendingWrites is driven per-test.

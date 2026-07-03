@@ -1,7 +1,7 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { db } from './client'
-import { STORED_SETTINGS_SCHEMA } from '../types/settings'
-import type { StoredSettings } from '../types/settings'
+import { STORED_SETTINGS_SCHEMA } from '@/types/settings'
+import type { StoredSettings } from '@/types/settings'
 
 // Per-user settings live at settings/{uid} — the doc id IS the owner uid (like
 // counters), so the security rules authorize by path, not a body field.

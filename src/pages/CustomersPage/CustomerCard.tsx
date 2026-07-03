@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next'
-import type { Customer } from '../../types/customer'
+import type { Customer } from '@/types/customer'
 import RowActions from './RowActions'
 
 // The same customer as a card (mobile layout). The name/details block is the

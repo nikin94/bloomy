@@ -10,8 +10,8 @@ import { cleanup } from '@testing-library/react'
 // Initialise i18next once for the whole suite so components that call
 // `useTranslation` render real strings (defaults to ru — no localStorage cache
 // in jsdom), matching the Russian text the component tests assert on.
-import i18n from '../i18n/config.ts'
-import { DEFAULT_LANGUAGE } from '../types/settings'
+import i18n from '@/i18n/config.ts'
+import { DEFAULT_LANGUAGE } from '@/types/settings'
 
 // jsdom has no matchMedia; useMediaQuery needs it (the sidebar gates its
 // per-page actions on the md breakpoint). Stub it to report DESKTOP — the page

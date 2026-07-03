@@ -4,10 +4,10 @@ import { render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import type { User } from 'firebase/auth'
-import { AuthContext } from '../../context/authContext'
-import AppLayout from '../../components/AppLayout/AppLayout'
-import type { Order } from '../../types/order'
-import type { Customer } from '../../types/customer'
+import { AuthContext } from '@/context/authContext'
+import AppLayout from '@/components/AppLayout/AppLayout'
+import type { Order } from '@/types/order'
+import type { Customer } from '@/types/customer'
 
 // Regression guard for the search-close HANG (fixed by memoising DataTable's
 // controlled `sorting` reference). The trash/orders lists run DataTable in

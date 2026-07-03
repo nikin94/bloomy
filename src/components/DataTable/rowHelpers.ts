@@ -1,5 +1,5 @@
 import type React from 'react'
-import type { Order, OrderColumn } from '../../types/order'
+import type { Order, OrderColumn } from '@/types/order'
 
 // Raw string value of a column for an order: the column's format function when
 // present, otherwise the stringified raw field. Derived columns (no `field`)

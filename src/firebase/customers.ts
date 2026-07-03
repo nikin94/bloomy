@@ -10,9 +10,9 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from './client'
-import { STORED_CUSTOMER_SCHEMA } from '../types/customer'
-import type { Customer, NewCustomer } from '../types/customer'
-import { reportError } from '../observability/reportError'
+import { STORED_CUSTOMER_SCHEMA } from '@/types/customer'
+import type { Customer, NewCustomer } from '@/types/customer'
+import { reportError } from '@/observability/reportError'
 
 // The user-editable fields of a customer. `ownerId`, `createdAt` and `isDeleted`
 // are managed by the app, not edited through the form.

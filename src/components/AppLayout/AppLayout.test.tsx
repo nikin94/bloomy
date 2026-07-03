@@ -4,8 +4,8 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
 import type { User } from 'firebase/auth'
-import { AuthContext } from '../../context/authContext'
-import { useHeaderActions } from '../../context/headerActionsContext'
+import { AuthContext } from '@/context/authContext'
+import { useHeaderActions } from '@/context/headerActionsContext'
 import AppLayout from './AppLayout'
 
 // Sidebar (rendered by the layout) pulls in the settings dialog, which imports

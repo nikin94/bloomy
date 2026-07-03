@@ -2,9 +2,9 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import DataTable from './DataTable'
-import { buildOrderColumns } from '../../types/order'
-import type { Order } from '../../types/order'
-import i18n from '../../i18n/config'
+import { buildOrderColumns } from '@/types/order'
+import type { Order } from '@/types/order'
+import i18n from '@/i18n/config'
 
 // Headers come from the `order` namespace; the shared test i18n defaults to ru,
 // so they resolve to the Russian text the assertions below expect.

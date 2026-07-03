@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import type { User } from 'firebase/auth'
-import { AuthContext } from './context/authContext'
-import type { AuthState } from './context/authContext'
+import { AuthContext } from '@/context/authContext'
+import type { AuthState } from '@/context/authContext'
 
 // Firebase-touching modules are mocked so rendering a lazy route never spins up
 // the real SDK. We test the routing/Suspense wiring, not the pages' internals.

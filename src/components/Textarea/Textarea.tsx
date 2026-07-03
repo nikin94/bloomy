@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import type { TextareaHTMLAttributes } from 'react'
-import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
+import { FIELD_BASE, FIELD_NORMAL } from '@/styles/fieldStyles'
 
 interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   // Floating label — same behaviour and rationale as Input's `label`, but the

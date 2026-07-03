@@ -1,7 +1,7 @@
 import { flexRender } from '@tanstack/react-table'
 import type { Row } from '@tanstack/react-table'
-import type { Order, OrderColumn } from '../../types/order'
-import { TABLE_CELL_BASE, TABLE_CELL_NOWRAP, TABLE_CELL_WRAP } from '../../styles/tableStyles'
+import type { Order, OrderColumn } from '@/types/order'
+import { TABLE_CELL_BASE, TABLE_CELL_NOWRAP, TABLE_CELL_WRAP } from '@/styles/tableStyles'
 import { activationProps } from './rowHelpers'
 
 // One order as a table row (desktop layout). Extracted from the map so the loop

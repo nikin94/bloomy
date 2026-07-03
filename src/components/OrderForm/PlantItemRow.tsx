@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
-import Input from '../Input/Input'
-import Button from '../Button/Button'
-import Autocomplete from '../Autocomplete/Autocomplete'
+import Input from '@/components/Input/Input'
+import Button from '@/components/Button/Button'
+import Autocomplete from '@/components/Autocomplete/Autocomplete'
 import type { ItemInput } from './items'
 
 // One editable plant line, prefixed with its 1-based position. Four controls

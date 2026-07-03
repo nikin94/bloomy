@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Outlet } from 'react-router-dom'
-import Sidebar from '../Sidebar/Sidebar'
-import { HeaderActionsContext } from '../../context/headerActionsContext'
+import Sidebar from '@/components/Sidebar/Sidebar'
+import { HeaderActionsContext } from '@/context/headerActionsContext'
 
 // App shell for every signed-in screen: the global navigation once, beside the
 // routed page. Rendered as a layout route (inside ProtectedRoute, around the page

@@ -3,18 +3,18 @@ import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Navigate } from 'react-router-dom'
-import { useAuth } from '../../context/authContext'
+import { useAuth } from '@/context/authContext'
 import {
   registerWithEmail,
   sendPasswordReset,
   signInWithEmail,
   signInWithGoogle,
-} from '../../firebase/auth'
-import { reportError } from '../../observability/reportError'
-import Spinner from '../../components/Spinner/Spinner'
-import Button from '../../components/Button/Button'
-import Input from '../../components/Input/Input'
-import EyeIcon from '../../components/icons/EyeIcon'
+} from '@/firebase/auth'
+import { reportError } from '@/observability/reportError'
+import Spinner from '@/components/Spinner/Spinner'
+import Button from '@/components/Button/Button'
+import Input from '@/components/Input/Input'
+import EyeIcon from '@/components/icons/EyeIcon'
 
 // Which action the email form performs: sign in to an existing account, or
 // register a new one. A toggle below the form switches between the two.

@@ -1,5 +1,5 @@
-import Select from '../../components/Select/Select'
-import DetailRow from '../../components/DetailRow/DetailRow'
+import Select from '@/components/Select/Select'
+import DetailRow from '@/components/DetailRow/DetailRow'
 
 // A status row that's editable in place: same layout as DetailRow, but the value is
 // a Select. Selecting an option calls onChange, which saves optimistically on

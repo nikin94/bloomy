@@ -7,6 +7,17 @@
     "types": ["vite/client"],
     "skipLibCheck": true,
 
+    /* Path alias: `@/*` → `src/*`, so cross-directory imports read
+       `@/components/Foo/Foo` instead of `../../components/Foo/Foo`. Aliases point
+       at FILES directly (no barrel `index.ts`), which sidesteps the circular-import
+       and dev-server cost that re-export barrels introduce. Vite + Vitest pick the
+       same mapping up via the vite-tsconfig-paths plugin, so this stays the single
+       source of truth. No `baseUrl` (deprecated in TS 7): with bundler resolution
+       `paths` is resolved relative to this tsconfig, so `src/*` needs no base. */
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,

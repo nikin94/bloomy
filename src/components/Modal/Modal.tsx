@@ -1,8 +1,8 @@
 import { useEffect, useId, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '../Button/Button'
-import CloseIcon from '../icons/CloseIcon'
+import Button from '@/components/Button/Button'
+import CloseIcon from '@/components/icons/CloseIcon'
 
 interface ModalProps {
   // Heading shown in the dialog header and used as its accessible name.

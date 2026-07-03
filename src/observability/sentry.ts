@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/react'
-import { APP_VERSION } from '../version'
+import { APP_VERSION } from '@/version'
 
 // Initialise Sentry error monitoring. Called once at startup (see main.tsx).
 //

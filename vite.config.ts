@@ -3,6 +3,7 @@ import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import tailwindcss from '@tailwindcss/vite'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
+import tsconfigPaths from 'vite-tsconfig-paths'
 import { configDefaults } from 'vitest/config'
 import { buildServiceWorker, selectPrecache } from './vite.sw'
 
@@ -46,6 +47,10 @@ export default defineConfig({
     },
   },
   plugins: [
+    // Resolve the tsconfig `@/*` → `src/*` path alias for Vite AND Vitest, so the
+    // alias mapping lives only in tsconfig (single source of truth) — no second
+    // copy in a resolve.alias block to drift out of sync.
+    tsconfigPaths(),
     react(),
     tailwindcss(),
     babel({ presets: [reactCompilerPreset()] }),

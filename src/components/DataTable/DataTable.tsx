@@ -8,8 +8,8 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import type { ColumnDef, OnChangeFn, SortingState } from '@tanstack/react-table'
-import type { Order, OrderColumn, OrderSort } from '../../types/order'
-import SortChevron from '../icons/SortChevron'
+import type { Order, OrderColumn, OrderSort } from '@/types/order'
+import SortChevron from '@/components/icons/SortChevron'
 import { cellValue } from './rowHelpers'
 import OrderTableRow from './OrderTableRow'
 import OrderCard from './OrderCard'

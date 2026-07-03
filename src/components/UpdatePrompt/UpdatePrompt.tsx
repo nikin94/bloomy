@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '../Button/Button'
+import Button from '@/components/Button/Button'
 import { useVersionCheck } from './useVersionCheck'
 
 // Non-blocking "a new version is available" toast, pinned to the bottom-right

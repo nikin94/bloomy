@@ -3,9 +3,9 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
-import { AuthContext } from '../../context/authContext'
-import type { Order } from '../../types/order'
-import type { Customer } from '../../types/customer'
+import { AuthContext } from '@/context/authContext'
+import type { Order } from '@/types/order'
+import type { Customer } from '@/types/customer'
 
 // Firebase-touching modules are mocked so the page never initializes the real
 // SDK. We test the page render, the derived stats, and the order list — not

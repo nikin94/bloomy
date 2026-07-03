@@ -3,11 +3,11 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
-import { AuthContext } from '../../context/authContext'
-import { SettingsContext } from '../../context/settingsContext'
-import type { SettingsState } from '../../context/settingsContext'
-import type { Order } from '../../types/order'
-import type { Customer } from '../../types/customer'
+import { AuthContext } from '@/context/authContext'
+import { SettingsContext } from '@/context/settingsContext'
+import type { SettingsState } from '@/context/settingsContext'
+import type { Order } from '@/types/order'
+import type { Customer } from '@/types/customer'
 
 // The order form is exercised end-to-end through NewOrderPage/EditOrderPage (the
 // page wrappers own create-vs-edit persistence + navigation). These tests cover

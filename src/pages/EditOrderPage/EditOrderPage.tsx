@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import OrderForm from '../../components/OrderForm/OrderForm'
-import Spinner from '../../components/Spinner/Spinner'
-import { fetchOrder, updateOrder } from '../../firebase/orders'
-import { useAuth } from '../../context/authContext'
-import { formatOrderNumber } from '../../types/order'
-import type { Order } from '../../types/order'
+import OrderForm from '@/components/OrderForm/OrderForm'
+import Spinner from '@/components/Spinner/Spinner'
+import { fetchOrder, updateOrder } from '@/firebase/orders'
+import { useAuth } from '@/context/authContext'
+import { formatOrderNumber } from '@/types/order'
+import type { Order } from '@/types/order'
 
 // Edit-order screen: loads the order, then hands it to the shared OrderForm
 // prefilled. The form is mounted only once the order is loaded (it reads

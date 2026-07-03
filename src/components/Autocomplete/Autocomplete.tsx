@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '../Input/Input'
+import Input from '@/components/Input/Input'
 
 // How many suggestions to show at once — keeps the popup compact; the rest stay
 // reachable by typing more of the name. When the pool has more, a non-interactive

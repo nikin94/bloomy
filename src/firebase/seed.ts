@@ -1,7 +1,7 @@
 import { collection, doc, getDocs, query, setDoc, where, writeBatch } from 'firebase/firestore'
 import { db } from './client'
-import type { NewCustomer } from '../types/customer'
-import type { DeliveryMethod, Order, OrderItem, PaymentMethod } from '../types/order'
+import type { NewCustomer } from '@/types/customer'
+import type { DeliveryMethod, Order, OrderItem, PaymentMethod } from '@/types/order'
 
 // Test-data seeder. Wipes the signed-in admin's orders/customers (optional) and
 // fills the account with a realistic spread of mock data so the UI can be

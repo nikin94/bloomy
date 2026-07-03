@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { APP_VERSION } from '../../version'
+import { APP_VERSION } from '@/version'
 
 // How often to re-check while the tab stays open. The check also runs whenever
 // the tab regains visibility (the likeliest moment a long-open tab missed a

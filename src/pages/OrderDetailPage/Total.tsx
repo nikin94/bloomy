@@ -1,5 +1,5 @@
-import { formatMoney } from '../../utils/format'
-import type { Currency } from '../../types/order'
+import { formatMoney } from '@/utils/format'
+import type { Currency } from '@/types/order'
 
 const Total = ({
   label,

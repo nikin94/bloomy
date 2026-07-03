@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import LegendItem from './LegendItem'
-import Spinner from '../../components/Spinner/Spinner'
-import Select from '../../components/Select/Select'
-import { FIELD_BASE, FIELD_NORMAL } from '../../styles/fieldStyles'
-import { fetchOrders } from '../../firebase/orders'
-import { useAuth } from '../../context/authContext'
-import { formatMoney, toDateInputValue } from '../../utils/format'
-import { revenueByCurrencyMinor, CURRENCIES } from '../../types/order'
-import type { Order } from '../../types/order'
+import Spinner from '@/components/Spinner/Spinner'
+import Select from '@/components/Select/Select'
+import { FIELD_BASE, FIELD_NORMAL } from '@/styles/fieldStyles'
+import { fetchOrders } from '@/firebase/orders'
+import { useAuth } from '@/context/authContext'
+import { formatMoney, toDateInputValue } from '@/utils/format'
+import { revenueByCurrencyMinor, CURRENCIES } from '@/types/order'
+import type { Order } from '@/types/order'
 import {
   STATS_PRESETS,
   presetRange,
@@ -19,8 +19,8 @@ import {
   statusBreakdown,
   ordersPerMonth,
   monthBounds,
-} from '../../types/stats'
-import type { StatsPreset } from '../../types/stats'
+} from '@/types/stats'
+import type { StatsPreset } from '@/types/stats'
 
 // How many months the "orders by month" chart spans. Fixed at a year so the
 // seasonal shape reads regardless of the period selector above it.

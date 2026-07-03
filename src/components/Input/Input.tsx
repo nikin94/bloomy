@@ -1,7 +1,7 @@
 import { useId } from 'react'
 import type { ChangeEvent, InputHTMLAttributes, ReactNode } from 'react'
-import { FIELD_BASE, FIELD_INVALID, FIELD_NORMAL } from '../../styles/fieldStyles'
-import { sanitizeDecimalInput, sanitizeIntegerInput } from '../../utils/format'
+import { FIELD_BASE, FIELD_INVALID, FIELD_NORMAL } from '@/styles/fieldStyles'
+import { sanitizeDecimalInput, sanitizeIntegerInput } from '@/utils/format'
 
 // Floating label: resting (down) state is the bare base; the floated (up) state
 // is applied ONLY through `peer-*` variants, so it always wins over the base in

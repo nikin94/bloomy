@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
-import Select from '../Select/Select'
-import Input from '../Input/Input'
-import type { Customer } from '../../types/customer'
+import Select from '@/components/Select/Select'
+import Input from '@/components/Input/Input'
+import type { Customer } from '@/types/customer'
 
 // Pick an existing customer from the address book, or enter a new one.
 export type CustomerMode = 'existing' | 'new'

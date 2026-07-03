@@ -10,7 +10,7 @@ import {
   softDeleteCustomer,
   updateCustomer,
 } from './customers'
-import type { NewCustomer } from '../types/customer'
+import type { NewCustomer } from '@/types/customer'
 
 vi.mock('./client', () => ({ db: {} }))
 vi.mock('firebase/firestore', () => ({

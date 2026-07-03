@@ -5,7 +5,7 @@
 // src/test/storage.rules.test.ts.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
-import { compressImage } from '../utils/image'
+import { compressImage } from '@/utils/image'
 
 vi.mock('./client', () => ({ storage: {} }))
 vi.mock('firebase/storage', () => ({

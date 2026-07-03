@@ -3,10 +3,10 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import type { User } from 'firebase/auth'
-import { AuthContext } from '../../context/authContext'
-import AppLayout from '../../components/AppLayout/AppLayout'
-import type { Order } from '../../types/order'
-import type { Customer } from '../../types/customer'
+import { AuthContext } from '@/context/authContext'
+import AppLayout from '@/components/AppLayout/AppLayout'
+import type { Order } from '@/types/order'
+import type { Customer } from '@/types/customer'
 
 // Firebase-touching modules are mocked so the page never initializes the real
 // SDK. We test the trash list rendering (same DataTable as the active list), the

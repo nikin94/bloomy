@@ -1,8 +1,8 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import OrderForm from '../../components/OrderForm/OrderForm'
-import { createOrder } from '../../firebase/orders'
-import type { Order } from '../../types/order'
+import OrderForm from '@/components/OrderForm/OrderForm'
+import { createOrder } from '@/firebase/orders'
+import type { Order } from '@/types/order'
 
 // Create-order screen: a thin wrapper over the shared OrderForm. The form owns
 // all input state and validation; this page only says how a finished order is

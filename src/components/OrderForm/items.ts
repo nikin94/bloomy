@@ -1,5 +1,5 @@
-import { formatMinorToInput } from '../../utils/format'
-import type { Order } from '../../types/order'
+import { formatMinorToInput } from '@/utils/format'
+import type { Order } from '@/types/order'
 
 // Item row as entered in the form. Numeric fields are kept as strings while
 // editing (controlled inputs) and parsed into the stored model on submit.

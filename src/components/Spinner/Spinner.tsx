@@ -1,4 +1,4 @@
-import Loader from '../Loader/Loader'
+import Loader from '@/components/Loader/Loader'
 
 // Full-screen loading indicator. Rendered as a fixed overlay centred on the
 // viewport, so it sits ABOVE the page without taking layout space — toggling it
