@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -10,6 +10,11 @@ import {
 import type { ColumnDef, OnChangeFn, Row, SortingState } from '@tanstack/react-table'
 import type { Order, OrderColumn, OrderSort } from '../../types/order'
 import { TABLE_CELL_BASE, TABLE_CELL_NOWRAP, TABLE_CELL_WRAP } from '../../styles/tableStyles'
+
+// One shared empty sorting array for the "no explicit sort" case, so a controlled
+// table hands TanStack the SAME reference every render instead of a fresh `[]`
+// (which it would read as a state change and re-sync on — see the sorting memo).
+const EMPTY_SORTING: SortingState = []
 
 interface DataTableProps {
   orders: Order[]
@@ -262,22 +267,38 @@ const DataTable = ({
   // on the page — shared with the filter dialog — and we adapt the domain
   // `OrderSort` to/from TanStack's `SortingState`. Otherwise it is local,
   // ephemeral state (header clicks only), as before.
+  //
+  // `sorting` MUST keep a STABLE reference when the sort hasn't changed. TanStack
+  // treats a new `state.sorting` array as a state change and re-syncs its models,
+  // and this component isn't memoised (the React Compiler bails on useReactTable),
+  // so a fresh `[]`/`[{…}]` literal every render made an unrelated re-render (e.g.
+  // the header-actions republish that fires on every search keystroke/close) cascade
+  // into a storm of table commits — which pegged the browser on a big list. Memoise
+  // the mapping so the reference only changes when the actual field/dir does; the
+  // empty case reuses one module-level array (see EMPTY_SORTING).
   const controlled = onSortChange !== undefined
   const [internalSorting, setInternalSorting] = useState<SortingState>([])
-  const sorting: SortingState = controlled
-    ? sort
-      ? [{ id: sort.field, desc: sort.dir === 'desc' }]
-      : []
-    : internalSorting
-  const setSorting: OnChangeFn<SortingState> = (updater) => {
-    const next = typeof updater === 'function' ? updater(sorting) : updater
-    if (onSortChange) {
-      const first = next[0]
-      onSortChange(first ? { field: first.id, dir: first.desc ? 'desc' : 'asc' } : null)
-    } else {
-      setInternalSorting(next)
-    }
-  }
+  const sorting: SortingState = useMemo(
+    () =>
+      controlled
+        ? sort
+          ? [{ id: sort.field, desc: sort.dir === 'desc' }]
+          : EMPTY_SORTING
+        : internalSorting,
+    [controlled, sort, internalSorting],
+  )
+  const setSorting: OnChangeFn<SortingState> = useCallback(
+    (updater) => {
+      const next = typeof updater === 'function' ? updater(sorting) : updater
+      if (onSortChange) {
+        const first = next[0]
+        onSortChange(first ? { field: first.id, dir: first.desc ? 'desc' : 'asc' } : null)
+      } else {
+        setInternalSorting(next)
+      }
+    },
+    [onSortChange, sorting],
+  )
 
   // React Compiler bails out of memoizing this component because useReactTable
   // returns fresh functions each render (react-hooks/incompatible-library). That
