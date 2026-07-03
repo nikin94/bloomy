@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import DataTable from '@/components/DataTable/DataTable'
 import Spinner from '@/components/Spinner/Spinner'
 import SearchControl from '@/components/SearchControl/SearchControl'
 import OrderFilterControl from '@/components/OrderFilterControl/OrderFilterControl'
-import { fetchDeletedOrders } from '@/firebase/orders'
-import { fetchCustomers } from '@/firebase/customers'
+import { useDeletedOrders, EMPTY_ORDERS } from '@/queries/orders'
+import { useCustomers, EMPTY_CUSTOMERS } from '@/queries/customers'
 import { useAuth } from '@/context/authContext'
 import { useHeaderActions } from '@/context/headerActionsContext'
 import {
@@ -16,8 +16,8 @@ import {
   trashDaysLeft,
   EMPTY_ORDER_FILTER,
 } from '@/types/order'
-import type { Order, OrderColumn, OrderFilter, OrderSort } from '@/types/order'
-import type { Customer } from '@/types/customer'
+import type { OrderColumn, OrderFilter, OrderSort } from '@/types/order'
+import { buildCustomerNameResolver } from '@/types/customer'
 
 // Trash screen: the signed-in user's soft-deleted orders, shown in the SAME
 // table/card layout as the active list (DataTable) so it reads identically. Two
@@ -34,11 +34,16 @@ const DeletedOrdersPage = () => {
   // Guaranteed non-null under ProtectedRoute, but read defensively and gate on it.
   const { user } = useAuth()
   const ownerId = user?.uid
-  const [orders, setOrders] = useState<Order[]>([])
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [loading, setLoading] = useState(true)
-  // A load failure means there is no list to show, so it replaces the content.
-  const [loadError, setLoadError] = useState<string | null>(null)
+  // Trash orders + customers (WITH deleted, so an order whose customer was also
+  // soft-deleted still resolves the name instead of "—") come from the shared query
+  // cache. Stable EMPTY_* fallbacks so the loading-phase identity doesn't loop the
+  // header-actions memo (see EMPTY_ORDERS).
+  const trashQuery = useDeletedOrders(ownerId)
+  const customersQuery = useCustomers(ownerId, { includeDeleted: true })
+  const orders = trashQuery.data ?? EMPTY_ORDERS
+  const customers = customersQuery.data ?? EMPTY_CUSTOMERS
+  const loading = trashQuery.isLoading || customersQuery.isLoading
+  const loadError = trashQuery.error ?? customersQuery.error
   // Search + status/currency/price filter over the trash — the same OrderFilter
   // shape as the main list, so the trash filters exactly like the active list.
   const [filter, setFilter] = useState<OrderFilter>(EMPTY_ORDER_FILTER)
@@ -48,38 +53,10 @@ const DeletedOrdersPage = () => {
   // "Now" for the purge countdown, captured once on mount (see purgeColumn below).
   const [now] = useState(() => Date.now())
 
-  useEffect(() => {
-    if (!ownerId) return
-    let active = true
-    // `includeDeleted` so an order whose customer was also soft-deleted still
-    // resolves the name instead of falling back to "—".
-    Promise.all([fetchDeletedOrders(ownerId), fetchCustomers(ownerId, { includeDeleted: true })])
-      .then(([orderData, customerData]) => {
-        if (!active) return
-        setOrders(orderData)
-        setCustomers(customerData)
-      })
-      .catch((err: unknown) => {
-        if (active) setLoadError(err instanceof Error ? err.message : t('trash.loadError'))
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-    return () => {
-      active = false
-    }
-    // `t` is only read in the error fallback; depending on it would refetch on a
-    // language switch, so it's intentionally excluded.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerId])
-
   // Memoised so their identity is stable across renders: `columns` now feeds the
   // header-actions node (its memo would loop setActions on a fresh array every
   // render — see useHeaderActions), and DataTable keys its column-def memo off it.
-  const getCustomerName = useMemo(() => {
-    const nameById = new Map(customers.map((c) => [c.id, c.name]))
-    return (id: string) => nameById.get(id) ?? '—'
-  }, [customers])
+  const getCustomerName = useMemo(() => buildCustomerNameResolver(customers), [customers])
   // The active-list columns plus a trash-only "auto-purge countdown" so the user
   // sees, per order, how long until it is permanently deleted. `now` is captured
   // once on mount (day-granularity, so it needn't be reactive — and a render-time
@@ -145,7 +122,9 @@ const DeletedOrdersPage = () => {
       )}
 
       {loading && <Spinner />}
-      {loadError && <p className="px-6 py-8 text-danger">{loadError}</p>}
+      {loadError && (
+        <p className="px-6 py-8 text-danger">{loadError.message || t('trash.loadError')}</p>
+      )}
 
       {!loading && !loadError && (
         <DataTable

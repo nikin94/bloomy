@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import type { User } from 'firebase/auth'
+import { QueryWrapper } from '@/test/queryWrapper'
 import { AuthContext } from '@/context/authContext'
 import type { AuthState } from '@/context/authContext'
 
@@ -25,9 +26,11 @@ const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } a
 function renderAt(path: string, auth: AuthState) {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
   return render(
-    <AuthContext.Provider value={auth}>
-      <RouterProvider router={router} />
-    </AuthContext.Provider>,
+    <QueryWrapper>
+      <AuthContext.Provider value={auth}>
+        <RouterProvider router={router} />
+      </AuthContext.Provider>
+    </QueryWrapper>,
   )
 }
 

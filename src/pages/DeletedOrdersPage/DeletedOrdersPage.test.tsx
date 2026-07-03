@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import type { User } from 'firebase/auth'
+import { QueryWrapper } from '@/test/queryWrapper'
 import { AuthContext } from '@/context/authContext'
 import AppLayout from '@/components/AppLayout/AppLayout'
 import type { Order } from '@/types/order'
@@ -66,15 +67,17 @@ const customer = (over: Partial<Customer> = {}): Customer => ({
 // header and its actions to render.
 const renderPage = () =>
   render(
-    <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-      <MemoryRouter>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="*" element={<DeletedOrdersPage />} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
-    </AuthContext.Provider>,
+    <QueryWrapper>
+      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+        <MemoryRouter>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="*" element={<DeletedOrdersPage />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>
+    </QueryWrapper>,
   )
 
 // The desktop table and mobile cards both render in jsdom; scope to one layout.

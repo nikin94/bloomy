@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
+import { QueryWrapper } from '@/test/queryWrapper'
 import { AuthContext } from '@/context/authContext'
 import type { Order } from '@/types/order'
 import type { Customer } from '@/types/customer'
@@ -62,11 +63,13 @@ const order = (over: Partial<Order> = {}): Order => ({
 
 const renderPage = () =>
   render(
-    <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-      <MemoryRouter>
-        <CustomerPage />
-      </MemoryRouter>
-    </AuthContext.Provider>,
+    <QueryWrapper>
+      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+        <MemoryRouter>
+          <CustomerPage />
+        </MemoryRouter>
+      </AuthContext.Provider>
+    </QueryWrapper>,
   )
 
 // The DataTable renders both desktop table and mobile cards in jsdom; scope to one.

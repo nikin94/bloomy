@@ -5,8 +5,8 @@ import DataTable from '@/components/DataTable/DataTable'
 import Spinner from '@/components/Spinner/Spinner'
 import SearchControl from '@/components/SearchControl/SearchControl'
 import OrderFilterControl from '@/components/OrderFilterControl/OrderFilterControl'
-import { fetchOrders, reconcileOrderNumbers } from '@/firebase/orders'
-import { fetchCustomers } from '@/firebase/customers'
+import { useOrders, useReconcileOrderNumbers, EMPTY_ORDERS } from '@/queries/orders'
+import { useCustomers, EMPTY_CUSTOMERS } from '@/queries/customers'
 import { useAuth } from '@/context/authContext'
 import { useHeaderActions } from '@/context/headerActionsContext'
 import {
@@ -15,8 +15,8 @@ import {
   isOrderFilterActive,
   EMPTY_ORDER_FILTER,
 } from '@/types/order'
-import type { Order, OrderFilter, OrderSort } from '@/types/order'
-import type { Customer } from '@/types/customer'
+import type { OrderFilter, OrderSort } from '@/types/order'
+import { buildCustomerNameResolver } from '@/types/customer'
 
 const OrdersPage = () => {
   const { t } = useTranslation(['order', 'common'])
@@ -28,14 +28,23 @@ const OrdersPage = () => {
   // optional, so we read the uid defensively and gate the fetch on it.
   const { user } = useAuth()
   const ownerId = user?.uid
-  const [orders, setOrders] = useState<Order[]>([])
-  const [customers, setCustomers] = useState<Customer[]>([])
+  // Orders + customers (WITH deleted, so a removed customer's name still resolves)
+  // come from the shared query cache; navigating away and back reuses the parsed
+  // lists instead of re-querying + re-parsing. Stable EMPTY_* fallbacks keep the
+  // loading-phase identity from looping the header-actions memo.
+  const ordersQuery = useOrders(ownerId)
+  const customersQuery = useCustomers(ownerId, { includeDeleted: true })
+  const orders = ordersQuery.data ?? EMPTY_ORDERS
+  const customers = customersQuery.data ?? EMPTY_CUSTOMERS
+  const loading = ordersQuery.isLoading || customersQuery.isLoading
+  const error = ordersQuery.error ?? customersQuery.error
+  // Background: assign real numbers to any orders created offline, then invalidate
+  // the list so the freshly-numbered rows refetch (runs on mount + on reconnect).
+  useReconcileOrderNumbers(ownerId)
   // List sort, lifted here so BOTH the DataTable headers (desktop) and the filter
   // dialog's sort control (phones, no headers) drive the same order. Ephemeral —
   // resets to the natural order on remount, matching the old header-only sort.
   const [sort, setSort] = useState<OrderSort | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   // Navigation state, set by another screen:
   //  • highlightId — NewOrderPage, after a create, to flash the new row.
   //  • dateFilter — the statistics tab, when a monthly-chart bar is clicked, to
@@ -63,66 +72,10 @@ const OrdersPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  useEffect(() => {
-    if (!ownerId) return
-    let active = true
-
-    // Load and render the list FIRST, straight from the cache — never gated on
-    // reconcileOrderNumbers. Offline, the numbering transaction never settles
-    // (it needs the server), so gating the render on it would hang the spinner
-    // forever. Two queries (orders + customers) instead of N+1: customers are
-    // loaded once and the table resolves each order's name in memory.
-    // `includeDeleted` so an order whose customer was soft-deleted still shows
-    // the name, not "—".
-    const load = () =>
-      Promise.all([fetchOrders(ownerId), fetchCustomers(ownerId, { includeDeleted: true })])
-        .then(([orderData, customerData]) => {
-          if (!active) return
-          setOrders(orderData)
-          setCustomers(customerData)
-        })
-        .catch((err: unknown) => {
-          if (active) setError(err instanceof Error ? err.message : t('list.loadError'))
-        })
-
-    load().finally(() => {
-      if (active) setLoading(false)
-    })
-
-    // In the BACKGROUND, assign real numbers to any orders created offline. This
-    // runs online (its transaction is best-effort offline — it just stays pending
-    // and is retried next time, never blocking the list). When it numbers
-    // something, reload so the freshly-assigned № replaces the "—" live.
-    const reconcile = () => {
-      reconcileOrderNumbers(ownerId)
-        .then((numbered) => {
-          if (active && numbered) return load()
-        })
-        .catch(() => {
-          // Offline / Firebase unreachable: leave the list as-is, retry later.
-        })
-    }
-    reconcile()
-
-    // Coming back online retries the numbering and reloads, so an order created
-    // offline gets its № (and the list refreshes) without a manual page reload.
-    window.addEventListener('online', reconcile)
-    return () => {
-      active = false
-      window.removeEventListener('online', reconcile)
-    }
-    // `t` is only read in the error fallback; depending on it would refetch on a
-    // language switch, so it's intentionally excluded.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownerId])
-
   // Memoised so their identity is stable across renders: `columns` now feeds the
   // header-actions node (its memo would loop setActions on a fresh array every
   // render — see useHeaderActions), and DataTable keys its column-def memo off it.
-  const getCustomerName = useMemo(() => {
-    const nameById = new Map(customers.map((c) => [c.id, c.name]))
-    return (id: string) => nameById.get(id) ?? '—'
-  }, [customers])
+  const getCustomerName = useMemo(() => buildCustomerNameResolver(customers), [customers])
   const columns = useMemo(() => buildOrderColumns(getCustomerName, tOrder), [getCustomerName, tOrder])
 
   // Filtering is in memory: the whole list is already loaded, the dataset is
@@ -159,7 +112,7 @@ const OrdersPage = () => {
   return (
     <>
       {loading && <Spinner />}
-      {error && <p className="px-6 py-8 text-danger">{error}</p>}
+      {error && <p className="px-6 py-8 text-danger">{error.message || t('list.loadError')}</p>}
 
       {!loading && !error && (
         <DataTable
