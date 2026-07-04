@@ -2532,6 +2532,7 @@ __metadata:
     "@firebase/rules-unit-testing": "npm:^5.0.1"
     "@rolldown/plugin-babel": "npm:^0.2.3"
     "@sentry/react": "npm:^10.59.0"
+    "@sentry/replay": "npm:10.59.0"
     "@sentry/vite-plugin": "npm:^5.3.0"
     "@tailwindcss/vite": "npm:^4.3.0"
     "@tanstack/react-query": "npm:^5.101.2"

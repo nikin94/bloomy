@@ -5,7 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from '@/context/AuthProvider.tsx'
 import { SettingsProvider } from '@/context/SettingsProvider.tsx'
 import { createQueryClient } from '@/queries/queryClient.ts'
-import { initSentry } from '@/observability/sentry.ts'
+import { initSentry, deferReplay } from '@/observability/sentry.ts'
 import { registerServiceWorker } from '@/lib/registerServiceWorker.ts'
 import AppCrashFallback from '@/components/AppCrashFallback/AppCrashFallback.tsx'
 import App from './App.tsx'
@@ -15,8 +15,20 @@ import '@/i18n/config.ts'
 import './index.css'
 
 // Start error monitoring before anything renders, so an exception during the
-// initial mount is still captured (no-op in dev/test or without a DSN).
+// initial mount is still captured (no-op in dev/test or without a DSN). This is
+// the CORE SDK only — Session Replay is attached separately, on idle, below.
 initSentry()
+
+// Attach Session Replay once the browser is idle (after first paint), so its
+// heavy recorder bytes download off the critical path instead of blocking the
+// initial render — see deferReplay. `requestIdleCallback` where available; a
+// short timeout otherwise. No-op in dev/test or without a DSN (deferReplay gates
+// on the initialised client).
+{
+  const run = () => void deferReplay()
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(run)
+  else setTimeout(run, 1000)
+}
 
 // Register the precaching service worker so the app boots offline on a cold
 // start (no-op in dev/test; see registerServiceWorker).

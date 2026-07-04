@@ -49,7 +49,14 @@ export default defineConfig({
         // lazy-only, in the DataTable chunk, and a vendor chunk would force it eager).
         manualChunks: (id: string) => {
           if (id.includes('@firebase') || /node_modules\/firebase\//.test(id)) return 'firebase'
-          if (id.includes('@sentry')) return 'sentry'
+          if (id.includes('@sentry')) {
+            // Session Replay is loaded lazily (see deferReplay). Keep the replay
+            // package OUT of the eager `sentry` chunk so its ~44 kB recorder (rrweb)
+            // splits into its own async chunk that only downloads on idle, after
+            // first paint. The core error SDK + ErrorBoundary stay eager here.
+            if (id.includes('@sentry/replay')) return 'sentry-replay'
+            return 'sentry'
+          }
           if (/node_modules\/react-router(-dom)?\//.test(id)) return 'router'
           if (/node_modules\/(i18next|react-i18next)\//.test(id)) return 'i18n'
           if (/node_modules\/zod\//.test(id)) return 'zod'
