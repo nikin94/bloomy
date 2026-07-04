@@ -27,7 +27,17 @@ const Thumb = ({
       aria-label={t('photos.open')}
     >
       {url ? (
-        <img src={url} alt={t('photos.alt')} className="size-full object-cover" />
+        // The fixed layout comes from the size-20 parent (size-full on the img); the
+        // intrinsic 80×80 just gives the browser an aspect-ratio hint so it can skip
+        // decoding off-screen thumbs cleanly (loading="lazy").
+        <img
+          src={url}
+          alt={t('photos.alt')}
+          width={80}
+          height={80}
+          loading="lazy"
+          className="size-full object-cover"
+        />
       ) : (
         <span className="flex size-full items-center justify-center text-text">
           <Loader size="sm" />

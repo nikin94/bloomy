@@ -2,13 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor, act } from '@testing-library/react'
 import { formatDateTime } from '@/utils/format'
 
-// Mock the Firestore SDK so the component never touches the real client. The
-// `db` singleton is a bare stub; waitForPendingWrites is driven per-test.
-const waitForPendingWrites = vi.fn()
-vi.mock('firebase/firestore', () => ({
-  waitForPendingWrites: (...args: unknown[]) => waitForPendingWrites(...args),
+// Mock the sync data-layer helper so the component never touches the real SDK.
+// awaitPendingWrites (the wrapper over waitForPendingWrites + db) is driven per-test.
+const awaitPendingWrites = vi.fn()
+vi.mock('../../firebase/sync', () => ({
+  awaitPendingWrites: (...args: unknown[]) => awaitPendingWrites(...args),
 }))
-vi.mock('../../firebase/client', () => ({ db: {} }))
 
 // Imported after the mocks above are registered.
 import SyncStatus from './SyncStatus'
@@ -22,7 +21,7 @@ const setOnline = (value: boolean) => {
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
-  waitForPendingWrites.mockResolvedValue(undefined)
+  awaitPendingWrites.mockResolvedValue(undefined)
   setOnline(true)
 })
 
@@ -40,7 +39,7 @@ describe('SyncStatus', () => {
 
   it('stamps the last-synced time once queued writes are acknowledged', async () => {
     render(<SyncStatus />)
-    await waitFor(() => expect(waitForPendingWrites).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(awaitPendingWrites).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(localStorage.getItem('bloomy-last-synced')).not.toBeNull())
   })
 
@@ -60,7 +59,7 @@ describe('SyncStatus', () => {
       `Последняя синхронизация: ${formatDateTime(synced)}`,
     )
     // Offline: it must not probe the server for pending writes.
-    expect(waitForPendingWrites).not.toHaveBeenCalled()
+    expect(awaitPendingWrites).not.toHaveBeenCalled()
   })
 
   it('omits the tooltip when nothing was ever synced', () => {
@@ -75,7 +74,7 @@ describe('SyncStatus', () => {
     vi.useFakeTimers()
     try {
       // A write that never acknowledges (e.g. Firebase blocked despite a link).
-      waitForPendingWrites.mockReturnValue(new Promise(() => {}))
+      awaitPendingWrites.mockReturnValue(new Promise(() => {}))
       render(<SyncStatus />)
 
       // Nothing shown immediately — a clean/quick flush should not flash a label.
