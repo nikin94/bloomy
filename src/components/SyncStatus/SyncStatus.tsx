@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { waitForPendingWrites } from 'firebase/firestore'
-import { db } from '@/firebase/client'
+import { awaitPendingWrites } from '@/firebase/sync'
 import { formatDateTime } from '@/utils/format'
 import Tooltip from '@/components/Tooltip/Tooltip'
 
@@ -34,7 +33,7 @@ const writeLastSynced = (ms: number) => {
 // sync. Offline shows just "Offline" to stay compact; WHEN the local data last
 // reached the server is in a hover tooltip (a custom Tooltip that shows instantly,
 // not the native `title` which the browser delays ~1s) instead of inline, so the
-// header doesn't widen. The freshness is taken from waitForPendingWrites (a real
+// header doesn't widen. The freshness is taken from awaitPendingWrites (a real
 // server acknowledgement), not navigator.onLine alone, so it stays honest in the
 // case that matters most here: the network is up but Firebase itself is blocked —
 // then writes never flush and the indicator keeps showing "Syncing…"
@@ -71,7 +70,7 @@ const SyncStatus = () => {
     const slowFlush = setTimeout(() => {
       if (active) setFlushing(true)
     }, 500)
-    waitForPendingWrites(db)
+    awaitPendingWrites()
       .then(() => {
         if (!active) return
         const now = Date.now()

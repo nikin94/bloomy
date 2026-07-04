@@ -73,6 +73,11 @@ const PhotoViewer = ({
               <img
                 src={url}
                 alt={t('photos.alt')}
+                // The track renders every slide at full size; lazy-loading defers
+                // decoding the off-screen ones until they scroll near the viewport.
+                // No explicit width/height — the size is responsive (object-contain,
+                // max-w/h-full), so intrinsic dimensions would fight the layout.
+                loading="lazy"
                 onClick={(e) => e.stopPropagation()}
                 className="max-h-full max-w-full object-contain"
               />
