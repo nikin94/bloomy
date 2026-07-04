@@ -32,16 +32,28 @@ export default defineConfig({
     ...(SENTRY_AUTH_TOKEN ? { sourcemap: true } : {}),
     rollupOptions: {
       output: {
-        // Split the two heaviest startup dependencies into their own chunks so the
-        // app-code entry isn't one ~780 kB monolith. Both load eagerly anyway
-        // (Firebase via AuthProvider at boot, Sentry via initSentry — now carrying
-        // Session Replay), but as separate files they cache independently of app
-        // code and download in parallel, and the entry drops well under the 500 kB
-        // warning. Only these two are peeled — the lazy PAGE chunks keep Vite's
-        // default per-route splitting, so nothing lazy-only is pulled in eagerly.
+        // Split the stable, eagerly-loaded vendor libraries into their own named
+        // chunks, each keyed to its OWN package. The point is cache granularity:
+        // React/router/i18n/zod change on a dependency bump (rarely), while app
+        // code changes every deploy — as separate chunks a deploy only busts the
+        // small app entry, and a returning user re-downloads just that, not ~200 kB
+        // of unchanged vendor. It also fixes a misnaming: before this, zod +
+        // i18next + react-router all landed in ONE shared chunk that Vite named
+        // after the alphabetically-first source module that seeded it (`fieldStyles`),
+        // an opaque ~65 kB blob. Naming each explicitly makes the build output read
+        // true. First-load bytes are unchanged — every peeled lib is already in the
+        // eager graph (React is the runtime; router via App; i18next via main; zod
+        // via SettingsProvider → the settings schema) — so nothing lazy-only is
+        // pulled in eagerly. The lazy PAGE chunks keep Vite's default per-route
+        // splitting; @tanstack/react-table is deliberately NOT peeled (it is
+        // lazy-only, in the DataTable chunk, and a vendor chunk would force it eager).
         manualChunks: (id: string) => {
           if (id.includes('@firebase') || /node_modules\/firebase\//.test(id)) return 'firebase'
           if (id.includes('@sentry')) return 'sentry'
+          if (/node_modules\/react-router(-dom)?\//.test(id)) return 'router'
+          if (/node_modules\/(i18next|react-i18next)\//.test(id)) return 'i18n'
+          if (/node_modules\/zod\//.test(id)) return 'zod'
+          if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) return 'react'
         },
       },
     },
