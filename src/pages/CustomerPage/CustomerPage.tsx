@@ -16,11 +16,11 @@ import { useOrders, EMPTY_ORDERS } from '@/queries/orders'
 import { useAuth } from '@/context/authContext'
 import { formatDate, formatMoney } from '@/utils/format'
 import {
-  buildOrderColumns,
   revenueByCurrencyMinor,
   topPlantsByQuantity,
   CURRENCIES,
 } from '@/types/order'
+import { buildOrderColumns } from '@/components/DataTable/orderColumns'
 import { trimOptional } from '@/types/customer'
 
 // How many "frequent plants" to surface in the summary.

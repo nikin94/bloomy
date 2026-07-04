@@ -1,4 +1,5 @@
-import type { Order, OrderColumn } from '@/types/order'
+import type { Order } from '@/types/order'
+import type { OrderColumn } from '@/components/DataTable/orderColumns'
 import { cellValue, activationProps } from './rowHelpers'
 import CardField from './CardField'
 

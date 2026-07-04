@@ -12,16 +12,18 @@ import {
   getSubtotalMinor,
   getTotalMinor,
   plantsByValueDesc,
-  deliveryMethodLabel,
-  paymentMethodLabel,
-  paymentStatusOptions,
-  shipmentStatusOptions,
   resolveCompletedAt,
   formatOrderNumber,
   isOrderDeleted,
   trashDaysLeft,
   TRASH_RETENTION_DAYS,
 } from '@/types/order'
+import {
+  deliveryMethodLabel,
+  paymentMethodLabel,
+  paymentStatusOptions,
+  shipmentStatusOptions,
+} from '@/lib/orderLabels'
 import { trimOptional } from '@/types/customer'
 import { useAuth } from '@/context/authContext'
 import Spinner from '@/components/Spinner/Spinner'

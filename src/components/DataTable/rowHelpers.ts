@@ -1,5 +1,6 @@
 import type React from 'react'
-import type { Order, OrderColumn } from '@/types/order'
+import type { Order } from '@/types/order'
+import type { OrderColumn } from '@/components/DataTable/orderColumns'
 
 // Raw string value of a column for an order: the column's format function when
 // present, otherwise the stringified raw field. Derived columns (no `field`)

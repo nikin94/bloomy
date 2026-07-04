@@ -5,14 +5,16 @@ import { useAuth } from '@/context/authContext'
 import { useSettings } from '@/context/settingsContext'
 import { formatMinorToInput, formatMoney, parseRublesToMinor } from '@/utils/format'
 import {
+  resolveCompletedAt,
+  collectPlantNames,
+} from '@/types/order'
+import {
   currencyOptions,
   deliveryMethodOptions,
   paymentMethodOptions,
   paymentStatusOptions,
   shipmentStatusOptions,
-  resolveCompletedAt,
-  collectPlantNames,
-} from '@/types/order'
+} from '@/lib/orderLabels'
 import Spinner from '@/components/Spinner/Spinner'
 import Select from '@/components/Select/Select'
 import Button from '@/components/Button/Button'
