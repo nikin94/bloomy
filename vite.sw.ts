@@ -11,7 +11,7 @@
 //
 // `/` and `/index.html` are both listed because a navigation can resolve to
 // either, and the SW serves the cached index.html as the offline app shell.
-const STATIC_PRECACHE = ['/', '/index.html', '/version.json', '/favicon.svg', '/icons.svg']
+const STATIC_PRECACHE = ['/', '/index.html', '/version.json', '/favicon.svg']
 
 // Build the precache list from the rolled-up bundle's file names. Every emitted
 // JS and CSS chunk is precached (so the WHOLE app — including lazy route chunks —

@@ -11,7 +11,7 @@ describe('selectPrecache', () => {
 
     // The static shell (so a cold start can boot) …
     expect(list).toEqual(
-      expect.arrayContaining(['/', '/index.html', '/version.json', '/favicon.svg', '/icons.svg']),
+      expect.arrayContaining(['/', '/index.html', '/version.json', '/favicon.svg']),
     )
     // … and every hashed chunk, root-absolute.
     expect(list).toEqual(
