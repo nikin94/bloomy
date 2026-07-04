@@ -3,8 +3,10 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import OrderFilterControl from './OrderFilterControl'
-import { EMPTY_ORDER_FILTER, buildOrderColumns } from '@/types/order'
-import type { Order, OrderFilter, OrderSort } from '@/types/order'
+import { EMPTY_ORDER_FILTER } from '@/types/order'
+import type { Order, OrderFilter } from '@/types/order'
+import { buildOrderColumns } from '@/components/DataTable/orderColumns'
+import type { OrderSort } from '@/components/DataTable/orderColumns'
 import i18n from '@/i18n/config'
 
 // The shared funnel button + filter dialog used by the orders list and the trash.

@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import {
   getSubtotalMinor,
   getTotalMinor,
-  buildOrderColumns,
   plantsByValueDesc,
   filterOrders,
   isOrderFilterActive,
@@ -10,10 +9,6 @@ import {
   isTerminalShipmentStatus,
   resolveCompletedAt,
   EMPTY_ORDER_FILTER,
-  deliveryMethodOptions,
-  paymentStatusOptions,
-  paymentMethodOptions,
-  currencyOptions,
   isOrderDeleted,
   trashDaysLeft,
   TRASH_RETENTION_DAYS,
@@ -23,6 +18,13 @@ import {
   STORED_ORDER_SCHEMA,
 } from './order'
 import type { Order } from './order'
+import { buildOrderColumns } from '@/components/DataTable/orderColumns'
+import {
+  deliveryMethodOptions,
+  paymentStatusOptions,
+  paymentMethodOptions,
+  currencyOptions,
+} from '@/lib/orderLabels'
 import i18n from '@/i18n/config'
 
 // Label/header lookups need a translate fn bound to the `order` namespace; the

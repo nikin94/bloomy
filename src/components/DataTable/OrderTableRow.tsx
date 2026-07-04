@@ -1,6 +1,7 @@
 import { flexRender } from '@tanstack/react-table'
 import type { Row } from '@tanstack/react-table'
-import type { Order, OrderColumn } from '@/types/order'
+import type { Order } from '@/types/order'
+import type { OrderColumn } from '@/components/DataTable/orderColumns'
 import { TABLE_CELL_BASE, TABLE_CELL_NOWRAP, TABLE_CELL_WRAP } from '@/styles/tableStyles'
 import { activationProps } from './rowHelpers'
 

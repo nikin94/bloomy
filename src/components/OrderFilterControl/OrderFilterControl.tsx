@@ -11,22 +11,23 @@ import { useSidebarCollapse } from '@/context/sidebarCollapseContext'
 import { FIELD_BASE, FIELD_NORMAL } from '@/styles/fieldStyles'
 import { formatMoney, parseDateInput, toDateInputValue } from '@/utils/format'
 import {
-  currencyOptions,
   getTotalMinor,
   isModalFilterActive,
-  paymentStatusOptions,
-  shipmentStatusOptions,
-  sortableColumns,
 } from '@/types/order'
 import type {
   Currency,
   Order,
-  OrderColumn,
   OrderFilter,
-  OrderSort,
   PaymentStatus,
   ShipmentStatus,
 } from '@/types/order'
+import {
+  currencyOptions,
+  paymentStatusOptions,
+  shipmentStatusOptions,
+} from '@/lib/orderLabels'
+import { sortableColumns } from '@/components/DataTable/orderColumns'
+import type { OrderColumn, OrderSort } from '@/components/DataTable/orderColumns'
 
 // Slider step for the price filter: 1 ₽ (100 kopecks). Fine enough to land on a
 // specific amount, coarse enough that dragging feels smooth.

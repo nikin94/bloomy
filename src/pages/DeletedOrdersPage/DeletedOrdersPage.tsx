@@ -10,13 +10,14 @@ import { useCustomers, EMPTY_CUSTOMERS } from '@/queries/customers'
 import { useAuth } from '@/context/authContext'
 import { useHeaderActions } from '@/context/headerActionsContext'
 import {
-  buildOrderColumns,
   filterOrders,
   isOrderFilterActive,
   trashDaysLeft,
   EMPTY_ORDER_FILTER,
 } from '@/types/order'
-import type { OrderColumn, OrderFilter, OrderSort } from '@/types/order'
+import type { OrderFilter } from '@/types/order'
+import { buildOrderColumns } from '@/components/DataTable/orderColumns'
+import type { OrderColumn, OrderSort } from '@/components/DataTable/orderColumns'
 import { buildCustomerNameResolver } from '@/types/customer'
 
 // Trash screen: the signed-in user's soft-deleted orders, shown in the SAME
