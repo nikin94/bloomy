@@ -4,10 +4,11 @@
 import i18next from 'i18next'
 import type { Currency } from '@/types/order'
 
-// BCP-47 locale for Intl number/currency formatting, derived from the active UI
-// language so the grouping and decimal separators follow the chosen language
-// (e.g. "1 500,00" in ru, "1,500.00" in en). i18next is the same singleton the
-// app inits; a type-only Currency import keeps this free of a runtime cycle.
+// BCP-47 locale for Intl number/currency/date formatting, derived from the active
+// UI language so separators AND date order follow the chosen language (e.g.
+// "1 500,00" / "22.06.2026" in ru, "1,500.00" / "6/22/2026" in en). i18next is the
+// same singleton the app inits; a type-only Currency import keeps this free of a
+// runtime cycle.
 const intlLocale = (): string => (i18next.language === 'en' ? 'en-US' : 'ru-RU')
 
 // Currency-formatter options shared by formatMoney and currencySymbol so they
@@ -40,7 +41,7 @@ export const currencySymbol = (currency: Currency): string =>
     .find((part) => part.type === 'currency')?.value ?? currency
 
 export const formatDate = (ms: number) =>
-  new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short' }).format(new Date(ms))
+  new Intl.DateTimeFormat(intlLocale(), { dateStyle: 'short' }).format(new Date(ms))
 
 // Local `yyyy-mm-dd` string for an `<input type="date">` value from a ms
 // timestamp. Uses local calendar parts (not toISOString, which is UTC and would
@@ -69,13 +70,13 @@ export const parseDateInput = (value: string, edge: 'start' | 'end'): number | n
 // Time of day only, e.g. "14:32". Pairs with formatDate to show a creation
 // moment over two lines (date above, time below) in the orders table.
 export const formatTime = (ms: number) =>
-  new Intl.DateTimeFormat('ru-RU', { timeStyle: 'short' }).format(new Date(ms))
+  new Intl.DateTimeFormat(intlLocale(), { timeStyle: 'short' }).format(new Date(ms))
 
 // Short date AND time, e.g. "22.06.2026, 14:32". Used by the sync indicator to
 // show when the local data last reached the server (date matters when offline
 // for days; time matters within a day).
 export const formatDateTime = (ms: number) =>
-  new Intl.DateTimeFormat('ru-RU', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(ms))
+  new Intl.DateTimeFormat(intlLocale(), { dateStyle: 'short', timeStyle: 'short' }).format(new Date(ms))
 
 // Filter raw keystrokes into a decimal money string as the user types: digits
 // with at most one separator (comma or dot, ru-RU uses a comma) and at most two

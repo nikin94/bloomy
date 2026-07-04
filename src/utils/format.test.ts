@@ -4,6 +4,7 @@ import {
   formatMoney,
   currencySymbol,
   formatDate,
+  formatTime,
   formatDateTime,
   parseRublesToMinor,
   formatMinorToInput,
@@ -183,5 +184,27 @@ describe('formatDateTime', () => {
   it('formats a timestamp as a short ru-RU date AND time', () => {
     // Date part then a HH:MM time part, separated by a comma.
     expect(formatDateTime(0)).toMatch(/^\d{1,2}\.\d{1,2}\.\d{2,4},\s\d{1,2}:\d{2}$/)
+  })
+})
+
+describe('date formatters follow the active UI language', () => {
+  // Under ru the date is dot-separated (dd.mm.yyyy); under en it must switch to
+  // the en-US slash order (m/d/yyyy), same as formatMoney follows the locale —
+  // so an English user never sees a ru-formatted date beside en-formatted money.
+  it('renders en-US formats after switching the language, ru after switching back', async () => {
+    await i18n.changeLanguage('en')
+    try {
+      // en-US short date uses slashes, not dots.
+      expect(formatDate(0)).toContain('/')
+      expect(formatDate(0)).not.toContain('.')
+      // 12-hour clock brings an AM/PM marker the ru 24-hour format never has.
+      expect(formatTime(0)).toMatch(/AM|PM/)
+      expect(formatDateTime(0)).toContain('/')
+    } finally {
+      await i18n.changeLanguage('ru')
+    }
+    // Back on ru: dot-separated date, 24-hour time (no AM/PM).
+    expect(formatDate(0)).toContain('.')
+    expect(formatTime(0)).not.toMatch(/AM|PM/)
   })
 })
