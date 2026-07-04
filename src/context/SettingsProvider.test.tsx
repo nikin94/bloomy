@@ -192,6 +192,38 @@ describe('SettingsProvider', () => {
     expect(dataTheme()).toBe('dark')
   })
 
+  it('hands consumers the same context value across an unrelated re-render (memoised)', async () => {
+    // The provider wraps the whole app; a fresh value object every render would
+    // re-render every useSettings consumer regardless of the slice they read.
+    // Capture the context object on each render and verify the reference doesn't
+    // change when a consumer re-renders for an unrelated reason (e.g., parent
+    // state change that doesn't affect settings).
+    fetchSettings.mockResolvedValue({ fontScale: 1.25 })
+    const seen: ReturnType<typeof useSettings>[] = []
+    const Capture = () => {
+      const ctx = useSettings()
+      seen.push(ctx)
+      return <span>scale:{ctx.fontScale}</span>
+    }
+    const Harness = ({ counter }: { counter: number }) => (
+      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+        <SettingsProvider>
+          <span>counter:{counter}</span>
+          <Capture />
+        </SettingsProvider>
+      </AuthContext.Provider>
+    )
+    const { rerender } = render(<Harness counter={0} />)
+    await screen.findByText('scale:1.25')
+    await waitFor(() => expect(fetchSettings).toHaveBeenCalledWith('owner-1'))
+
+    const stableRef = seen[seen.length - 1]
+    rerender(<Harness counter={1} />)
+    // Even though Harness re-rendered and Capture ran again, the memoised value
+    // object should be the SAME reference because settings didn't change.
+    expect(seen[seen.length - 1]).toBe(stableRef)
+  })
+
   it('resets state and the document to defaults on sign-out so the next user gets no stale value', async () => {
     fetchSettings.mockResolvedValue({ fontScale: 1.25, theme: 'light' })
     const { rerender } = renderProvider()
