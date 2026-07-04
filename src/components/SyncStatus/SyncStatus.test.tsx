@@ -3,7 +3,7 @@ import { render, screen, waitFor, act } from '@testing-library/react'
 import { formatDateTime } from '@/utils/format'
 
 // Mock the sync data-layer helper so the component never touches the real SDK.
-// awaitPendingWrites (the wrapper over awaitPendingWrites + db) is driven per-test.
+// awaitPendingWrites (the wrapper over waitForPendingWrites + db) is driven per-test.
 const awaitPendingWrites = vi.fn()
 vi.mock('../../firebase/sync', () => ({
   awaitPendingWrites: (...args: unknown[]) => awaitPendingWrites(...args),

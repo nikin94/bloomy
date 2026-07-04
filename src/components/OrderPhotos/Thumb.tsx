@@ -27,8 +27,9 @@ const Thumb = ({
       aria-label={t('photos.open')}
     >
       {url ? (
-        // The thumbnail box is a fixed 80px (size-20); the intrinsic 80×80 lets the
-        // browser reserve the space and skip decoding off-screen thumbs (loading="lazy").
+        // The fixed layout comes from the size-20 parent (size-full on the img); the
+        // intrinsic 80×80 just gives the browser an aspect-ratio hint so it can skip
+        // decoding off-screen thumbs cleanly (loading="lazy").
         <img
           src={url}
           alt={t('photos.alt')}
