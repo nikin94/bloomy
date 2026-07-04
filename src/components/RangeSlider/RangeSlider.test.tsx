@@ -64,6 +64,22 @@ describe('RangeSlider', () => {
     }
   })
 
+  it('announces a formatted aria-valuetext on both thumbs when a formatter is given', () => {
+    const { lower, upper } = setup({
+      value: [20, 80],
+      formatValue: (n) => `${n} ₽`,
+    })
+    // Screen readers read aria-valuetext in place of the raw aria-valuenow number.
+    expect(lower).toHaveAttribute('aria-valuetext', '20 ₽')
+    expect(upper).toHaveAttribute('aria-valuetext', '80 ₽')
+  })
+
+  it('omits aria-valuetext when no formatter is given (native numeric fallback)', () => {
+    const { lower, upper } = setup()
+    expect(lower).not.toHaveAttribute('aria-valuetext')
+    expect(upper).not.toHaveAttribute('aria-valuetext')
+  })
+
   it('does not divide by zero when min === max (a degenerate range)', () => {
     // The caller hides the slider when there is no range, but guard anyway so a
     // zero span can never produce NaN positions.

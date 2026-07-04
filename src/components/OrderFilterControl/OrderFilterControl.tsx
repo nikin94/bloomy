@@ -29,7 +29,20 @@ import { asEnum } from '@/utils/asEnum'
 
 // Slider step for the price filter: 1 ₽ (100 kopecks). Fine enough to land on a
 // specific amount, coarse enough that dragging feels smooth.
-const PRICE_STEP_MINOR = 100
+// Finest price step: 1 ₽ (100 kopecks). The actual step scales UP with the range
+// ceiling (see priceStepMinor) so one arrow-key press moves a sensible fraction of
+// the whole range instead of a single rouble — crossing a 5 000 ₽ range 1 ₽ at a
+// time would take thousands of keypresses. This floor keeps small ranges precise.
+const MIN_PRICE_STEP_MINOR = 100
+
+// Slider step derived from the range ceiling: aim for ~100 increments across the
+// whole range (so keyboard/drag stepping feels the same regardless of the range
+// size), rounded to a whole rouble and never finer than MIN_PRICE_STEP_MINOR.
+const priceStepMinor = (ceilingMinor: number): number =>
+  Math.max(
+    MIN_PRICE_STEP_MINOR,
+    Math.round(ceilingMinor / 100 / MIN_PRICE_STEP_MINOR) * MIN_PRICE_STEP_MINOR,
+  )
 
 // Funnel icon for the filter button. The button itself fills in (primary) when a
 // filter is active, so the closed dialog still signals that filtering is on.
@@ -283,10 +296,13 @@ const OrderFilterControl = ({
                 <RangeSlider
                   min={0}
                   max={priceCeilingMinor}
-                  step={PRICE_STEP_MINOR}
+                  step={priceStepMinor(priceCeilingMinor)}
                   value={[filter.minPriceMinor, maxThumb]}
                   onInput={setPriceRange}
                   ariaLabel={[t('filters.minPrice'), t('filters.maxPrice')]}
+                  // Announce the money value (e.g. "1 500,00 ₽"), not the raw minor
+                  // units, to screen readers on each thumb.
+                  formatValue={(minor) => formatMoney(minor, priceCurrency)}
                 />
               </div>
             )}

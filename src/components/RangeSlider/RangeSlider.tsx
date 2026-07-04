@@ -23,9 +23,14 @@ interface RangeSliderProps {
   onInput: (value: [number, number]) => void
   // Accessible names for the [lower, upper] thumbs (each input is a slider).
   ariaLabel: [string, string]
+  // Formats the value a screen reader announces (aria-valuetext). A native range
+  // slider otherwise reads out the raw number — meaningless here, where the value
+  // is an amount in minor units (e.g. "150000"). Pass a money formatter so it
+  // announces "1 500,00 ₽" instead. Omit to fall back to the numeric aria-valuenow.
+  formatValue?: (value: number) => string
 }
 
-const RangeSlider = ({ min, max, step, value, onInput, ariaLabel }: RangeSliderProps) => {
+const RangeSlider = ({ min, max, step, value, onInput, ariaLabel, formatValue }: RangeSliderProps) => {
   const [lo, hi] = value
   // Percent positions of each thumb along the track, for the fill overlay. Guard
   // a zero span (min === max) so we never divide by zero.
@@ -58,6 +63,7 @@ const RangeSlider = ({ min, max, step, value, onInput, ariaLabel }: RangeSliderP
         step={step}
         value={lo}
         aria-label={ariaLabel[0]}
+        aria-valuetext={formatValue ? formatValue(lo) : undefined}
         onChange={(e) => setLo(Number(e.target.value))}
         style={{ zIndex: loPct > 50 ? 4 : 3 }}
       />
@@ -69,6 +75,7 @@ const RangeSlider = ({ min, max, step, value, onInput, ariaLabel }: RangeSliderP
         step={step}
         value={hi}
         aria-label={ariaLabel[1]}
+        aria-valuetext={formatValue ? formatValue(hi) : undefined}
         onChange={(e) => setHi(Number(e.target.value))}
         style={{ zIndex: 3 }}
       />
