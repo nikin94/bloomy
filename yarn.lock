@@ -2559,7 +2559,6 @@ __metadata:
     react: "npm:^19.2.7"
     react-dom: "npm:^19.2.7"
     react-i18next: "npm:^17.0.8"
-    react-range-slider-input: "npm:^3.3.5"
     react-router-dom: "npm:^7.17.0"
     tailwindcss: "npm:^4.3.0"
     typescript: "npm:~6.0.2"
@@ -2627,13 +2626,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"clsx@npm:^1.1.1":
-  version: 1.2.1
-  resolution: "clsx@npm:1.2.1"
-  checksum: 10c0/34dead8bee24f5e96f6e7937d711978380647e936a22e76380290e35486afd8634966ce300fc4b74a32f3762c7d4c0303f442c3e259f4ce02374eb0c82834f27
-  languageName: node
-  linkType: hard
-
 "color-convert@npm:^2.0.1":
   version: 2.0.1
   resolution: "color-convert@npm:2.0.1"
@@ -2668,13 +2660,6 @@ __metadata:
   version: 1.1.1
   resolution: "cookie@npm:1.1.1"
   checksum: 10c0/79c4ddc0fcad9c4f045f826f42edf54bcc921a29586a4558b0898277fa89fb47be95bc384c2253f493af7b29500c830da28341274527328f18eba9f58afa112c
-  languageName: node
-  linkType: hard
-
-"core-js@npm:^3.22.4":
-  version: 3.49.0
-  resolution: "core-js@npm:3.49.0"
-  checksum: 10c0/2e42edb47eda38fd5368380131623c8aa5d4a6b42164125b17744bdc08fa5ebbbdd06b4b4aa6ca3663470a560b0f2fba48e18f142dfe264b0039df85bc625694
   languageName: node
   linkType: hard
 
@@ -4101,19 +4086,6 @@ __metadata:
   version: 17.0.2
   resolution: "react-is@npm:17.0.2"
   checksum: 10c0/2bdb6b93fbb1820b024b496042cce405c57e2f85e777c9aabd55f9b26d145408f9f74f5934676ffdc46f3dcff656d78413a6e43968e7b3f92eea35b3052e9053
-  languageName: node
-  linkType: hard
-
-"react-range-slider-input@npm:^3.3.5":
-  version: 3.3.5
-  resolution: "react-range-slider-input@npm:3.3.5"
-  dependencies:
-    clsx: "npm:^1.1.1"
-    core-js: "npm:^3.22.4"
-  peerDependencies:
-    react: ">=17 || >=18"
-    react-dom: ">=17 || >=18"
-  checksum: 10c0/05b7af29f6ef67c06e52a3982b95ade67dfc0033da91e127ce588d1adfb655e5ba8b52d12c05d3b8b1a1b1753ebd412921593064452e9c52bcec7a68a3200084
   languageName: node
   linkType: hard
 
