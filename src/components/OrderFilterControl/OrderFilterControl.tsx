@@ -13,21 +13,19 @@ import { formatMoney, parseDateInput, toDateInputValue } from '@/utils/format'
 import {
   getTotalMinor,
   isModalFilterActive,
+  CURRENCIES,
+  PAYMENT_STATUS_VALUES,
+  SHIPMENT_STATUS_VALUES,
 } from '@/types/order'
-import type {
-  Currency,
-  Order,
-  OrderFilter,
-  PaymentStatus,
-  ShipmentStatus,
-} from '@/types/order'
+import type { Order, OrderFilter } from '@/types/order'
 import {
   currencyOptions,
   paymentStatusOptions,
   shipmentStatusOptions,
 } from '@/lib/orderLabels'
-import { sortableColumns } from '@/components/DataTable/orderColumns'
+import { sortableColumns, SORT_DIRECTIONS } from '@/components/DataTable/orderColumns'
 import type { OrderColumn, OrderSort } from '@/components/DataTable/orderColumns'
+import { asEnum } from '@/utils/asEnum'
 
 // Slider step for the price filter: 1 ₽ (100 kopecks). Fine enough to land on a
 // specific amount, coarse enough that dragging feels smooth.
@@ -168,7 +166,7 @@ const OrderFilterControl = ({
                       aria-label={t('filters.sortDirAria')}
                       value={sort.dir}
                       onChange={(e) =>
-                        onSortChange({ field: sort.field, dir: e.target.value as 'asc' | 'desc' })
+                        onSortChange({ field: sort.field, dir: asEnum(SORT_DIRECTIONS, e.target.value, sort.dir) })
                       }
                     >
                       <option value="desc">{t('filters.sortDesc')}</option>
@@ -183,7 +181,7 @@ const OrderFilterControl = ({
               label={t('filters.paymentStatus')}
               value={filter.paymentStatus}
               onChange={(e) =>
-                onChange((f) => ({ ...f, paymentStatus: e.target.value as PaymentStatus | '' }))
+                onChange((f) => ({ ...f, paymentStatus: asEnum(PAYMENT_STATUS_VALUES, e.target.value, '' as const) }))
               }
             >
               <option value="">{t('filters.all')}</option>
@@ -198,7 +196,7 @@ const OrderFilterControl = ({
               label={t('filters.shipmentStatus')}
               value={filter.shipmentStatus}
               onChange={(e) =>
-                onChange((f) => ({ ...f, shipmentStatus: e.target.value as ShipmentStatus | '' }))
+                onChange((f) => ({ ...f, shipmentStatus: asEnum(SHIPMENT_STATUS_VALUES, e.target.value, '' as const) }))
               }
             >
               <option value="">{t('filters.all')}</option>
@@ -219,7 +217,7 @@ const OrderFilterControl = ({
                 // currency's minor-unit scale, so they don't carry over.
                 onChange((f) => ({
                   ...f,
-                  currency: e.target.value as Currency | '',
+                  currency: asEnum(CURRENCIES, e.target.value, '' as const),
                   minPriceMinor: 0,
                   maxPriceMinor: null,
                 }))

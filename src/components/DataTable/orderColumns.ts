@@ -62,9 +62,14 @@ export type OrderColumn = FieldOrderColumn | FormatOrderColumn
 // (as-loaded) order. Kept a plain domain shape so neither the pages nor the
 // filter dialog depend on TanStack's SortingState — the DataTable adapts between
 // the two internally.
+// The two sort directions, as a canonical array so the sort-direction <select>
+// can narrow its DOM value against the same source `dir` is typed from (see asEnum).
+export const SORT_DIRECTIONS = ['asc', 'desc'] as const
+export type SortDirection = (typeof SORT_DIRECTIONS)[number]
+
 export interface OrderSort {
   field: string
-  dir: 'asc' | 'desc'
+  dir: SortDirection
 }
 
 // The columns a list can be sorted by: those with a `sortValue` (a stacked

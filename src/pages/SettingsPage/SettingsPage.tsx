@@ -7,7 +7,8 @@ import { signOutUser } from '@/firebase/auth'
 import { LANGUAGES } from '@/types/settings'
 import type { Language, ThemeMode } from '@/types/settings'
 import { currencyOptions, deliveryMethodOptions, paymentMethodOptions } from '@/lib/orderLabels'
-import type { Currency, DeliveryMethod, PaymentMethod } from '@/types/order'
+import { CURRENCIES, DELIVERY_METHOD_VALUES, PAYMENT_METHOD_VALUES } from '@/types/order'
+import { asEnum } from '@/utils/asEnum'
 import Button from '@/components/Button/Button'
 import Modal from '@/components/Modal/Modal'
 import Select from '@/components/Select/Select'
@@ -272,7 +273,7 @@ const SettingsPage = () => {
                   <Select
                     aria-label={t('settings:languageAria')}
                     value={languageDraft}
-                    onChange={(e) => handleLanguage(e.target.value as Language)}
+                    onChange={(e) => handleLanguage(asEnum(LANGUAGES, e.target.value, languageDraft))}
                   >
                     {LANGUAGES.map((l) => (
                       <option key={l} value={l}>
@@ -298,7 +299,7 @@ const SettingsPage = () => {
                     value={deliveryDraft}
                     onChange={(e) => {
                       setSaved(false)
-                      setDeliveryDraft(e.target.value as DeliveryMethod)
+                      setDeliveryDraft(asEnum(DELIVERY_METHOD_VALUES, e.target.value, deliveryDraft))
                     }}
                   >
                     {deliveryMethodOptions(tOrder).map((o) => (
@@ -316,7 +317,7 @@ const SettingsPage = () => {
                     value={paymentDraft}
                     onChange={(e) => {
                       setSaved(false)
-                      setPaymentDraft(e.target.value as PaymentMethod)
+                      setPaymentDraft(asEnum(PAYMENT_METHOD_VALUES, e.target.value, paymentDraft))
                     }}
                   >
                     {paymentMethodOptions(tOrder).map((o) => (
@@ -336,7 +337,7 @@ const SettingsPage = () => {
                     value={currencyDraft}
                     onChange={(e) => {
                       setSaved(false)
-                      setCurrencyDraft(e.target.value as Currency)
+                      setCurrencyDraft(asEnum(CURRENCIES, e.target.value, currencyDraft))
                     }}
                   >
                     {currencyOptions(tOrder).map((o) => (
