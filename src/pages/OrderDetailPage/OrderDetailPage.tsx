@@ -17,6 +17,8 @@ import {
   isOrderDeleted,
   trashDaysLeft,
   TRASH_RETENTION_DAYS,
+  PAYMENT_STATUS_VALUES,
+  SHIPMENT_STATUS_VALUES,
 } from '@/types/order'
 import {
   deliveryMethodLabel,
@@ -25,6 +27,7 @@ import {
   shipmentStatusOptions,
 } from '@/lib/orderLabels'
 import { trimOptional } from '@/types/customer'
+import { asEnum } from '@/utils/asEnum'
 import { useAuth } from '@/context/authContext'
 import Spinner from '@/components/Spinner/Spinner'
 import Button from '@/components/Button/Button'
@@ -296,14 +299,14 @@ const OrderDetailPage = () => {
               label={t('detail.paymentStatus')}
               value={order.paymentStatus}
               options={paymentStatusOptions(tOrder)}
-              onChange={(value) => saveStatus({ paymentStatus: value as Order['paymentStatus'] })}
+              onChange={(value) => saveStatus({ paymentStatus: asEnum(PAYMENT_STATUS_VALUES, value, order.paymentStatus) })}
               readOnly={isDeleted}
             />
             <InlineStatusField
               label={t('detail.shipmentStatus')}
               value={order.shipmentStatus}
               options={shipmentStatusOptions(tOrder)}
-              onChange={(value) => saveStatus({ shipmentStatus: value as Order['shipmentStatus'] })}
+              onChange={(value) => saveStatus({ shipmentStatus: asEnum(SHIPMENT_STATUS_VALUES, value, order.shipmentStatus) })}
               readOnly={isDeleted}
             />
             {order.completedAt && <DetailRow label={t('detail.completed')} value={formatDate(order.completedAt)} />}

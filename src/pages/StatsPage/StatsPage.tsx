@@ -20,6 +20,7 @@ import {
   monthBounds,
 } from '@/types/stats'
 import type { StatsPreset } from '@/types/stats'
+import { asEnum } from '@/utils/asEnum'
 
 // How many months the "orders by month" chart spans. Fixed at a year so the
 // seasonal shape reads regardless of the period selector above it.
@@ -121,7 +122,7 @@ const StatsPage = () => {
                 <Select
                   aria-label={t('period.aria')}
                   value={preset}
-                  onChange={(e) => setPreset(e.target.value as StatsPreset)}
+                  onChange={(e) => setPreset(asEnum(STATS_PRESETS, e.target.value, preset))}
                 >
                   {STATS_PRESETS.map((p) => (
                     <option key={p} value={p}>
