@@ -50,9 +50,15 @@ const RangeSlider = ({ min, max, step, value, onInput, ariaLabel, formatValue }:
   // thumb targets its <input> (the only pointer-capturing part) — left untouched
   // here so the native drag still owns it. Reuses the setLo/setHi ordering clamps.
   const jumpToPoint = (e: PointerEvent<HTMLDivElement>) => {
+    // Filter by input-target, NOT `currentTarget === target`: the base-track and
+    // fill overlays are child <div>s of the visual track, and a press on them
+    // should still count as a track press. Only the <input> thumbs are skipped.
     if (e.target instanceof HTMLInputElement) return
     const rect = e.currentTarget.getBoundingClientRect()
     if (rect.width === 0) return
+    // Assumes LTR: the pixel offset is `clientX - rect.left`. An RTL language
+    // would need `rect.right - clientX` (or an explicit `dir` gate); both UI
+    // locales are LTR today, so this is safe until one is added.
     const raw = min + ((e.clientX - rect.left) / rect.width) * (max - min)
     // Snap to the inputs' own step and clamp into range.
     const snapped = Math.min(max, Math.max(min, Math.round(raw / step) * step))
