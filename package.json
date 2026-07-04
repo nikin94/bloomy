@@ -26,7 +26,6 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-i18next": "^17.0.8",
-    "react-range-slider-input": "^3.3.5",
     "react-router-dom": "^7.17.0",
     "zod": "^4.4.3"
   },

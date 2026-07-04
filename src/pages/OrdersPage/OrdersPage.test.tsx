@@ -225,9 +225,9 @@ describe('OrdersPage filtering', () => {
 
     await user.click(header().getByRole('button', { name: 'Фильтры' }))
     // The range renders as a single track with a "from"/"to" thumb pair; the
-    // summary shows the full span until the user narrows it. (The actual drag is
-    // pointer-geometry driven and lives in the library — the price-filtering
-    // logic itself is covered by filterOrders' unit tests.)
+    // summary shows the full span until the user narrows it. (The thumb value +
+    // clamping logic is covered by RangeSlider's own unit tests; the
+    // price-filtering itself by filterOrders'.)
     expect(screen.getByText('Сумма заказа')).toBeInTheDocument()
     expect(screen.getByRole('slider', { name: 'Минимальная сумма' })).toBeInTheDocument()
     expect(screen.getByRole('slider', { name: 'Максимальная сумма' })).toBeInTheDocument()

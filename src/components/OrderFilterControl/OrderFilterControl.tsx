@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { useTranslation } from 'react-i18next'
-import RangeSliderImport from 'react-range-slider-input'
+import RangeSlider from '@/components/RangeSlider/RangeSlider'
 import Button from '@/components/Button/Button'
 import Select from '@/components/Select/Select'
 import Modal from '@/components/Modal/Modal'
@@ -27,14 +27,6 @@ import type {
   PaymentStatus,
   ShipmentStatus,
 } from '@/types/order'
-
-// react-range-slider-input ships CommonJS (`exports.default = Component`).
-// Depending on the bundler's interop the default import can arrive wrapped one
-// level deep as `{ default: Component }`; unwrap so we render the component, not
-// the namespace object (otherwise React throws "Element type is invalid").
-const RangeSlider =
-  (RangeSliderImport as unknown as { default?: typeof RangeSliderImport }).default ??
-  RangeSliderImport
 
 // Slider step for the price filter: 1 ₽ (100 kopecks). Fine enough to land on a
 // specific amount, coarse enough that dragging feels smooth.
