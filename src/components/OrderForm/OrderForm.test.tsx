@@ -41,6 +41,13 @@ vi.mock('../../firebase/photos', () => ({
 }))
 // Stub signOutUser so the real Firebase SDK stays out of the test.
 vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
+// Capture observability so the best-effort rollback branches can be asserted: when
+// a rollback deleteOrderPhoto itself rejects, that failure must be swallowed and
+// routed to reportError with the right tag — never surfaced to the user or crash.
+const reportError = vi.fn()
+vi.mock('../../observability/reportError', () => ({
+  reportError: (...a: unknown[]) => reportError(...a),
+}))
 
 // Imported after the mocks above are registered.
 import OrderForm from './OrderForm'
@@ -212,6 +219,62 @@ describe('OrderForm', () => {
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
     await waitFor(() =>
       expect(deleteOrderPhoto).toHaveBeenCalledWith('orders/owner-1/pre-generated-order-id/p.jpg'),
+    )
+  })
+
+  it('reports and swallows a rollback failure on the partial-upload path', async () => {
+    // a.jpg uploads, b.jpg fails → the succeeded a.jpg is rolled back, but that
+    // rollback delete ALSO rejects. The failure must be swallowed (no crash) and
+    // routed to reportError — the user still sees the upload error, a.jpg stays
+    // orphaned but the flow does not blow up.
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    uploadOrderPhoto
+      .mockResolvedValueOnce('orders/owner-1/pre-generated-order-id/a.jpg')
+      .mockRejectedValueOnce(new Error('offline'))
+    deleteOrderPhoto.mockRejectedValue(new Error('delete failed'))
+    const { container } = renderForm({ onSubmit })
+    await screen.findByLabelText('Имя клиента')
+    await user.type(screen.getByLabelText('Имя клиента'), 'Борис')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Цена'), '100')
+
+    await user.upload(container.querySelector('input[type="file"]') as HTMLInputElement, [
+      new File(['a'], 'a.jpg', { type: 'image/jpeg' }),
+      new File(['b'], 'b.jpg', { type: 'image/jpeg' }),
+    ])
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+
+    // The upload error still surfaces; the failed rollback did not crash the flow.
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(reportError).toHaveBeenCalledWith(expect.any(Error), 'orderFormPhotoRollback'),
+    )
+  })
+
+  it('reports and swallows a rollback failure on the submit-throw path', async () => {
+    // Every upload lands, onSubmit throws → the catch rolls the photos back, but
+    // the rollback delete ALSO rejects. That failure must be swallowed and routed
+    // to reportError — the user sees the write error, the app does not crash.
+    const onSubmit = vi.fn().mockRejectedValue(new Error('order write failed'))
+    const user = userEvent.setup()
+    uploadOrderPhoto.mockResolvedValue('orders/owner-1/pre-generated-order-id/p.jpg')
+    deleteOrderPhoto.mockRejectedValue(new Error('delete failed'))
+    const { container } = renderForm({ onSubmit })
+    await screen.findByLabelText('Имя клиента')
+    await user.type(screen.getByLabelText('Имя клиента'), 'Борис')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Цена'), '100')
+
+    const file = new File(['x'], 'p.jpg', { type: 'image/jpeg' })
+    await user.upload(container.querySelector('input[type="file"]') as HTMLInputElement, file)
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(reportError).toHaveBeenCalledWith(expect.any(Error), 'orderFormSubmitPhotoRollback'),
     )
   })
 
