@@ -13,6 +13,8 @@
 // The thumbs are kept ordered (never crossing): the lower thumb is clamped at or
 // below the upper and vice-versa, matching the old library's behaviour, so the
 // caller always gets a well-ordered [lo, hi] pair.
+import type { PointerEvent } from 'react'
+
 interface RangeSliderProps {
   min: number
   max: number
@@ -43,8 +45,24 @@ const RangeSlider = ({ min, max, step, value, onInput, ariaLabel, formatValue }:
   const setLo = (next: number) => onInput([Math.min(next, hi), hi])
   const setHi = (next: number) => onInput([lo, Math.max(next, lo)])
 
+  // Track-click-to-jump: a press on the bare track moves the NEARER thumb to that
+  // point, so a coarse position is one tap instead of a long drag. A press on a
+  // thumb targets its <input> (the only pointer-capturing part) — left untouched
+  // here so the native drag still owns it. Reuses the setLo/setHi ordering clamps.
+  const jumpToPoint = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.target instanceof HTMLInputElement) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    if (rect.width === 0) return
+    const raw = min + ((e.clientX - rect.left) / rect.width) * (max - min)
+    // Snap to the inputs' own step and clamp into range.
+    const snapped = Math.min(max, Math.max(min, Math.round(raw / step) * step))
+    // Ties (equidistant) go to the lower thumb.
+    if (Math.abs(snapped - lo) <= Math.abs(snapped - hi)) setLo(snapped)
+    else setHi(snapped)
+  }
+
   return (
-    <div className="relative h-5">
+    <div className="relative h-5" onPointerDown={jumpToPoint}>
       {/* Base track. */}
       <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-border" />
       {/* Selected range fill between the two thumbs. */}

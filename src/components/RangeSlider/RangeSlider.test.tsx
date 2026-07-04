@@ -85,4 +85,39 @@ describe('RangeSlider', () => {
     // zero span can never produce NaN positions.
     expect(() => setup({ min: 10, max: 10, value: [10, 10] })).not.toThrow()
   })
+
+  // The two inputs share one container; jsdom returns a zero rect, so stub the
+  // container's geometry (0…100px maps 1:1 onto the 0…100 value range) to drive
+  // the track-click math deterministically.
+  const stubTrackWidth = (el: HTMLElement) => {
+    el.getBoundingClientRect = () =>
+      ({ left: 0, width: 100, right: 100, top: 0, bottom: 20, height: 20, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect
+  }
+
+  it('jumps the nearer thumb to a click on the bare track', () => {
+    const { onInput, lower } = setup({ value: [20, 80] })
+    const track = lower.parentElement as HTMLElement
+    stubTrackWidth(track)
+    // x=30 → value 30: closer to the lower (20) than the upper (80), so it moves.
+    fireEvent.pointerDown(track, { clientX: 30 })
+    expect(onInput).toHaveBeenCalledWith([30, 80])
+  })
+
+  it('moves the upper thumb when the track click is nearer to it', () => {
+    const { onInput, lower } = setup({ value: [20, 80] })
+    const track = lower.parentElement as HTMLElement
+    stubTrackWidth(track)
+    // x=70 → value 70: closer to the upper (80) than the lower (20).
+    fireEvent.pointerDown(track, { clientX: 70 })
+    expect(onInput).toHaveBeenCalledWith([20, 70])
+  })
+
+  it('leaves a press on a thumb to the native drag (no jump)', () => {
+    const { onInput, lower } = setup({ value: [20, 80] })
+    stubTrackWidth(lower.parentElement as HTMLElement)
+    // Pressing the input (thumb) must NOT trigger a track jump — it targets the
+    // <input>, which the handler skips so the native drag owns the gesture.
+    fireEvent.pointerDown(lower, { clientX: 90 })
+    expect(onInput).not.toHaveBeenCalled()
+  })
 })
