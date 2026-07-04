@@ -14,11 +14,13 @@ vi.mock('firebase/firestore', () => ({
   setDoc: vi.fn(),
   where: vi.fn(() => ({})),
   writeBatch: vi.fn(),
+  Timestamp: { fromMillis: vi.fn((ms: number) => ({ __ts: ms })) },
 }))
 
-import { buildSeedCustomers, buildSeedOrders, SEED_ORDER_COUNT } from './seed'
+import { writeBatch, Timestamp } from 'firebase/firestore'
+import { buildSeedCustomers, buildSeedOrders, seedMockData, SEED_ORDER_COUNT } from './seed'
 import { STORED_CUSTOMER_SCHEMA } from '@/types/customer'
-import { STORED_ORDER_SCHEMA } from '@/types/order'
+import { STORED_ORDER_SCHEMA, CURRENCIES } from '@/types/order'
 
 const NOW = 1_700_000_000_000
 
@@ -76,6 +78,17 @@ describe('buildSeedOrders', () => {
     expect(trashed.every((o) => o.deletedAt! <= NOW)).toBe(true)
   })
 
+  it('spreads orders across all supported currencies, in both the active list and the trash', () => {
+    // The multi-currency UI (per-currency revenue cards, currency-scoped price
+    // filter) needs more than RUB to exercise. The currency modulo is offset from
+    // the trash modulo so USD/EUR land in BOTH slices, not only the active one.
+    expect(new Set(orders.map((o) => o.currency))).toEqual(new Set(CURRENCIES))
+    const trashedCurrencies = new Set(
+      orders.filter((o) => o.deletedAt !== undefined).map((o) => o.currency),
+    )
+    expect(trashedCurrencies.size).toBeGreaterThan(1)
+  })
+
   it('stamps completedAt exactly on terminal orders, never in the future', () => {
     for (const o of orders) {
       const terminal = o.shipmentStatus === 'delivered' || o.shipmentStatus === 'cancelled'
@@ -86,5 +99,38 @@ describe('buildSeedOrders', () => {
 
   it('throws when given no customers to link', () => {
     expect(() => buildSeedOrders('owner-1', [], NOW)).toThrow()
+  })
+})
+
+describe('seedMockData', () => {
+  it('stamps purgeAt on trashed orders and reports the trashed count by deletedAt', async () => {
+    // Capture every payload the write batch receives, so we inspect the exact
+    // documents seedMockData writes to Firestore (not just the builder output).
+    const writes: Record<string, unknown>[] = []
+    const batch = {
+      set: (_ref: unknown, data: Record<string, unknown>) => writes.push(data),
+      delete: vi.fn(),
+      commit: vi.fn().mockResolvedValue(undefined),
+    }
+    vi.mocked(writeBatch).mockReturnValue(batch as unknown as ReturnType<typeof writeBatch>)
+
+    const result = await seedMockData('owner-1', { reset: false }, NOW)
+
+    // The admin UI's "trashed" line reads this count; it must reflect the real
+    // trash (deletedAt), not the always-0 legacy `isDeleted` count.
+    expect(result.trashed).toBeGreaterThan(0)
+
+    // Isolate the ORDER payloads (customer payloads have no shipmentStatus).
+    const orders = writes.filter((d) => 'shipmentStatus' in d)
+    const trashed = orders.filter((d) => d.deletedAt !== undefined)
+    const active = orders.filter((d) => d.deletedAt === undefined)
+
+    expect(trashed.length).toBe(result.trashed)
+    // Every trashed order carries purgeAt (the Timestamp the server-side TTL keys
+    // on); active orders never do — so seeded trash auto-purges like real trash.
+    expect(trashed.every((d) => 'purgeAt' in d)).toBe(true)
+    expect(active.some((d) => 'purgeAt' in d)).toBe(false)
+    // purgeAt is derived via Timestamp.fromMillis (= deletedAt + retention window).
+    expect(Timestamp.fromMillis).toHaveBeenCalled()
   })
 })

@@ -1,7 +1,8 @@
-import { collection, doc, getDocs, query, setDoc, where, writeBatch } from 'firebase/firestore'
+import { collection, doc, getDocs, query, setDoc, Timestamp, where, writeBatch } from 'firebase/firestore'
 import { db } from './client'
+import { TRASH_RETENTION_DAYS } from '@/types/order'
 import type { NewCustomer } from '@/types/customer'
-import type { DeliveryMethod, Order, OrderItem, PaymentMethod } from '@/types/order'
+import type { Currency, DeliveryMethod, Order, OrderItem, PaymentMethod } from '@/types/order'
 
 // Test-data seeder. Wipes the signed-in admin's orders/customers (optional) and
 // fills the account with a realistic spread of mock data so the UI can be
@@ -122,9 +123,23 @@ export function buildSeedCustomers(ownerId: string, now: number): NewCustomer[] 
   }))
 }
 
+// Per-order currency. Mostly roubles (the operator's default), with a slice of
+// USD and EUR so the multi-currency UI has data to exercise — the per-currency
+// revenue cards (stats + customer page) and the currency-scoped price filter.
+// There is no conversion: the number is whatever the operator entered, just
+// labelled in that currency. Deterministic off the index, and on a period (mod 7)
+// that is OFFSET from the trash modulo (mod 6) so USD/EUR land in BOTH the active
+// list and the trash, not only one — otherwise a currency could vanish from the
+// active revenue totals.
+function pickCurrency(i: number): Currency {
+  if (i % 7 === 3) return 'USD'
+  if (i % 7 === 5) return 'EUR'
+  return 'RUB'
+}
+
 // One order's line items: 1–3 potted plants cycled off the index, with varied
-// qty/price. Prices land in a realistic ~500–2500 ₽ band (50-₽ steps), in the
-// same ballpark as the real catalogue.
+// qty/price. Prices land in a realistic ~500–2500 (50-step) band, in the same
+// ballpark as the real catalogue (in the order's own currency — no conversion).
 function buildPlants(i: number): OrderItem[] {
   const count = 1 + (i % 3)
   return Array.from({ length: count }, (_, k) => ({
@@ -157,7 +172,7 @@ export function buildSeedOrders(
       paymentMethod: PAYMENT_METHODS[i % PAYMENT_METHODS.length],
       deliveryMethod: DELIVERY_METHODS[i % DELIVERY_METHODS.length],
       deliveryPriceMinor: (i % 4) * 25000,
-      currency: 'RUB',
+      currency: pickCurrency(i),
       paymentStatus: PAYMENT_STATUSES[i % PAYMENT_STATUSES.length],
       shipmentStatus,
       ...(i % 4 === 0 ? { comment: `Тестовый комментарий №${i + 1}` } : {}),
@@ -168,6 +183,19 @@ export function buildSeedOrders(
       ...(i % 6 === 5 ? { deletedAt: now - (i % 24) * DAY_MS } : {}),
     }
   })
+}
+
+// The Firestore write payload for a seeded order. A TRASHED order (has
+// `deletedAt`) additionally carries `purgeAt` — the Firestore Timestamp the real
+// softDeleteOrder writes and the server-side TTL policy keys on (deletedAt + the
+// retention window). Stamping it here makes seeded trash auto-purge-eligible
+// exactly like a hand-deleted order, instead of lingering forever. Kept OUT of the
+// pure builder because purgeAt is a Timestamp, not part of the Order schema (which
+// strips it on read); the builder stays schema-shaped and unit-testable.
+function seedOrderPayload(order: Omit<Order, 'id'>): Record<string, unknown> {
+  if (order.deletedAt === undefined) return order
+  const purgeAt = Timestamp.fromMillis(order.deletedAt + TRASH_RETENTION_DAYS * DAY_MS)
+  return { ...order, purgeAt }
 }
 
 // Commit writes in batches under Firestore's 500-op limit (headroom at 400).
@@ -225,7 +253,9 @@ export async function seedMockData(
 
   await commitInBatches([
     ...customers.map((c, i) => (batch: ReturnType<typeof writeBatch>) => batch.set(customerRefs[i], c)),
-    ...orders.map((o, i) => (batch: ReturnType<typeof writeBatch>) => batch.set(orderRefs[i], o)),
+    ...orders.map(
+      (o, i) => (batch: ReturnType<typeof writeBatch>) => batch.set(orderRefs[i], seedOrderPayload(o)),
+    ),
   ])
 
   // Keep the counter ahead of the seeded numbers so real creates don't collide.
@@ -237,6 +267,9 @@ export async function seedMockData(
     removedCustomers,
     customers: customers.length,
     orders: orders.length,
-    trashed: orders.filter((o) => o.isDeleted).length,
+    // Trashed = has `deletedAt` (the canonical trash signal the seeder stamps).
+    // The old `o.isDeleted` check counted a field the seeder never sets, so this
+    // always reported 0 in the admin UI despite the seeded trash.
+    trashed: orders.filter((o) => o.deletedAt !== undefined).length,
   }
 }
