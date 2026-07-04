@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useAuth } from './authContext'
 import { fetchSettings, saveSettings as persistSettings } from '@/firebase/settings'
@@ -133,50 +133,70 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, [applies, ownerId, language])
 
   // Live-preview a value on the document without persisting (slider/toggle/select).
-  const previewFontScale = (scale: number) => applyFontScale(scale)
-  const previewTheme = (next: ThemeMode) => applyTheme(next)
-  const previewLanguage = (next: Language) => applyLanguage(next)
+  // Stable identity (empty deps): they only call module-level document writers, so
+  // the context value below keeps the same reference across renders.
+  const previewFontScale = useCallback((scale: number) => applyFontScale(scale), [])
+  const previewTheme = useCallback((next: ThemeMode) => applyTheme(next), [])
+  const previewLanguage = useCallback((next: Language) => applyLanguage(next), [])
 
   // Persist to Firebase, then commit as the applied values. Throwing surfaces
   // the error to the dialog; the live preview already reflects the attempt.
-  const saveSettings = async (next: SettingsDraft) => {
-    if (!ownerId) return
-    const scale = clampFontScale(next.fontScale)
-    await persistSettings(ownerId, {
-      fontScale: scale,
-      theme: next.theme,
-      language: next.language,
-      defaultDeliveryMethod: next.defaultDeliveryMethod,
-      defaultPaymentMethod: next.defaultPaymentMethod,
-      defaultCurrency: next.defaultCurrency,
-    })
-    setLoaded({
-      ownerId,
-      scale,
-      theme: next.theme,
-      language: next.language,
-      defaultDeliveryMethod: next.defaultDeliveryMethod,
-      defaultPaymentMethod: next.defaultPaymentMethod,
-      defaultCurrency: next.defaultCurrency,
-    })
-  }
-
-  return (
-    <SettingsContext.Provider
-      value={{
-        fontScale,
-        theme,
-        language,
-        defaultDeliveryMethod,
-        defaultPaymentMethod,
-        defaultCurrency,
-        previewFontScale,
-        previewTheme,
-        previewLanguage,
-        saveSettings,
-      }}
-    >
-      {children}
-    </SettingsContext.Provider>
+  // Keyed on ownerId so it only re-creates when the signed-in user changes.
+  const saveSettings = useCallback(
+    async (next: SettingsDraft) => {
+      if (!ownerId) return
+      const scale = clampFontScale(next.fontScale)
+      await persistSettings(ownerId, {
+        fontScale: scale,
+        theme: next.theme,
+        language: next.language,
+        defaultDeliveryMethod: next.defaultDeliveryMethod,
+        defaultPaymentMethod: next.defaultPaymentMethod,
+        defaultCurrency: next.defaultCurrency,
+      })
+      setLoaded({
+        ownerId,
+        scale,
+        theme: next.theme,
+        language: next.language,
+        defaultDeliveryMethod: next.defaultDeliveryMethod,
+        defaultPaymentMethod: next.defaultPaymentMethod,
+        defaultCurrency: next.defaultCurrency,
+      })
+    },
+    [ownerId],
   )
+
+  // Memoised so the provider hands consumers the SAME object until a value it
+  // depends on actually changes. This provider wraps the whole app, and a fresh
+  // object every render would re-render every useSettings consumer regardless of
+  // which slice they read — the discipline the header-actions/columns memos follow.
+  const value = useMemo(
+    () => ({
+      fontScale,
+      theme,
+      language,
+      defaultDeliveryMethod,
+      defaultPaymentMethod,
+      defaultCurrency,
+      previewFontScale,
+      previewTheme,
+      previewLanguage,
+      saveSettings,
+    }),
+    [
+      fontScale,
+      theme,
+      language,
+      defaultDeliveryMethod,
+      defaultPaymentMethod,
+      defaultCurrency,
+      previewFontScale,
+      previewTheme,
+      previewLanguage,
+      saveSettings,
+    ],
+  )
+
+  return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>
 }
