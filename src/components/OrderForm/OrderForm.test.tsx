@@ -7,7 +7,7 @@ import { AuthContext } from '@/context/authContext'
 import { SettingsContext } from '@/context/settingsContext'
 import type { SettingsState } from '@/context/settingsContext'
 import type { Order } from '@/types/order'
-import type { Customer } from '@/types/customer'
+import { order as baseOrder, customer } from '@/test/factories'
 
 // The order form is exercised end-to-end through NewOrderPage/EditOrderPage (the
 // page wrappers own create-vs-edit persistence + navigation). These tests cover
@@ -54,30 +54,15 @@ import OrderForm from './OrderForm'
 
 const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
 
-const customer = (over: Partial<Customer> = {}): Customer => ({
-  id: 'c1',
-  ownerId: 'owner-1',
-  name: 'Анна',
-  createdAt: 0,
-  ...over,
-})
-
-const order = (over: Partial<Order> = {}): Order => ({
-  id: 'o1',
-  number: 1,
-  dateCreated: 1700000000000,
-  ownerId: 'owner-1',
-  customerId: 'c1',
-  address: 'ул. Пушкина, 1',
-  plants: [{ name: 'Кактус', quantity: 2, unitPriceMinor: 14990 }],
-  paymentMethod: 'cash',
-  deliveryMethod: 'post',
-  deliveryPriceMinor: 0,
-  currency: 'RUB',
-  paymentStatus: 'pending',
-  shipmentStatus: 'new',
-  ...over,
-})
+// Same observable defaults as before consolidation: this file's order fixture
+// used a real timestamp, a street address, and a Кактус×2 line.
+const order = (over: Partial<Order> = {}): Order =>
+  baseOrder({
+    dateCreated: 1700000000000,
+    address: 'ул. Пушкина, 1',
+    plants: [{ name: 'Кактус', quantity: 2, unitPriceMinor: 14990 }],
+    ...over,
+  })
 
 const settings = (): SettingsState => ({
   fontScale: 1,

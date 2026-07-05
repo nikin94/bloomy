@@ -8,6 +8,7 @@ import { AuthContext } from '@/context/authContext'
 import AppLayout from '@/components/AppLayout/AppLayout'
 import type { Order } from '@/types/order'
 import type { Customer } from '@/types/customer'
+import { order as baseOrder, customer as baseCustomer } from '@/test/factories'
 
 // Firebase-touching modules are mocked so the page never initializes the real
 // SDK. We test the filter behaviour (search + status) over an in-memory list.
@@ -28,30 +29,20 @@ import OrdersPage from './OrdersPage'
 
 const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
 
-const order = (over: Partial<Order> = {}): Order => ({
-  id: 'o1',
-  number: 1,
-  dateCreated: 1700000000000,
-  ownerId: 'owner-1',
-  customerId: 'c-anna',
-  address: 'ул. Пушкина, 1',
-  plants: [{ name: 'Роза', quantity: 1, unitPriceMinor: 1000 }],
-  paymentMethod: 'cash',
-  deliveryMethod: 'post',
-  deliveryPriceMinor: 0,
-  currency: 'RUB',
-  paymentStatus: 'pending',
-  shipmentStatus: 'new',
-  ...over,
-})
+// Same observable defaults as before consolidation: this page pairs an order
+// with a `c-anna` customer (so the list resolves the customer name), a real
+// timestamp, a street address, and a Роза×1 @10₽ line.
+const order = (over: Partial<Order> = {}): Order =>
+  baseOrder({
+    dateCreated: 1700000000000,
+    customerId: 'c-anna',
+    address: 'ул. Пушкина, 1',
+    plants: [{ name: 'Роза', quantity: 1, unitPriceMinor: 1000 }],
+    ...over,
+  })
 
-const customer = (over: Partial<Customer> = {}): Customer => ({
-  id: 'c-anna',
-  ownerId: 'owner-1',
-  name: 'Анна',
-  createdAt: 0,
-  ...over,
-})
+const customer = (over: Partial<Customer> = {}): Customer =>
+  baseCustomer({ id: 'c-anna', ...over })
 
 // The header now lives in AppLayout (above the page in the route tree), and the
 // page publishes its search + filter controls into it via the header-actions

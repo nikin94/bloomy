@@ -6,7 +6,7 @@ import type { User } from 'firebase/auth'
 import { QueryWrapper } from '@/test/queryWrapper'
 import { AuthContext } from '@/context/authContext'
 import type { Order } from '@/types/order'
-import type { Customer } from '@/types/customer'
+import { order as baseOrder, customer } from '@/test/factories'
 
 // Firebase-touching modules are mocked so the page never initializes the real
 // SDK. We test the page render and the inline status save flow, not Firestore.
@@ -46,30 +46,17 @@ import OrderDetailPage from './OrderDetailPage'
 
 const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
 
-const order = (over: Partial<Order> = {}): Order => ({
-  id: 'o1',
-  number: 5,
-  dateCreated: 1000,
-  ownerId: 'owner-1',
-  customerId: 'c1',
-  address: 'Main St 1',
-  plants: [{ name: 'Роза', quantity: 2, unitPriceMinor: 14990 }],
-  paymentMethod: 'cash',
-  deliveryMethod: 'post',
-  deliveryPriceMinor: 30000,
-  currency: 'RUB',
-  paymentStatus: 'pending',
-  shipmentStatus: 'new',
-  ...over,
-})
-
-const customer = (over: Partial<Customer> = {}): Customer => ({
-  id: 'c1',
-  ownerId: 'owner-1',
-  name: 'Анна',
-  createdAt: 0,
-  ...over,
-})
+// Same observable defaults as before consolidation: order №5 with a delivery
+// fee and a Роза×2 line (the detail page shows the total built from these).
+const order = (over: Partial<Order> = {}): Order =>
+  baseOrder({
+    number: 5,
+    dateCreated: 1000,
+    address: 'Main St 1',
+    plants: [{ name: 'Роза', quantity: 2, unitPriceMinor: 14990 }],
+    deliveryPriceMinor: 30000,
+    ...over,
+  })
 
 const renderPage = () =>
   render(

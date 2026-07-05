@@ -6,7 +6,7 @@ import type { User } from 'firebase/auth'
 import { QueryWrapper } from '@/test/queryWrapper'
 import { AuthContext } from '@/context/authContext'
 import AppLayout from '@/components/AppLayout/AppLayout'
-import type { Customer } from '@/types/customer'
+import { customer } from '@/test/factories'
 
 // Firebase-touching modules are mocked so the page never initializes the real
 // SDK. We test the list rendering and the inline delete flow, not Firestore.
@@ -26,14 +26,6 @@ vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
 import CustomersPage from './CustomersPage'
 
 const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
-
-const customer = (over: Partial<Customer> = {}): Customer => ({
-  id: 'c1',
-  ownerId: 'owner-1',
-  name: 'Анна',
-  createdAt: 0,
-  ...over,
-})
 
 // The header now lives in AppLayout (above the page in the route tree), and the
 // page publishes its search control into it via the header-actions slot — so the

@@ -8,7 +8,7 @@ import { QueryWrapper } from '@/test/queryWrapper'
 import { AuthContext } from '@/context/authContext'
 import AppLayout from '@/components/AppLayout/AppLayout'
 import type { Order } from '@/types/order'
-import type { Customer } from '@/types/customer'
+import { order as baseOrder, customer } from '@/test/factories'
 
 // Regression guard for the search-close HANG (fixed by memoising DataTable's
 // controlled `sorting` reference). The trash/orders lists run DataTable in
@@ -28,13 +28,16 @@ vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
 import DeletedOrdersPage from './DeletedOrdersPage'
 
 const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
-const order = (i: number): Order => ({
-  id: 'o' + i, number: i, dateCreated: 1000 + i, ownerId: 'owner-1', customerId: 'c1',
-  address: 'Main St ' + i, plants: [{ name: 'Роза', quantity: 1, unitPriceMinor: 100000 }],
-  paymentMethod: 'cash', deliveryMethod: 'post', deliveryPriceMinor: 0, currency: 'RUB',
-  paymentStatus: 'pending', shipmentStatus: 'new', isDeleted: true,
-})
-const customer = (): Customer => ({ id: 'c1', ownerId: 'owner-1', name: 'Анна', createdAt: 0 })
+// A per-index trashed order (the perf test builds a big list of them). Same
+// observable shape as before consolidation.
+const order = (i: number): Order =>
+  baseOrder({
+    id: 'o' + i,
+    number: i,
+    dateCreated: 1000 + i,
+    address: 'Main St ' + i,
+    isDeleted: true,
+  })
 
 let commits = 0
 const renderPage = () => {
