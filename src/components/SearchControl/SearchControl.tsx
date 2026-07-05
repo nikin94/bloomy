@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FIELD_BASE, FIELD_NORMAL, FOCUS_RING, FOCUS_RING_INSET } from '@/styles/fieldStyles'
+import { cn } from '@/lib/cn'
 import { useSidebarCollapse } from '@/context/sidebarCollapseContext'
 import CloseIcon from '@/components/icons/CloseIcon'
 import SearchIcon from '@/components/icons/SearchIcon'
@@ -83,7 +84,7 @@ const SearchControl = ({
     // column) it reverts to `flex-none` so it keeps its natural height. `js-search-open`
     // is a marker the mobile bar keys off (via :has) to give the control the row and
     // hide the title while the field is open.
-    <div className={`flex min-w-0 flex-1 items-center md:flex-none ${expanded ? 'js-search-open' : ''}`}>
+    <div className={cn('flex min-w-0 flex-1 items-center md:flex-none', expanded && 'js-search-open')}>
       {/* Collapsed: just the loupe. Hidden the instant the field opens and not
           shown again until the collapse animation has finished, so it never
           appears mid-reflow. The input (with the X inside it) is the only thing
@@ -99,23 +100,24 @@ const SearchControl = ({
           aria-label={t('search')}
           title={t('search')}
           aria-expanded={false}
-          className={
-            'flex shrink-0 items-center justify-center rounded-md border border-border p-2 text-heading transition-colors hover:bg-primary-bg ' +
+          className={cn(
+            'flex shrink-0 items-center justify-center rounded-md border border-border p-2 text-heading transition-colors hover:bg-primary-bg',
             // In the rail the loupe is ALWAYS icon-left at `md:px-2.5` (matching the
             // nav rows, so the icon's centre sits at 32px in the collapsed strip and
             // never slides). Collapsing doesn't switch the layout — the label just
             // fades and `md:overflow-hidden` lets the narrowing rail swallow it.
-            'md:w-full md:justify-start md:gap-2 md:overflow-hidden md:border-0 md:px-2.5 md:py-2 md:text-sm md:font-medium ' +
-            FOCUS_RING
-          }
+            'md:w-full md:justify-start md:gap-2 md:overflow-hidden md:border-0 md:px-2.5 md:py-2 md:text-sm md:font-medium',
+            FOCUS_RING,
+          )}
         >
           <SearchIcon />
           {/* Always mounted so it can fade with the rail (not unmount instantly);
               `hidden md:inline` keeps it out of the mobile icon button entirely. */}
           <span
-            className={`hidden whitespace-nowrap transition-opacity duration-300 ease-out motion-reduce:transition-none md:inline ${
-              collapsed ? 'md:opacity-0' : 'md:opacity-100'
-            }`}
+            className={cn(
+              'hidden whitespace-nowrap transition-opacity duration-300 ease-out motion-reduce:transition-none md:inline',
+              collapsed ? 'md:opacity-0' : 'md:opacity-100',
+            )}
           >
             {t('search')}
           </span>
@@ -129,9 +131,10 @@ const SearchControl = ({
         // `max-w-md` on the mobile bar so it never gets absurdly wide on a large
         // phone/tablet, and uncapped on the desktop rail (`md:max-w-none md:w-full`)
         // where it fills the rail exactly.
-        className={`relative transition-[width] duration-200 ${
-          expanded ? 'w-full max-w-md md:w-full md:max-w-none' : 'w-0'
-        }`}
+        className={cn(
+          'relative transition-[width] duration-200',
+          expanded ? 'w-full max-w-md md:w-full md:max-w-none' : 'w-0',
+        )}
       >
         <input
           ref={inputRef}
@@ -151,9 +154,12 @@ const SearchControl = ({
           // matches the icon buttons (size-5 icon + p-2); without it the input's
           // default 145% line-height makes it a couple of pixels taller and
           // stretches the header when it opens.
-          className={`${FIELD_BASE} ${FIELD_NORMAL} w-full min-w-0 leading-5 transition-[padding,opacity] duration-200 ${
-            expanded ? 'py-2 pl-3 pr-9 opacity-100' : 'border-0 p-0 opacity-0'
-          }`}
+          className={cn(
+            FIELD_BASE,
+            FIELD_NORMAL,
+            'w-full min-w-0 leading-5 transition-[padding,opacity] duration-200',
+            expanded ? 'py-2 pl-3 pr-9 opacity-100' : 'border-0 p-0 opacity-0',
+          )}
         />
         {/* Inside the field at its right end: clears the query AND collapses.
             The px/py padding enlarges the tap target beyond the icon (hitslop)
@@ -166,7 +172,10 @@ const SearchControl = ({
             onClick={close}
             aria-label={t('searchClear')}
             title={t('close')}
-            className={`absolute inset-y-0 right-0 flex items-center px-1.5 text-text transition-colors hover:text-heading ${FOCUS_RING_INSET}`}
+            className={cn(
+              'absolute inset-y-0 right-0 flex items-center px-1.5 text-text transition-colors hover:text-heading',
+              FOCUS_RING_INSET,
+            )}
           >
             <CloseIcon />
           </button>

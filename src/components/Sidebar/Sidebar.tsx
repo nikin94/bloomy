@@ -10,6 +10,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery'
 import { isAdmin } from '@/lib/admin'
 import { settingsSectionsFor, isSettingsSection } from '@/components/Settings/sections'
 import { FOCUS_RING } from '@/styles/fieldStyles'
+import { cn } from '@/lib/cn'
 import RailLabel from './RailLabel'
 import OrdersIcon from '@/components/icons/OrdersIcon'
 import CustomersIcon from '@/components/icons/CustomersIcon'
@@ -90,32 +91,32 @@ const RAIL_ROW = 'gap-2 px-2.5 overflow-hidden'
 // A nav destination in the vertical rail/drawer: a row, filled when its route is
 // active. Collapsing fades its label out (see RailLabel), not the row itself.
 const navRowClass = (isActive: boolean) =>
-  [
+  cn(
     'flex items-center rounded-md py-2 text-sm font-medium no-underline transition-colors',
     RAIL_ROW,
     FOCUS_RING,
     isActive ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg',
-  ].join(' ')
+  )
 
 // The "New order" ACTION (it creates) gets the primary treatment so it reads as
 // the main action, not a fifth nav tab. Its plus stays put; the label fades on collapse.
-const createRowClass = [
+const createRowClass = cn(
   'flex items-center whitespace-nowrap rounded-md bg-primary py-2 text-sm font-medium text-white no-underline transition-opacity hover:opacity-90',
   RAIL_ROW,
   FOCUS_RING,
-].join(' ')
+)
 
 // The "Settings" control. It is no longer a link to /settings — it TOGGLES the
 // section nav (a flyout on desktop, an accordion in the mobile drawer); navigation
 // to /settings happens only when a section is picked. Styled like a nav destination,
 // filled when settings is active; its gear stays put and the label fades on collapse.
 const settingsToggleClass = (active: boolean) =>
-  [
+  cn(
     'flex items-center rounded-md py-2 text-sm font-medium transition-colors',
     RAIL_ROW,
     FOCUS_RING,
     active ? 'bg-primary text-white' : 'text-heading hover:bg-primary-bg',
-  ].join(' ')
+  )
 
 // A section row in the settings nav (flyout / drawer accordion). A LIGHTER register
 // than the main destinations — muted normal-weight text, the active section
@@ -123,11 +124,11 @@ const settingsToggleClass = (active: boolean) =>
 // subordinate to the main nav rather than a peer of it. Tight horizontal padding
 // (px-2) keeps the narrow flyout's content close to its edges.
 const sectionLinkClass = (selected: boolean) =>
-  [
+  cn(
     'flex items-center rounded-md px-2 py-2 text-sm no-underline transition-colors',
     FOCUS_RING,
     selected ? 'bg-primary-bg font-semibold text-primary' : 'font-normal text-text hover:text-heading',
-  ].join(' ')
+  )
 
 // App-wide navigation, as a LEFT sidebar (replaces the former top header). On wide
 // screens (md+) it is a fixed vertical rail beside the content; a chevron toggle on
@@ -337,9 +338,10 @@ const Sidebar = ({
         data-testid="sidebar-desktop"
         data-collapsed={collapsed}
         aria-label={t('menu')}
-        className={`relative hidden shrink-0 flex-col gap-2 border-r border-border p-3 transition-[width] duration-300 ease-out motion-reduce:transition-none md:flex ${
-          collapsed ? 'w-16' : 'w-48'
-        }`}
+        className={cn(
+          'relative hidden shrink-0 flex-col gap-2 border-r border-border p-3 transition-[width] duration-300 ease-out motion-reduce:transition-none md:flex',
+          collapsed ? 'w-16' : 'w-48',
+        )}
       >
         {/* Collapse toggle: a small chevron button straddling the rail's right edge
             at its vertical middle. Click collapses the rail to icons / expands it.
@@ -356,10 +358,16 @@ const Sidebar = ({
           // the border line show through under it. So keep the solid bg-bg on hover
           // and signal hover with a colour change instead: the border + icon turn
           // primary.
-          className={`absolute right-0 top-1/2 z-30 flex size-6 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full border border-border bg-bg text-text shadow-sm transition-colors hover:border-primary hover:text-primary ${FOCUS_RING}`}
+          className={cn(
+            'absolute right-0 top-1/2 z-30 flex size-6 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full border border-border bg-bg text-text shadow-sm transition-colors hover:border-primary hover:text-primary',
+            FOCUS_RING,
+          )}
         >
           <CollapseChevron
-            className={`size-4 transition-transform motion-reduce:transition-none ${collapsed ? 'rotate-180' : ''}`}
+            className={cn(
+              'size-4 transition-transform motion-reduce:transition-none',
+              collapsed && 'rotate-180',
+            )}
           />
         </button>
 
@@ -417,9 +425,10 @@ const Sidebar = ({
         data-testid="settings-flyout"
         aria-label={tSettings('tabsAria')}
         inert={!flyoutOpen}
-        className={`hidden shrink-0 overflow-hidden bg-surface transition-[width] duration-300 ease-out motion-reduce:transition-none md:block ${
-          flyoutOpen ? 'w-40 border-r border-border' : 'w-0'
-        }`}
+        className={cn(
+          'hidden shrink-0 overflow-hidden bg-surface transition-[width] duration-300 ease-out motion-reduce:transition-none md:block',
+          flyoutOpen ? 'w-40 border-r border-border' : 'w-0',
+        )}
       >
         <div className="flex w-40 flex-col gap-1 p-3">{sectionLinks()}</div>
       </nav>
@@ -495,9 +504,10 @@ const Sidebar = ({
         data-testid="mobile-drawer"
         aria-label={t('menu')}
         inert={!menuOpen}
-        className={`fixed inset-y-0 left-0 z-50 flex w-64 max-w-[80%] flex-col gap-2 border-r border-border bg-bg p-4 shadow-lg transition-transform duration-300 ease-out motion-reduce:transition-none md:hidden ${
-          menuOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 flex w-64 max-w-[80%] flex-col gap-2 border-r border-border bg-bg p-4 shadow-lg transition-transform duration-300 ease-out motion-reduce:transition-none md:hidden',
+          menuOpen ? 'translate-x-0' : '-translate-x-full',
+        )}
       >
         <NavLink to="/orders/new" className={createRowClass} onClick={closeMenu}>
           <PlusIcon className="size-5 shrink-0" />
@@ -522,7 +532,10 @@ const Sidebar = ({
             <GearIcon className="size-5 shrink-0" />
             {t('settings')}
             <ChevronIcon
-              className={`ml-auto size-4 transition-transform motion-reduce:transition-none ${settingsExpanded ? '' : 'rotate-180'}`}
+              className={cn(
+                'ml-auto size-4 transition-transform motion-reduce:transition-none',
+                !settingsExpanded && 'rotate-180',
+              )}
             />
           </button>
           {/* The section list reveals with a smooth height animation (max-height,
@@ -532,9 +545,10 @@ const Sidebar = ({
           <div
             id="drawer-settings-sections"
             inert={!settingsExpanded}
-            className={`overflow-hidden transition-[max-height] duration-300 ease-out motion-reduce:transition-none ${
-              settingsExpanded ? 'max-h-96' : 'max-h-0'
-            }`}
+            className={cn(
+              'overflow-hidden transition-[max-height] duration-300 ease-out motion-reduce:transition-none',
+              settingsExpanded ? 'max-h-96' : 'max-h-0',
+            )}
           >
             <div className="flex flex-col gap-1 pl-4 pt-1">{sectionLinks(closeMenu)}</div>
           </div>

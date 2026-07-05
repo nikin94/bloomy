@@ -4,6 +4,7 @@ import type { Order } from '@/types/order'
 import type { OrderColumn } from '@/components/DataTable/orderColumns'
 import { TABLE_CELL_BASE, TABLE_CELL_NOWRAP, TABLE_CELL_WRAP } from '@/styles/tableStyles'
 import { FOCUS_RING_INSET } from '@/styles/fieldStyles'
+import { cn } from '@/lib/cn'
 import { activationProps } from './rowHelpers'
 
 // One order as a table row (desktop layout). Extracted from the map so the loop
@@ -20,9 +21,11 @@ const OrderTableRow = ({
   onActivate: (order: Order) => void
 }) => (
   <tr
-    className={`cursor-pointer transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg ${FOCUS_RING_INSET}${
-      highlighted ? ' row-highlight' : ''
-    }`}
+    className={cn(
+      'cursor-pointer transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg',
+      FOCUS_RING_INSET,
+      highlighted && 'row-highlight',
+    )}
     {...activationProps(row.original, onActivate)}
   >
     {row.getVisibleCells().map((cell) => {
@@ -33,7 +36,7 @@ const OrderTableRow = ({
       return (
         <td
           key={cell.id}
-          className={`${TABLE_CELL_BASE} ${fit} text-text${column?.width ? ` ${column.width}` : ''}`}
+          className={cn(TABLE_CELL_BASE, fit, 'text-text', column?.width)}
         >
           {flexRender(cell.column.columnDef.cell, cell.getContext())}
         </td>
