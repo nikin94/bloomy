@@ -5,8 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import DataTable from '@/components/DataTable/DataTable'
 import Spinner from '@/components/Spinner/Spinner'
 import Button from '@/components/Button/Button'
-import Modal from '@/components/Modal/Modal'
-import CustomerForm from '@/components/CustomerForm/CustomerForm'
+import CustomerEditModal from '@/components/CustomerEditModal/CustomerEditModal'
 import DetailRow from '@/components/DetailRow/DetailRow'
 import PencilIcon from '@/components/icons/PencilIcon'
 import { updateCustomer } from '@/firebase/customers'
@@ -21,7 +20,7 @@ import {
   CURRENCIES,
 } from '@/types/order'
 import { buildOrderColumns } from '@/components/DataTable/orderColumns'
-import { trimOptional } from '@/types/customer'
+import { applyCustomerEdits } from '@/types/customer'
 
 // How many "frequent plants" to surface in the summary.
 const TOP_PLANTS = 3
@@ -79,13 +78,7 @@ const CustomerPage = () => {
   const handleSave = async (edits: CustomerEdits) => {
     if (!customer) return
     updateCustomer(customer.id, edits)
-    customerCache.setCustomer(customer.id, (prev) => ({
-      ...(prev ?? customer),
-      name: edits.name.trim(),
-      phone: trimOptional(edits.phone),
-      address: trimOptional(edits.address),
-      note: trimOptional(edits.note),
-    }))
+    customerCache.setCustomer(customer.id, (prev) => applyCustomerEdits(prev ?? customer, edits))
     customerCache.invalidateLists()
     setEditing(false)
   }
@@ -228,21 +221,15 @@ const CustomerPage = () => {
         )}
       </div>
 
-      {/* Edit dialog — the shared CustomerForm, mounted only while editing so it
-          seeds fresh from the current customer each time. */}
+      {/* Edit dialog — the shared CustomerEditModal, mounted only while editing so
+          it seeds fresh from the current customer each time. */}
       {editing && customer && (
-        <Modal title={t('editTitle')} onClose={() => setEditing(false)}>
-          <CustomerForm
-            initial={{
-              name: customer.name,
-              phone: customer.phone,
-              address: customer.address,
-              note: customer.note,
-            }}
-            onCancel={() => setEditing(false)}
-            onSubmit={handleSave}
-          />
-        </Modal>
+        <CustomerEditModal
+          customer={customer}
+          title={t('editTitle')}
+          onClose={() => setEditing(false)}
+          onSubmit={handleSave}
+        />
       )}
     </>
   )

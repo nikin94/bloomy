@@ -5,13 +5,13 @@ import Spinner from '@/components/Spinner/Spinner'
 import Button from '@/components/Button/Button'
 import Modal from '@/components/Modal/Modal'
 import SearchControl from '@/components/SearchControl/SearchControl'
-import CustomerForm from '@/components/CustomerForm/CustomerForm'
+import CustomerEditModal from '@/components/CustomerEditModal/CustomerEditModal'
 import { softDeleteCustomer, updateCustomer } from '@/firebase/customers'
 import type { CustomerEdits } from '@/firebase/customers'
 import { useCustomers, useCustomerCache, EMPTY_CUSTOMERS } from '@/queries/customers'
 import { useAuth } from '@/context/authContext'
 import { useHeaderActions } from '@/context/headerActionsContext'
-import { filterCustomers, trimOptional } from '@/types/customer'
+import { filterCustomers, applyCustomerEdits } from '@/types/customer'
 import type { Customer } from '@/types/customer'
 import CustomerTableRow from './CustomerTableRow'
 import CustomerCard from './CustomerCard'
@@ -57,17 +57,7 @@ const CustomersPage = () => {
   const handleSave = async (id: string, edits: CustomerEdits) => {
     updateCustomer(id, edits)
     customerCache.setActiveList(ownerId, (prev) =>
-      (prev ?? []).map((c) =>
-        c.id === id
-          ? {
-              ...c,
-              name: edits.name.trim(),
-              phone: trimOptional(edits.phone),
-              address: trimOptional(edits.address),
-              note: trimOptional(edits.note),
-            }
-          : c,
-      ),
+      (prev ?? []).map((c) => (c.id === id ? applyCustomerEdits(c, edits) : c)),
     )
     customerCache.invalidateDerived(ownerId)
   }
@@ -162,23 +152,20 @@ const CustomersPage = () => {
       {/* Edit dialog — one customer at a time. Mounted only while editing, so
           the form seeds fresh from the chosen customer each time. */}
       {editing && (
-        <Modal key={editing.id} title={t('editTitle')} onClose={() => setEditing(null)}>
-          <CustomerForm
-            initial={{
-              name: editing.name,
-              phone: editing.phone,
-              address: editing.address,
-              note: editing.note,
-            }}
-            onCancel={() => setEditing(null)}
-            onSubmit={async (edits) => {
-              // handleSave throws on failure, which CustomerForm catches and
-              // shows inline — so the dialog stays open until the save succeeds.
-              await handleSave(editing.id, edits)
-              setEditing(null)
-            }}
-          />
-        </Modal>
+        // `key` re-seeds the form when switching which customer is edited (the
+        // dialog instance persists between picks). onSubmit throws on failure,
+        // which CustomerForm catches and shows inline — so the dialog stays open
+        // until the save succeeds.
+        <CustomerEditModal
+          key={editing.id}
+          customer={editing}
+          title={t('editTitle')}
+          onClose={() => setEditing(null)}
+          onSubmit={async (edits) => {
+            await handleSave(editing.id, edits)
+            setEditing(null)
+          }}
+        />
       )}
 
       {/* Delete confirmation — a dialog (matching the order page), so a
