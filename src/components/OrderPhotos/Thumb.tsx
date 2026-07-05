@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next'
 import Loader from '@/components/Loader/Loader'
+import { FOCUS_RING } from '@/styles/fieldStyles'
 
 // A single resolved thumbnail. Resolves its download URL lazily (cached in the
 // photos layer) and shows a loader until then. The image opens the viewer; the
@@ -23,7 +24,7 @@ const Thumb = ({
     <button
       type="button"
       onClick={onOpen}
-      className="size-full overflow-hidden rounded-md border border-border bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      className={`size-full overflow-hidden rounded-md border border-border bg-primary-bg ${FOCUS_RING}`}
       aria-label={t('photos.open')}
     >
       {url ? (
@@ -50,7 +51,7 @@ const Thumb = ({
         onClick={onDelete}
         aria-label={t('photos.delete')}
         title={t('photos.delete')}
-        className="absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full border border-border bg-bg text-text shadow-sm hover:text-danger focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className={`absolute -right-2 -top-2 flex size-6 items-center justify-center rounded-full border border-border bg-bg text-text shadow-sm hover:text-danger ${FOCUS_RING}`}
       >
         <span aria-hidden="true" className="text-sm leading-none">
           ✕

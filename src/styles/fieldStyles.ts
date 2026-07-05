@@ -16,3 +16,14 @@ export const FIELD_BASE =
 export const FIELD_NORMAL = 'border-border focus-visible:outline-primary'
 
 export const FIELD_INVALID = 'border-danger focus-visible:outline-danger'
+
+// Shared keyboard focus ring for interactive elements. Kept in one place so the
+// same primary-coloured ring is applied consistently everywhere.
+// FOCUS_RING uses offset-2 by default; FOCUS_RING_INSET pulls the ring inward
+// (offset-[-2px]) for elements whose outward ring would otherwise be clipped by
+// an overflow parent, e.g. table rows / cards.
+export const FOCUS_RING =
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+
+export const FOCUS_RING_INSET =
+  'focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary'

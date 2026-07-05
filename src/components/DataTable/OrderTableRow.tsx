@@ -3,6 +3,7 @@ import type { Row } from '@tanstack/react-table'
 import type { Order } from '@/types/order'
 import type { OrderColumn } from '@/components/DataTable/orderColumns'
 import { TABLE_CELL_BASE, TABLE_CELL_NOWRAP, TABLE_CELL_WRAP } from '@/styles/tableStyles'
+import { FOCUS_RING_INSET } from '@/styles/fieldStyles'
 import { activationProps } from './rowHelpers'
 
 // One order as a table row (desktop layout). Extracted from the map so the loop
@@ -19,7 +20,7 @@ const OrderTableRow = ({
   onActivate: (order: Order) => void
 }) => (
   <tr
-    className={`cursor-pointer transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary${
+    className={`cursor-pointer transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg ${FOCUS_RING_INSET}${
       highlighted ? ' row-highlight' : ''
     }`}
     {...activationProps(row.original, onActivate)}

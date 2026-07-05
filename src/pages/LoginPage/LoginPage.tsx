@@ -15,6 +15,7 @@ import Spinner from '@/components/Spinner/Spinner'
 import Button from '@/components/Button/Button'
 import Input from '@/components/Input/Input'
 import EyeIcon from '@/components/icons/EyeIcon'
+import { FOCUS_RING } from '@/styles/fieldStyles'
 
 // Which action the email form performs: sign in to an existing account, or
 // register a new one. A toggle below the form switches between the two.
@@ -237,7 +238,7 @@ const LoginPage = () => {
               onClick={() => setShowPassword((s) => !s)}
               aria-label={showPassword ? t('hidePassword') : t('showPassword')}
               aria-pressed={showPassword}
-              className="flex items-center rounded p-1 text-text hover:text-heading focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className={`flex items-center rounded p-1 text-text hover:text-heading ${FOCUS_RING}`}
             >
               <EyeIcon crossed={showPassword} />
             </button>
@@ -266,7 +267,7 @@ const LoginPage = () => {
       <button
         type="button"
         onClick={toggleMode}
-        className="text-sm text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className={`text-sm text-primary underline-offset-2 hover:underline ${FOCUS_RING}`}
       >
         {mode === 'register' ? t('toSignIn') : t('toRegister')}
       </button>

@@ -8,6 +8,7 @@ import Modal from '@/components/Modal/Modal'
 import CameraIcon from '@/components/icons/CameraIcon'
 import PhotoViewer from './PhotoViewer'
 import Thumb from './Thumb'
+import { FOCUS_RING } from '@/styles/fieldStyles'
 
 // Photo gallery for an order: a horizontal strip of thumbnails plus an "add"
 // tile, and a full-screen swiper to view them. Lives on the order detail page,
@@ -151,7 +152,7 @@ const OrderPhotos = ({
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
             aria-label={t('photos.add')}
-            className="flex size-20 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-text hover:bg-primary-bg disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className={`flex size-20 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-text hover:bg-primary-bg disabled:opacity-50 ${FOCUS_RING}`}
           >
             {uploading ? <Loader size="md" /> : <CameraIcon />}
           </button>

@@ -8,7 +8,7 @@ import Modal from '@/components/Modal/Modal'
 import FilterIcon from '@/components/icons/FilterIcon'
 import { useSettings } from '@/context/settingsContext'
 import { useSidebarCollapse } from '@/context/sidebarCollapseContext'
-import { FIELD_BASE, FIELD_NORMAL } from '@/styles/fieldStyles'
+import { FIELD_BASE, FIELD_NORMAL, FOCUS_RING } from '@/styles/fieldStyles'
 import { formatMoney, parseDateInput, toDateInputValue } from '@/utils/format'
 import {
   getTotalMinor,
@@ -127,7 +127,7 @@ const OrderFilterControl = ({
           // slides). Collapsing doesn't switch the layout — the label just fades and
           // `md:overflow-hidden` lets the narrowing rail swallow it.
           'md:w-full md:justify-start md:gap-2 md:overflow-hidden md:border-0 md:px-2.5 md:py-2 md:text-sm md:font-medium',
-          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+          FOCUS_RING,
           modalFilterActive
             ? collapsed
               ? 'border-primary bg-primary text-white'

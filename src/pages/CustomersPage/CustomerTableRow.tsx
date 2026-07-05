@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { Customer } from '@/types/customer'
 import { TABLE_CELL_BASE, TABLE_CELL_NOWRAP, TABLE_CELL_WRAP } from '@/styles/tableStyles'
+import { FOCUS_RING_INSET } from '@/styles/fieldStyles'
 import RowActions from './RowActions'
 
 // One customer as a desktop table row, mirroring the orders table look. The whole
@@ -32,7 +33,7 @@ const CustomerTableRow = ({
         onOpen(customer)
       }
     }}
-    className="cursor-pointer transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
+    className={`cursor-pointer transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg ${FOCUS_RING_INSET}`}
   >
     {/* Name / address / note WRAP so a narrow desktop reflows instead of
         scrolling sideways; the short phone column stays one line. See tableStyles. */}

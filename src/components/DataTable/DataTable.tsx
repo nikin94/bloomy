@@ -11,6 +11,7 @@ import type { ColumnDef, OnChangeFn, SortingState } from '@tanstack/react-table'
 import type { Order } from '@/types/order'
 import type { OrderColumn, OrderSort } from '@/components/DataTable/orderColumns'
 import SortChevron from '@/components/icons/SortChevron'
+import { FOCUS_RING_INSET } from '@/styles/fieldStyles'
 import { cellValue } from './rowHelpers'
 import OrderTableRow from './OrderTableRow'
 import OrderCard from './OrderCard'
@@ -193,7 +194,7 @@ const DataTable = ({
                       <button
                         type="button"
                         onClick={header.column.getToggleSortingHandler()}
-                        className="-mx-4 -my-3 flex w-full items-center gap-1 px-4 py-3 text-left font-semibold text-heading transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
+                        className={`-mx-4 -my-3 flex w-full items-center gap-1 px-4 py-3 text-left font-semibold text-heading transition-colors hover:text-primary ${FOCUS_RING_INSET}`}
                       >
                         {label}
                         <span aria-hidden="true" className="inline-flex size-3 shrink-0 items-center justify-center">
