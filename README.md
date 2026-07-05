@@ -1,17 +1,29 @@
 # Bloomy
 
-A single-page web app for managing orders of potted plants and flowers. Sign in
+A single-page web app for running a small potted-plant and flower shop. Sign in
 with Google, keep an address book of customers, and create orders with an
 itemized plant list, delivery method, and live order totals. The orders list is
-searchable by number or customer and filterable by payment/shipment status.
+searchable by number or customer and filterable by payment/shipment status,
+price range and date. Orders carry photos, a soft-delete trash, and a statistics
+screen derives business metrics (revenue per currency, status breakdown, orders
+per month) entirely in memory.
+
+It is an installable **PWA** that boots and runs **fully offline** (Firestore's
+offline cache plus a hand-rolled service worker), ships in **Russian and English**,
+and has a **dark/light** theme. Dark is the default.
 
 ## Tech stack
 
 - **React 19** + **TypeScript** + **Vite** (with the React Compiler enabled)
 - **Tailwind CSS v4** for styling
 - **React Router v7** for routing
-- **Firebase** — Firestore (data) and Authentication (Google sign-in)
+- **Firebase** — Firestore (data), Authentication (Google + email sign-in) and
+  Cloud Storage (order photos)
+- **TanStack Query** (server-state cache) and **TanStack Table** (the orders grid)
 - **Zod** for runtime validation of stored documents
+- **i18next** / react-i18next for localization (Russian + English)
+- **Sentry** for error monitoring (opt-in)
+- **Vitest** + React Testing Library for tests
 - **Yarn 4** (Berry) as the package manager
 
 ## Getting started
@@ -120,17 +132,23 @@ values and the Firebase service account are provided as repository secrets.
 
 ```
 src/
-  components/   Reusable UI (AppHeader, Button, Input, Textarea, Select, DataTable, Modal, OrderForm, CustomerForm, SettingsModal, UpdatePrompt, Spinner, ProtectedRoute)
-  context/      Auth + settings contexts and providers
-  firebase/     Firebase integration: setup and data access (client, auth, orders, customers, settings)
-  utils/        Pure helpers, no Firebase (format — money/date formatting, rubles parsing)
-  pages/        Route screens (Login, Orders, OrderDetail, NewOrder, EditOrder, DeletedOrders, Customers)
-  styles/       Shared style constants (e.g. fieldStyles — form-control class strings)
-  types/        Zod schemas and inferred types (order, customer, settings)
-  theme.css     Design tokens (colours, typography, light/dark variants)
-  index.css     Tailwind import, base styling, layout
-  App.tsx       Routes
-  main.tsx      App entry point
+  components/     Reusable UI (AppLayout, Sidebar, Button, Input, Textarea, Select, DataTable, Modal, ConfirmModal, OrderForm, CustomerForm, CustomerEditModal, OrderPhotos, Autocomplete, RangeSlider, SearchControl, OrderFilterControl, Settings, UpdatePrompt, Spinner, ProtectedRoute)
+  pages/          Route screens (Login, Orders, OrderDetail, NewOrder, EditOrder, DeletedOrders, Customers, Customer, Stats, Settings)
+  context/        Auth + settings contexts and providers, plus header-actions/sidebar contexts
+  queries/        TanStack Query hooks + cache writers (orders, customers, keys, queryClient)
+  firebase/       Firebase integration: setup and data access (client, auth, orders, customers, settings, photos)
+  i18n/           i18next config and locale bundles (ru, en)
+  lib/            Small helpers/hooks (cn, useOwnerId, useNow, useMediaQuery, orderLabels, admin, service-worker registration)
+  observability/  Sentry setup and error reporting
+  utils/          Pure helpers, no Firebase (format — money/date formatting, rubles parsing)
+  styles/         Shared style constants (fieldStyles, tableStyles — form/table class strings)
+  types/          Zod schemas and inferred types (order, customer, settings, stats)
+  test/           Test setup, shared fixtures/factories, rules & emulator harnesses
+  routes.tsx      Route tree
+  theme.css       Design tokens (colours, typography, light/dark variants)
+  index.css       Tailwind import, base styling, layout
+  App.tsx         App shell (providers)
+  main.tsx        App entry point
 ```
 
 ## Theming
