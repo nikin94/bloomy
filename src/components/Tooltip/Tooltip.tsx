@@ -14,6 +14,11 @@ import { FOCUS_RING } from '@/styles/fieldStyles'
 // `label` is the hint text; `children` is the visible trigger it describes. The
 // bubble sits below the trigger (so it can't be clipped by the header above) and
 // is `pointer-events-none` so it never intercepts a click on what's underneath.
+//
+// `className` is merged onto the trigger `<span>` via `cn(...)`, so a caller can
+// override the base layout deterministically (e.g. passing `inline-block` wins
+// over the base `inline-flex` through tailwind-merge, not CSS source-order —
+// see `cn.ts`).
 const Tooltip = ({
   label,
   children,
