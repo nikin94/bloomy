@@ -5,6 +5,7 @@ import RangeSlider from '@/components/RangeSlider/RangeSlider'
 import Button from '@/components/Button/Button'
 import Select from '@/components/Select/Select'
 import Modal from '@/components/Modal/Modal'
+import SelectOptions from '@/components/SelectOptions/SelectOptions'
 import FilterIcon from '@/components/icons/FilterIcon'
 import { useSettings } from '@/context/settingsContext'
 import { useSidebarCollapse } from '@/context/sidebarCollapseContext'
@@ -198,11 +199,7 @@ const OrderFilterControl = ({
               }
             >
               <option value="">{t('filters.all')}</option>
-              {paymentStatusOptions(tOrder).map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
+              <SelectOptions options={paymentStatusOptions(tOrder)} />
             </Select>
 
             <Select
@@ -213,11 +210,7 @@ const OrderFilterControl = ({
               }
             >
               <option value="">{t('filters.all')}</option>
-              {shipmentStatusOptions(tOrder).map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
+              <SelectOptions options={shipmentStatusOptions(tOrder)} />
             </Select>
 
             {/* Currency filter — each order keeps its own currency, so this
@@ -237,11 +230,7 @@ const OrderFilterControl = ({
               }
             >
               <option value="">{t('filters.all')}</option>
-              {currencyOptions(tOrder).map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
+              <SelectOptions options={currencyOptions(tOrder)} />
             </Select>
 
             {/* Creation-date range: two native date fields (from / to). `max`/`min`
