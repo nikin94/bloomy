@@ -11,7 +11,13 @@ export default defineConfig([
   // `functions/` is a SEPARATE Node package (Cloud Functions) with its own
   // tsconfig, deps and (Node, not browser) globals — it builds on its own
   // (functions/ `npm run build`, strict tsconfig), so the root toolchain skips it.
-  globalIgnores(['dist', 'functions']),
+  //
+  // `.claude/worktrees/` holds throwaway git worktrees the agent tooling creates
+  // INSIDE the repo root. Linting those checkout copies makes typescript-eslint
+  // discover two tsconfig roots (this repo + the nested worktree) and fail with
+  // "multiple candidate TSConfigRootDirs" on every file, so exclude them — they're
+  // untracked and CI's clean checkout never sees them.
+  globalIgnores(['dist', 'functions', '.claude/worktrees']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

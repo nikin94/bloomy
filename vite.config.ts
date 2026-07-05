@@ -130,6 +130,14 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     // Emulator-backed tests need a running Firestore emulator, so they are run
     // separately (`yarn test:emulator`, `yarn test:rules`), not in the default run.
-    exclude: [...configDefaults.exclude, '**/*.emulator.test.ts', '**/*.rules.test.ts'],
+    // `.claude/worktrees/` holds throwaway git worktrees (agent tooling) inside the
+    // repo; without excluding them `vitest run` globs their duplicated *.test copies
+    // and runs the whole suite twice. CI's clean checkout never has them.
+    exclude: [
+      ...configDefaults.exclude,
+      '**/*.emulator.test.ts',
+      '**/*.rules.test.ts',
+      '**/.claude/worktrees/**',
+    ],
   },
 })
