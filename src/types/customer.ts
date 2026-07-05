@@ -60,3 +60,22 @@ export const buildCustomerNameResolver = (customers: Customer[]): ((id: string) 
 // concern: clearing the STORED field vs the in-memory value.)
 export const trimOptional = (value: string | undefined): string | undefined =>
   value && value.trim() !== '' ? value.trim() : undefined
+
+// Apply a set of edited fields onto a base customer for the OPTIMISTIC UI mirror,
+// producing the customer as it will look after the save: the name trimmed, and each
+// optional field trimmed-or-cleared (see trimOptional). All the base's other fields
+// (id, ownerId, createdAt, …) carry through untouched. Shared by the three edit
+// handlers (customers list / customer page / order detail), which each fed the same
+// { name: trim, phone/address/note: trimOptional } literal into their cache writer.
+// The `edits` shape is structural (matches CustomerEdits) so this stays free of a
+// firebase import — the mapper is a pure domain concern.
+export const applyCustomerEdits = (
+  base: Customer,
+  edits: { name: string; phone?: string; address?: string; note?: string },
+): Customer => ({
+  ...base,
+  name: edits.name.trim(),
+  phone: trimOptional(edits.phone),
+  address: trimOptional(edits.address),
+  note: trimOptional(edits.note),
+})

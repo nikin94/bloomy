@@ -4,6 +4,7 @@ import {
   filterCustomers,
   buildCustomerNameResolver,
   trimOptional,
+  applyCustomerEdits,
 } from './customer'
 import type { Customer } from './customer'
 
@@ -114,5 +115,48 @@ describe('trimOptional', () => {
     expect(trimOptional('')).toBeUndefined()
     expect(trimOptional('   ')).toBeUndefined()
     expect(trimOptional(undefined)).toBeUndefined()
+  })
+})
+
+describe('applyCustomerEdits', () => {
+  const base: Customer = {
+    id: 'c1',
+    ownerId: 'owner-1',
+    name: 'Анна',
+    phone: '+7 900',
+    address: 'ул. Пушкина, 1',
+    note: 'любит кактусы',
+    createdAt: 123,
+  }
+
+  it('trims the name and applies the edited optional fields', () => {
+    expect(
+      applyCustomerEdits(base, {
+        name: '  Борис  ',
+        phone: ' +7 111 ',
+        address: 'ул. Лесная, 8',
+        note: 'без заметок',
+      }),
+    ).toEqual({
+      ...base,
+      name: 'Борис',
+      phone: '+7 111',
+      address: 'ул. Лесная, 8',
+      note: 'без заметок',
+    })
+  })
+
+  it('clears a blank optional field to undefined (trimOptional)', () => {
+    const result = applyCustomerEdits(base, { name: 'Анна', phone: '   ', address: '', note: undefined })
+    expect(result.phone).toBeUndefined()
+    expect(result.address).toBeUndefined()
+    expect(result.note).toBeUndefined()
+  })
+
+  it("preserves the base's non-editable fields (id, ownerId, createdAt)", () => {
+    const result = applyCustomerEdits(base, { name: 'Борис' })
+    expect(result.id).toBe('c1')
+    expect(result.ownerId).toBe('owner-1')
+    expect(result.createdAt).toBe(123)
   })
 })

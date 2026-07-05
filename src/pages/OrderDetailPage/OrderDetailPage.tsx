@@ -26,13 +26,13 @@ import {
   paymentStatusOptions,
   shipmentStatusOptions,
 } from '@/lib/orderLabels'
-import { trimOptional } from '@/types/customer'
+import { applyCustomerEdits } from '@/types/customer'
 import { asEnum } from '@/utils/asEnum'
 import { useAuth } from '@/context/authContext'
 import Spinner from '@/components/Spinner/Spinner'
 import Button from '@/components/Button/Button'
 import Modal from '@/components/Modal/Modal'
-import CustomerForm from '@/components/CustomerForm/CustomerForm'
+import CustomerEditModal from '@/components/CustomerEditModal/CustomerEditModal'
 import OrderPhotos from '@/components/OrderPhotos/OrderPhotos'
 import DetailRow from '@/components/DetailRow/DetailRow'
 import PencilIcon from '@/components/icons/PencilIcon'
@@ -117,13 +117,7 @@ const OrderDetailPage = () => {
     // Optimistically update the single-customer cache (the page's "Customer"/"Phone"
     // rows), then invalidate the list caches so the address book + orders name
     // resolution re-read it.
-    customerCache.setCustomer(customer.id, (prev) => ({
-      ...(prev ?? customer),
-      name: edits.name.trim(),
-      phone: trimOptional(edits.phone),
-      address: trimOptional(edits.address),
-      note: trimOptional(edits.note),
-    }))
+    customerCache.setCustomer(customer.id, (prev) => applyCustomerEdits(prev ?? customer, edits))
     customerCache.invalidateLists()
     setEditingCustomer(false)
   }
@@ -391,18 +385,12 @@ const OrderDetailPage = () => {
       )}
 
       {editingCustomer && customer && (
-        <Modal title={t('detail.editCustomerTitle')} onClose={() => setEditingCustomer(false)}>
-          <CustomerForm
-            initial={{
-              name: customer.name,
-              phone: customer.phone,
-              address: customer.address,
-              note: customer.note,
-            }}
-            onCancel={() => setEditingCustomer(false)}
-            onSubmit={handleSaveCustomer}
-          />
-        </Modal>
+        <CustomerEditModal
+          customer={customer}
+          title={t('detail.editCustomerTitle')}
+          onClose={() => setEditingCustomer(false)}
+          onSubmit={handleSaveCustomer}
+        />
       )}
 
       {confirmingDelete && order && (
