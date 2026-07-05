@@ -11,7 +11,7 @@ import { getStorage } from 'firebase/storage'
 
 // Config is read from Vite environment variables (.env, see .env.example).
 // This keeps keys out of the repository and lets us separate dev/prod projects.
-const firebaseConfig = {
+const env = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
@@ -19,6 +19,27 @@ const firebaseConfig = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
+
+// The Vitest suite doesn't set the VITE_FIREBASE_* vars — yet initializeApp +
+// getAuth throw on an empty apiKey, so importing this module (directly or through
+// the app tree) would crash every suite on a fresh clone unless a placeholder
+// .env is added by hand. Under `MODE === 'test'` we fill each MISSING field with
+// an inert placeholder so the SDK initialises. Fields are filled per-key (not the
+// whole object) so a value the harness DOES inject is honoured — the emulator
+// config sets VITE_FIREBASE_PROJECT_ID='demo-bloomy', which must win. Every unit
+// test mocks the firebase/* layer, so these placeholders never reach a backend;
+// dev/prod (MODE !== 'test') read the real env verbatim, unchanged.
+const firebaseConfig =
+  import.meta.env.MODE === 'test'
+    ? {
+        apiKey: env.apiKey ?? 'test-api-key',
+        authDomain: env.authDomain ?? 'demo-bloomy.firebaseapp.com',
+        projectId: env.projectId ?? 'demo-bloomy',
+        storageBucket: env.storageBucket ?? 'demo-bloomy.appspot.com',
+        messagingSenderId: env.messagingSenderId ?? '0',
+        appId: env.appId ?? 'test-app-id',
+      }
+    : env
 
 const app = initializeApp(firebaseConfig)
 
