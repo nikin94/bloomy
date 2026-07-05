@@ -1,36 +1,37 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchCustomers, fetchCustomer } from '@/firebase/customers'
 import type { Customer } from '@/types/customer'
 import { queryKeys } from './keys'
 
-// Shared empty array for the `data ?? EMPTY_CUSTOMERS` loading fallback — a stable
-// reference so a page that feeds `customers` into a memo (getCustomerName →
-// columns → header-actions) doesn't loop on a fresh `[]` each render. See
-// EMPTY_ORDERS for the full rationale.
-export const EMPTY_CUSTOMERS: Customer[] = []
-
-// Customer reads, cached per owner. `includeDeleted` distinguishes the two callers:
-// the orders list needs deleted customers too (to resolve a removed customer's name
-// instead of "—"); the address book wants active ones only.
-export const useCustomers = (
-  ownerId: string | undefined,
+// Customer reads, cached per owner. The QueryClient's cache doubles as the session
+// cache — navigating away and back reuses the already-parsed array.
+//
+// The customer-LIST read SUSPENDS: pages gate on the route-level <Suspense>/error
+// boundary (see AppLayout) instead of their own loading/error locals. No `enabled`,
+// so the owner must be resolved (useRequiredOwnerId, guaranteed under
+// ProtectedRoute); `data` is therefore always defined (no empty-array fallback) and
+// its reference is stable across renders (same identity guarantee as useQuery),
+// keeping header-actions memos stable. `includeDeleted` distinguishes the two
+// callers: the orders list needs deleted customers too (to resolve a removed
+// customer's name instead of "—"); the address book wants active ones only.
+export const useCustomersSuspense = (
+  ownerId: string,
   options?: { includeDeleted?: boolean },
 ) => {
   const includeDeleted = options?.includeDeleted ?? false
-  return useQuery({
+  return useSuspenseQuery({
     queryKey: queryKeys.customers(ownerId, includeDeleted),
-    // Preserve the original call shape: the common active-list path passes just the
-    // ownerId (fetchCustomers defaults includeDeleted to false).
     queryFn: () =>
       includeDeleted
-        ? fetchCustomers(ownerId as string, { includeDeleted: true })
-        : fetchCustomers(ownerId as string),
-    enabled: ownerId !== undefined,
+        ? fetchCustomers(ownerId, { includeDeleted: true })
+        : fetchCustomers(ownerId),
   })
 }
 
 // A single customer by id (e.g. the live name on the order page). Kept null when
-// the customer was deleted — a dangling customerId must not crash the page.
+// the customer was deleted — a dangling customerId must not crash the page. This
+// stays a plain useQuery (NOT suspense): `null` is a legitimate non-loading state
+// (the "customer not found" branch), which a suspense query cannot express.
 export const useCustomer = (id: string | undefined) =>
   useQuery({
     queryKey: queryKeys.customer(id),

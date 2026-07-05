@@ -140,7 +140,7 @@ describe('DeletedOrdersPage', () => {
     await screen.findByTestId('orders-table')
 
     // The search box is collapsed behind a loupe; click it to reveal the input.
-    await user.click(header().getByRole('button', { name: 'Поиск' }))
+    await user.click(await header().findByRole('button', { name: 'Поиск' }))
     await user.type(header().getByRole('textbox', { name: 'Поиск в корзине' }), 'Борис')
 
     expect(table().getByText('Борис')).toBeInTheDocument()
@@ -160,7 +160,7 @@ describe('DeletedOrdersPage', () => {
     renderPage()
     await screen.findByTestId('orders-table')
 
-    await user.click(header().getByRole('button', { name: 'Фильтры' }))
+    await user.click(await header().findByRole('button', { name: 'Фильтры' }))
     await user.selectOptions(screen.getByRole('combobox', { name: 'Статус отправки' }), 'shipped')
     await user.click(screen.getByRole('button', { name: 'Готово' }))
 
@@ -175,7 +175,7 @@ describe('DeletedOrdersPage', () => {
     renderPage()
     await screen.findByTestId('orders-table')
 
-    await user.click(header().getByRole('button', { name: 'Поиск' }))
+    await user.click(await header().findByRole('button', { name: 'Поиск' }))
     await user.type(header().getByRole('textbox', { name: 'Поиск в корзине' }), 'нет такого')
 
     expect(screen.getByText('Ничего не найдено')).toBeInTheDocument()

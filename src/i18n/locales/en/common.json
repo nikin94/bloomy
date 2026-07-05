@@ -8,6 +8,8 @@
   "close": "Close",
   "loading": "Loading",
   "nothingFound": "Nothing found",
+  "loadError": "Couldn't load data",
+  "retry": "Retry",
   "search": "Search",
   "searchClear": "Clear and close search",
   "moreSuggestions": "Keep typing — {{count}} more",

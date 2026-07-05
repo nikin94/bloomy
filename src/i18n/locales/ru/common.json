@@ -8,6 +8,8 @@
   "close": "Закрыть",
   "loading": "Загрузка",
   "nothingFound": "Ничего не найдено",
+  "loadError": "Не удалось загрузить данные",
+  "retry": "Повторить",
   "search": "Поиск",
   "searchClear": "Очистить и закрыть поиск",
   "moreSuggestions": "Продолжите ввод — ещё {{count}}",

@@ -1,14 +1,13 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import Spinner from '@/components/Spinner/Spinner'
 import SearchControl from '@/components/SearchControl/SearchControl'
 import CustomerEditModal from '@/components/CustomerEditModal/CustomerEditModal'
 import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
 import { softDeleteCustomer, updateCustomer } from '@/firebase/customers'
 import type { CustomerEdits } from '@/firebase/customers'
-import { useCustomers, useCustomerCache, EMPTY_CUSTOMERS } from '@/queries/customers'
-import { useOwnerId } from '@/lib/useOwnerId'
+import { useCustomersSuspense, useCustomerCache } from '@/queries/customers'
+import { useRequiredOwnerId } from '@/lib/useOwnerId'
 import { useHeaderActions } from '@/context/headerActionsContext'
 import { filterCustomers, applyCustomerEdits } from '@/types/customer'
 import type { Customer } from '@/types/customer'
@@ -23,21 +22,18 @@ import CustomerCard from './CustomerCard'
 const CustomersPage = () => {
   const { t } = useTranslation(['customer', 'common'])
   const navigate = useNavigate()
-  const ownerId = useOwnerId()
-  // Active address book from the shared query cache. Sorted alphabetically (no
-  // natural order) from the cached, stable query array — an optimistic rename
+  const ownerId = useRequiredOwnerId()
+  // Active address book from the shared query cache — suspends to the route-level
+  // Spinner (AppLayout) until resolved and throws a load failure to the route error
+  // boundary there, so this page has no loading/error branch. Sorted alphabetically
+  // (no natural order) from the cached, stable query array — an optimistic rename
   // updates the cache and this re-sorts.
-  const customersQuery = useCustomers(ownerId)
+  const { data } = useCustomersSuspense(ownerId)
   const customerCache = useCustomerCache()
   const customers = useMemo(
-    () =>
-      [...(customersQuery.data ?? EMPTY_CUSTOMERS)].sort((a, b) =>
-        a.name.localeCompare(b.name, 'ru'),
-      ),
-    [customersQuery.data],
+    () => [...data].sort((a, b) => a.name.localeCompare(b.name, 'ru')),
+    [data],
   )
-  const loading = customersQuery.isLoading
-  const loadError = customersQuery.error
   // The customer currently being edited, or null. Holding it on the page (not
   // per row) means only ONE edit dialog is ever open at a time.
   const [editing, setEditing] = useState<Customer | null>(null)
@@ -94,57 +90,48 @@ const CustomersPage = () => {
 
   return (
     <>
-      {loading && <Spinner />}
-      {loadError && (
-        <p role="alert" className="px-6 py-8 text-danger">
-          {loadError.message || t('list.loadError')}
-        </p>
-      )}
-
-      {!loading && !loadError && (
-        <div className="min-h-0 flex-1 overflow-auto">
-          {visibleCustomers.length === 0 ? (
-            <p className="px-4 py-8 text-center text-text">
-              {searchActive ? t('common:nothingFound') : t('list.empty')}
-            </p>
-          ) : (
-            <>
-              {/* Desktop: a full-width table matching the orders/trash lists. */}
-              <table
-                data-testid="customers-table"
-                className="hidden w-full border-collapse text-[0.8333rem] lg:table"
-              >
-                <thead>
-                  <tr>
-                    {(['name', 'phone', 'address', 'note'] as const).map((col) => (
-                      <th
-                        key={col}
-                        className="sticky top-0 z-10 whitespace-nowrap border-b border-border bg-bg px-4 py-3 text-left font-semibold text-heading"
-                      >
-                        {t(`columns.${col}` as const)}
-                      </th>
-                    ))}
-                    {/* Actions column — header intentionally blank (icon buttons). */}
-                    <th className="sticky top-0 z-10 w-px border-b border-border bg-bg px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleCustomers.map((customer) => (
-                    <CustomerTableRow key={customer.id} customer={customer} {...rowProps} />
+      <div className="min-h-0 flex-1 overflow-auto">
+        {visibleCustomers.length === 0 ? (
+          <p className="px-4 py-8 text-center text-text">
+            {searchActive ? t('common:nothingFound') : t('list.empty')}
+          </p>
+        ) : (
+          <>
+            {/* Desktop: a full-width table matching the orders/trash lists. */}
+            <table
+              data-testid="customers-table"
+              className="hidden w-full border-collapse text-[0.8333rem] lg:table"
+            >
+              <thead>
+                <tr>
+                  {(['name', 'phone', 'address', 'note'] as const).map((col) => (
+                    <th
+                      key={col}
+                      className="sticky top-0 z-10 whitespace-nowrap border-b border-border bg-bg px-4 py-3 text-left font-semibold text-heading"
+                    >
+                      {t(`columns.${col}` as const)}
+                    </th>
                   ))}
-                </tbody>
-              </table>
-
-              {/* Mobile: one card per customer. */}
-              <div data-testid="customers-cards" className="flex flex-col gap-3 p-4 lg:hidden">
+                  {/* Actions column — header intentionally blank (icon buttons). */}
+                  <th className="sticky top-0 z-10 w-px border-b border-border bg-bg px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody>
                 {visibleCustomers.map((customer) => (
-                  <CustomerCard key={customer.id} customer={customer} {...rowProps} />
+                  <CustomerTableRow key={customer.id} customer={customer} {...rowProps} />
                 ))}
-              </div>
-            </>
-          )}
-        </div>
-      )}
+              </tbody>
+            </table>
+
+            {/* Mobile: one card per customer. */}
+            <div data-testid="customers-cards" className="flex flex-col gap-3 p-4 lg:hidden">
+              {visibleCustomers.map((customer) => (
+                <CustomerCard key={customer.id} customer={customer} {...rowProps} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Edit dialog — one customer at a time. Mounted only while editing, so
           the form seeds fresh from the chosen customer each time. */}

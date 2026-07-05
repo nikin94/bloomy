@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import Sidebar from '@/components/Sidebar/Sidebar'
+import Spinner from '@/components/Spinner/Spinner'
+import RouteErrorBoundary from '@/components/RouteErrorBoundary/RouteErrorBoundary'
 import { HeaderActionsContext } from '@/context/headerActionsContext'
 
 // App shell for every signed-in screen: the global navigation once, beside the
@@ -28,12 +30,24 @@ const AppLayout = () => {
   // marked `inert` so keyboard/screen-reader users can't reach what's visually
   // hidden behind the drawer (the backdrop only blocks pointer taps, not focus).
   const [drawerOpen, setDrawerOpen] = useState(false)
+  // Route path drives the content-area boundary's identity: a fresh key per route
+  // remounts the Suspense + error boundary on navigation, so a page-data error
+  // never sticks after the user has moved on (and each page suspends fresh).
+  const { pathname } = useLocation()
   return (
     <HeaderActionsContext.Provider value={setActions}>
       <div className="flex h-full flex-col md:flex-row">
         <Sidebar actions={actions} onDrawerOpenChange={setDrawerOpen} />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col" inert={drawerOpen}>
-          <Outlet />
+          {/* One content-area boundary + Suspense for every signed-in page: a
+              page's data load suspends to the Spinner here, and a failed load
+              shows the shared inline retry — the sidebar/header stay mounted
+              either way. Keyed on the path so navigation resets both. */}
+          <RouteErrorBoundary key={pathname}>
+            <Suspense fallback={<Spinner />}>
+              <Outlet />
+            </Suspense>
+          </RouteErrorBoundary>
         </div>
       </div>
     </HeaderActionsContext.Provider>

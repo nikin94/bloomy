@@ -83,7 +83,7 @@ describe('DeletedOrdersPage — search close does not storm the controlled table
     renderPage()
     await screen.findByTestId('orders-table')
 
-    await user.click(header().getByRole('button', { name: 'Поиск' }))
+    await user.click(await header().findByRole('button', { name: 'Поиск' }))
     const input = await header().findByRole('textbox', { name: 'Поиск в корзине' })
     await user.type(input, 'Анна')
 
