@@ -12,6 +12,7 @@ import { asEnum } from '@/utils/asEnum'
 import Button from '@/components/Button/Button'
 import Modal from '@/components/Modal/Modal'
 import Select from '@/components/Select/Select'
+import SelectOptions from '@/components/SelectOptions/SelectOptions'
 import AdminSeedSection from '@/components/Settings/AdminSeedSection'
 import { settingsSectionsFor, isSettingsSection } from '@/components/Settings/sections'
 import Group from '@/components/Settings/Group'
@@ -302,11 +303,7 @@ const SettingsPage = () => {
                       setDeliveryDraft(asEnum(DELIVERY_METHOD_VALUES, e.target.value, deliveryDraft))
                     }}
                   >
-                    {deliveryMethodOptions(tOrder).map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
+                    <SelectOptions options={deliveryMethodOptions(tOrder)} />
                   </Select>
                 </div>
               </Row>
@@ -320,11 +317,7 @@ const SettingsPage = () => {
                       setPaymentDraft(asEnum(PAYMENT_METHOD_VALUES, e.target.value, paymentDraft))
                     }}
                   >
-                    {paymentMethodOptions(tOrder).map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
+                    <SelectOptions options={paymentMethodOptions(tOrder)} />
                   </Select>
                 </div>
               </Row>
@@ -340,11 +333,7 @@ const SettingsPage = () => {
                       setCurrencyDraft(asEnum(CURRENCIES, e.target.value, currencyDraft))
                     }}
                   >
-                    {currencyOptions(tOrder).map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
+                    <SelectOptions options={currencyOptions(tOrder)} />
                   </Select>
                 </div>
               </Row>

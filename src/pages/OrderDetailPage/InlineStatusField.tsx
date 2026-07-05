@@ -1,4 +1,5 @@
 import Select from '@/components/Select/Select'
+import SelectOptions from '@/components/SelectOptions/SelectOptions'
 import DetailRow from '@/components/DetailRow/DetailRow'
 
 // A status row that's editable in place: same layout as DetailRow, but the value is
@@ -28,11 +29,7 @@ const InlineStatusField = ({
       ) : (
         <div className="w-full sm:max-w-[220px]">
           <Select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
-            {options.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
+            <SelectOptions options={options} />
           </Select>
         </div>
       )

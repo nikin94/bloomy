@@ -27,6 +27,7 @@ import Button from '@/components/Button/Button'
 import Input from '@/components/Input/Input'
 import Textarea from '@/components/Textarea/Textarea'
 import PendingPhotos from '@/components/OrderPhotos/PendingPhotos'
+import SelectOptions from '@/components/SelectOptions/SelectOptions'
 import PlantItemRow from './PlantItemRow'
 import CustomerPicker from './CustomerPicker'
 import { emptyItem, initialItems } from './items'
@@ -514,11 +515,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               value={deliveryMethod}
               onChange={(e) => setDeliveryMethod(asEnum(DELIVERY_METHOD_VALUES, e.target.value, deliveryMethod))}
             >
-              {deliveryMethodOptions(tOrder).map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
+              <SelectOptions options={deliveryMethodOptions(tOrder)} />
             </Select>
 
             <Input
@@ -536,11 +533,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               value={currency}
               onChange={(e) => setCurrency(asEnum(CURRENCIES, e.target.value, currency))}
             >
-              {currencyOptions(tOrder).map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
+              <SelectOptions options={currencyOptions(tOrder)} />
             </Select>
           </div>
 
@@ -550,11 +543,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(asEnum(PAYMENT_METHOD_VALUES, e.target.value, paymentMethod))}
             >
-              {paymentMethodOptions(tOrder).map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
+              <SelectOptions options={paymentMethodOptions(tOrder)} />
             </Select>
 
             <Select
@@ -562,11 +551,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               value={paymentStatus}
               onChange={(e) => setPaymentStatus(asEnum(PAYMENT_STATUS_VALUES, e.target.value, paymentStatus))}
             >
-              {paymentStatusOptions(tOrder).map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
+              <SelectOptions options={paymentStatusOptions(tOrder)} />
             </Select>
 
             <Select
@@ -574,11 +559,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               value={shipmentStatus}
               onChange={(e) => setShipmentStatus(asEnum(SHIPMENT_STATUS_VALUES, e.target.value, shipmentStatus))}
             >
-              {shipmentStatusOptions(tOrder).map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
+              <SelectOptions options={shipmentStatusOptions(tOrder)} />
             </Select>
           </div>
 
