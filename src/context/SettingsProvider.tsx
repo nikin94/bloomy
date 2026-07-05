@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { useAuth } from './authContext'
+import { useOwnerId } from '@/lib/useOwnerId'
 import { fetchSettings, saveSettings as persistSettings } from '@/firebase/settings'
 import {
   clampFontScale,
@@ -60,8 +60,7 @@ const applyLanguage = (language: Language) => {
 // preview/save controls the settings dialog uses. Sits under AuthProvider so it
 // can scope settings to the current uid.
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
-  const ownerId = user?.uid
+  const ownerId = useOwnerId()
   // The loaded values are tagged with the uid they belong to. Tagging (rather
   // than a bare value + a sign-out reset) means the active values derive to the
   // defaults the instant the uid changes — sign-out OR switching users — with no

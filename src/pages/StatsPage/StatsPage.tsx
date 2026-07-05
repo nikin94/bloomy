@@ -6,7 +6,8 @@ import Spinner from '@/components/Spinner/Spinner'
 import Select from '@/components/Select/Select'
 import { FIELD_BASE, FIELD_NORMAL, FOCUS_RING } from '@/styles/fieldStyles'
 import { useOrders, EMPTY_ORDERS } from '@/queries/orders'
-import { useAuth } from '@/context/authContext'
+import { useOwnerId } from '@/lib/useOwnerId'
+import { useNow } from '@/lib/useNow'
 import { formatMoney, toDateInputValue } from '@/utils/format'
 import { revenueByCurrencyMinor, CURRENCIES } from '@/types/order'
 import {
@@ -35,12 +36,10 @@ const MONTHS_WINDOW = 12
 const StatsPage = () => {
   const { t, i18n } = useTranslation(['stats', 'common'])
   const navigate = useNavigate()
-  // Guaranteed non-null under ProtectedRoute, but read defensively and gate on it.
-  const { user } = useAuth()
-  const ownerId = user?.uid
+  const ownerId = useOwnerId()
   // Capture one timestamp at mount: period boundaries and the month buckets must
   // be stable across renders, and a render-time Date.now() isn't pure.
-  const [now] = useState(() => Date.now())
+  const now = useNow()
   const [preset, setPreset] = useState<StatsPreset>('30days')
   // Custom-range bounds (yyyy-mm-dd, as <input type="date"> produces). Read only
   // while `preset === 'custom'`; an empty side leaves that bound open.

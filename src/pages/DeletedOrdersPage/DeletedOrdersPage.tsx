@@ -7,7 +7,8 @@ import SearchControl from '@/components/SearchControl/SearchControl'
 import OrderFilterControl from '@/components/OrderFilterControl/OrderFilterControl'
 import { useDeletedOrders, EMPTY_ORDERS } from '@/queries/orders'
 import { useCustomers, EMPTY_CUSTOMERS } from '@/queries/customers'
-import { useAuth } from '@/context/authContext'
+import { useOwnerId } from '@/lib/useOwnerId'
+import { useNow } from '@/lib/useNow'
 import { useHeaderActions } from '@/context/headerActionsContext'
 import {
   filterOrders,
@@ -32,9 +33,7 @@ const DeletedOrdersPage = () => {
   // Order-bound t for the column helpers (typed TFunction<'order'>).
   const { t: tOrder } = useTranslation('order')
   const navigate = useNavigate()
-  // Guaranteed non-null under ProtectedRoute, but read defensively and gate on it.
-  const { user } = useAuth()
-  const ownerId = user?.uid
+  const ownerId = useOwnerId()
   // Trash orders + customers (WITH deleted, so an order whose customer was also
   // soft-deleted still resolves the name instead of "—") come from the shared query
   // cache. Stable EMPTY_* fallbacks so the loading-phase identity doesn't loop the
@@ -52,7 +51,7 @@ const DeletedOrdersPage = () => {
   // control drive the same order (phones have no headers) — as on the active list.
   const [sort, setSort] = useState<OrderSort | null>(null)
   // "Now" for the purge countdown, captured once on mount (see purgeColumn below).
-  const [now] = useState(() => Date.now())
+  const now = useNow()
 
   // Memoised so their identity is stable across renders: `columns` now feeds the
   // header-actions node (its memo would loop setActions on a fresh array every

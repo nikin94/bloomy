@@ -28,7 +28,8 @@ import {
 } from '@/lib/orderLabels'
 import { applyCustomerEdits } from '@/types/customer'
 import { asEnum } from '@/utils/asEnum'
-import { useAuth } from '@/context/authContext'
+import { useOwnerId } from '@/lib/useOwnerId'
+import { useNow } from '@/lib/useNow'
 import Spinner from '@/components/Spinner/Spinner'
 import Button from '@/components/Button/Button'
 import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
@@ -46,8 +47,7 @@ const OrderDetailPage = () => {
   const { t: tOrder } = useTranslation('order')
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { user } = useAuth()
-  const ownerId = user?.uid
+  const ownerId = useOwnerId()
   // Order (incl. a trashed one, opened read-only) + its customer from the shared
   // query cache. `includeDeleted` so a stale trash link opens the deleted banner +
   // Restore instead of dead-ending. The customer query enables once the order
@@ -63,7 +63,7 @@ const OrderDetailPage = () => {
   const loading = orderQuery.isLoading || (order !== null && customerQuery.isLoading)
   const error = orderQuery.error ?? customerQuery.error
   // "Now" for the trash purge countdown, captured once on mount (see daysLeft).
-  const [mountNow] = useState(() => Date.now())
+  const mountNow = useNow()
   // Delete is confirmed in a modal (destructive, so not a one-click action).
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   // The customer's name lives on the customer record, not the order, so it's

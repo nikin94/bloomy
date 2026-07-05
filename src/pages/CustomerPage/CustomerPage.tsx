@@ -12,7 +12,7 @@ import { updateCustomer } from '@/firebase/customers'
 import type { CustomerEdits } from '@/firebase/customers'
 import { useCustomer, useCustomerCache } from '@/queries/customers'
 import { useOrders, EMPTY_ORDERS } from '@/queries/orders'
-import { useAuth } from '@/context/authContext'
+import { useOwnerId } from '@/lib/useOwnerId'
 import { formatDate, formatMoney } from '@/utils/format'
 import {
   revenueByCurrencyMinor,
@@ -44,9 +44,7 @@ const CustomerPage = () => {
   const { t: tOrder } = useTranslation('order')
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  // Guaranteed non-null under ProtectedRoute, but read defensively and gate on it.
-  const { user } = useAuth()
-  const ownerId = user?.uid
+  const ownerId = useOwnerId()
   // Customer + the owner's orders from the shared query cache. Defense-in-depth: a
   // foreign customer is treated as not found, mirroring fetchOrder's owner re-check
   // (owner-scoped rules remain the real boundary). The order list is filtered to

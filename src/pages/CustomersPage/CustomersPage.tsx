@@ -8,7 +8,7 @@ import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
 import { softDeleteCustomer, updateCustomer } from '@/firebase/customers'
 import type { CustomerEdits } from '@/firebase/customers'
 import { useCustomers, useCustomerCache, EMPTY_CUSTOMERS } from '@/queries/customers'
-import { useAuth } from '@/context/authContext'
+import { useOwnerId } from '@/lib/useOwnerId'
 import { useHeaderActions } from '@/context/headerActionsContext'
 import { filterCustomers, applyCustomerEdits } from '@/types/customer'
 import type { Customer } from '@/types/customer'
@@ -23,9 +23,7 @@ import CustomerCard from './CustomerCard'
 const CustomersPage = () => {
   const { t } = useTranslation(['customer', 'common'])
   const navigate = useNavigate()
-  // Guaranteed non-null under ProtectedRoute, but read defensively and gate on it.
-  const { user } = useAuth()
-  const ownerId = user?.uid
+  const ownerId = useOwnerId()
   // Active address book from the shared query cache. Sorted alphabetically (no
   // natural order) from the cached, stable query array — an optimistic rename
   // updates the cache and this re-sorts.

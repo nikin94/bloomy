@@ -5,7 +5,7 @@ import Spinner from '@/components/Spinner/Spinner'
 import { updateOrder } from '@/firebase/orders'
 import { useOrder, useOrderCache } from '@/queries/orders'
 import { useCustomerCache } from '@/queries/customers'
-import { useAuth } from '@/context/authContext'
+import { useOwnerId } from '@/lib/useOwnerId'
 import { formatOrderNumber } from '@/types/order'
 
 // Edit-order screen: loads the order, then hands it to the shared OrderForm
@@ -17,8 +17,7 @@ const EditOrderPage = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { t } = useTranslation('order')
-  const { user } = useAuth()
-  const ownerId = user?.uid
+  const ownerId = useOwnerId()
 
   // Prefill order from the shared query cache (active order — edit isn't offered on
   // a trashed one). The form reads `initialOrder` once, so it's mounted only once
