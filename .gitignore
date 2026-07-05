@@ -23,6 +23,11 @@ dist-ssr
 # Firebase deploy cache
 .firebase/
 
+# Throwaway git worktrees the agent tooling creates inside the repo root. Never
+# committed; they also break lint/test if globbed (see eslint.config.js's
+# globalIgnores and vite.config.ts's test.exclude).
+.claude/worktrees/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
