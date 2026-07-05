@@ -10,6 +10,7 @@ import FilterIcon from '@/components/icons/FilterIcon'
 import { useSettings } from '@/context/settingsContext'
 import { useSidebarCollapse } from '@/context/sidebarCollapseContext'
 import { FIELD_BASE, FIELD_NORMAL, FOCUS_RING } from '@/styles/fieldStyles'
+import { cn } from '@/lib/cn'
 import { formatMoney, parseDateInput, toDateInputValue } from '@/utils/format'
 import {
   getTotalMinor,
@@ -121,7 +122,7 @@ const OrderFilterControl = ({
         aria-label={t('filters.open')}
         title={t('filters.open')}
         aria-pressed={modalFilterActive}
-        className={[
+        className={cn(
           'flex shrink-0 items-center justify-center rounded-md border p-2 transition-colors',
           // In the rail the funnel is ALWAYS icon-left at `md:px-2.5` (matching the nav
           // rows, so the icon's centre sits at 32px in the collapsed strip and never
@@ -134,15 +135,16 @@ const OrderFilterControl = ({
               ? 'border-primary bg-primary text-white'
               : 'border-primary bg-primary text-white md:bg-transparent md:text-primary md:hover:bg-primary-bg'
             : 'border-border text-heading hover:bg-primary-bg',
-        ].join(' ')}
+        )}
       >
         <FilterIcon />
         {/* Always mounted so it can fade with the rail (not unmount instantly);
             `hidden md:inline` keeps it out of the mobile icon button entirely. */}
         <span
-          className={`hidden whitespace-nowrap transition-opacity duration-300 ease-out motion-reduce:transition-none md:inline ${
-            collapsed ? 'md:opacity-0' : 'md:opacity-100'
-          }`}
+          className={cn(
+            'hidden whitespace-nowrap transition-opacity duration-300 ease-out motion-reduce:transition-none md:inline',
+            collapsed ? 'md:opacity-0' : 'md:opacity-100',
+          )}
         >
           {t('filters.open')}
         </span>
@@ -251,7 +253,7 @@ const OrderFilterControl = ({
                     onChange={(e) =>
                       onChange((f) => ({ ...f, minDate: parseDateInput(e.target.value, 'start') }))
                     }
-                    className={`${FIELD_BASE} ${FIELD_NORMAL} px-3 py-2 text-heading`}
+                    className={cn(FIELD_BASE, FIELD_NORMAL, 'px-3 py-2 text-heading')}
                   />
                 </label>
                 <label className="flex flex-col gap-1 text-sm text-text">
@@ -264,7 +266,7 @@ const OrderFilterControl = ({
                     onChange={(e) =>
                       onChange((f) => ({ ...f, maxDate: parseDateInput(e.target.value, 'end') }))
                     }
-                    className={`${FIELD_BASE} ${FIELD_NORMAL} px-3 py-2 text-heading`}
+                    className={cn(FIELD_BASE, FIELD_NORMAL, 'px-3 py-2 text-heading')}
                   />
                 </label>
               </div>

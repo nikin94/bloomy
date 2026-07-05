@@ -12,6 +12,7 @@ import type { Order } from '@/types/order'
 import type { OrderColumn, OrderSort } from '@/components/DataTable/orderColumns'
 import SortChevron from '@/components/icons/SortChevron'
 import { FOCUS_RING_INSET } from '@/styles/fieldStyles'
+import { cn } from '@/lib/cn'
 import { cellValue } from './rowHelpers'
 import OrderTableRow from './OrderTableRow'
 import OrderCard from './OrderCard'
@@ -179,11 +180,10 @@ const DataTable = ({
                   <th
                     key={header.id}
                     aria-sort={header.column.getCanSort() ? ariaSort(sorted) : undefined}
-                    className={`sticky top-0 z-10 whitespace-nowrap border-b border-border bg-bg px-4 py-3 text-left font-semibold text-heading${
-                      columnById.get(header.column.id)?.width
-                        ? ` ${columnById.get(header.column.id)?.width}`
-                        : ''
-                    }`}
+                    className={cn(
+                      'sticky top-0 z-10 whitespace-nowrap border-b border-border bg-bg px-4 py-3 text-left font-semibold text-heading',
+                      columnById.get(header.column.id)?.width,
+                    )}
                   >
                     {header.column.getCanSort() ? (
                       // A real button so the sort toggles by keyboard (Enter/Space)
@@ -194,7 +194,10 @@ const DataTable = ({
                       <button
                         type="button"
                         onClick={header.column.getToggleSortingHandler()}
-                        className={`-mx-4 -my-3 flex w-full items-center gap-1 px-4 py-3 text-left font-semibold text-heading transition-colors hover:text-primary ${FOCUS_RING_INSET}`}
+                        className={cn(
+                          '-mx-4 -my-3 flex w-full items-center gap-1 px-4 py-3 text-left font-semibold text-heading transition-colors hover:text-primary',
+                          FOCUS_RING_INSET,
+                        )}
                       >
                         {label}
                         <span aria-hidden="true" className="inline-flex size-3 shrink-0 items-center justify-center">

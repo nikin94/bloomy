@@ -2,6 +2,7 @@ import type { Order } from '@/types/order'
 import type { OrderColumn } from '@/components/DataTable/orderColumns'
 import { cellValue, activationProps } from './rowHelpers'
 import CardField from './CardField'
+import { cn } from '@/lib/cn'
 import { FOCUS_RING_INSET } from '@/styles/fieldStyles'
 
 // The same order as a card (mobile layout). Unlike the desktop table — a flat
@@ -34,9 +35,11 @@ const OrderCard = ({
   const plantLines = value('plants').split('\n').filter(Boolean)
   return (
     <div
-      className={`flex cursor-pointer flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg ${FOCUS_RING_INSET}${
-        highlighted ? ' row-highlight' : ''
-      }`}
+      className={cn(
+        'flex cursor-pointer flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg',
+        FOCUS_RING_INSET,
+        highlighted && 'row-highlight',
+      )}
       {...activationProps(order, onActivate)}
     >
       {/* Header: order number on the left, creation date on the right. */}

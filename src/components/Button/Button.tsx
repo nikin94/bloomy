@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes } from 'react'
 import Loader from '@/components/Loader/Loader'
+import { cn } from '@/lib/cn'
 import { FOCUS_RING } from '@/styles/fieldStyles'
 
 // Shared button. The app has three visual kinds — a filled brand button, an
@@ -62,7 +63,7 @@ const Button = ({
     type={type}
     // A loading button is non-interactive, on top of any caller-set disabled.
     disabled={disabled || isLoading}
-    className={`${baseClass} ${variantClass[variant]} ${sizeClass[size]} ${className}`}
+    className={cn(baseClass, variantClass[variant], sizeClass[size], className)}
     {...props}
   >
     {isLoading ? <Loader size="sm" /> : children}
