@@ -1,23 +1,16 @@
 import { describe, it, expect } from 'vitest'
 import { emptyItem, initialItems } from './items'
 import type { Order } from '@/types/order'
+import { order as baseOrder } from '@/test/factories'
 
-const order = (over: Partial<Order> = {}): Order => ({
-  id: 'o1',
-  number: 1,
-  dateCreated: 0,
-  ownerId: 'owner-1',
-  customerId: 'c1',
-  address: 'ул. Пушкина, 1',
-  plants: [{ name: 'Кактус', quantity: 2, unitPriceMinor: 14990 }],
-  paymentMethod: 'cash',
-  deliveryMethod: 'post',
-  deliveryPriceMinor: 0,
-  currency: 'RUB',
-  paymentStatus: 'pending',
-  shipmentStatus: 'new',
-  ...over,
-})
+// Same observable defaults as before consolidation: a street address and a
+// Кактус×2 line (the initialItems test reads the plants back).
+const order = (over: Partial<Order> = {}): Order =>
+  baseOrder({
+    address: 'ул. Пушкина, 1',
+    plants: [{ name: 'Кактус', quantity: 2, unitPriceMinor: 14990 }],
+    ...over,
+  })
 
 describe('emptyItem', () => {
   it('starts blank with the given id (quantity/price empty, not "1"/"0")', () => {

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import DataTable from './DataTable'
 import { buildOrderColumns } from '@/components/DataTable/orderColumns'
 import type { Order } from '@/types/order'
+import { order as baseOrder } from '@/test/factories'
 import i18n from '@/i18n/config'
 
 // Headers come from the `order` namespace; the shared test i18n defaults to ru,
@@ -14,22 +15,15 @@ const t = i18n.getFixedT(null, 'order')
 // does) so the test exercises the same OrderColumn → TanStack adapter the app uses.
 const columns = buildOrderColumns((id) => (id === 'c1' ? 'Анна' : '—'), t)
 
-const order = (over: Partial<Order> = {}): Order => ({
-  id: 'o1',
-  number: 1,
-  dateCreated: 1700000000000,
-  ownerId: 'owner-1',
-  customerId: 'c1',
-  address: 'Main St 1',
-  plants: [{ name: 'Роза', quantity: 2, unitPriceMinor: 15000 }],
-  paymentMethod: 'cash',
-  deliveryMethod: 'post',
-  deliveryPriceMinor: 0,
-  currency: 'RUB',
-  paymentStatus: 'pending',
-  shipmentStatus: 'new',
-  ...over,
-})
+// Same observable defaults as before consolidation: a real timestamp (the date
+// column formats it), a latin address, and a Роза×2 @150₽ line.
+const order = (over: Partial<Order> = {}): Order =>
+  baseOrder({
+    dateCreated: 1700000000000,
+    address: 'Main St 1',
+    plants: [{ name: 'Роза', quantity: 2, unitPriceMinor: 15000 }],
+    ...over,
+  })
 
 // Both the desktop table and the mobile cards render in jsdom (CSS visibility is
 // not applied), so scope queries to one layout to avoid duplicate-match errors.

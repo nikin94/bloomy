@@ -7,8 +7,8 @@ import { QueryWrapper } from '@/test/queryWrapper'
 import { AuthContext } from '@/context/authContext'
 import { SettingsContext } from '@/context/settingsContext'
 import type { SettingsState } from '@/context/settingsContext'
-import type { Customer } from '@/types/customer'
 import type { Order } from '@/types/order'
+import { customer } from '@/test/factories'
 
 // Firebase-touching modules are mocked so the data layer never initializes the
 // real SDK. The form's behaviour (validation, item rows, prefill, submit
@@ -48,14 +48,6 @@ vi.mock('react-router-dom', async (importOriginal) => ({
 import NewOrderPage from './NewOrderPage'
 
 const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
-
-const customer = (over: Partial<Customer> = {}): Customer => ({
-  id: 'c1',
-  ownerId: 'owner-1',
-  name: 'Анна',
-  createdAt: 0,
-  ...over,
-})
 
 // A promise whose resolution is controlled by the test, so we can hold an
 // async submit "in flight" while we probe the double-submit guard.

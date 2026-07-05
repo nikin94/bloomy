@@ -7,6 +7,7 @@ import { QueryWrapper } from '@/test/queryWrapper'
 import { AuthContext } from '@/context/authContext'
 import { formatMoney } from '@/utils/format'
 import type { Order } from '@/types/order'
+import { order as baseOrder } from '@/test/factories'
 
 // Firebase is mocked so the page never touches the real SDK. We test the derived
 // KPIs, the period selector, and the empty state — not Firestore.
@@ -28,22 +29,16 @@ const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } a
 
 const DAY = 24 * 60 * 60 * 1000
 
-const order = (over: Partial<Order> = {}): Order => ({
-  id: 'o1',
-  number: 1,
-  dateCreated: Date.now(),
-  ownerId: 'owner-1',
-  customerId: 'c1',
-  address: 'ул. Пушкина, 1',
-  plants: [{ name: 'Кактус', quantity: 1, unitPriceMinor: 100000 }],
-  paymentMethod: 'cash',
-  deliveryMethod: 'post',
-  deliveryPriceMinor: 0,
-  currency: 'RUB',
-  paymentStatus: 'paid',
-  shipmentStatus: 'new',
-  ...over,
-})
+// Same observable defaults as before consolidation: a PAID order dated "now"
+// (the KPIs sum paid revenue in the current period) with a Кактус×1 line.
+const order = (over: Partial<Order> = {}): Order =>
+  baseOrder({
+    dateCreated: Date.now(),
+    address: 'ул. Пушкина, 1',
+    plants: [{ name: 'Кактус', quantity: 1, unitPriceMinor: 100000 }],
+    paymentStatus: 'paid',
+    ...over,
+  })
 
 const renderPage = () =>
   render(

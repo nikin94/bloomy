@@ -6,7 +6,7 @@ import type { User } from 'firebase/auth'
 import { QueryWrapper } from '@/test/queryWrapper'
 import { AuthContext } from '@/context/authContext'
 import type { Order } from '@/types/order'
-import type { Customer } from '@/types/customer'
+import { order as baseOrder, customer } from '@/test/factories'
 
 // Firebase-touching modules are mocked so the page never initializes the real
 // SDK. We test the page render, the derived stats, and the order list — not
@@ -36,30 +36,17 @@ import CustomerPage from './CustomerPage'
 
 const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
 
-const customer = (over: Partial<Customer> = {}): Customer => ({
-  id: 'c1',
-  ownerId: 'owner-1',
-  name: 'Анна',
-  createdAt: 0,
-  ...over,
-})
-
-const order = (over: Partial<Order> = {}): Order => ({
-  id: 'o1',
-  number: 1,
-  dateCreated: 1700000000000,
-  ownerId: 'owner-1',
-  customerId: 'c1',
-  address: 'ул. Пушкина, 1',
-  plants: [{ name: 'Кактус', quantity: 1, unitPriceMinor: 50000 }],
-  paymentMethod: 'cash',
-  deliveryMethod: 'post',
-  deliveryPriceMinor: 0,
-  currency: 'RUB',
-  paymentStatus: 'paid',
-  shipmentStatus: 'new',
-  ...over,
-})
+// Same observable defaults as before consolidation: a PAID order with a real
+// timestamp, a street address, and a Кактус×1 @500₽ line (the page's per-customer
+// stats sum these).
+const order = (over: Partial<Order> = {}): Order =>
+  baseOrder({
+    dateCreated: 1700000000000,
+    address: 'ул. Пушкина, 1',
+    plants: [{ name: 'Кактус', quantity: 1, unitPriceMinor: 50000 }],
+    paymentStatus: 'paid',
+    ...over,
+  })
 
 const renderPage = () =>
   render(

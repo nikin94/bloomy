@@ -7,29 +7,13 @@ import { EMPTY_ORDER_FILTER } from '@/types/order'
 import type { Order, OrderFilter } from '@/types/order'
 import { buildOrderColumns } from '@/components/DataTable/orderColumns'
 import type { OrderSort } from '@/components/DataTable/orderColumns'
+import { order } from '@/test/factories'
 import i18n from '@/i18n/config'
 
 // The shared funnel button + filter dialog used by the orders list and the trash.
 // It reads the default currency from settings (the context's default value, RUB)
 // and the labels from the `order` namespace (the test i18n defaults to ru), so it
 // renders standalone without extra providers.
-
-const order = (over: Partial<Order> = {}): Order => ({
-  id: 'o1',
-  number: 1,
-  dateCreated: 0,
-  ownerId: 'owner-1',
-  customerId: 'c1',
-  address: '',
-  plants: [{ name: 'Роза', quantity: 1, unitPriceMinor: 100000 }],
-  paymentMethod: 'cash',
-  deliveryMethod: 'post',
-  deliveryPriceMinor: 0,
-  currency: 'RUB',
-  paymentStatus: 'pending',
-  shipmentStatus: 'new',
-  ...over,
-})
 
 // A controlled wrapper so the dialog's onChange round-trips through real state,
 // the same way a list page wires it.
