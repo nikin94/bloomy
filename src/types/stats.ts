@@ -4,6 +4,7 @@
 // needs no schema change or extra reads. `now` is passed in (never read from the
 // clock here) so the helpers are deterministic and unit-testable, and so the page
 // can capture a single mount-time timestamp (a render-time Date.now() isn't pure).
+import { startOfDay, startOfMonth, endOfMonth, subDays, subMonths } from 'date-fns'
 import { parseDateInput } from '@/utils/format'
 import type { Currency, Order } from './order'
 
@@ -34,7 +35,12 @@ export interface DateRange {
 // parts (midnight boundaries) so the windows match the operator's clock, not UTC.
 export const presetRange = (preset: StatsPreset, now: number): DateRange => {
   const d = new Date(now)
-  if (preset === '30days') return { start: new Date(d.getFullYear(), d.getMonth(), d.getDate() - 30).getTime(), end: null }
+  // subDays back to the same clock day, then startOfDay for the midnight boundary.
+  if (preset === '30days') return { start: startOfDay(subDays(d, 30)).getTime(), end: null }
+  // The N-month starts stay on raw month arithmetic ON PURPOSE: `new Date(y, m-N, day)`
+  // OVERFLOWS a shorter target month (e.g. 31 May − 3mo → "31 Feb" → 3 Mar), whereas
+  // date-fns `subMonths` CLAMPS (→ 28 Feb). Keeping the raw form preserves the exact
+  // rolling-window boundary the tab has always produced; only 30days converts cleanly.
   if (preset === '3months') return { start: new Date(d.getFullYear(), d.getMonth() - 3, d.getDate()).getTime(), end: null }
   if (preset === '6months') return { start: new Date(d.getFullYear(), d.getMonth() - 6, d.getDate()).getTime(), end: null }
   if (preset === '12months') return { start: new Date(d.getFullYear(), d.getMonth() - 12, d.getDate()).getTime(), end: null }
@@ -57,8 +63,10 @@ export const customRange = (from: string, to: string): DateRange => ({
 export const monthBounds = (monthStart: number): DateRange => {
   const d = new Date(monthStart)
   return {
-    start: new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0).getTime(),
-    end: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999).getTime(),
+    // startOfMonth = its first ms (00:00:00.000 on the 1st); endOfMonth = the last ms
+    // (23:59:59.999 on the final day, so a 28/29/30/31-day month lands exactly right).
+    start: startOfMonth(d).getTime(),
+    end: endOfMonth(d).getTime(),
   }
 }
 
@@ -123,15 +131,17 @@ export const ordersPerMonth = (orders: Order[], now: number, months: number): Mo
   const d = new Date(now)
   const buckets: MonthlyBucket[] = []
   // Build the window oldest-first: months-1 months back through the current one.
+  // startOfMonth(subMonths(...)) is exactly the raw `new Date(y, m-i, 1)`: pinning to
+  // the 1st sidesteps subMonths' short-month clamping, so every step lands on the
+  // right calendar month's first ms.
   for (let i = months - 1; i >= 0; i--) {
-    const start = new Date(d.getFullYear(), d.getMonth() - i, 1)
+    const start = startOfMonth(subMonths(d, i))
     buckets.push({ monthStart: start.getTime(), count: 0 })
   }
   const firstStart = buckets[0].monthStart
   for (const order of orders) {
     if (order.dateCreated < firstStart) continue
-    const od = new Date(order.dateCreated)
-    const monthStart = new Date(od.getFullYear(), od.getMonth(), 1).getTime()
+    const monthStart = startOfMonth(new Date(order.dateCreated)).getTime()
     const bucket = buckets.find((b) => b.monthStart === monthStart)
     if (bucket) bucket.count += 1
   }
