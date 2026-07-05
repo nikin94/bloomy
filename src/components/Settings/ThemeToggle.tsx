@@ -1,6 +1,7 @@
 import type { ThemeMode } from '@/types/settings'
 import SunIcon from '@/components/icons/SunIcon'
 import MoonIcon from '@/components/icons/MoonIcon'
+import { FOCUS_RING } from '@/styles/fieldStyles'
 
 // Theme switch styled as a pill track with a sun (light) and a moon (dark) at
 // its ends; the sliding knob carries the ACTIVE theme's icon, so the visible
@@ -23,7 +24,7 @@ const ThemeToggle = ({
       aria-checked={isDark}
       aria-label={label}
       onClick={() => onChange(isDark ? 'light' : 'dark')}
-      className="relative inline-flex h-9 w-[4.5rem] shrink-0 items-center rounded-full border border-border bg-primary-bg p-1 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      className={`relative inline-flex h-9 w-[4.5rem] shrink-0 items-center rounded-full border border-border bg-primary-bg p-1 transition-colors ${FOCUS_RING}`}
     >
       {/* Track icons at each end (the not-selected option stays visible). */}
       <span

@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next'
 import type { Customer } from '@/types/customer'
+import { FOCUS_RING_INSET } from '@/styles/fieldStyles'
 import RowActions from './RowActions'
 
 // The same customer as a card (mobile layout). The name/details block is the
@@ -30,7 +31,7 @@ const CustomerCard = ({
           onOpen(customer)
         }
       }}
-      className="-m-1 min-w-0 flex-1 cursor-pointer rounded-md p-1 transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
+      className={`-m-1 min-w-0 flex-1 cursor-pointer rounded-md p-1 transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg ${FOCUS_RING_INSET}`}
     >
       <p className="m-0 truncate font-semibold text-heading">{customer.name}</p>
       {customer.phone && <p className="m-0 truncate text-sm text-text">{customer.phone}</p>}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FIELD_BASE, FIELD_NORMAL } from '@/styles/fieldStyles'
+import { FIELD_BASE, FIELD_NORMAL, FOCUS_RING, FOCUS_RING_INSET } from '@/styles/fieldStyles'
 import { useSidebarCollapse } from '@/context/sidebarCollapseContext'
 import CloseIcon from '@/components/icons/CloseIcon'
 import SearchIcon from '@/components/icons/SearchIcon'
@@ -106,7 +106,7 @@ const SearchControl = ({
             // never slides). Collapsing doesn't switch the layout — the label just
             // fades and `md:overflow-hidden` lets the narrowing rail swallow it.
             'md:w-full md:justify-start md:gap-2 md:overflow-hidden md:border-0 md:px-2.5 md:py-2 md:text-sm md:font-medium ' +
-            'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+            FOCUS_RING
           }
         >
           <SearchIcon />
@@ -166,7 +166,7 @@ const SearchControl = ({
             onClick={close}
             aria-label={t('searchClear')}
             title={t('close')}
-            className="absolute inset-y-0 right-0 flex items-center px-1.5 text-text transition-colors hover:text-heading focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
+            className={`absolute inset-y-0 right-0 flex items-center px-1.5 text-text transition-colors hover:text-heading ${FOCUS_RING_INSET}`}
           >
             <CloseIcon />
           </button>

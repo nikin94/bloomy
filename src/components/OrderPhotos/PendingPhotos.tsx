@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import PhotoViewer from './PhotoViewer'
 import Thumb from './Thumb'
 import CameraIcon from '@/components/icons/CameraIcon'
+import { FOCUS_RING } from '@/styles/fieldStyles'
 
 // Local (deferred-upload) photo picker for the CREATE order form. Unlike OrderPhotos
 // (the detail page), this NEVER touches Storage: the picked File objects live in the
@@ -56,7 +57,7 @@ const PendingPhotos = ({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           aria-label={t('photos.add')}
-          className="flex size-20 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-text hover:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          className={`flex size-20 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-text hover:bg-primary-bg ${FOCUS_RING}`}
         >
           <CameraIcon />
         </button>

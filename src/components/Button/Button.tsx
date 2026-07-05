@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes } from 'react'
 import Loader from '@/components/Loader/Loader'
+import { FOCUS_RING } from '@/styles/fieldStyles'
 
 // Shared button. The app has three visual kinds — a filled brand button, an
 // outlined neutral one, and a tinted `danger` for destructive actions — so they
@@ -17,7 +18,7 @@ type ButtonSize = 'md' | 'sm' | 'icon'
 // Shared across every variant: shape, focus ring and disabled treatment.
 const baseClass =
   'inline-flex items-center justify-center rounded-md font-medium ' +
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ' +
+  `${FOCUS_RING} ` +
   'disabled:cursor-default disabled:opacity-50'
 
 const variantClass: Record<ButtonVariant, string> = {

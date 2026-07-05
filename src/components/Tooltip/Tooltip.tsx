@@ -1,5 +1,6 @@
 import { useId } from 'react'
 import type { ReactNode } from 'react'
+import { FOCUS_RING } from '@/styles/fieldStyles'
 
 // A lightweight tooltip that appears INSTANTLY on hover or focus — unlike the
 // native `title` attribute, which the browser delays ~1s before showing. The
@@ -26,7 +27,7 @@ const Tooltip = ({
     <span
       tabIndex={0}
       aria-describedby={id}
-      className={`group relative inline-flex rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${className}`}
+      className={`group relative inline-flex rounded-md ${FOCUS_RING} ${className}`}
     >
       {children}
       <span

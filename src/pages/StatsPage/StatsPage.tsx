@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import LegendItem from './LegendItem'
 import Spinner from '@/components/Spinner/Spinner'
 import Select from '@/components/Select/Select'
-import { FIELD_BASE, FIELD_NORMAL } from '@/styles/fieldStyles'
+import { FIELD_BASE, FIELD_NORMAL, FOCUS_RING } from '@/styles/fieldStyles'
 import { useOrders, EMPTY_ORDERS } from '@/queries/orders'
 import { useAuth } from '@/context/authContext'
 import { formatMoney, toDateInputValue } from '@/utils/format'
@@ -323,7 +323,7 @@ const StatsPage = () => {
                         onClick={() => openMonth(bucket.monthStart)}
                         title={`${monthLong(bucket.monthStart)} — ${t('orders', { count: bucket.count })}`}
                         aria-label={`${monthLong(bucket.monthStart)}: ${t('orders', { count: bucket.count })}. ${t('chart.openMonth')}`}
-                        className="group flex min-w-0 flex-1 flex-col items-center gap-1 rounded px-0.5 py-1 transition-colors hover:bg-primary-bg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                        className={`group flex min-w-0 flex-1 flex-col items-center gap-1 rounded px-0.5 py-1 transition-colors hover:bg-primary-bg ${FOCUS_RING}`}
                       >
                         {body}
                       </button>
