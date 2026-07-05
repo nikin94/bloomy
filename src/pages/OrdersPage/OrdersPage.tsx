@@ -7,7 +7,7 @@ import SearchControl from '@/components/SearchControl/SearchControl'
 import OrderFilterControl from '@/components/OrderFilterControl/OrderFilterControl'
 import { useOrders, useReconcileOrderNumbers, EMPTY_ORDERS } from '@/queries/orders'
 import { useCustomers, EMPTY_CUSTOMERS } from '@/queries/customers'
-import { useAuth } from '@/context/authContext'
+import { useOwnerId } from '@/lib/useOwnerId'
 import { useHeaderActions } from '@/context/headerActionsContext'
 import {
   filterOrders,
@@ -25,10 +25,7 @@ const OrdersPage = () => {
   const { t: tOrder } = useTranslation('order')
   const navigate = useNavigate()
   const location = useLocation()
-  // Guaranteed non-null here (rendered under ProtectedRoute), but typed as
-  // optional, so we read the uid defensively and gate the fetch on it.
-  const { user } = useAuth()
-  const ownerId = user?.uid
+  const ownerId = useOwnerId()
   // Orders + customers (WITH deleted, so a removed customer's name still resolves)
   // come from the shared query cache; navigating away and back reuses the parsed
   // lists instead of re-querying + re-parsing. Stable EMPTY_* fallbacks keep the

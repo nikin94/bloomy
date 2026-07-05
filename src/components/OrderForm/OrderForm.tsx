@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createCustomer, fetchCustomer, fetchCustomers } from '@/firebase/customers'
-import { useAuth } from '@/context/authContext'
+import { useOwnerId } from '@/lib/useOwnerId'
 import { useSettings } from '@/context/settingsContext'
 import { formatMinorToInput, formatMoney, parseRublesToMinor } from '@/utils/format'
 import {
@@ -86,8 +86,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // Order-bound t for the option helpers (typed TFunction<'order'>).
   const { t: tOrder } = useTranslation('order')
   // Owner of every record created here. Guaranteed non-null under ProtectedRoute.
-  const { user } = useAuth()
-  const ownerId = user?.uid
+  const ownerId = useOwnerId()
   // A new order's delivery/payment method starts from the user's saved defaults
   // (set in Settings); an edited order keeps its own stored values.
   const { defaultDeliveryMethod, defaultPaymentMethod, defaultCurrency } = useSettings()
