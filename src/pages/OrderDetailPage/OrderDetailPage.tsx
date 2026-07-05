@@ -31,7 +31,7 @@ import { asEnum } from '@/utils/asEnum'
 import { useAuth } from '@/context/authContext'
 import Spinner from '@/components/Spinner/Spinner'
 import Button from '@/components/Button/Button'
-import Modal from '@/components/Modal/Modal'
+import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
 import CustomerEditModal from '@/components/CustomerEditModal/CustomerEditModal'
 import OrderPhotos from '@/components/OrderPhotos/OrderPhotos'
 import DetailRow from '@/components/DetailRow/DetailRow'
@@ -394,24 +394,14 @@ const OrderDetailPage = () => {
       )}
 
       {confirmingDelete && order && (
-        <Modal
+        <ConfirmModal
           title={t('detail.deleteTitle', { number: formatOrderNumber(order.number) })}
-          onClose={() => setConfirmingDelete(false)}
-        >
-          <p className="m-0 text-text">
-            {t('detail.deleteBody', {
-              days: t('common:days', { count: TRASH_RETENTION_DAYS }),
-            })}
-          </p>
-          <div className="flex justify-end gap-2">
-            <Button variant="danger" onClick={handleDelete}>
-              {t('common:delete')}
-            </Button>
-            <Button variant="secondary" onClick={() => setConfirmingDelete(false)}>
-              {t('common:cancel')}
-            </Button>
-          </div>
-        </Modal>
+          body={t('detail.deleteBody', { days: t('common:days', { count: TRASH_RETENTION_DAYS }) })}
+          confirmLabel={t('common:delete')}
+          cancelLabel={t('common:cancel')}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmingDelete(false)}
+        />
       )}
       </div>
     </>

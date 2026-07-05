@@ -2,10 +2,9 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Spinner from '@/components/Spinner/Spinner'
-import Button from '@/components/Button/Button'
-import Modal from '@/components/Modal/Modal'
 import SearchControl from '@/components/SearchControl/SearchControl'
 import CustomerEditModal from '@/components/CustomerEditModal/CustomerEditModal'
+import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
 import { softDeleteCustomer, updateCustomer } from '@/firebase/customers'
 import type { CustomerEdits } from '@/firebase/customers'
 import { useCustomers, useCustomerCache, EMPTY_CUSTOMERS } from '@/queries/customers'
@@ -171,20 +170,14 @@ const CustomersPage = () => {
       {/* Delete confirmation — a dialog (matching the order page), so a
           destructive action takes an explicit second step. */}
       {deletingCustomer && (
-        <Modal
+        <ConfirmModal
           title={t('deleteTitle', { name: deletingCustomer.name })}
-          onClose={() => setDeletingCustomer(null)}
-        >
-          <p className="m-0 text-text">{t('deleteBody')}</p>
-          <div className="flex justify-end gap-2">
-            <Button variant="danger" onClick={handleDelete}>
-              {t('common:delete')}
-            </Button>
-            <Button variant="secondary" onClick={() => setDeletingCustomer(null)}>
-              {t('common:cancel')}
-            </Button>
-          </div>
-        </Modal>
+          body={t('deleteBody')}
+          confirmLabel={t('common:delete')}
+          cancelLabel={t('common:cancel')}
+          onConfirm={handleDelete}
+          onCancel={() => setDeletingCustomer(null)}
+        />
       )}
     </>
   )
