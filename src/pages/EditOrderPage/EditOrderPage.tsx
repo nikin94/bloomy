@@ -5,7 +5,7 @@ import Spinner from '@/components/Spinner/Spinner'
 import { updateOrder } from '@/firebase/orders'
 import { useOrder, useOrderCache } from '@/queries/orders'
 import { useCustomerCache } from '@/queries/customers'
-import { useOwnerId } from '@/lib/useOwnerId'
+import { useOwnerId } from '@/hooks/useOwnerId'
 import { formatOrderNumber } from '@/types/order'
 
 // Edit-order screen: loads the order, then hands it to the shared OrderForm

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { useOwnerId } from '@/lib/useOwnerId'
+import { useOwnerId } from '@/hooks/useOwnerId'
 import { fetchSettings, saveSettings as persistSettings } from '@/firebase/settings'
 import {
   clampFontScale,

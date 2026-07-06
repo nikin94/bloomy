@@ -6,8 +6,8 @@ import SearchControl from '@/components/SearchControl/SearchControl'
 import OrderFilterControl from '@/components/OrderFilterControl/OrderFilterControl'
 import { useOrdersSuspense, useReconcileOrderNumbers } from '@/queries/orders'
 import { useCustomersSuspense } from '@/queries/customers'
-import { useRequiredOwnerId } from '@/lib/useOwnerId'
-import { useConsumeNavState } from '@/lib/useConsumeNavState'
+import { useRequiredOwnerId } from '@/hooks/useOwnerId'
+import { useConsumeNavState } from '@/hooks/useConsumeNavState'
 import { useHeaderActions } from '@/context/headerActionsContext'
 import {
   filterOrders,

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/components/Button/Button'
-import { useVersionCheck } from './useVersionCheck'
+import { useVersionCheck } from '@/hooks/useVersionCheck'
 
 // Non-blocking "a new version is available" toast, pinned to the bottom-right
 // corner (with a margin). It is deliberately NOT a modal: a centred dialog over

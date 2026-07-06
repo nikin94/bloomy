@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 
 // Drive the banner from the hook directly; its polling is covered separately.
 const useVersionCheck = vi.fn()
-vi.mock('./useVersionCheck', () => ({ useVersionCheck: () => useVersionCheck() }))
+vi.mock('@/hooks/useVersionCheck', () => ({ useVersionCheck: () => useVersionCheck() }))
 
 // Imported after the mock above is registered.
 import UpdatePrompt from './UpdatePrompt'
