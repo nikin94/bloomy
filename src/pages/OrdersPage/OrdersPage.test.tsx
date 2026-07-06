@@ -70,8 +70,11 @@ const table = () => within(screen.getByTestId('orders-table'))
 const header = () => within(screen.getByTestId('sidebar-desktop'))
 
 // The search input is collapsed behind a loupe; click it to reveal the input.
+// findByRole (not getByRole) for the loupe: the page publishes its header controls
+// once its data resolves out of Suspense, a tick after the table appears, so the
+// first reach into the header slot must await them.
 const openSearch = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(header().getByRole('button', { name: 'Поиск' }))
+  await user.click(await header().findByRole('button', { name: 'Поиск' }))
   return header().getByRole('textbox', { name: 'Поиск заказов' })
 }
 
@@ -99,7 +102,7 @@ describe('OrdersPage filtering', () => {
     expect(table().getByText('Борис')).toBeInTheDocument()
 
     // The search box is collapsed (inert, behind the loupe) until it's opened.
-    expect(header().getByRole('button', { name: 'Поиск' })).toBeInTheDocument()
+    expect(await header().findByRole('button', { name: 'Поиск' })).toBeInTheDocument()
     expect(header().getByRole('textbox', { name: 'Поиск заказов' })).toHaveAttribute('inert')
     await user.type(await openSearch(user), 'Борис')
 
@@ -152,7 +155,7 @@ describe('OrdersPage filtering', () => {
 
     // The status filters live behind the filter icon, not inline.
     expect(screen.queryByRole('combobox', { name: 'Статус отправки' })).not.toBeInTheDocument()
-    await user.click(header().getByRole('button', { name: 'Фильтры' }))
+    await user.click(await header().findByRole('button', { name: 'Фильтры' }))
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Статус отправки' }),
       'shipped',
@@ -170,7 +173,7 @@ describe('OrdersPage filtering', () => {
     renderPage()
     await screen.findByTestId('orders-table')
 
-    await user.click(header().getByRole('button', { name: 'Фильтры' }))
+    await user.click(await header().findByRole('button', { name: 'Фильтры' }))
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Статус отправки' }),
       'shipped',
@@ -188,7 +191,9 @@ describe('OrdersPage filtering', () => {
     renderPage()
     await screen.findByTestId('orders-table')
 
-    // Inactive: outlined (secondary) and not pressed.
+    // Inactive: outlined (secondary) and not pressed. Await the first reach into
+    // the header slot (published a tick after the table resolves out of Suspense).
+    await header().findByRole('button', { name: 'Фильтры' })
     const filterBtn = () => header().getByRole('button', { name: 'Фильтры' })
     expect(filterBtn()).toHaveAttribute('aria-pressed', 'false')
     expect(filterBtn()).not.toHaveClass('bg-primary')
@@ -214,7 +219,7 @@ describe('OrdersPage filtering', () => {
     renderPage()
     await screen.findByTestId('orders-table')
 
-    await user.click(header().getByRole('button', { name: 'Фильтры' }))
+    await user.click(await header().findByRole('button', { name: 'Фильтры' }))
     // The range renders as a single track with a "from"/"to" thumb pair; the
     // summary shows the full span until the user narrows it. (The thumb value +
     // clamping logic is covered by RangeSlider's own unit tests; the
@@ -236,7 +241,7 @@ describe('OrdersPage filtering', () => {
     renderPage()
     await screen.findByTestId('orders-table')
 
-    await user.click(header().getByRole('button', { name: 'Фильтры' }))
+    await user.click(await header().findByRole('button', { name: 'Фильтры' }))
     await user.selectOptions(screen.getByRole('combobox', { name: 'Валюта' }), 'USD')
 
     // The "from – to" summary now reads in dollars, and its ceiling is the
@@ -255,7 +260,7 @@ describe('OrdersPage filtering', () => {
     renderPage()
     await screen.findByTestId('orders-table')
 
-    await user.click(header().getByRole('button', { name: 'Фильтры' }))
+    await user.click(await header().findByRole('button', { name: 'Фильтры' }))
     // The ceiling is 0, so the price section is omitted — the status filters
     // remain.
     expect(screen.queryByText('Сумма заказа')).not.toBeInTheDocument()
@@ -345,6 +350,6 @@ describe('OrdersPage offline numbering', () => {
     expect(table().getByText('Анна')).toBeInTheDocument()
     expect(table().queryByText('Борис')).not.toBeInTheDocument()
     // The date bound is a dialog filter, so the funnel button reads as active.
-    expect(header().getByRole('button', { name: 'Фильтры' })).toHaveClass('bg-primary')
+    expect(await header().findByRole('button', { name: 'Фильтры' })).toHaveClass('bg-primary')
   })
 })

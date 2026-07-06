@@ -2,12 +2,11 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import DataTable from '@/components/DataTable/DataTable'
-import Spinner from '@/components/Spinner/Spinner'
 import SearchControl from '@/components/SearchControl/SearchControl'
 import OrderFilterControl from '@/components/OrderFilterControl/OrderFilterControl'
-import { useDeletedOrders, EMPTY_ORDERS } from '@/queries/orders'
-import { useCustomers, EMPTY_CUSTOMERS } from '@/queries/customers'
-import { useOwnerId } from '@/lib/useOwnerId'
+import { useDeletedOrdersSuspense } from '@/queries/orders'
+import { useCustomersSuspense } from '@/queries/customers'
+import { useRequiredOwnerId } from '@/lib/useOwnerId'
 import { useNow } from '@/lib/useNow'
 import { useHeaderActions } from '@/context/headerActionsContext'
 import {
@@ -33,17 +32,14 @@ const DeletedOrdersPage = () => {
   // Order-bound t for the column helpers (typed TFunction<'order'>).
   const { t: tOrder } = useTranslation('order')
   const navigate = useNavigate()
-  const ownerId = useOwnerId()
+  const ownerId = useRequiredOwnerId()
   // Trash orders + customers (WITH deleted, so an order whose customer was also
   // soft-deleted still resolves the name instead of "—") come from the shared query
-  // cache. Stable EMPTY_* fallbacks so the loading-phase identity doesn't loop the
-  // header-actions memo (see EMPTY_ORDERS).
-  const trashQuery = useDeletedOrders(ownerId)
-  const customersQuery = useCustomers(ownerId, { includeDeleted: true })
-  const orders = trashQuery.data ?? EMPTY_ORDERS
-  const customers = customersQuery.data ?? EMPTY_CUSTOMERS
-  const loading = trashQuery.isLoading || customersQuery.isLoading
-  const loadError = trashQuery.error ?? customersQuery.error
+  // cache; both suspend to the route-level Spinner (AppLayout) until resolved and
+  // throw a load failure to the route error boundary there, so this page carries no
+  // loading/error branch.
+  const { data: orders } = useDeletedOrdersSuspense(ownerId)
+  const { data: customers } = useCustomersSuspense(ownerId, { includeDeleted: true })
   // Search + status/currency/price filter over the trash — the same OrderFilter
   // shape as the main list, so the trash filters exactly like the active list.
   const [filter, setFilter] = useState<OrderFilter>(EMPTY_ORDER_FILTER)
@@ -112,7 +108,7 @@ const DeletedOrdersPage = () => {
           layout is never mistaken for the active orders list. Shown only once
           there is something in the trash (an empty trash gets its own message
           from the table below). */}
-      {!loading && !loadError && orders.length > 0 && (
+      {orders.length > 0 && (
         <div
           role="status"
           className="border-b border-border bg-danger-bg px-6 py-2 text-center text-sm font-medium text-danger"
@@ -121,21 +117,14 @@ const DeletedOrdersPage = () => {
         </div>
       )}
 
-      {loading && <Spinner />}
-      {loadError && (
-        <p className="px-6 py-8 text-danger">{loadError.message || t('trash.loadError')}</p>
-      )}
-
-      {!loading && !loadError && (
-        <DataTable
-          orders={visibleOrders}
-          columns={columns}
-          onRowClick={(order) => navigate(`/orders/${order.id}`)}
-          emptyMessage={filterActive ? t('common:nothingFound') : t('trash.empty')}
-          sort={sort}
-          onSortChange={setSort}
-        />
-      )}
+      <DataTable
+        orders={visibleOrders}
+        columns={columns}
+        onRowClick={(order) => navigate(`/orders/${order.id}`)}
+        emptyMessage={filterActive ? t('common:nothingFound') : t('trash.empty')}
+        sort={sort}
+        onSortChange={setSort}
+      />
     </>
   )
 }

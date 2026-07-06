@@ -208,7 +208,7 @@ describe('CustomersPage', () => {
     // search to the desktop bar to act on a single copy. It's collapsed behind a
     // loupe; click it to reveal the input.
     const header = within(screen.getByTestId('sidebar-desktop'))
-    await user.click(header.getByRole('button', { name: 'Поиск' }))
+    await user.click(await header.findByRole('button', { name: 'Поиск' }))
     await user.type(header.getByRole('textbox', { name: 'Поиск клиентов' }), 'Борис')
 
     expect(table().getByText('Борис')).toBeInTheDocument()
@@ -222,7 +222,7 @@ describe('CustomersPage', () => {
     await screen.findByTestId('customers-table')
 
     const header = within(screen.getByTestId('sidebar-desktop'))
-    await user.click(header.getByRole('button', { name: 'Поиск' }))
+    await user.click(await header.findByRole('button', { name: 'Поиск' }))
     await user.type(header.getByRole('textbox', { name: 'Поиск клиентов' }), 'нет такого')
 
     expect(screen.getByText('Ничего не найдено')).toBeInTheDocument()

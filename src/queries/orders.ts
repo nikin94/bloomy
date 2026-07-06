@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery, useQueryClient } from '@tanstack/react-query'
 import {
   fetchOrders,
   fetchDeletedOrders,
@@ -9,34 +9,34 @@ import {
 import type { Order } from '@/types/order'
 import { queryKeys } from './keys'
 
-// One shared empty array for the `data ?? EMPTY_ORDERS` fallback while a query
-// loads. A fresh `[]` (or a `= []` destructuring default) each render would give an
-// unstable identity — on a list page that feeds `orders` into the header-actions
-// memo, that unstable ref loops setActions (the #133/#134 hazard). Reusing one
-// reference keeps it stable across the loading renders.
-export const EMPTY_ORDERS: Order[] = []
-
 // Order-list / order-detail reads, cached per owner. These replace the hand-rolled
 // `useEffect(load).catch(setError).finally(setLoading)` scaffolding that was copied
-// across the list pages: each hook returns TanStack's `{ data, isLoading, error }`
-// and the QueryClient's cache doubles as the session cache (navigating away and
-// back reuses the already-parsed array instead of re-querying + re-parsing).
+// across the list pages, and the QueryClient's cache doubles as the session cache
+// (navigating away and back reuses the already-parsed array instead of re-querying
+// + re-parsing).
+//
+// The two LIST reads SUSPEND: the list pages gate on the route-level
+// <Suspense>/error boundary (see AppLayout) instead of their own loading/error
+// locals. `useSuspenseQuery` has no `enabled`, so the owner MUST be resolved —
+// callers pass a non-null uid via useRequiredOwnerId (guaranteed under
+// ProtectedRoute). `data` is therefore always defined (no empty-array fallback) and
+// its reference is stable across renders (same identity guarantee as useQuery), so
+// header-actions memos keyed on it stay stable. A background refetch (e.g. after
+// reconcile invalidates) keeps the last data and does NOT re-suspend, so there is
+// no spinner flash mid-session.
 
-// The owner's active orders (soft-deleted dropped). `undefined` ownerId disables
-// the query (it is always present under ProtectedRoute; the guard is defensive).
-export const useOrders = (ownerId: string | undefined) =>
-  useQuery({
+// The owner's active orders (soft-deleted dropped).
+export const useOrdersSuspense = (ownerId: string) =>
+  useSuspenseQuery({
     queryKey: queryKeys.orders(ownerId),
-    queryFn: () => fetchOrders(ownerId as string),
-    enabled: ownerId !== undefined,
+    queryFn: () => fetchOrders(ownerId),
   })
 
 // The owner's trash (soft-deleted only).
-export const useDeletedOrders = (ownerId: string | undefined) =>
-  useQuery({
+export const useDeletedOrdersSuspense = (ownerId: string) =>
+  useSuspenseQuery({
     queryKey: queryKeys.deletedOrders(ownerId),
-    queryFn: () => fetchDeletedOrders(ownerId as string),
-    enabled: ownerId !== undefined,
+    queryFn: () => fetchDeletedOrders(ownerId),
   })
 
 // A single order by id. `includeDeleted` lets the detail page open a trashed order

@@ -2,12 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import DataTable from '@/components/DataTable/DataTable'
-import Spinner from '@/components/Spinner/Spinner'
 import SearchControl from '@/components/SearchControl/SearchControl'
 import OrderFilterControl from '@/components/OrderFilterControl/OrderFilterControl'
-import { useOrders, useReconcileOrderNumbers, EMPTY_ORDERS } from '@/queries/orders'
-import { useCustomers, EMPTY_CUSTOMERS } from '@/queries/customers'
-import { useOwnerId } from '@/lib/useOwnerId'
+import { useOrdersSuspense, useReconcileOrderNumbers } from '@/queries/orders'
+import { useCustomersSuspense } from '@/queries/customers'
+import { useRequiredOwnerId } from '@/lib/useOwnerId'
 import { useHeaderActions } from '@/context/headerActionsContext'
 import {
   filterOrders,
@@ -25,17 +24,15 @@ const OrdersPage = () => {
   const { t: tOrder } = useTranslation('order')
   const navigate = useNavigate()
   const location = useLocation()
-  const ownerId = useOwnerId()
+  const ownerId = useRequiredOwnerId()
   // Orders + customers (WITH deleted, so a removed customer's name still resolves)
   // come from the shared query cache; navigating away and back reuses the parsed
-  // lists instead of re-querying + re-parsing. Stable EMPTY_* fallbacks keep the
-  // loading-phase identity from looping the header-actions memo.
-  const ordersQuery = useOrders(ownerId)
-  const customersQuery = useCustomers(ownerId, { includeDeleted: true })
-  const orders = ordersQuery.data ?? EMPTY_ORDERS
-  const customers = customersQuery.data ?? EMPTY_CUSTOMERS
-  const loading = ordersQuery.isLoading || customersQuery.isLoading
-  const error = ordersQuery.error ?? customersQuery.error
+  // lists instead of re-querying + re-parsing. Both suspend to the route-level
+  // Spinner (AppLayout) until resolved and throw a load failure to the route error
+  // boundary there, so this page has no loading/error branch of its own. Two
+  // useSuspenseQuery calls do NOT waterfall — both fire on first render.
+  const { data: orders } = useOrdersSuspense(ownerId)
+  const { data: customers } = useCustomersSuspense(ownerId, { includeDeleted: true })
   // Background: assign real numbers to any orders created offline, then invalidate
   // the list so the freshly-numbered rows refetch (runs on mount + on reconnect).
   useReconcileOrderNumbers(ownerId)
@@ -108,22 +105,15 @@ const OrdersPage = () => {
   useHeaderActions(headerActions)
 
   return (
-    <>
-      {loading && <Spinner />}
-      {error && <p className="px-6 py-8 text-danger">{error.message || t('list.loadError')}</p>}
-
-      {!loading && !error && (
-        <DataTable
-          orders={visibleOrders}
-          columns={columns}
-          onRowClick={(order) => navigate(`/orders/${order.id}`)}
-          highlightOrderId={highlightOrderId}
-          emptyMessage={filterActive ? t('common:nothingFound') : t('list.empty')}
-          sort={sort}
-          onSortChange={setSort}
-        />
-      )}
-    </>
+    <DataTable
+      orders={visibleOrders}
+      columns={columns}
+      onRowClick={(order) => navigate(`/orders/${order.id}`)}
+      highlightOrderId={highlightOrderId}
+      emptyMessage={filterActive ? t('common:nothingFound') : t('list.empty')}
+      sort={sort}
+      onSortChange={setSort}
+    />
   )
 }
 

@@ -11,8 +11,8 @@ import PencilIcon from '@/components/icons/PencilIcon'
 import { updateCustomer } from '@/firebase/customers'
 import type { CustomerEdits } from '@/firebase/customers'
 import { useCustomer, useCustomerCache } from '@/queries/customers'
-import { useOrders, EMPTY_ORDERS } from '@/queries/orders'
-import { useOwnerId } from '@/lib/useOwnerId'
+import { useOrdersSuspense } from '@/queries/orders'
+import { useRequiredOwnerId } from '@/lib/useOwnerId'
 import { formatDate, formatMoney } from '@/utils/format'
 import {
   revenueByCurrencyMinor,
@@ -44,13 +44,15 @@ const CustomerPage = () => {
   const { t: tOrder } = useTranslation('order')
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const ownerId = useOwnerId()
-  // Customer + the owner's orders from the shared query cache. Defense-in-depth: a
-  // foreign customer is treated as not found, mirroring fetchOrder's owner re-check
-  // (owner-scoped rules remain the real boundary). The order list is filtered to
-  // this customer in memory (fetchOrders already drops deleted ones).
+  const ownerId = useRequiredOwnerId()
+  // The owner's orders SUSPEND (owner-gated, non-nullable) to the route-level
+  // Spinner (AppLayout) until resolved, throwing a load failure to the route error
+  // boundary there. The customer stays a plain useQuery: `null` is a legitimate
+  // non-loading state (foreign/deleted → "not found"), which suspense can't express,
+  // so its loading/error/not-found still render inline here. Defense-in-depth: a
+  // foreign customer is treated as not found, mirroring fetchOrder's owner re-check.
   const customerQuery = useCustomer(id)
-  const ordersQuery = useOrders(ownerId)
+  const { data: allOrders } = useOrdersSuspense(ownerId)
   const customerCache = useCustomerCache()
   const customer =
     customerQuery.data && customerQuery.data.ownerId === ownerId ? customerQuery.data : null
@@ -58,11 +60,12 @@ const CustomerPage = () => {
   // TanStack Table reconcile its row models on an unstable reference (the #133
   // lesson — matches how OrdersPage/DeletedOrdersPage already memoize their lists).
   const orders = useMemo(
-    () => (ordersQuery.data ?? EMPTY_ORDERS).filter((o) => o.customerId === id),
-    [ordersQuery.data, id],
+    () => allOrders.filter((o) => o.customerId === id),
+    [allOrders, id],
   )
-  const loading = customerQuery.isLoading || ordersQuery.isLoading
-  const error = customerQuery.error ?? ordersQuery.error
+  // Only the customer read remains a gate here (orders suspend above).
+  const loading = customerQuery.isLoading
+  const error = customerQuery.error
   // Edit happens in the shared dialog (same as the Customers list), so the page
   // doesn't duplicate the customer form.
   const [editing, setEditing] = useState(false)
