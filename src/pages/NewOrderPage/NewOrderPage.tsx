@@ -4,7 +4,7 @@ import OrderForm from '@/components/OrderForm/OrderForm'
 import { createOrder } from '@/firebase/orders'
 import { useOrderCache } from '@/queries/orders'
 import { useCustomerCache } from '@/queries/customers'
-import { useConsumeNavState } from '@/lib/useConsumeNavState'
+import { useConsumeNavState } from '@/hooks/useConsumeNavState'
 import type { Order } from '@/types/order'
 
 // Create-order screen: a thin wrapper over the shared OrderForm. The form owns

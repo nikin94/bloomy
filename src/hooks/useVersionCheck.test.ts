@@ -5,7 +5,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 // pretend the app was built at a chosen version. A getter keeps the binding live
 // so changing `mockVersion` between tests takes effect.
 let mockVersion = 'v1'
-vi.mock('../../version', () => ({
+vi.mock('@/version', () => ({
   get APP_VERSION() {
     return mockVersion
   },

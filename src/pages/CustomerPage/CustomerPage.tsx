@@ -12,7 +12,7 @@ import { updateCustomer } from '@/firebase/customers'
 import type { CustomerEdits } from '@/firebase/customers'
 import { useCustomer, useCustomerCache } from '@/queries/customers'
 import { useOrdersSuspense } from '@/queries/orders'
-import { useRequiredOwnerId } from '@/lib/useOwnerId'
+import { useRequiredOwnerId } from '@/hooks/useOwnerId'
 import { formatDate, formatMoney } from '@/utils/format'
 import {
   revenueByCurrencyMinor,

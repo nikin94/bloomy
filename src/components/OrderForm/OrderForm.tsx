@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createCustomer, fetchCustomer, fetchCustomers } from '@/firebase/customers'
-import { useOwnerId } from '@/lib/useOwnerId'
+import { useOwnerId } from '@/hooks/useOwnerId'
 import { useSettings } from '@/context/settingsContext'
 import { formatMinorToInput, formatMoney, parseRublesToMinor } from '@/utils/format'
 import {
