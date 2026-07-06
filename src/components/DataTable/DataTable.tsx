@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   flexRender,
@@ -8,6 +8,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import type { ColumnDef, OnChangeFn, SortingState } from '@tanstack/react-table'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import type { Order } from '@/types/order'
 import type { OrderColumn, OrderSort } from '@/components/DataTable/orderColumns'
 import SortChevron from '@/components/icons/SortChevron'
@@ -21,6 +22,33 @@ import OrderCard from './OrderCard'
 // table hands TanStack the SAME reference every render instead of a fresh `[]`
 // (which it would read as a state change and re-sync on — see the sorting memo).
 const EMPTY_SORTING: SortingState = []
+
+// Only virtualize a genuinely long list. Below this the whole table fits a few
+// hundred DOM nodes — the browser renders and scrolls it fine, and the spacer-row
+// machinery would only add overhead. A single florist's order list rarely crosses
+// this, so real-world usage keeps the plain render-all path; virtualization engages
+// only for a pathological list (and only when the viewport is measurable — see below).
+const VIRTUALIZE_THRESHOLD = 80
+
+// The scroll container's live pixel height, tracked so virtualization can gate on a
+// MEASURABLE viewport. Returns 0 when it can't measure: pre-paint, a display:none
+// (hidden layout) branch, or jsdom — where clientHeight is 0 and ResizeObserver is
+// absent. That 0 makes `virtualize` false, so the test environment (and any
+// unmeasured mount) always takes the unchanged render-all path.
+const useMeasuredHeight = (ref: RefObject<HTMLElement | null>): number => {
+  const [height, setHeight] = useState(0)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => setHeight(el.clientHeight)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [ref])
+  return height
+}
 
 interface DataTableProps {
   orders: Order[]
@@ -155,6 +183,32 @@ const DataTable = ({
 
   const rows = table.getRowModel().rows
 
+  // Virtualize the desktop table only when the list is long AND the viewport is
+  // measurable (see useMeasuredHeight). The hooks below are always called (rules of
+  // hooks), but the RENDER branches on `virtualize`, so a short/unmeasured list —
+  // including every jsdom test — renders every row exactly as before. Row height is
+  // measured (measureElement), so wrapping cells need no fixed height; `estimateSize`
+  // is just the initial guess for the scrollbar before rows are measured.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const viewportHeight = useMeasuredHeight(scrollRef)
+  const virtualize = viewportHeight > 0 && rows.length > VIRTUALIZE_THRESHOLD
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 44,
+    overscan: 10,
+    enabled: virtualize,
+  })
+  // The rows to actually render as <tr>, plus the top/bottom spacer heights that
+  // stand in for the off-screen rows so the scrollbar stays the full-list size. All
+  // zero/empty on the non-virtualized path, which renders `rows` directly instead.
+  const virtualItems = virtualize ? rowVirtualizer.getVirtualItems() : []
+  const padTop = virtualItems.length > 0 ? virtualItems[0].start : 0
+  const padBottom =
+    virtualItems.length > 0
+      ? rowVirtualizer.getTotalSize() - virtualItems[virtualItems.length - 1].end
+      : 0
+
   if (rows.length === 0) {
     return (
       <div className="min-h-0 flex-1 overflow-auto">
@@ -164,7 +218,7 @@ const DataTable = ({
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto">
+    <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
       {/* Desktop: full table. */}
       <table
         data-testid="orders-table"
@@ -214,15 +268,49 @@ const DataTable = ({
           ))}
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <OrderTableRow
-              key={row.id}
-              row={row}
-              highlighted={row.original.id === highlightOrderId}
-              columnById={columnById}
-              onActivate={onRowClick}
-            />
-          ))}
+          {virtualize ? (
+            <>
+              {/* Spacer rows stand in for the off-screen rows above/below the
+                  rendered window, so the scrollbar spans the whole list. `colSpan`
+                  keeps them from disturbing the column layout; aria-hidden keeps
+                  them out of the a11y tree. The <thead> sits outside <tbody>, so
+                  its `sticky top-0` is untouched by any of this. */}
+              {padTop > 0 && (
+                <tr aria-hidden="true">
+                  <td colSpan={columns.length} style={{ height: padTop }} />
+                </tr>
+              )}
+              {virtualItems.map((virtualRow) => {
+                const row = rows[virtualRow.index]
+                return (
+                  <OrderTableRow
+                    key={row.id}
+                    row={row}
+                    highlighted={row.original.id === highlightOrderId}
+                    columnById={columnById}
+                    onActivate={onRowClick}
+                    measureRef={rowVirtualizer.measureElement}
+                    index={virtualRow.index}
+                  />
+                )
+              })}
+              {padBottom > 0 && (
+                <tr aria-hidden="true">
+                  <td colSpan={columns.length} style={{ height: padBottom }} />
+                </tr>
+              )}
+            </>
+          ) : (
+            rows.map((row) => (
+              <OrderTableRow
+                key={row.id}
+                row={row}
+                highlighted={row.original.id === highlightOrderId}
+                columnById={columnById}
+                onActivate={onRowClick}
+              />
+            ))
+          )}
         </tbody>
       </table>
 

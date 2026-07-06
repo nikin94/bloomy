@@ -37,6 +37,12 @@ const OrderCard = ({
     <div
       className={cn(
         'flex cursor-pointer flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg',
+        // Skip rendering/layout/paint of off-screen cards: the browser only lays a
+        // card out once it nears the viewport, so a long list scrolls cheaply with
+        // no JS virtualizer for the (tall, variable-height) mobile layout. The
+        // intrinsic-size placeholder keeps the scrollbar honest before a card has
+        // been measured. Ignored by jsdom, so tests are unaffected.
+        '[content-visibility:auto] [contain-intrinsic-size:0_220px]',
         FOCUS_RING_INSET,
         highlighted && 'row-highlight',
       )}
