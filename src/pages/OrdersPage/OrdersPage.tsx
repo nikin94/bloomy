@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import DataTable from '@/components/DataTable/DataTable'
 import SearchControl from '@/components/SearchControl/SearchControl'
 import OrderFilterControl from '@/components/OrderFilterControl/OrderFilterControl'
 import { useOrdersSuspense, useReconcileOrderNumbers } from '@/queries/orders'
 import { useCustomersSuspense } from '@/queries/customers'
 import { useRequiredOwnerId } from '@/lib/useOwnerId'
+import { useConsumeNavState } from '@/lib/useConsumeNavState'
 import { useHeaderActions } from '@/context/headerActionsContext'
 import {
   filterOrders,
@@ -23,7 +24,6 @@ const OrdersPage = () => {
   // Order-bound t for the column/option helpers, which are typed TFunction<'order'>.
   const { t: tOrder } = useTranslation('order')
   const navigate = useNavigate()
-  const location = useLocation()
   const ownerId = useRequiredOwnerId()
   // Orders + customers (WITH deleted, so a removed customer's name still resolves)
   // come from the shared query cache; navigating away and back reuses the parsed
@@ -40,32 +40,23 @@ const OrdersPage = () => {
   // dialog's sort control (phones, no headers) drive the same order. Ephemeral —
   // resets to the natural order on remount, matching the old header-only sort.
   const [sort, setSort] = useState<OrderSort | null>(null)
-  // Navigation state, set by another screen:
+  // Navigation state, set by another screen and consumed once (read on mount,
+  // then stripped from history so a refresh or back-nav doesn't replay it):
   //  • highlightId — NewOrderPage, after a create, to flash the new row.
   //  • dateFilter — the statistics tab, when a monthly-chart bar is clicked, to
   //    open this list scoped to that month.
-  // Both are read once into state, then stripped from history so a refresh or
-  // back-nav doesn't replay them.
-  const navState =
-    (location.state as {
-      highlightId?: string
-      dateFilter?: { minDate: number | null; maxDate: number | null }
-    } | null) ?? null
+  const navState = useConsumeNavState<{
+    highlightId?: string
+    dateFilter?: { minDate: number | null; maxDate: number | null }
+  }>()
   const [filter, setFilter] = useState<OrderFilter>(() =>
     navState?.dateFilter
       ? { ...EMPTY_ORDER_FILTER, minDate: navState.dateFilter.minDate, maxDate: navState.dateFilter.maxDate }
       : EMPTY_ORDER_FILTER,
   )
-  // Captured once on mount so it survives the history cleanup below (which sets
-  // location.state to null); the row keeps highlighting through its animation.
-  const [highlightOrderId] = useState(navState?.highlightId)
-  useEffect(() => {
-    if (navState?.highlightId || navState?.dateFilter) {
-      navigate('.', { replace: true, state: null })
-    }
-    // Only on first mount: consume the navigation state exactly once.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  // navState is itself captured once on mount, so the highlight id survives the
+  // history cleanup and the row keeps highlighting through its animation.
+  const highlightOrderId = navState?.highlightId
 
   // Memoised so their identity is stable across renders: `columns` now feeds the
   // header-actions node (its memo would loop setActions on a fresh array every

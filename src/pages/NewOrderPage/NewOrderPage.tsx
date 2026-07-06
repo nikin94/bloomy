@@ -1,9 +1,10 @@
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import OrderForm from '@/components/OrderForm/OrderForm'
 import { createOrder } from '@/firebase/orders'
 import { useOrderCache } from '@/queries/orders'
 import { useCustomerCache } from '@/queries/customers'
+import { useConsumeNavState } from '@/lib/useConsumeNavState'
 import type { Order } from '@/types/order'
 
 // Create-order screen: a thin wrapper over the shared OrderForm. The form owns
@@ -11,15 +12,14 @@ import type { Order } from '@/types/order'
 // persisted (createOrder) and where to go afterwards.
 const NewOrderPage = () => {
   const navigate = useNavigate()
-  const location = useLocation()
   const { t } = useTranslation('order')
   const orderCache = useOrderCache()
   const customerCache = useCustomerCache()
 
   // "Repeat" (repeat order) navigates here with the source order in history
-  // state; OrderForm seeds a fresh create form from its contents. Absent on a
-  // normal "new order" navigation (and after a refresh, which drops the state).
-  const seed = (location.state as { repeatOrder?: Order } | null)?.repeatOrder
+  // state; OrderForm seeds a fresh create form from its contents. Consumed once
+  // (then stripped from history), so a refresh or back-nav starts a blank order.
+  const seed = useConsumeNavState<{ repeatOrder?: Order }>()?.repeatOrder
 
   return (
     <OrderForm
