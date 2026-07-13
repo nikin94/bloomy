@@ -6,6 +6,7 @@ import type { User } from 'firebase/auth'
 import { QueryWrapper } from '@/test/queryWrapper'
 import { AuthContext } from '@/context/authContext'
 import type { Order } from '@/types/order'
+import { formatDate } from '@/utils/format'
 import { order as baseOrder, customer } from '@/test/factories'
 
 // Firebase-touching modules are mocked so the page never initializes the real
@@ -123,21 +124,32 @@ describe('CustomerPage', () => {
     expect(screen.getByText('У клиента пока нет заказов')).toBeInTheDocument()
   })
 
-  it('lists the distinct gifts already sent to this customer', async () => {
+  it('lists every gift sent to this customer with its giving date, newest first', async () => {
+    // 22 Jun 2026 / 1 Jul 2026 / 5 Jul 2026 (local) — distinct formatted dates.
+    const jun22 = new Date(2026, 5, 22).getTime()
+    const jul1 = new Date(2026, 6, 1).getTime()
+    const jul5 = new Date(2026, 6, 5).getTime()
     fetchOrders.mockResolvedValue([
-      order({ id: 'o1', gifts: [{ name: 'Азалия', quantity: 1, unitPriceMinor: 0 }] }),
-      // Same gift again in another casing — deduped; plus a second distinct one.
-      order({ id: 'o2', number: 2, gifts: [{ name: 'азалия', quantity: 1, unitPriceMinor: 0 }] }),
-      order({ id: 'o3', number: 3, gifts: [{ name: 'Бегония', quantity: 1, unitPriceMinor: 0 }] }),
+      order({ id: 'o1', dateCreated: jun22, gifts: [{ name: 'Азалия', quantity: 1, unitPriceMinor: 0 }] }),
+      // The SAME gift again in another order — two separate rows, told apart by date.
+      order({ id: 'o2', number: 2, dateCreated: jul5, gifts: [{ name: 'Азалия', quantity: 1, unitPriceMinor: 0 }] }),
+      order({ id: 'o3', number: 3, dateCreated: jul1, gifts: [{ name: 'Бегония', quantity: 1, unitPriceMinor: 0 }] }),
     ])
     renderPage()
     await screen.findByRole('heading', { name: 'Анна' })
 
     // Scope to the gifts section — plant names also appear in the orders table.
     const gifts = within(screen.getByText('Подарки').closest('section') as HTMLElement)
-    expect(gifts.getByText('Бегония')).toBeInTheDocument()
-    // One entry despite two orders carrying it (case-insensitive dedupe).
-    expect(gifts.getAllByText('Азалия')).toHaveLength(1)
+    // Each giving is its own row (no dedupe), with the order's date beside it.
+    expect(gifts.getAllByText('Азалия')).toHaveLength(2)
+    expect(gifts.getByText(formatDate(jun22))).toBeInTheDocument()
+    expect(gifts.getByText(formatDate(jul5))).toBeInTheDocument()
+    expect(gifts.getByText(formatDate(jul1))).toBeInTheDocument()
+    // Newest first: the 5 Jul giving is listed above the 22 Jun one.
+    const rows = gifts.getAllByRole('listitem')
+    expect(rows[0]).toHaveTextContent(formatDate(jul5))
+    expect(rows[1]).toHaveTextContent(formatDate(jul1))
+    expect(rows[2]).toHaveTextContent(formatDate(jun22))
   })
 
   it('omits the gifts section when no order carried a gift', async () => {

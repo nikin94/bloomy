@@ -15,7 +15,7 @@ import {
   revenueByCurrencyMinor,
   topPlantsByQuantity,
   collectPlantNames,
-  collectGiftNames,
+  giftsByDateDesc,
   STORED_ORDER_SCHEMA,
 } from './order'
 import type { Order } from './order'
@@ -542,27 +542,35 @@ describe('collectPlantNames', () => {
   })
 })
 
-describe('collectGiftNames', () => {
+describe('giftsByDateDesc', () => {
   const gift = (name: string) => ({ name, quantity: 1, unitPriceMinor: 0 })
 
-  it('returns distinct gift names sorted in ru locale, ignoring giftless orders', () => {
+  it('lists every gift occurrence newest first with its order date, ignoring giftless orders', () => {
     const orders = [
-      makeOrder({ id: 'a', gifts: [gift('Фиалка')] }),
-      makeOrder({ id: 'b' }), // no gifts field at all (pre-gift document)
-      makeOrder({ id: 'c', gifts: [gift('Кактус')] }),
+      makeOrder({ id: 'a', dateCreated: 1000, gifts: [gift('Фиалка')] }),
+      makeOrder({ id: 'b', dateCreated: 2000 }), // no gifts field at all (pre-gift document)
+      makeOrder({ id: 'c', dateCreated: 3000, gifts: [gift('Кактус')] }),
     ]
-    expect(collectGiftNames(orders)).toEqual(['Кактус', 'Фиалка'])
+    expect(giftsByDateDesc(orders)).toEqual([
+      { name: 'Кактус', dateCreated: 3000, orderId: 'c' },
+      { name: 'Фиалка', dateCreated: 1000, orderId: 'a' },
+    ])
   })
 
-  it('dedupes case-insensitively, keeping the first-seen spelling', () => {
+  it('keeps repeated gifts as separate occurrences (no dedupe)', () => {
     const orders = [
-      makeOrder({ id: 'a', gifts: [gift('Суккулент')] }),
-      makeOrder({ id: 'b', gifts: [gift('суккулент')] }),
+      makeOrder({ id: 'a', dateCreated: 1000, gifts: [gift('Суккулент')] }),
+      makeOrder({ id: 'b', dateCreated: 2000, gifts: [gift('Суккулент')] }),
     ]
-    expect(collectGiftNames(orders)).toEqual(['Суккулент'])
+    // Both givings survive — the customer page shows each with its own date.
+    expect(giftsByDateDesc(orders)).toEqual([
+      { name: 'Суккулент', dateCreated: 2000, orderId: 'b' },
+      { name: 'Суккулент', dateCreated: 1000, orderId: 'a' },
+    ])
   })
 
-  it('returns an empty array when no order carries a gift', () => {
-    expect(collectGiftNames([makeOrder()])).toEqual([])
+  it('drops blank-named entries and returns empty for giftless input', () => {
+    expect(giftsByDateDesc([makeOrder({ id: 'a', gifts: [gift('   ')] })])).toEqual([])
+    expect(giftsByDateDesc([makeOrder()])).toEqual([])
   })
 })

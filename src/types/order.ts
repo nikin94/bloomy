@@ -245,22 +245,29 @@ export const collectPlantNames = (orders: Order[]): string[] => {
   return [...byKey.values()].sort((a, b) => a.localeCompare(b, 'ru'))
 }
 
-// Distinct gift names across the given orders, deduped case-insensitively with
-// the FIRST-seen original casing (same contract as collectPlantNames), sorted
-// (ru locale). Callers pass an already-filtered list (e.g. one customer's
-// orders) — used for the customer page's "gifts sent" summary and for the order
-// form's "this gift was already sent to this customer" warning.
-export const collectGiftNames = (orders: Order[]): string[] => {
-  const byKey = new Map<string, string>()
+// Every gift occurrence across the given orders (the caller passes an
+// already-filtered list, e.g. one customer's orders), newest first, each
+// stamped with the date of the order it was sent with. Deliberately NOT
+// deduped: the customer page lists each handed-over gift as its own row — two
+// orders gifting the same plant are two separate givings, and the dates are
+// what tells them apart. (The order form's "already sent" warning keeps its
+// own case-insensitive per-customer set — a repeat only needs flagging once
+// there.) Blank names are dropped, mirroring the form's blank-row drop.
+export interface GiftOccurrence {
+  name: string
+  dateCreated: number // the carrying order's creation timestamp (ms)
+  orderId: string
+}
+export const giftsByDateDesc = (orders: Order[]): GiftOccurrence[] => {
+  const entries: GiftOccurrence[] = []
   for (const order of orders) {
     for (const gift of order.gifts ?? []) {
       const name = gift.name.trim()
       if (name === '') continue
-      const key = name.toLowerCase()
-      if (!byKey.has(key)) byKey.set(key, name)
+      entries.push({ name, dateCreated: order.dateCreated, orderId: order.id })
     }
   }
-  return [...byKey.values()].sort((a, b) => a.localeCompare(b, 'ru'))
+  return entries.sort((a, b) => b.dateCreated - a.dateCreated)
 }
 
 // Compact per-line label for the orders-table list: the name, plus the quantity
