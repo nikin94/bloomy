@@ -16,9 +16,9 @@
   "totalOrders": "Orders in period",
   "money": {
     "title": "Money",
-    "plants": "Plants",
+    "withDelivery": "Incl. delivery",
     "delivery": "Delivery",
-    "total": "Total",
+    "total": "Total cost",
     "hint": "Paid orders only",
     "empty": "No paid orders in this period",
     "emptyPeriod": "No orders in this period"

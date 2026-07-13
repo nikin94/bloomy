@@ -86,17 +86,17 @@ describe('StatsPage', () => {
     await screen.findByText('Заказов за период')
     expect(totalCount().getByText('1')).toBeInTheDocument()
     // Money + status + chart sections are present.
-    expect(screen.getByText('Растения')).toBeInTheDocument()
-    expect(screen.getByText('Итого')).toBeInTheDocument()
+    expect(screen.getByText('С учётом доставки')).toBeInTheDocument()
+    expect(screen.getByText('Общая стоимость')).toBeInTheDocument()
     expect(screen.getByText('Статусы заказов')).toBeInTheDocument()
     expect(screen.getByText('Доставлено')).toBeInTheDocument()
     expect(screen.getByText('Заказы по месяцам')).toBeInTheDocument()
   })
 
-  it('splits paid money into plants, delivery, and their total', async () => {
-    // plants = 1 × 1000.00, delivery = 250.00 → total = 1250.00. The total must
-    // equal plants + delivery (revenue already includes delivery), so the three
-    // rows never read as if delivery is added on top of the total.
+  it('splits paid money into the gross incl. delivery, delivery, and the net plant total', async () => {
+    // plants = 1 × 1000.00, delivery = 250.00 → incl. delivery = 1250.00. The
+    // emphasised bottom line is the NET plant figure (gross − delivery), with
+    // the gross and the delivery component shown above it as context.
     fetchOrders.mockResolvedValue([
       order({
         id: 'a',
@@ -108,7 +108,7 @@ describe('StatsPage', () => {
     ])
     renderPage()
 
-    await screen.findByText('Растения')
+    await screen.findByText('С учётом доставки')
     // getByText collapses non-breaking spaces (U+00A0) in the DOM to regular
     // spaces, so normalise the expected formatted amount to match.
     const money = (minor: number) => formatMoney(minor, 'RUB').replace(/\s/g, ' ')

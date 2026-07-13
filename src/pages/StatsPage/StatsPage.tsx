@@ -165,8 +165,11 @@ const StatsPage = () => {
           <p className="m-0 text-text">{t('empty')}</p>
         ) : (
           <>
-            {/* KPI cards: order count + per-currency money broken into
-                plants / delivery / total (total = plants + delivery). An
+            {/* KPI cards: order count + per-currency money. The emphasised
+                bottom line is the NET plant revenue (the number the operator
+                actually runs the shop by); the gross incl. delivery and the
+                delivery component sit above it as context, so the card reads
+                top-to-bottom as "incl. delivery − delivery = plants". An
                 auto-fill grid (min 16rem/card) fills the freed width with as
                 many columns as fit, instead of a fixed two that stretch huge. */}
             <section className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(16rem,1fr))]">
@@ -187,21 +190,20 @@ const StatsPage = () => {
                 </div>
               ) : (
                 moneyCurrencies.map((c) => {
-                  const totalMinor = revenue.get(c) ?? 0
+                  const withDeliveryMinor = revenue.get(c) ?? 0
                   const deliveryMinor = delivery.get(c) ?? 0
                   // `revenue` already includes delivery (getTotalMinor = plants +
-                  // delivery), so plants = revenue − delivery. Showing all three
-                  // avoids the misread where Revenue/Delivery look additive.
-                  const plantsMinor = totalMinor - deliveryMinor
+                  // delivery), so the net plant figure = revenue − delivery.
+                  const plantsMinor = withDeliveryMinor - deliveryMinor
                   return (
                     <div
                       key={c}
                       className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4"
                     >
                       <div className="flex items-baseline justify-between gap-3">
-                        <span className="text-sm text-text">{t('money.plants')}</span>
+                        <span className="text-sm text-text">{t('money.withDelivery')}</span>
                         <span className="tabular-nums text-heading">
-                          {formatMoney(plantsMinor, c)}
+                          {formatMoney(withDeliveryMinor, c)}
                         </span>
                       </div>
                       <div className="flex items-baseline justify-between gap-3">
@@ -210,10 +212,11 @@ const StatsPage = () => {
                           {formatMoney(deliveryMinor, c)}
                         </span>
                       </div>
+                      {/* The headline number: plants only, net of delivery. */}
                       <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
                         <span className="text-sm text-text">{t('money.total')}</span>
                         <span className="text-lg font-semibold tabular-nums text-heading">
-                          {formatMoney(totalMinor, c)}
+                          {formatMoney(plantsMinor, c)}
                         </span>
                       </div>
                     </div>
