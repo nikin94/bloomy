@@ -79,6 +79,15 @@ export const STORED_ORDER_SCHEMA = z.object({
   // supported set; existing documents (all 'RUB') stay valid, so this is a safe
   // widening with no migration. New orders write the chosen currency.
   currency: CURRENCY_SCHEMA,
+  // Gift plants included with the order for free. Same item shape as `plants`
+  // (a gift IS a plant), but a SEPARATE array so the money selectors — which
+  // read only `plants` — never count a gift into the subtotal/total/revenue.
+  // Stored as an array to leave room for several gifts per order later; TODAY
+  // the form allows at most one (quantity 1, unitPriceMinor 0). A non-empty
+  // array is the "order includes a gift" signal — no separate boolean flag that
+  // could drift out of sync. Optional so every pre-existing document stays
+  // valid without a migration (widening is safe; narrowing is not).
+  gifts: z.array(ORDER_ITEM_SCHEMA).optional(),
   paymentStatus: PAYMENT_STATUS_SCHEMA,
   shipmentStatus: SHIPMENT_STATUS_SCHEMA,
   comment: z.string().optional(),
@@ -228,6 +237,24 @@ export const collectPlantNames = (orders: Order[]): string[] => {
   for (const order of orders) {
     for (const plant of order.plants) {
       const name = plant.name.trim()
+      if (name === '') continue
+      const key = name.toLowerCase()
+      if (!byKey.has(key)) byKey.set(key, name)
+    }
+  }
+  return [...byKey.values()].sort((a, b) => a.localeCompare(b, 'ru'))
+}
+
+// Distinct gift names across the given orders, deduped case-insensitively with
+// the FIRST-seen original casing (same contract as collectPlantNames), sorted
+// (ru locale). Callers pass an already-filtered list (e.g. one customer's
+// orders) — used for the customer page's "gifts sent" summary and for the order
+// form's "this gift was already sent to this customer" warning.
+export const collectGiftNames = (orders: Order[]): string[] => {
+  const byKey = new Map<string, string>()
+  for (const order of orders) {
+    for (const gift of order.gifts ?? []) {
+      const name = gift.name.trim()
       if (name === '') continue
       const key = name.toLowerCase()
       if (!byKey.has(key)) byKey.set(key, name)

@@ -160,7 +160,7 @@ export async function reconcileOrderNumbers(ownerId: string): Promise<boolean> {
 // field it has no value for (an empty comment, a non-completed order), so on a
 // per-field merge those omissions must become explicit removals — otherwise an
 // omitted field would just linger (see updateOrder).
-const CLEARABLE_ORDER_FIELDS = ['comment', 'completedAt'] as const
+const CLEARABLE_ORDER_FIELDS = ['comment', 'completedAt', 'gifts'] as const
 
 // Save an edited order in place (used by the edit screen). Unlike createOrder,
 // this runs NO numbering transaction: editing keeps the order's id and

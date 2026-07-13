@@ -101,6 +101,7 @@
     "quantity": "Кол-во",
     "price": "Цена",
     "lineTotal": "Сумма",
+    "gift": "Подарок",
     "subtotal": "Сумма растений",
     "delivery": "Доставка",
     "total": "Итого"
@@ -139,6 +140,10 @@
     "quantity": "Кол-во",
     "price": "Цена",
     "removePlant": "Удалить растение",
+    "addGift": "+ Добавить подарок",
+    "giftName": "Название подарка",
+    "removeGift": "Удалить подарок",
+    "giftAlreadySent": "Такой подарок уже отправлялся этому клиенту",
     "deliveryMethod": "Способ доставки",
     "deliveryPrice": "Стоимость доставки",
     "currency": "Валюта",

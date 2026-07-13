@@ -123,6 +123,30 @@ describe('CustomerPage', () => {
     expect(screen.getByText('У клиента пока нет заказов')).toBeInTheDocument()
   })
 
+  it('lists the distinct gifts already sent to this customer', async () => {
+    fetchOrders.mockResolvedValue([
+      order({ id: 'o1', gifts: [{ name: 'Азалия', quantity: 1, unitPriceMinor: 0 }] }),
+      // Same gift again in another casing — deduped; plus a second distinct one.
+      order({ id: 'o2', number: 2, gifts: [{ name: 'азалия', quantity: 1, unitPriceMinor: 0 }] }),
+      order({ id: 'o3', number: 3, gifts: [{ name: 'Бегония', quantity: 1, unitPriceMinor: 0 }] }),
+    ])
+    renderPage()
+    await screen.findByRole('heading', { name: 'Анна' })
+
+    // Scope to the gifts section — plant names also appear in the orders table.
+    const gifts = within(screen.getByText('Подарки').closest('section') as HTMLElement)
+    expect(gifts.getByText('Бегония')).toBeInTheDocument()
+    // One entry despite two orders carrying it (case-insensitive dedupe).
+    expect(gifts.getAllByText('Азалия')).toHaveLength(1)
+  })
+
+  it('omits the gifts section when no order carried a gift', async () => {
+    fetchOrders.mockResolvedValue([order({ id: 'o1' })])
+    renderPage()
+    await screen.findByRole('heading', { name: 'Анна' })
+    expect(screen.queryByText('Подарки')).not.toBeInTheDocument()
+  })
+
   it('treats a foreign customer as not found (defense-in-depth)', async () => {
     fetchCustomer.mockResolvedValue(customer({ ownerId: 'someone-else' }))
     renderPage()

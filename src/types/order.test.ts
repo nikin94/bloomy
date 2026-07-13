@@ -15,6 +15,7 @@ import {
   revenueByCurrencyMinor,
   topPlantsByQuantity,
   collectPlantNames,
+  collectGiftNames,
   STORED_ORDER_SCHEMA,
 } from './order'
 import type { Order } from './order'
@@ -391,6 +392,21 @@ describe('STORED_ORDER_SCHEMA', () => {
   it('rejects an unsupported currency', () => {
     expect(STORED_ORDER_SCHEMA.safeParse({ ...validDoc(), currency: 'GBP' }).success).toBe(false)
   })
+
+  it('stays valid without gifts (pre-gift documents) and accepts a gift when present', () => {
+    // `gifts` was added after orders already existed — optional, so no migration.
+    expect(STORED_ORDER_SCHEMA.safeParse(validDoc()).success).toBe(true)
+    const withGift = {
+      ...validDoc(),
+      gifts: [{ name: 'Суккулент', quantity: 1, unitPriceMinor: 0 }],
+    }
+    expect(STORED_ORDER_SCHEMA.safeParse(withGift).success).toBe(true)
+  })
+
+  it('rejects a malformed gift entry (same item shape as plants)', () => {
+    const doc = { ...validDoc(), gifts: [{ name: '', quantity: 1, unitPriceMinor: 0 }] }
+    expect(STORED_ORDER_SCHEMA.safeParse(doc).success).toBe(false)
+  })
 })
 
 describe('isOrderDeleted', () => {
@@ -523,5 +539,30 @@ describe('collectPlantNames', () => {
 
   it('returns an empty array when there are no orders', () => {
     expect(collectPlantNames([])).toEqual([])
+  })
+})
+
+describe('collectGiftNames', () => {
+  const gift = (name: string) => ({ name, quantity: 1, unitPriceMinor: 0 })
+
+  it('returns distinct gift names sorted in ru locale, ignoring giftless orders', () => {
+    const orders = [
+      makeOrder({ id: 'a', gifts: [gift('Фиалка')] }),
+      makeOrder({ id: 'b' }), // no gifts field at all (pre-gift document)
+      makeOrder({ id: 'c', gifts: [gift('Кактус')] }),
+    ]
+    expect(collectGiftNames(orders)).toEqual(['Кактус', 'Фиалка'])
+  })
+
+  it('dedupes case-insensitively, keeping the first-seen spelling', () => {
+    const orders = [
+      makeOrder({ id: 'a', gifts: [gift('Суккулент')] }),
+      makeOrder({ id: 'b', gifts: [gift('суккулент')] }),
+    ]
+    expect(collectGiftNames(orders)).toEqual(['Суккулент'])
+  })
+
+  it('returns an empty array when no order carries a gift', () => {
+    expect(collectGiftNames([makeOrder()])).toEqual([])
   })
 })

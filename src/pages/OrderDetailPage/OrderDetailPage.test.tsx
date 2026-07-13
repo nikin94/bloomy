@@ -110,6 +110,24 @@ describe('OrderDetailPage', () => {
     expect(screen.getByText(/2 ×/)).toBeInTheDocument()
   })
 
+  it('shows the gift under the plant list, without price columns', async () => {
+    fetchOrder.mockResolvedValue(
+      order({ gifts: [{ name: 'Суккулент', quantity: 1, unitPriceMinor: 0 }] }),
+    )
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    // A labelled line, apart from the priced table rows (a gift is free — no
+    // noise zeros in the money columns).
+    expect(screen.getByText(/Подарок:/)).toBeInTheDocument()
+    expect(screen.getByText('Суккулент')).toBeInTheDocument()
+  })
+
+  it('shows no gift line for an order without one', async () => {
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    expect(screen.queryByText(/Подарок:/)).not.toBeInTheDocument()
+  })
+
   it('saves a status change as a partial patch (only the changed field)', async () => {
     const user = userEvent.setup()
     renderPage()

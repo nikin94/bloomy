@@ -17,6 +17,7 @@ import { formatDate, formatMoney } from '@/utils/format'
 import {
   revenueByCurrencyMinor,
   topPlantsByQuantity,
+  collectGiftNames,
   CURRENCIES,
 } from '@/types/order'
 import { buildOrderColumns } from '@/components/DataTable/orderColumns'
@@ -100,6 +101,9 @@ const CustomerPage = () => {
     (c) => [c, revenue.get(c) ?? 0] as const,
   )
   const topPlants = topPlantsByQuantity(orders, TOP_PLANTS)
+  // Distinct gift names ever sent to this customer (dedup mirrors the order
+  // form's already-sent warning, so the list and the warning always agree).
+  const gifts = collectGiftNames(orders)
   const orderDates = orders.map((o) => o.dateCreated)
   const firstOrder = orderDates.length > 0 ? Math.min(...orderDates) : null
   const lastOrder = orderDates.length > 0 ? Math.max(...orderDates) : null
@@ -198,6 +202,26 @@ const CustomerPage = () => {
                       >
                         <span className="min-w-0 break-words text-heading">{plant.name}</span>
                         <span className="shrink-0 tabular-nums text-text">×{plant.quantity}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {/* Gifts already sent to this customer — the memory the order
+                  form's "already sent" warning draws on, listed so the operator
+                  can pick something new. Omitted when none were ever sent. */}
+              {gifts.length > 0 && (
+                <section className="flex flex-col gap-2">
+                  <h2 className="m-0 text-lg font-semibold text-heading">{t('page.gifts')}</h2>
+                  <ul className="m-0 flex list-none flex-col gap-1 p-0">
+                    {gifts.map((name) => (
+                      <li
+                        key={name}
+                        className="rounded-md border border-border px-3 py-1.5 text-sm"
+                      >
+                        <span aria-hidden="true">🎁 </span>
+                        <span className="min-w-0 break-words text-heading">{name}</span>
                       </li>
                     ))}
                   </ul>
