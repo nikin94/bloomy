@@ -170,9 +170,12 @@ const StatsPage = () => {
                 actually runs the shop by); the gross incl. delivery and the
                 delivery component sit above it as context, so the card reads
                 top-to-bottom as "incl. delivery − delivery = plants". An
-                auto-fill grid (min 16rem/card) fills the freed width with as
-                many columns as fit, instead of a fixed two that stretch huge. */}
-            <section className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(16rem,1fr))]">
+                auto-fill grid fills the freed width with as many columns as
+                fit, instead of a fixed two that stretch huge. The 18rem card
+                minimum is sized so the longest label+amount pair ("С учётом
+                доставки" + a five-digit ₽ amount) fits on ONE line — the
+                nowrap labels below rely on it. */}
+            <section className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(18rem,1fr))]">
               <div className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-4">
                 <span className="text-sm text-text">{t('totalOrders')}</span>
                 <span className="text-3xl font-semibold tabular-nums text-heading">
@@ -200,21 +203,32 @@ const StatsPage = () => {
                       key={c}
                       className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4"
                     >
+                      {/* Labels are nowrap so a row never folds onto two lines
+                          when the card has room (the grid's 18rem minimum is
+                          sized for the longest label+amount pair). The amount
+                          itself never wraps — formatMoney uses non-breaking
+                          spaces inside the number. */}
                       <div className="flex items-baseline justify-between gap-3">
-                        <span className="text-sm text-text">{t('money.withDelivery')}</span>
+                        <span className="whitespace-nowrap text-sm text-text">
+                          {t('money.withDelivery')}
+                        </span>
                         <span className="tabular-nums text-heading">
                           {formatMoney(withDeliveryMinor, c)}
                         </span>
                       </div>
                       <div className="flex items-baseline justify-between gap-3">
-                        <span className="text-sm text-text">{t('money.delivery')}</span>
+                        <span className="whitespace-nowrap text-sm text-text">
+                          {t('money.delivery')}
+                        </span>
                         <span className="tabular-nums text-heading">
                           {formatMoney(deliveryMinor, c)}
                         </span>
                       </div>
                       {/* The headline number: plants only, net of delivery. */}
                       <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
-                        <span className="text-sm text-text">{t('money.total')}</span>
+                        <span className="whitespace-nowrap text-sm text-text">
+                          {t('money.total')}
+                        </span>
                         <span className="text-lg font-semibold tabular-nums text-heading">
                           {formatMoney(plantsMinor, c)}
                         </span>
