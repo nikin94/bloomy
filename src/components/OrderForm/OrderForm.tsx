@@ -572,7 +572,12 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               min-content`, which otherwise stops the element from shrinking to its
               flex parent and lets a tight row overflow to the right. */}
           <span aria-hidden="true" className="h-px w-full bg-border" />
-          <fieldset className="flex min-w-0 flex-col gap-2 border-0 p-0">
+          {/* Wider gap between item BLOCKS on a phone (gap-4) than between the
+              two input lines inside one block (the row's own gap-2): the floating
+              labels eat most of the space between inputs, so without the extra
+              separation plant 1 / plant 2 / the gift read as one solid column.
+              From `sm` up each item is a single line, so gap-2 suffices. */}
+          <fieldset className="flex min-w-0 flex-col gap-4 border-0 p-0 sm:gap-2">
             <legend className="sr-only">{t('form.plants')}</legend>
             {items.map((item, index) => (
               <PlantItemRow
@@ -601,13 +606,14 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                 onRemove={() => setGiftName(null)}
               />
             )}
-            {/* One row on every width: on a phone the labels drop the "Добавить"
-                verb (just "+ Растение" / "+ Подарок") and the pair stretches over
-                the full width in a 2:1 split — plants (the frequent action) get
-                the wider button; from `sm` up the full labels return and the pair
-                sits together on the left at its natural width. aria-label keeps
-                the accessible name at the FULL label on every width, so screen
-                readers (and the tests) see one stable name. */}
+            {/* One row on every width. While a gift can still be added the pair
+                splits a phone width 50/50 with the shortened labels ("+ Растение"
+                / "+ Подарок", nowrap so the + never breaks onto its own line);
+                once a gift row exists its button DISAPPEARS (one gift per order)
+                and the plant button takes the whole row with its full label back.
+                From `sm` up the buttons keep their natural width on the left.
+                aria-label pins the accessible name to the FULL label on every
+                width, so screen readers (and the tests) see one stable name. */}
             <div className="flex items-center gap-2">
               <Button
                 variant="secondary"
@@ -615,23 +621,29 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                 onClick={addItem}
                 disabled={!canAddItem}
                 aria-label={t('form.addPlant')}
-                className="max-sm:flex-[2]"
+                className="whitespace-nowrap max-sm:flex-1"
               >
-                <span className="sm:hidden">{t('form.addPlantShort')}</span>
-                <span className="max-sm:hidden">{t('form.addPlant')}</span>
+                {giftName === null ? (
+                  <>
+                    <span className="sm:hidden">{t('form.addPlantShort')}</span>
+                    <span className="max-sm:hidden">{t('form.addPlant')}</span>
+                  </>
+                ) : (
+                  t('form.addPlant')
+                )}
               </Button>
-              {/* Disabled while a gift row exists: one gift per order (for now). */}
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={addGift}
-                disabled={giftName !== null}
-                aria-label={t('form.addGift')}
-                className="max-sm:flex-1"
-              >
-                <span className="sm:hidden">{t('form.addGiftShort')}</span>
-                <span className="max-sm:hidden">{t('form.addGift')}</span>
-              </Button>
+              {giftName === null && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={addGift}
+                  aria-label={t('form.addGift')}
+                  className="whitespace-nowrap max-sm:flex-1"
+                >
+                  <span className="sm:hidden">{t('form.addGiftShort')}</span>
+                  <span className="max-sm:hidden">{t('form.addGift')}</span>
+                </Button>
+              )}
             </div>
           </fieldset>
           <span aria-hidden="true" className="h-px w-full bg-border" />

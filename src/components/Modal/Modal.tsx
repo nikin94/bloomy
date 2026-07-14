@@ -16,6 +16,12 @@ interface ModalProps {
   children: ReactNode
   // Panel max-width utility, overridable per dialog (defaults to a form width).
   widthClassName?: string
+  // Drop the header's X button — for dialogs whose body already carries an
+  // explicit dismiss action (ConfirmModal's cancel button), where a third close
+  // affordance is clutter. Backdrop and Escape still dismiss.
+  hideClose?: boolean
+  // Centre the title (ConfirmModal centres its whole content).
+  centerTitle?: boolean
 }
 
 // The app's shared modal shell: a centred panel over a dimming backdrop. Owns
@@ -23,7 +29,14 @@ interface ModalProps {
 // role + `aria-modal` + `aria-labelledby`, dismissal (backdrop / Escape / close
 // button), and a focus trap that moves focus in on open, cycles Tab/Shift+Tab
 // inside, and restores focus to the opener on close. The body is just children.
-const Modal = ({ title, onClose, children, widthClassName = 'max-w-md' }: ModalProps) => {
+const Modal = ({
+  title,
+  onClose,
+  children,
+  widthClassName = 'max-w-md',
+  hideClose = false,
+  centerTitle = false,
+}: ModalProps) => {
   const { t } = useTranslation()
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
@@ -103,19 +116,26 @@ const Modal = ({ title, onClose, children, widthClassName = 'max-w-md' }: ModalP
         ref={panelRef}
         className={`relative z-10 flex max-h-full w-full ${widthClassName} flex-col gap-6 rounded-lg border border-border bg-bg p-4 shadow-xl sm:p-6`}
       >
-        <header className="flex items-center justify-between gap-3">
-          <h2 id={titleId} className="m-0 text-lg font-semibold text-heading">
+        <header
+          className={`flex items-center gap-3 ${centerTitle ? 'justify-center' : 'justify-between'}`}
+        >
+          <h2
+            id={titleId}
+            className={`m-0 text-lg font-semibold text-heading ${centerTitle ? 'text-center' : ''}`}
+          >
             {title}
           </h2>
-          <Button
-            variant="secondary"
-            size="icon"
-            onClick={onClose}
-            aria-label={t('close')}
-            title={t('close')}
-          >
-            <CloseIcon />
-          </Button>
+          {!hideClose && (
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={onClose}
+              aria-label={t('close')}
+              title={t('close')}
+            >
+              <CloseIcon />
+            </Button>
+          )}
         </header>
         {/* The scrollable body: `min-h-0` lets it shrink below its content height
             inside the capped flex column so `overflow-y-auto` actually engages
