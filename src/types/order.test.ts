@@ -15,6 +15,7 @@ import {
   revenueByCurrencyMinor,
   topPlantsByQuantity,
   collectPlantNames,
+  giftsByDateDesc,
   STORED_ORDER_SCHEMA,
 } from './order'
 import type { Order } from './order'
@@ -391,6 +392,21 @@ describe('STORED_ORDER_SCHEMA', () => {
   it('rejects an unsupported currency', () => {
     expect(STORED_ORDER_SCHEMA.safeParse({ ...validDoc(), currency: 'GBP' }).success).toBe(false)
   })
+
+  it('stays valid without gifts (pre-gift documents) and accepts a gift when present', () => {
+    // `gifts` was added after orders already existed — optional, so no migration.
+    expect(STORED_ORDER_SCHEMA.safeParse(validDoc()).success).toBe(true)
+    const withGift = {
+      ...validDoc(),
+      gifts: [{ name: 'Суккулент', quantity: 1, unitPriceMinor: 0 }],
+    }
+    expect(STORED_ORDER_SCHEMA.safeParse(withGift).success).toBe(true)
+  })
+
+  it('rejects a malformed gift entry (same item shape as plants)', () => {
+    const doc = { ...validDoc(), gifts: [{ name: '', quantity: 1, unitPriceMinor: 0 }] }
+    expect(STORED_ORDER_SCHEMA.safeParse(doc).success).toBe(false)
+  })
 })
 
 describe('isOrderDeleted', () => {
@@ -523,5 +539,38 @@ describe('collectPlantNames', () => {
 
   it('returns an empty array when there are no orders', () => {
     expect(collectPlantNames([])).toEqual([])
+  })
+})
+
+describe('giftsByDateDesc', () => {
+  const gift = (name: string) => ({ name, quantity: 1, unitPriceMinor: 0 })
+
+  it('lists every gift occurrence newest first with its order date, ignoring giftless orders', () => {
+    const orders = [
+      makeOrder({ id: 'a', dateCreated: 1000, gifts: [gift('Фиалка')] }),
+      makeOrder({ id: 'b', dateCreated: 2000 }), // no gifts field at all (pre-gift document)
+      makeOrder({ id: 'c', dateCreated: 3000, gifts: [gift('Кактус')] }),
+    ]
+    expect(giftsByDateDesc(orders)).toEqual([
+      { name: 'Кактус', dateCreated: 3000, orderId: 'c' },
+      { name: 'Фиалка', dateCreated: 1000, orderId: 'a' },
+    ])
+  })
+
+  it('keeps repeated gifts as separate occurrences (no dedupe)', () => {
+    const orders = [
+      makeOrder({ id: 'a', dateCreated: 1000, gifts: [gift('Суккулент')] }),
+      makeOrder({ id: 'b', dateCreated: 2000, gifts: [gift('Суккулент')] }),
+    ]
+    // Both givings survive — the customer page shows each with its own date.
+    expect(giftsByDateDesc(orders)).toEqual([
+      { name: 'Суккулент', dateCreated: 2000, orderId: 'b' },
+      { name: 'Суккулент', dateCreated: 1000, orderId: 'a' },
+    ])
+  })
+
+  it('drops blank-named entries and returns empty for giftless input', () => {
+    expect(giftsByDateDesc([makeOrder({ id: 'a', gifts: [gift('   ')] })])).toEqual([])
+    expect(giftsByDateDesc([makeOrder()])).toEqual([])
   })
 })

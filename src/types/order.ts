@@ -79,6 +79,15 @@ export const STORED_ORDER_SCHEMA = z.object({
   // supported set; existing documents (all 'RUB') stay valid, so this is a safe
   // widening with no migration. New orders write the chosen currency.
   currency: CURRENCY_SCHEMA,
+  // Gift plants included with the order for free. Same item shape as `plants`
+  // (a gift IS a plant), but a SEPARATE array so the money selectors — which
+  // read only `plants` — never count a gift into the subtotal/total/revenue.
+  // Stored as an array to leave room for several gifts per order later; TODAY
+  // the form allows at most one (quantity 1, unitPriceMinor 0). A non-empty
+  // array is the "order includes a gift" signal — no separate boolean flag that
+  // could drift out of sync. Optional so every pre-existing document stays
+  // valid without a migration (widening is safe; narrowing is not).
+  gifts: z.array(ORDER_ITEM_SCHEMA).optional(),
   paymentStatus: PAYMENT_STATUS_SCHEMA,
   shipmentStatus: SHIPMENT_STATUS_SCHEMA,
   comment: z.string().optional(),
@@ -234,6 +243,31 @@ export const collectPlantNames = (orders: Order[]): string[] => {
     }
   }
   return [...byKey.values()].sort((a, b) => a.localeCompare(b, 'ru'))
+}
+
+// Every gift occurrence across the given orders (the caller passes an
+// already-filtered list, e.g. one customer's orders), newest first, each
+// stamped with the date of the order it was sent with. Deliberately NOT
+// deduped: the customer page lists each handed-over gift as its own row — two
+// orders gifting the same plant are two separate givings, and the dates are
+// what tells them apart. (The order form's "already sent" warning keeps its
+// own case-insensitive per-customer set — a repeat only needs flagging once
+// there.) Blank names are dropped, mirroring the form's blank-row drop.
+export interface GiftOccurrence {
+  name: string
+  dateCreated: number // the carrying order's creation timestamp (ms)
+  orderId: string
+}
+export const giftsByDateDesc = (orders: Order[]): GiftOccurrence[] => {
+  const entries: GiftOccurrence[] = []
+  for (const order of orders) {
+    for (const gift of order.gifts ?? []) {
+      const name = gift.name.trim()
+      if (name === '') continue
+      entries.push({ name, dateCreated: order.dateCreated, orderId: order.id })
+    }
+  }
+  return entries.sort((a, b) => b.dateCreated - a.dateCreated)
 }
 
 // Compact per-line label for the orders-table list: the name, plus the quantity

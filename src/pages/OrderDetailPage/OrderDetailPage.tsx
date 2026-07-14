@@ -356,6 +356,16 @@ const OrderDetailPage = () => {
                 ))}
               </tbody>
             </table>
+            {/* Gift line(s), set apart from the priced rows above: a gift is
+                free (quantity 1, price 0 — see the schema), so listing it in
+                the money columns would just print noise zeros. */}
+            {(order.gifts ?? []).map((gift, index) => (
+              <p key={index} className="m-0 text-[0.8333rem] text-heading">
+                <span aria-hidden="true">🎁 </span>
+                <span className="text-text">{t('detail.gift')}: </span>
+                {gift.name}
+              </p>
+            ))}
           </section>
 
           {/* Money breakdown — full width on a phone (labels left, amounts right)

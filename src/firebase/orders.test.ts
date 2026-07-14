@@ -161,8 +161,9 @@ describe('reconcileOrderNumbers', () => {
 
 describe('updateOrder', () => {
   it('writes the supplied fields with updateDoc (per-field merge) and removes cleared optionals', async () => {
-    // No comment / completedAt on the body → they must be deleteField()'d so a
-    // field the user cleared is actually removed, not left lingering by the merge.
+    // No comment / completedAt / gifts on the body → they must be deleteField()'d
+    // so a field the user cleared is actually removed, not left lingering by the
+    // merge (e.g. removing the gift row on an edit really drops the gift).
     const body = storedOrder({ number: 7, paymentStatus: 'paid' }) as Omit<Order, 'id'>
 
     await updateOrder('o1', body)
@@ -174,6 +175,7 @@ describe('updateOrder', () => {
       ...body,
       comment: { __deleted: true },
       completedAt: { __deleted: true },
+      gifts: { __deleted: true },
     })
     expect(setDoc).not.toHaveBeenCalled()
     // No numbering transaction on edit.
@@ -181,13 +183,18 @@ describe('updateOrder', () => {
   })
 
   it('keeps present optional fields instead of deleting them', async () => {
-    const body = storedOrder({ comment: 'note', completedAt: 1700 }) as Omit<Order, 'id'>
+    const body = storedOrder({
+      comment: 'note',
+      completedAt: 1700,
+      gifts: [{ name: 'Суккулент', quantity: 1, unitPriceMinor: 0 }],
+    }) as Omit<Order, 'id'>
 
     await updateOrder('o1', body)
 
     const written = vi.mocked(updateDoc).mock.calls[0][1] as unknown as Record<string, unknown>
     expect(written.comment).toBe('note')
     expect(written.completedAt).toBe(1700)
+    expect(written.gifts).toEqual([{ name: 'Суккулент', quantity: 1, unitPriceMinor: 0 }])
   })
 })
 

@@ -17,6 +17,7 @@ import { formatDate, formatMoney } from '@/utils/format'
 import {
   revenueByCurrencyMinor,
   topPlantsByQuantity,
+  giftsByDateDesc,
   CURRENCIES,
 } from '@/types/order'
 import { buildOrderColumns } from '@/components/DataTable/orderColumns'
@@ -100,6 +101,10 @@ const CustomerPage = () => {
     (c) => [c, revenue.get(c) ?? 0] as const,
   )
   const topPlants = topPlantsByQuantity(orders, TOP_PLANTS)
+  // Every gift ever sent to this customer, one row per giving (NOT deduped —
+  // two orders gifting the same plant are two separate rows), newest first,
+  // each with the date of the order it went with.
+  const gifts = giftsByDateDesc(orders)
   const orderDates = orders.map((o) => o.dateCreated)
   const firstOrder = orderDates.length > 0 ? Math.min(...orderDates) : null
   const lastOrder = orderDates.length > 0 ? Math.max(...orderDates) : null
@@ -198,6 +203,37 @@ const CustomerPage = () => {
                       >
                         <span className="min-w-0 break-words text-heading">{plant.name}</span>
                         <span className="shrink-0 tabular-nums text-text">×{plant.quantity}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {/* Gifts already sent to this customer — every giving as its own
+                  row with its date (newest first), so the operator sees what was
+                  gifted and WHEN, and can pick something new. Omitted when none
+                  were ever sent. */}
+              {gifts.length > 0 && (
+                <section className="flex flex-col gap-2">
+                  <h2 className="m-0 text-lg font-semibold text-heading">{t('page.gifts')}</h2>
+                  <ul className="m-0 flex list-none flex-col gap-1 p-0">
+                    {/* Key: orderId + position in the list — an order carries at
+                        most one gift today, but the array-shaped schema allows
+                        more, and duplicate names across orders are expected. */}
+                    {gifts.map((gift, i) => (
+                      <li
+                        key={`${gift.orderId}-${i}`}
+                        className="flex justify-between gap-3 rounded-md border border-border px-3 py-1.5 text-sm"
+                      >
+                        <span className="min-w-0 break-words text-heading">
+                          <span aria-hidden="true">🎁 </span>
+                          {gift.name}
+                        </span>
+                        {/* The giving date, right-aligned in the same slot the
+                            plants list above uses for its ×N quantity. */}
+                        <span className="shrink-0 tabular-nums text-text">
+                          {formatDate(gift.dateCreated)}
+                        </span>
                       </li>
                     ))}
                   </ul>

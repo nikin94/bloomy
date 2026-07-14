@@ -435,4 +435,83 @@ describe('NewOrderPage', () => {
     expect(screen.getByRole('combobox', { name: 'Способ доставки' })).toHaveValue('cdek')
     expect(screen.getByRole('combobox', { name: 'Тип оплаты' })).toHaveValue('card')
   })
+
+  it('adds a single free gift and submits it as gifts: [{ qty 1, price 0 }]', async () => {
+    const user = userEvent.setup()
+    renderForm()
+    await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Цена'), '100')
+
+    // The add-gift button opens the gift row (name only — no qty/price inputs)
+    // and disables itself: at most one gift per order.
+    const addGift = screen.getByRole('button', { name: '+ Добавить подарок' })
+    await user.click(addGift)
+    expect(addGift).toBeDisabled()
+    await user.type(screen.getByLabelText('Название подарка'), 'Суккулент')
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+
+    await waitFor(() => expect(createOrder).toHaveBeenCalledTimes(1))
+    expect(createOrder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plants: [{ name: 'Роза', quantity: 1, unitPriceMinor: 10000 }],
+        // The gift is free by construction — it must never move the totals.
+        gifts: [{ name: 'Суккулент', quantity: 1, unitPriceMinor: 0 }],
+      }),
+      'pre-generated-order-id',
+    )
+  })
+
+  it('drops a blank gift row on submit and re-enables the button on remove', async () => {
+    const user = userEvent.setup()
+    renderForm()
+    await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Цена'), '100')
+
+    // Add, then remove: the button becomes available again.
+    await user.click(screen.getByRole('button', { name: '+ Добавить подарок' }))
+    await user.click(screen.getByRole('button', { name: 'Удалить подарок' }))
+    expect(screen.getByRole('button', { name: '+ Добавить подарок' })).toBeEnabled()
+
+    // Re-add and leave the name blank: like an empty plant row, it is dropped —
+    // the saved order carries NO gifts key at all.
+    await user.click(screen.getByRole('button', { name: '+ Добавить подарок' }))
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(createOrder).toHaveBeenCalledTimes(1))
+    expect(createOrder.mock.calls[0][0]).not.toHaveProperty('gifts')
+  })
+
+  it('warns when the chosen gift was already sent to the selected customer', async () => {
+    const user = userEvent.setup()
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    // A past order for this customer already carried a Суккулент gift.
+    fetchOrders.mockResolvedValue([
+      {
+        id: 'past',
+        customerId: 'c1',
+        plants: [{ name: 'Роза', quantity: 1, unitPriceMinor: 1000 }],
+        gifts: [{ name: 'Суккулент', quantity: 1, unitPriceMinor: 0 }],
+      },
+    ] as unknown as Order[])
+    renderForm()
+
+    const picker = await screen.findByRole('combobox', { name: 'Существующий клиент' })
+    await user.selectOptions(picker, 'c1')
+    await user.click(screen.getByRole('button', { name: '+ Добавить подарок' }))
+
+    // Case-insensitive match against the customer's gift history → warn. The
+    // warning is a nudge, not a blocker — no alert role, saving stays possible.
+    await user.type(screen.getByLabelText('Название подарка'), 'суккулент')
+    expect(
+      await screen.findByText('Такой подарок уже отправлялся этому клиенту'),
+    ).toBeInTheDocument()
+
+    // A different gift clears the warning.
+    await user.clear(screen.getByLabelText('Название подарка'))
+    await user.type(screen.getByLabelText('Название подарка'), 'Фиалка')
+    expect(
+      screen.queryByText('Такой подарок уже отправлялся этому клиенту'),
+    ).not.toBeInTheDocument()
+  })
 })

@@ -29,6 +29,7 @@ import Textarea from '@/components/Textarea/Textarea'
 import PendingPhotos from '@/components/OrderPhotos/PendingPhotos'
 import SelectOptions from '@/components/SelectOptions/SelectOptions'
 import PlantItemRow from './PlantItemRow'
+import GiftRow from './GiftRow'
 import CustomerPicker from './CustomerPicker'
 import { emptyItem, initialItems } from './items'
 import type { ItemInput } from './items'
@@ -136,6 +137,17 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   const itemIdRef = useRef(source ? source.plants.length - 1 : 0)
   const nextItemId = () => (itemIdRef.current += 1)
   const [items, setItems] = useState<ItemInput[]>(() => initialItems(source))
+  // The order's gift, or null when none. A gift is a free plant (quantity 1,
+  // price 0 — see the schema note on `gifts`), so only its NAME is edited; the
+  // string may be blank while typing and a blank gift is dropped on submit,
+  // like an empty plant row. Seeded from the edited order or a repeat seed —
+  // repeating an order carries its gift, and the "already sent" warning below
+  // then flags it, which is exactly the nudge to pick a different one. null vs
+  // '' distinguishes "no gift row" from "row added, name not typed yet".
+  const [giftName, setGiftName] = useState<string | null>(source?.gifts?.[0]?.name ?? null)
+  // Focus the gift name input only when the row was just added by the button —
+  // not when it mounts prefilled from an edit/repeat seed.
+  const [focusGift, setFocusGift] = useState(false)
   // Id of the row whose name input should grab focus on mount — set when a row
   // is added so the user can type immediately. Null at first render (and after
   // a prefill) so no row steals focus on load.
@@ -170,6 +182,14 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // Plant-name autocomplete: distinct names from the owner's existing orders,
   // offered as suggestions on each row's name input (see Autocomplete).
   const [plantNameSuggestions, setPlantNameSuggestions] = useState<string[]>([])
+  // Gifts already sent, per customer: customerId → lowercased gift names. Feeds
+  // the non-blocking "this gift was already sent to this customer" warning so
+  // the operator doesn't repeat a gift. Built from the same order fetch as the
+  // suggestions (no extra read); the order being EDITED is excluded so a form
+  // seeded with its own gift doesn't warn about itself.
+  const [sentGiftsByCustomer, setSentGiftsByCustomer] = useState<Map<string, Set<string>>>(
+    () => new Map(),
+  )
 
   useEffect(() => {
     if (!ownerId) return
@@ -233,7 +253,22 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
     let active = true
     fetchOrders(ownerId)
       .then((orders) => {
-        if (active) setPlantNameSuggestions(collectPlantNames(orders))
+        if (!active) return
+        setPlantNameSuggestions(collectPlantNames(orders))
+        // Gift history per customer, for the already-sent warning. Lowercased
+        // for the case-insensitive match; the edited order itself is skipped.
+        const sent = new Map<string, Set<string>>()
+        for (const o of orders) {
+          if (o.id === initialOrder?.id) continue
+          for (const gift of o.gifts ?? []) {
+            const key = gift.name.trim().toLowerCase()
+            if (key === '') continue
+            const names = sent.get(o.customerId) ?? new Set<string>()
+            names.add(key)
+            sent.set(o.customerId, names)
+          }
+        }
+        setSentGiftsByCustomer(sent)
       })
       .catch(() => {
         // No suggestions on failure — the field still works as a plain input.
@@ -241,7 +276,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
     return () => {
       active = false
     }
-  }, [ownerId])
+  }, [ownerId, initialOrder?.id])
 
   const updateItem = (index: number, patch: Partial<ItemInput>) => {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
@@ -258,6 +293,21 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   }
   const removeItem = (index: number) =>
     setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev))
+
+  // At most ONE gift per order (the schema is an array for the future, the form
+  // enforces today's limit): the add button disables while a gift row exists.
+  const addGift = () => {
+    if (giftName !== null) return
+    setGiftName('')
+    setFocusGift(true)
+  }
+  // Warn (never block) when the chosen existing customer already received the
+  // same gift on an earlier order — matched case-insensitively. A new customer
+  // has no history, so no warning in "new" mode.
+  const giftAlreadySent =
+    giftName !== null &&
+    customerMode === 'existing' &&
+    (sentGiftsByCustomer.get(selectedCustomerId)?.has(giftName.trim().toLowerCase()) ?? false)
 
   // A row that has a name but no price is incomplete — flag its price input, but
   // only after a submit attempt so the field doesn't turn red while the user is
@@ -413,6 +463,12 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
         currency,
         paymentStatus,
         shipmentStatus,
+        // The gift, when one was added and named. A blank gift row is dropped
+        // silently, like empty plant rows. Free by definition: price 0 and
+        // quantity 1, so it never moves the totals (they read `plants` only).
+        ...(giftName !== null && giftName.trim() !== ''
+          ? { gifts: [{ name: giftName.trim(), quantity: 1, unitPriceMinor: 0 }] }
+          : {}),
         ...(comment.trim() !== '' ? { comment: comment.trim() } : {}),
         ...(completedAt !== undefined ? { completedAt } : {}),
         // Deferred-upload photos (create only): the paths just returned from the
@@ -496,15 +552,33 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                 onRemove={() => removeItem(index)}
               />
             ))}
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={addItem}
-              disabled={!canAddItem}
-              className="self-start"
-            >
-              {t('form.addPlant')}
-            </Button>
+            {/* The gift line sits under the priced plant rows: a free plant
+                (name only), at most one per order — see GiftRow / the schema. */}
+            {giftName !== null && (
+              <GiftRow
+                name={giftName}
+                alreadySent={giftAlreadySent}
+                autoFocus={focusGift}
+                suggestions={plantNameSuggestions}
+                t={t}
+                onChange={setGiftName}
+                onRemove={() => setGiftName(null)}
+              />
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" size="sm" onClick={addItem} disabled={!canAddItem}>
+                {t('form.addPlant')}
+              </Button>
+              {/* Disabled while a gift row exists: one gift per order (for now). */}
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={addGift}
+                disabled={giftName !== null}
+              >
+                {t('form.addGift')}
+              </Button>
+            </div>
           </fieldset>
           <span aria-hidden="true" className="h-px w-full bg-border" />
 

@@ -101,6 +101,7 @@
     "quantity": "Qty",
     "price": "Price",
     "lineTotal": "Total",
+    "gift": "Gift",
     "subtotal": "Plants total",
     "delivery": "Delivery",
     "total": "Total"
@@ -139,6 +140,10 @@
     "quantity": "Qty",
     "price": "Price",
     "removePlant": "Remove plant",
+    "addGift": "+ Add gift",
+    "giftName": "Gift name",
+    "removeGift": "Remove gift",
+    "giftAlreadySent": "This gift was already sent to this customer",
     "deliveryMethod": "Delivery method",
     "deliveryPrice": "Delivery cost",
     "currency": "Currency",
