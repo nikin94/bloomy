@@ -61,6 +61,19 @@ describe('OrderPhotos', () => {
     expect(screen.getAllByRole('img')[0]).toHaveAttribute('src', 'https://cdn/orders/owner-1/o1/a.jpg')
   })
 
+  it('offers separate gallery and camera tiles; only the camera input forces capture', () => {
+    renderGallery([])
+    expect(screen.getByRole('button', { name: 'Добавить фото' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Снять фото' })).toBeInTheDocument()
+    const inputs = document.querySelectorAll('input[type="file"]')
+    expect(inputs).toHaveLength(2)
+    // The gallery input comes FIRST (it's the one fileInput() reaches) and has
+    // NO `capture` — so a phone opens its photo library instead of jumping
+    // straight to the camera; only the dedicated camera input forces capture.
+    expect(inputs[0]).not.toHaveAttribute('capture')
+    expect(inputs[1]).toHaveAttribute('capture', 'environment')
+  })
+
   it('uploads a picked file and reports the new full photo list', async () => {
     const user = userEvent.setup()
     uploadOrderPhoto.mockResolvedValue('orders/owner-1/o1/new.jpg')

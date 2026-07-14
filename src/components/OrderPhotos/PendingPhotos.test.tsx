@@ -30,6 +30,29 @@ describe('PendingPhotos', () => {
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 
+  it('offers separate gallery and camera tiles; only the camera input forces capture', () => {
+    const { container } = render(<PendingPhotos files={[]} onChange={vi.fn()} />)
+    expect(screen.getByRole('button', { name: 'Добавить фото' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Снять фото' })).toBeInTheDocument()
+    const inputs = container.querySelectorAll('input[type="file"]')
+    expect(inputs).toHaveLength(2)
+    // The gallery input comes FIRST (it's the one the upload tests reach) and has
+    // NO `capture` — so a phone opens its photo library instead of jumping
+    // straight to the camera; only the dedicated camera input forces capture.
+    expect(inputs[0]).not.toHaveAttribute('capture')
+    expect(inputs[1]).toHaveAttribute('capture', 'environment')
+  })
+
+  it('reports a photo taken via the camera input through the same onChange', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const { container } = render(<PendingPhotos files={[]} onChange={onChange} />)
+    const file = image('shot.jpg')
+    const cameraInput = container.querySelectorAll('input[type="file"]')[1] as HTMLInputElement
+    await user.upload(cameraInput, file)
+    expect(onChange).toHaveBeenCalledWith([file])
+  })
+
   it('reports picked files via onChange WITHOUT uploading anything', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
