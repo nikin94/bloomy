@@ -26,6 +26,7 @@ import Select from '@/components/Select/Select'
 import Button from '@/components/Button/Button'
 import CheckIcon from '@/components/icons/CheckIcon'
 import CloseIcon from '@/components/icons/CloseIcon'
+import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
 import Input from '@/components/Input/Input'
 import Textarea from '@/components/Textarea/Textarea'
 import PendingPhotos from '@/components/OrderPhotos/PendingPhotos'
@@ -180,6 +181,36 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // while the user is still filling it in.
   const [submitAttempted, setSubmitAttempted] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Cancel guard: once the user has started composing the order, "Отмена" asks
+  // for confirmation instead of silently discarding the input. Dirtiness is a
+  // per-render comparison of the user-editable fields against a snapshot taken
+  // on the FIRST render (state still holds its initial values then), so an
+  // edit/repeat prefill does NOT count as dirty — only the user's own changes
+  // do. customerMode is deliberately excluded: the customer fetch flips it to
+  // "existing" on its own (no user action) once the address book resolves.
+  const fieldsSnapshot = JSON.stringify([
+    items,
+    giftName,
+    address,
+    newName,
+    newPhone,
+    selectedCustomerId,
+    deliveryMethod,
+    deliveryPrice,
+    paymentMethod,
+    currency,
+    paymentStatus,
+    shipmentStatus,
+    comment,
+    pendingFiles.length,
+  ])
+  // useState initializer (not a ref): the first-render snapshot is state read
+  // during render, which is legal where reading a ref in render is not.
+  const [initialFields] = useState(fieldsSnapshot)
+  const isDirty = fieldsSnapshot !== initialFields
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
+  const handleCancel = () => (isDirty ? setConfirmingCancel(true) : onCancel())
 
   // Plant-name autocomplete: distinct names from the owner's existing orders,
   // offered as suggestions on each row's name input (see Autocomplete).
@@ -502,6 +533,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   if (customersLoading) return <Spinner />
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
         {/* Scrollable body — the footer below stays pinned. */}
         {/* Half the horizontal padding on a phone (p-6 → px-3): the narrow
@@ -570,18 +602,20 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               />
             )}
             {/* One row on every width: on a phone the labels drop the "Добавить"
-                verb (just "+ Растение" / "+ Подарок") so both fit, and the gift
-                button is pushed to the right edge; from `sm` up the full labels
-                return and the pair sits together on the left. aria-label keeps
+                verb (just "+ Растение" / "+ Подарок") and the pair stretches over
+                the full width in a 2:1 split — plants (the frequent action) get
+                the wider button; from `sm` up the full labels return and the pair
+                sits together on the left at its natural width. aria-label keeps
                 the accessible name at the FULL label on every width, so screen
                 readers (and the tests) see one stable name. */}
-            <div className="flex items-center justify-between gap-2 sm:justify-start">
+            <div className="flex items-center gap-2">
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={addItem}
                 disabled={!canAddItem}
                 aria-label={t('form.addPlant')}
+                className="max-sm:flex-[2]"
               >
                 <span className="sm:hidden">{t('form.addPlantShort')}</span>
                 <span className="max-sm:hidden">{t('form.addPlant')}</span>
@@ -593,6 +627,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                 onClick={addGift}
                 disabled={giftName !== null}
                 aria-label={t('form.addGift')}
+                className="max-sm:flex-1"
               >
                 <span className="sm:hidden">{t('form.addGiftShort')}</span>
                 <span className="max-sm:hidden">{t('form.addGift')}</span>
@@ -685,45 +720,62 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                 {error}
               </p>
             )}
-            {/* One compact row on every width. On a phone the footer used to
-                stack two full-width buttons under the total (very tall); now the
-                "Итого" label sits in small type ABOVE the amount on the left,
-                and the actions collapse to icon buttons (✓ save / ✕ cancel) on
-                the right. From `sm` up the label returns inline and the buttons
-                show their text labels. aria-label keeps the accessible name at
-                the full text on every width (stable for AT and the tests). */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-baseline gap-2 max-sm:flex-col max-sm:gap-0">
+            {/* One compact row on every width: the total on the left, then the
+                cancel and — in the right corner — the submit (cancel BEFORE
+                submit, so the primary action sits at the edge). On a phone the
+                "Итого" label sits in small type above the amount, the buttons
+                collapse to icons (✕ cancel / ✓ save) and the SUBMIT stretches
+                over all the remaining width; a small extra margin keeps the ✕
+                clear of the amount. From `sm` up the buttons show their text
+                labels at natural width, pushed right. Cancel confirms first when
+                the form is dirty (see handleCancel). aria-label keeps the
+                accessible name at the full text on every width. */}
+            <div className="flex items-center gap-3">
+              <div className="flex shrink-0 items-baseline gap-2 max-sm:flex-col max-sm:gap-0">
                 <span className="text-sm text-text max-sm:text-xs">{t('form.total')}</span>
                 <span className="text-lg font-semibold text-heading">
                   {formatMoney(totalMinor, currency)}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  isLoading={saving}
-                  aria-label={t('common:save')}
-                  className="max-sm:p-2.5"
-                >
-                  <CheckIcon className="size-5 sm:hidden" />
-                  <span className="max-sm:hidden">{t('common:save')}</span>
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={onCancel}
-                  aria-label={t('common:cancel')}
-                  className="max-sm:p-2.5"
-                >
-                  <CloseIcon className="size-5 sm:hidden" />
-                  <span className="max-sm:hidden">{t('common:cancel')}</span>
-                </Button>
-              </div>
+              <Button
+                variant="secondary"
+                onClick={handleCancel}
+                aria-label={t('common:cancel')}
+                className="max-sm:ml-2 max-sm:p-2.5 sm:ml-auto"
+              >
+                <CloseIcon className="size-5 sm:hidden" />
+                <span className="max-sm:hidden">{t('common:cancel')}</span>
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                isLoading={saving}
+                aria-label={t('common:save')}
+                className="max-sm:flex-1 max-sm:p-2.5"
+              >
+                <CheckIcon className="size-5 sm:hidden" />
+                <span className="max-sm:hidden">{t('common:save')}</span>
+              </Button>
             </div>
           </div>
         </div>
       </form>
+
+    {/* Leave-without-saving confirmation — mounted only when a dirty form's
+        cancel was pressed (see handleCancel). Confirming leaves via onCancel;
+        dismissing any way (stay button, backdrop, Esc) keeps the user on the
+        form with everything typed intact. */}
+    {confirmingCancel && (
+      <ConfirmModal
+        title={t('form.cancelConfirmTitle')}
+        body={t('form.cancelConfirmBody')}
+        confirmLabel={t('form.cancelConfirmLeave')}
+        cancelLabel={t('form.cancelConfirmStay')}
+        onConfirm={onCancel}
+        onCancel={() => setConfirmingCancel(false)}
+      />
+    )}
+    </>
   )
 }
 
