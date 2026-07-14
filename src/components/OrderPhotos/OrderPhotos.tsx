@@ -5,11 +5,9 @@ import { reportError } from '@/observability/reportError'
 import Button from '@/components/Button/Button'
 import Loader from '@/components/Loader/Loader'
 import Modal from '@/components/Modal/Modal'
-import CameraIcon from '@/components/icons/CameraIcon'
-import GalleryIcon from '@/components/icons/GalleryIcon'
+import AddPhotoTile from './AddPhotoTile'
 import PhotoViewer from './PhotoViewer'
 import Thumb from './Thumb'
-import { FOCUS_RING } from '@/styles/fieldStyles'
 
 // Photo gallery for an order: a horizontal strip of thumbnails plus an "add"
 // tile, and a full-screen swiper to view them. Lives on the order detail page,
@@ -41,11 +39,6 @@ const OrderPhotos = ({
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [viewerIndex, setViewerIndex] = useState<number | null>(null)
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
-  // Two hidden inputs behind the two add tiles: the gallery one has NO `capture`
-  // (native picker → photo library / files), the camera one carries
-  // `capture="environment"` (opens the rear camera directly on a phone).
-  const galleryInputRef = useRef<HTMLInputElement>(null)
-  const cameraInputRef = useRef<HTMLInputElement>(null)
   // Paths we've already kicked off a URL request for — guards the resolve effect
   // so a resolved URL (state change) doesn't re-trigger it for every thumbnail.
   const requestedRef = useRef<Set<string>>(new Set())
@@ -116,9 +109,6 @@ const OrderPhotos = ({
       setUploadError(t('photos.uploadError'))
     }
     setUploading(false)
-    // Reset so picking the same file again still fires onChange.
-    if (galleryInputRef.current) galleryInputRef.current.value = ''
-    if (cameraInputRef.current) cameraInputRef.current.value = ''
   }
 
   // Remove a photo: drop it from the list at once (so the UI updates and the
@@ -151,13 +141,9 @@ const OrderPhotos = ({
           />
         ))}
 
-        {/* Two add tiles — the icons say which flow each opens. GALLERY (picture
-            glyph): the native picker, i.e. the phone photo library / desktop file
-            dialog. CAMERA (camera glyph): straight to the device camera. One
-            capture-less tile can't cover both — with `capture` set some mobile
-            browsers jump to the camera with no gallery option, and without it
-            Android's photo picker often offers no camera. While an upload is in
-            flight both collapse into a single disabled loader tile. */}
+        {/* One add tile. Desktop opens the file dialog directly; a touch device
+            gets a gallery/camera chooser first — see AddPhotoTile. While an
+            upload is in flight it collapses into a disabled loader tile. */}
         {!readOnly &&
           (uploading ? (
             <span
@@ -167,51 +153,9 @@ const OrderPhotos = ({
               <Loader size="md" />
             </span>
           ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => galleryInputRef.current?.click()}
-                aria-label={t('photos.add')}
-                className={`flex size-20 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-text hover:bg-primary-bg ${FOCUS_RING}`}
-              >
-                <GalleryIcon />
-              </button>
-              <button
-                type="button"
-                onClick={() => cameraInputRef.current?.click()}
-                aria-label={t('photos.capture')}
-                className={`flex size-20 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-text hover:bg-primary-bg ${FOCUS_RING}`}
-              >
-                <CameraIcon />
-              </button>
-            </>
+            <AddPhotoTile onFiles={handleFiles} t={t} />
           ))}
       </div>
-
-      {!readOnly && (
-        <>
-          {/* The gallery input has NO `capture`, so a phone opens its photo
-              library / file picker; `multiple` allows several at once. */}
-          <input
-            ref={galleryInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={(e) => handleFiles(e.target.files)}
-          />
-          {/* The camera input's `capture="environment"` opens the rear camera
-              directly on a phone (a desktop browser ignores it — plain file dialog). */}
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={(e) => handleFiles(e.target.files)}
-          />
-        </>
-      )}
 
       {uploadError && (
         <p role="alert" className="m-0 text-sm text-danger">

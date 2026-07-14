@@ -61,15 +61,17 @@ describe('OrderPhotos', () => {
     expect(screen.getAllByRole('img')[0]).toHaveAttribute('src', 'https://cdn/orders/owner-1/o1/a.jpg')
   })
 
-  it('offers separate gallery and camera tiles; only the camera input forces capture', () => {
+  it('shows ONE add tile backed by a capture-less gallery input and a capture camera input', () => {
     renderGallery([])
-    expect(screen.getByRole('button', { name: 'Добавить фото' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Снять фото' })).toBeInTheDocument()
+    // A single visible tile (the mobile chooser dialog is covered by the shared
+    // AddPhotoTile's tests in PendingPhotos.test); the setup.ts matchMedia stub
+    // reports desktop here, so its click goes straight to the file dialog.
+    expect(screen.getAllByRole('button', { name: 'Добавить фото' })).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: 'Снять фото' })).not.toBeInTheDocument()
     const inputs = document.querySelectorAll('input[type="file"]')
     expect(inputs).toHaveLength(2)
     // The gallery input comes FIRST (it's the one fileInput() reaches) and has
-    // NO `capture` — so a phone opens its photo library instead of jumping
-    // straight to the camera; only the dedicated camera input forces capture.
+    // NO `capture`; only the dedicated camera input forces capture.
     expect(inputs[0]).not.toHaveAttribute('capture')
     expect(inputs[1]).toHaveAttribute('capture', 'environment')
   })
