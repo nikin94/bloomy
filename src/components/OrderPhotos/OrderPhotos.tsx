@@ -5,10 +5,9 @@ import { reportError } from '@/observability/reportError'
 import Button from '@/components/Button/Button'
 import Loader from '@/components/Loader/Loader'
 import Modal from '@/components/Modal/Modal'
-import CameraIcon from '@/components/icons/CameraIcon'
+import AddPhotoTile from './AddPhotoTile'
 import PhotoViewer from './PhotoViewer'
 import Thumb from './Thumb'
-import { FOCUS_RING } from '@/styles/fieldStyles'
 
 // Photo gallery for an order: a horizontal strip of thumbnails plus an "add"
 // tile, and a full-screen swiper to view them. Lives on the order detail page,
@@ -40,7 +39,6 @@ const OrderPhotos = ({
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [viewerIndex, setViewerIndex] = useState<number | null>(null)
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   // Paths we've already kicked off a URL request for — guards the resolve effect
   // so a resolved URL (state change) doesn't re-trigger it for every thumbnail.
   const requestedRef = useRef<Set<string>>(new Set())
@@ -111,8 +109,6 @@ const OrderPhotos = ({
       setUploadError(t('photos.uploadError'))
     }
     setUploading(false)
-    // Reset so picking the same file again still fires onChange.
-    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   // Remove a photo: drop it from the list at once (so the UI updates and the
@@ -145,33 +141,21 @@ const OrderPhotos = ({
           />
         ))}
 
-        {/* Add tile — opens the device camera or gallery (mobile) / file picker. */}
-        {!readOnly && (
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            aria-label={t('photos.add')}
-            className={`flex size-20 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-text hover:bg-primary-bg disabled:opacity-50 ${FOCUS_RING}`}
-          >
-            {uploading ? <Loader size="md" /> : <CameraIcon />}
-          </button>
-        )}
+        {/* One add tile. Desktop opens the file dialog directly; a touch device
+            gets a gallery/camera chooser first — see AddPhotoTile. While an
+            upload is in flight it collapses into a disabled loader tile. */}
+        {!readOnly &&
+          (uploading ? (
+            <span
+              aria-label={t('photos.add')}
+              className="flex size-20 shrink-0 items-center justify-center rounded-md border border-dashed border-border text-text opacity-50"
+            >
+              <Loader size="md" />
+            </span>
+          ) : (
+            <AddPhotoTile onFiles={handleFiles} t={t} />
+          ))}
       </div>
-
-      {/* `capture="environment"` hints the rear camera on mobile but still lets
-          the user pick from the gallery; `multiple` allows several at once. */}
-      {!readOnly && (
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          multiple
-          className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
-        />
-      )}
 
       {uploadError && (
         <p role="alert" className="m-0 text-sm text-danger">
