@@ -124,6 +124,32 @@ describe('OrderForm', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
+  it('asks for confirmation on cancel once the form has been touched', async () => {
+    const onCancel = vi.fn()
+    const user = userEvent.setup()
+    renderForm({ onCancel })
+    await screen.findByLabelText('Имя клиента')
+
+    // Touch the form, then cancel — a confirmation dialog appears instead of
+    // leaving (the pristine-form case above still leaves at once).
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    await user.click(screen.getByRole('button', { name: 'Отмена' }))
+    expect(onCancel).not.toHaveBeenCalled()
+    expect(
+      await screen.findByRole('dialog', { name: 'Выйти без сохранения?' }),
+    ).toBeInTheDocument()
+
+    // "Остаться" dismisses the dialog and keeps everything typed intact.
+    await user.click(screen.getByRole('button', { name: 'Остаться' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Название')).toHaveValue('Роза')
+
+    // Cancelling again and confirming actually leaves.
+    await user.click(screen.getByRole('button', { name: 'Отмена' }))
+    await user.click(await screen.findByRole('button', { name: 'Выйти' }))
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
   it('mounts the local photo picker on a create form', async () => {
     renderForm()
     await screen.findByLabelText('Имя клиента')

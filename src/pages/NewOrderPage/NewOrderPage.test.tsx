@@ -444,10 +444,10 @@ describe('NewOrderPage', () => {
     await user.type(screen.getByLabelText('Цена'), '100')
 
     // The add-gift button opens the gift row (name only — no qty/price inputs)
-    // and disables itself: at most one gift per order.
-    const addGift = screen.getByRole('button', { name: '+ Добавить подарок' })
-    await user.click(addGift)
-    expect(addGift).toBeDisabled()
+    // and DISAPPEARS: at most one gift per order, so while the row exists only
+    // the add-plant button remains.
+    await user.click(screen.getByRole('button', { name: '+ Добавить подарок' }))
+    expect(screen.queryByRole('button', { name: '+ Добавить подарок' })).not.toBeInTheDocument()
     await user.type(screen.getByLabelText('Название подарка'), 'Суккулент')
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
 

@@ -29,13 +29,17 @@ const ConfirmModal = ({
   onCancel: () => void
   confirmVariant?: 'primary' | 'secondary' | 'danger'
 }) => (
-  <Modal title={title} onClose={onCancel}>
-    <p className="m-0 text-text">{body}</p>
-    <div className="flex justify-end gap-2">
-      <Button variant={confirmVariant} onClick={onConfirm}>
+  // No header X: the cancel button below is already the explicit dismiss, so a
+  // third close affordance would only crowd the small dialog (backdrop + Esc
+  // still work). Title and body are centred; the button pair is set off from
+  // the text by a top margin and stretches 50/50 across a phone width.
+  <Modal title={title} onClose={onCancel} hideClose centerTitle>
+    <p className="m-0 text-center text-text">{body}</p>
+    <div className="mt-6 flex justify-end gap-2">
+      <Button variant={confirmVariant} onClick={onConfirm} className="max-sm:flex-1">
         {confirmLabel}
       </Button>
-      <Button variant="secondary" onClick={onCancel}>
+      <Button variant="secondary" onClick={onCancel} className="max-sm:flex-1">
         {cancelLabel}
       </Button>
     </div>
