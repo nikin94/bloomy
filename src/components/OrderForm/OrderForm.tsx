@@ -836,10 +836,12 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
             <div className="flex items-center gap-3">
               <div className="flex shrink-0 items-baseline gap-2 max-sm:flex-col max-sm:gap-0">
                 <span className="text-sm text-text max-sm:text-xs">{t('form.total')}</span>
-                {/* Plants-only headline; the delivery cost rides beside it in
-                    small type (rendered only when a delivery price is entered),
-                    on both the desktop inline row and the phone's stacked label. */}
-                <span className="flex items-baseline gap-1.5">
+                {/* Plants-only headline; the delivery cost in small type
+                    (rendered only when a delivery price is entered) sits beside
+                    it on desktop, but drops to its OWN line under the amount on
+                    a phone — the stacked label column is narrow, so an inline
+                    note would push the buttons instead of wrapping. */}
+                <span className="flex items-baseline gap-1.5 max-sm:flex-col max-sm:gap-0">
                   <span className="text-lg font-semibold text-heading">
                     {formatMoney(subtotalMinor, currency)}
                   </span>
