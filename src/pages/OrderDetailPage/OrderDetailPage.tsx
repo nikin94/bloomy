@@ -37,6 +37,8 @@ import CustomerEditModal from '@/components/CustomerEditModal/CustomerEditModal'
 import OrderPhotos from '@/components/OrderPhotos/OrderPhotos'
 import DetailRow from '@/components/DetailRow/DetailRow'
 import PencilIcon from '@/components/icons/PencilIcon'
+import RepeatIcon from '@/components/icons/RepeatIcon'
+import TrashIcon from '@/components/icons/TrashIcon'
 import InlineStatusField from './InlineStatusField'
 import Total from './Total'
 import type { Order } from '@/types/order'
@@ -217,18 +219,24 @@ const OrderDetailPage = () => {
               <span className="text-sm text-text">{formatDate(order.dateCreated)}</span>
             </div>
             {/* A trashed order is read-only — Restore lives in the banner, so
-                edit/delete are hidden here until it's restored. On a phone the
-                actions stack full-width, one button per line (an easy tap target);
-                from sm up they collapse back to the compact inline row. */}
+                edit/delete are hidden here until it's restored. One row on every
+                width: on a phone the three buttons split the full width in equal
+                thirds with ICONS in place of the labels (three stacked full-width
+                buttons ate half the screen); from sm up the text labels return
+                and the row collapses to its natural inline width. aria-label
+                keeps the accessible name at the full text on every width, so
+                screen readers (and the tests) see one stable name. */}
             {!isDeleted && (
-              <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="flex w-full items-center gap-3 sm:w-auto sm:flex-wrap">
                 <Button
                   variant="primary"
                   size="sm"
                   onClick={() => navigate(`/orders/${order.id}/edit`)}
-                  className="w-full sm:w-auto"
+                  aria-label={t('detail.edit')}
+                  className="flex-1 sm:flex-none"
                 >
-                  {t('detail.edit')}
+                  <PencilIcon className="size-5 sm:hidden" />
+                  <span className="max-sm:hidden">{t('detail.edit')}</span>
                 </Button>
                 {/* Repeat: open the create form seeded from this order's
                     contents (customer + plants + logistics), as a fresh order.
@@ -237,17 +245,21 @@ const OrderDetailPage = () => {
                   variant="secondary"
                   size="sm"
                   onClick={() => navigate('/orders/new', { state: { repeatOrder: order } })}
-                  className="w-full sm:w-auto"
+                  aria-label={t('detail.repeat')}
+                  className="flex-1 sm:flex-none"
                 >
-                  {t('detail.repeat')}
+                  <RepeatIcon className="size-5 sm:hidden" />
+                  <span className="max-sm:hidden">{t('detail.repeat')}</span>
                 </Button>
                 <Button
                   variant="danger"
                   size="sm"
                   onClick={() => setConfirmingDelete(true)}
-                  className="w-full sm:w-auto"
+                  aria-label={t('detail.delete')}
+                  className="flex-1 sm:flex-none"
                 >
-                  {t('detail.delete')}
+                  <TrashIcon className="size-5 sm:hidden" />
+                  <span className="max-sm:hidden">{t('detail.delete')}</span>
                 </Button>
               </div>
             )}
