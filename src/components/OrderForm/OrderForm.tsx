@@ -834,19 +834,28 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                 the form is dirty (see handleCancel). aria-label keeps the
                 accessible name at the full text on every width. */}
             <div className="flex items-center gap-3">
-              <div className="flex shrink-0 items-baseline gap-2 max-sm:flex-col max-sm:gap-0">
+              {/* min-w-0 on a phone (shrink-0 only from sm up): this block sits
+                  in a row with the ✕/✓ buttons, so it MUST be able to shrink —
+                  an unshrinkable block plus a nowrap note exceeds a narrow
+                  viewport's width, and with no scroll container above the
+                  footer that overflow escapes to the page and stretches the
+                  whole screen sideways. */}
+              <div className="flex items-baseline gap-2 max-sm:min-w-0 max-sm:flex-col max-sm:gap-0 sm:shrink-0">
                 <span className="text-sm text-text max-sm:text-xs">{t('form.total')}</span>
                 {/* Plants-only headline; the delivery cost in small type
                     (rendered only when a delivery price is entered) sits beside
                     it on desktop, but drops to its OWN line under the amount on
                     a phone — the stacked label column is narrow, so an inline
-                    note would push the buttons instead of wrapping. */}
-                <span className="flex items-baseline gap-1.5 max-sm:flex-col max-sm:gap-0">
+                    note would push the buttons instead of wrapping. nowrap only
+                    from sm up: on a phone the note wraps between words when the
+                    row is tight (the amount itself holds together via the NBSP
+                    inside formatMoney) instead of forcing the row wider. */}
+                <span className="flex items-baseline gap-1.5 max-sm:min-w-0 max-sm:flex-col max-sm:gap-0">
                   <span className="text-lg font-semibold text-heading">
                     {formatMoney(subtotalMinor, currency)}
                   </span>
                   {deliveryMinor > 0 && (
-                    <span className="whitespace-nowrap text-xs text-text">
+                    <span className="text-xs text-text sm:whitespace-nowrap">
                       {t('form.totalDelivery', { amount: formatMoney(deliveryMinor, currency) })}
                     </span>
                   )}
