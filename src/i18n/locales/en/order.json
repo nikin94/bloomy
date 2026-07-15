@@ -115,9 +115,7 @@
     "view": "View photo",
     "prev": "Previous photo",
     "next": "Next photo",
-    "uploadError": "Couldn't upload some photos. An internet connection is required — try again.",
-    "deleteTitle": "Delete photo?",
-    "deleteBody": "The photo will be deleted permanently."
+    "uploadError": "Couldn't upload some photos. An internet connection is required — try again."
   },
   "form": {
     "newHeading": "New order",

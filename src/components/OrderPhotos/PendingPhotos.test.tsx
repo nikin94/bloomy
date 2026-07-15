@@ -1,15 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-// PendingPhotos reuses Thumb/PhotoViewer from OrderPhotos, whose module imports the
-// Storage layer at load time — stub it so no real Firebase SDK is pulled in. The
-// component itself never calls these (it's local-only), so plain vi.fn()s suffice.
+// The Storage layer is stubbed so no real Firebase SDK is pulled in. New picks
+// never touch it (they're local Files); only the `existing` strip (an edit's
+// saved photos) resolves download URLs via getPhotoUrl.
+const getPhotoUrl = vi.fn()
 vi.mock('../../firebase/photos', () => ({
   uploadOrderPhoto: vi.fn(),
-  getPhotoUrl: vi.fn(),
+  getPhotoUrl: (...a: unknown[]) => getPhotoUrl(...a),
   deleteOrderPhoto: vi.fn(),
 }))
+vi.mock('../../observability/reportError', () => ({ reportError: vi.fn() }))
 
 // Imported after the mock above is registered.
 import PendingPhotos from './PendingPhotos'
@@ -18,6 +20,7 @@ const image = (name: string) => new File(['x'], name, { type: 'image/jpeg' })
 
 beforeEach(() => {
   vi.clearAllMocks()
+  getPhotoUrl.mockImplementation((path: string) => Promise.resolve(`https://cdn/${path}`))
   // jsdom has no object-URL support; the previews need it.
   globalThis.URL.createObjectURL = vi.fn(() => `blob:${Math.random()}`)
   globalThis.URL.revokeObjectURL = vi.fn()
@@ -125,5 +128,39 @@ describe('PendingPhotos', () => {
     render(<PendingPhotos files={[a, b]} onChange={onChange} />)
     await user.click(screen.getAllByRole('button', { name: 'Удалить фото' })[0])
     expect(onChange).toHaveBeenCalledWith([b])
+  })
+
+  it('shows the saved photos (resolved thumbnails) before the new picks', async () => {
+    render(
+      <PendingPhotos
+        files={[image('new.jpg')]}
+        onChange={vi.fn()}
+        existing={['orders/owner-1/o1/a.jpg']}
+        onRemoveExisting={vi.fn()}
+      />,
+    )
+    // Saved photo first (its resolved download URL), then the local preview.
+    await waitFor(() => expect(screen.getAllByRole('img')).toHaveLength(2))
+    expect(screen.getAllByRole('img')[0]).toHaveAttribute(
+      'src',
+      'https://cdn/orders/owner-1/o1/a.jpg',
+    )
+  })
+
+  it('reports a saved-photo removal up instead of deleting anything itself', async () => {
+    const user = userEvent.setup()
+    const onRemoveExisting = vi.fn()
+    render(
+      <PendingPhotos
+        files={[]}
+        onChange={vi.fn()}
+        existing={['orders/owner-1/o1/a.jpg']}
+        onRemoveExisting={onRemoveExisting}
+      />,
+    )
+    // The × only reports the path up — the parent form stages the removal and
+    // the actual Storage delete happens on save, never here.
+    await user.click(await screen.findByRole('button', { name: 'Удалить фото' }))
+    expect(onRemoveExisting).toHaveBeenCalledWith('orders/owner-1/o1/a.jpg')
   })
 })

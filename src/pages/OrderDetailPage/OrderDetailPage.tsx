@@ -99,17 +99,6 @@ const OrderDetailPage = () => {
     orderCache.invalidateLists()
   }
 
-  // Update the order's photo list: reflect it locally at once, then persist the
-  // new full list via patchOrder (fire-and-forget, per-field merge — offline-safe
-  // and won't clobber a concurrent status change). The actual upload/delete of
-  // the image bytes is handled inside OrderPhotos.
-  const handlePhotosChange = (photos: string[]) => {
-    if (!order) return
-    orderCache.setOrder(ownerId, order.id, true, () => ({ ...order, photos }))
-    patchOrder(order.id, { photos })
-    orderCache.invalidateLists()
-  }
-
   // Soft-delete the order, then return to the list (where it no longer appears).
   // The write is fire-and-forget (offline-safe) so deleting never blocks; the
   // order moves to the trash locally at once and syncs on reconnect. Invalidate
@@ -354,17 +343,10 @@ const OrderDetailPage = () => {
             </div>
           </section>
 
-          {/* Order photos — owner-scoped, stored under orders/{uid}/{orderId}/.
-              ownerId is guaranteed here (ProtectedRoute), but read defensively. */}
-          {ownerId && (
-            <OrderPhotos
-              ownerId={ownerId}
-              orderId={order.id}
-              photos={order.photos ?? []}
-              onChange={handlePhotosChange}
-              readOnly={isDeleted}
-            />
-          )}
+          {/* Order photos — VIEW-ONLY here: adding/removing photos lives on the
+              edit form, so this page never writes. Renders nothing when the
+              order has no photos. */}
+          <OrderPhotos photos={order.photos ?? []} />
         </div>
       )}
 

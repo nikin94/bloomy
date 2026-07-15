@@ -131,6 +131,12 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // the NEWLY added photos only — the order's existing ones stay untouched (their
   // removal lives on the detail page) and the new paths are appended on save.
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
+  // The edited order's saved photos still kept on it (starts as all of them;
+  // empty on create). Removing one in the picker only STAGES the removal — this
+  // list is what gets saved, and the Storage files of the removed photos are
+  // deleted only after a successful save — so cancelling the form (or a failed
+  // save) leaves every saved photo untouched.
+  const [keptPhotos, setKeptPhotos] = useState<string[]>(initialOrder?.photos ?? [])
 
   // Customer selection. New orders default to "new"; an edited order already has
   // a customer, so it starts in "existing" mode with that customer selected. A
@@ -237,6 +243,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
     shipmentStatus,
     comment,
     pendingFiles.length,
+    keptPhotos,
   ])
   // useState initializer (not a ref): the first-render snapshot is state read
   // during render, which is legal where reading a ref in render is not.
@@ -591,13 +598,13 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
           : {}),
         ...(comment.trim() !== '' ? { comment: comment.trim() } : {}),
         ...(completedAt !== undefined ? { completedAt } : {}),
-        // Deferred-upload photos: the paths just returned from the submit-time
-        // upload above, APPENDED to the edited order's existing ones (create has
-        // none). Included only when new photos were added — omitting the key on a
-        // photo-less edit leaves the stored list untouched (updateOrder's per-field
-        // merge only clears fields listed in CLEARABLE_ORDER_FIELDS).
-        ...(photoPaths.length > 0
-          ? { photos: [...(initialOrder?.photos ?? []), ...photoPaths] }
+        // The photo list to save: the KEPT saved photos (removals staged in the
+        // picker are applied here) plus the paths just uploaded. Omitted when the
+        // result is empty — createOrder then writes no field, and updateOrder
+        // CLEARS the stored list (photos is in CLEARABLE_ORDER_FIELDS), so
+        // removing the last photo really removes it.
+        ...(keptPhotos.length + photoPaths.length > 0
+          ? { photos: [...keptPhotos, ...photoPaths] }
           : {}),
       }
 
@@ -605,6 +612,17 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
       // pre-generated create id rides along so the doc lands on the same id the
       // photos were stored under (undefined/ignored on edit).
       await onSubmit(order, isCreate ? orderId : undefined)
+      // The save landed — now actually delete the Storage files of the photos
+      // removed in the picker (edit only; a create keeps nothing to remove).
+      // Deleting only AFTER a successful save means a cancelled form or a failed
+      // save never touches them; best-effort — a failure here only leaves an
+      // orphan blob, not a UI error.
+      const removedPhotos = (initialOrder?.photos ?? []).filter(
+        (path) => !keptPhotos.includes(path),
+      )
+      removedPhotos.forEach((path) =>
+        deleteOrderPhoto(path).catch((e) => reportError(e, 'orderFormRemovePhoto')),
+      )
       // The order is saved — the draft has served its purpose. Cleared only
       // AFTER onSubmit resolves, so a failed save (the catch below) keeps the
       // draft and the input survives even a page-leave after the failure.
@@ -805,16 +823,24 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
             onChange={(e) => setComment(e.target.value)}
           />
 
-          {/* Photo attachments, on create AND edit. Picked photos are held LOCALLY
-              and uploaded on submit (see handleSubmit), so nothing hits Storage
-              until the order is saved — no orphans if the form is abandoned. On an
-              edit this picker holds only the NEWLY added photos; the order's
-              existing gallery (view/remove) stays on the detail page, and the new
-              paths are appended to it on save. */}
+          {/* Photo attachments, on create AND edit. Newly picked photos are held
+              LOCALLY and uploaded on submit (see handleSubmit), so nothing hits
+              Storage until the order is saved — no orphans if the form is
+              abandoned. On an edit the strip ALSO shows the order's saved photos
+              (the detail page is view-only): removing one is staged in
+              `keptPhotos` and applied on save — the same commit point as every
+              other change on the form. */}
           {ownerId && (
             <>
               <span aria-hidden="true" className="h-px w-full bg-border" />
-              <PendingPhotos files={pendingFiles} onChange={setPendingFiles} />
+              <PendingPhotos
+                files={pendingFiles}
+                onChange={setPendingFiles}
+                existing={keptPhotos}
+                onRemoveExisting={(path) =>
+                  setKeptPhotos((prev) => prev.filter((p) => p !== path))
+                }
+              />
             </>
           )}
 

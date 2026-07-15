@@ -205,20 +205,23 @@ describe('OrderDetailPage', () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/orders'))
   })
 
-  it('persists a photo removal as a per-field patch of the new list', async () => {
-    const user = userEvent.setup()
+  it('shows photos VIEW-ONLY: the viewer opens, but nothing adds or deletes', async () => {
     fetchOrder.mockResolvedValue(order({ photos: ['orders/owner-1/o1/a.jpg'] }))
     renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })
 
-    await user.click(screen.getByRole('button', { name: 'Удалить фото' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Удалить фото?' })
-    await user.click(within(dialog).getByRole('button', { name: 'Удалить' }))
+    // The thumbnail is openable, but the page never writes: photos are managed
+    // on the edit form now, so there is no per-thumb delete and no add tile.
+    expect(screen.getByRole('button', { name: 'Открыть фото' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Удалить фото' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Добавить фото' })).not.toBeInTheDocument()
+  })
 
-    // The page writes ONLY the new photos array (per-field merge), and the order
-    // is NOT soft-deleted by a photo removal.
-    await waitFor(() => expect(patchOrder).toHaveBeenCalledWith('o1', { photos: [] }))
-    expect(softDeleteOrder).not.toHaveBeenCalled()
+  it('omits the photos section entirely when the order has none', async () => {
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    // No empty "Фото" heading (and no add tile — the page is view-only).
+    expect(screen.queryByRole('heading', { name: 'Фото' })).not.toBeInTheDocument()
   })
 
   describe('when the order is in the trash (deleted)', () => {

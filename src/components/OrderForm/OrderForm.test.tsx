@@ -34,9 +34,10 @@ vi.mock('../../firebase/orders', () => ({
 // the deferred-upload flow can be asserted.
 const uploadOrderPhoto = vi.fn()
 const deleteOrderPhoto = vi.fn().mockResolvedValue(undefined)
+const getPhotoUrl = vi.fn()
 vi.mock('../../firebase/photos', () => ({
   uploadOrderPhoto: (...a: unknown[]) => uploadOrderPhoto(...a),
-  getPhotoUrl: vi.fn(),
+  getPhotoUrl: (...a: unknown[]) => getPhotoUrl(...a),
   deleteOrderPhoto: (...a: unknown[]) => deleteOrderPhoto(...a),
 }))
 // Stub signOutUser so the real Firebase SDK stays out of the test.
@@ -101,6 +102,8 @@ beforeEach(() => {
   fetchOrders.mockResolvedValue([])
   createCustomer.mockResolvedValue('new-customer-id')
   deleteOrderPhoto.mockResolvedValue(undefined)
+  // The edit form resolves thumbnails for the order's SAVED photos.
+  getPhotoUrl.mockImplementation((path: string) => Promise.resolve(`https://cdn/${path}`))
   // jsdom has no object-URL support; the local photo previews need it.
   globalThis.URL.createObjectURL = vi.fn(() => 'blob:preview')
   globalThis.URL.revokeObjectURL = vi.fn()
@@ -323,7 +326,7 @@ describe('OrderForm', () => {
     expect(orderIdArg).toBeUndefined()
   })
 
-  it('leaves the stored photos untouched on an edit that adds none', async () => {
+  it('re-sends the kept photo list unchanged on an edit that adds and removes none', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
     const user = userEvent.setup()
     fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
@@ -335,10 +338,49 @@ describe('OrderForm', () => {
 
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
-    // No `photos` key at all: updateOrder's per-field merge then leaves the
-    // stored list exactly as it is (photos are not a clearable field).
+    // Nothing uploads and nothing is deleted; the saved list is the stored one
+    // verbatim (the form owns the photo list now, so the key is always sent
+    // while it's non-empty).
     expect(uploadOrderPhoto).not.toHaveBeenCalled()
+    expect(deleteOrderPhoto).not.toHaveBeenCalled()
+    expect(onSubmit.mock.calls[0][0].photos).toEqual(['orders/owner-1/o1/old.jpg'])
+  })
+
+  it('stages an existing-photo removal: dropped from the payload, Storage delete only after the save', async () => {
+    let resolveSubmit!: () => void
+    // Typed with args so `mock.calls[0][0]` is reachable; resolution is held by
+    // the test to observe the delete-after-save ordering.
+    const onSubmit = vi.fn<(...args: unknown[]) => Promise<void>>(
+      () =>
+        new Promise<void>((res) => {
+          resolveSubmit = res
+        }),
+    )
+    const user = userEvent.setup()
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    renderForm({
+      onSubmit,
+      initialOrder: order({ id: 'o1', customerId: 'c1', photos: ['orders/owner-1/o1/old.jpg'] }),
+    })
+    await screen.findByRole('combobox', { name: 'Существующий клиент' })
+
+    // The saved photo shows as a thumbnail; its × drops it from the strip
+    // WITHOUT touching Storage — the removal is staged until the save.
+    await user.click(await screen.findByRole('button', { name: 'Удалить фото' }))
+    expect(screen.queryByRole('button', { name: 'Удалить фото' })).not.toBeInTheDocument()
+    expect(deleteOrderPhoto).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    // The last photo was removed → the key is omitted, so updateOrder CLEARS
+    // the stored field (photos is a clearable field)…
     expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('photos')
+    // …and the Storage file is deleted only once the save has landed.
+    expect(deleteOrderPhoto).not.toHaveBeenCalled()
+    resolveSubmit()
+    await waitFor(() =>
+      expect(deleteOrderPhoto).toHaveBeenCalledWith('orders/owner-1/o1/old.jpg'),
+    )
   })
 
   it('prefills the plant rows and existing-customer selection from initialOrder', async () => {

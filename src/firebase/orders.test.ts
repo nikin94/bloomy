@@ -161,9 +161,10 @@ describe('reconcileOrderNumbers', () => {
 
 describe('updateOrder', () => {
   it('writes the supplied fields with updateDoc (per-field merge) and removes cleared optionals', async () => {
-    // No comment / completedAt / gifts on the body → they must be deleteField()'d
-    // so a field the user cleared is actually removed, not left lingering by the
-    // merge (e.g. removing the gift row on an edit really drops the gift).
+    // No comment / completedAt / gifts / photos on the body → they must be
+    // deleteField()'d so a field the user cleared is actually removed, not left
+    // lingering by the merge (e.g. removing the gift row — or the last photo —
+    // on an edit really drops the field).
     const body = storedOrder({ number: 7, paymentStatus: 'paid' }) as Omit<Order, 'id'>
 
     await updateOrder('o1', body)
@@ -176,6 +177,7 @@ describe('updateOrder', () => {
       comment: { __deleted: true },
       completedAt: { __deleted: true },
       gifts: { __deleted: true },
+      photos: { __deleted: true },
     })
     expect(setDoc).not.toHaveBeenCalled()
     // No numbering transaction on edit.
