@@ -48,14 +48,23 @@ const CustomerPicker = ({
     <div
       role="radiogroup"
       aria-label={t('form.customerType')}
-      className="relative grid w-full max-w-xs grid-cols-2 rounded-full border border-border bg-primary-bg p-1 text-sm font-medium"
+      className="relative grid w-full max-w-xs grid-cols-[3fr_2fr] rounded-full border border-border bg-primary-bg p-1 text-sm font-medium"
     >
-      {/* Sliding pill behind the active segment. */}
+      {/* Sliding pill behind the active segment. Segments are 3fr/2fr (the
+          "Существующий" label is much longer than "Новый"), so the pill can't
+          slide by its own width any more — it animates left+width to match
+          whichever segment is active. The offsets mirror the grid: with p-1
+          (0.25rem) each side, segment 1 is [0.25rem, 60% − 0.05rem] and
+          segment 2 the rest. */}
       <span
         aria-hidden="true"
-        className={`absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-primary shadow-sm ${
-          animate ? 'transition-transform duration-200 ease-out' : ''
-        } ${mode === 'new' ? 'translate-x-full' : 'translate-x-0'}`}
+        className={`absolute inset-y-1 rounded-full bg-primary shadow-sm ${
+          animate ? 'transition-[left,width] duration-200 ease-out' : ''
+        } ${
+          mode === 'new'
+            ? 'left-[calc(60%-0.05rem)] w-[calc(40%-0.2rem)]'
+            : 'left-1 w-[calc(60%-0.3rem)]'
+        }`}
       />
       <label
         className={`relative z-10 flex min-w-0 cursor-pointer items-center justify-center rounded-full px-2 py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary ${
