@@ -462,12 +462,15 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   }
 
   // Live preview of the derived totals (same money model as the order itself).
+  // The footer's headline figure is the PLANTS-ONLY subtotal — the number the
+  // operator runs the shop by (matching the stats money card) — with the
+  // delivery cost shown beside it in small type, not folded into the total.
   const subtotalMinor = items.reduce(
     // A blank/zero quantity counts as 1 here, matching what gets saved.
     (sum, item) => sum + parseRublesToMinor(item.price) * (Number(item.quantity) || 1),
     0,
   )
-  const totalMinor = subtotalMinor + parseRublesToMinor(deliveryPrice)
+  const deliveryMinor = parseRublesToMinor(deliveryPrice)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -833,8 +836,18 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
             <div className="flex items-center gap-3">
               <div className="flex shrink-0 items-baseline gap-2 max-sm:flex-col max-sm:gap-0">
                 <span className="text-sm text-text max-sm:text-xs">{t('form.total')}</span>
-                <span className="text-lg font-semibold text-heading">
-                  {formatMoney(totalMinor, currency)}
+                {/* Plants-only headline; the delivery cost rides beside it in
+                    small type (rendered only when a delivery price is entered),
+                    on both the desktop inline row and the phone's stacked label. */}
+                <span className="flex items-baseline gap-1.5">
+                  <span className="text-lg font-semibold text-heading">
+                    {formatMoney(subtotalMinor, currency)}
+                  </span>
+                  {deliveryMinor > 0 && (
+                    <span className="whitespace-nowrap text-xs text-text">
+                      {t('form.totalDelivery', { amount: formatMoney(deliveryMinor, currency) })}
+                    </span>
+                  )}
                 </span>
               </div>
               <Button

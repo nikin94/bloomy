@@ -158,6 +158,7 @@
     "shipmentStatus": "Статус заказа",
     "comment": "Комментарий",
     "total": "Итого",
+    "totalDelivery": "+ доставка {{amount}}",
     "errors": {
       "session": "Сессия истекла — войдите снова",
       "selectCustomer": "Выберите клиента",
