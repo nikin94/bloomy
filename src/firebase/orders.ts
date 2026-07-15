@@ -159,8 +159,11 @@ export async function reconcileOrderNumbers(ownerId: string): Promise<boolean> {
 // Optional order fields that can be CLEARED by an edit. The edit form omits a
 // field it has no value for (an empty comment, a non-completed order), so on a
 // per-field merge those omissions must become explicit removals — otherwise an
-// omitted field would just linger (see updateOrder).
-const CLEARABLE_ORDER_FIELDS = ['comment', 'completedAt', 'gifts'] as const
+// omitted field would just linger (see updateOrder). `photos` is here because
+// the edit form now owns the photo list too: removing the last photo omits the
+// key, and the merge must drop the stored list rather than leave it pointing at
+// files that were just deleted from Storage.
+const CLEARABLE_ORDER_FIELDS = ['comment', 'completedAt', 'gifts', 'photos'] as const
 
 // Save an edited order in place (used by the edit screen). Unlike createOrder,
 // this runs NO numbering transaction: editing keeps the order's id and

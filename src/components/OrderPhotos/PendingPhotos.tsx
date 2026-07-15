@@ -3,28 +3,48 @@ import { useTranslation } from 'react-i18next'
 import AddPhotoTile from './AddPhotoTile'
 import PhotoViewer from './PhotoViewer'
 import Thumb from './Thumb'
+import { usePhotoUrls } from './usePhotoUrls'
 
-// Local (deferred-upload) photo picker for the CREATE order form. Unlike OrderPhotos
-// (the detail page), this NEVER touches Storage: the picked File objects live in the
-// parent form and are shown as object-URL previews. The actual upload happens once,
-// on order submit — so abandoning the form (cancel, tab close, refresh) uploads
-// nothing and leaves no orphaned blobs to clean up. Reuses the detail gallery's
-// Thumb + fullscreen PhotoViewer so both look identical.
+// Stable fallback so callers that pass no `existing` list (the create form)
+// don't hand the URL resolver a fresh [] every render.
+const NO_EXISTING: string[] = []
+
+// Photo picker for the order FORM (create and edit). Two sources render as one
+// strip:
+//  • `existing` — Storage paths already saved on the edited order (empty on
+//    create), shown as resolved thumbnails. The × only reports the removal up
+//    via `onRemoveExisting` — the parent form STAGES it, and the actual
+//    Storage/doc delete happens on save, so cancelling the form leaves every
+//    saved photo untouched.
+//  • `files` — newly picked File objects, shown as object-URL previews and
+//    uploaded once, on submit (see OrderForm.handleSubmit) — abandoning the
+//    form uploads nothing and leaves no orphaned blobs.
+// Reuses the detail gallery's Thumb + fullscreen PhotoViewer so both look identical.
 const PendingPhotos = ({
   files,
   onChange,
+  existing = NO_EXISTING,
+  onRemoveExisting,
 }: {
   files: File[]
   onChange: (files: File[]) => void
+  // Saved photos of the order being edited (absent on create).
+  existing?: string[]
+  onRemoveExisting?: (path: string) => void
 }) => {
   const { t } = useTranslation(['order', 'common'])
   const [viewerIndex, setViewerIndex] = useState<number | null>(null)
 
+  // Download URLs for the saved photos, resolved lazily (no-op on create).
+  const existingUrls = usePhotoUrls(existing)
   // One object-URL preview per file, rebuilt when the list changes and revoked on
   // cleanup so blob URLs never leak. The list is small (a handful of photos), so
   // recomputing the whole set on each add/remove is cheap.
   const previews = useMemo(() => files.map((file) => URL.createObjectURL(file)), [files])
   useEffect(() => () => previews.forEach((url) => URL.revokeObjectURL(url)), [previews])
+
+  // The viewer swipes over the whole strip: saved photos first, then new picks.
+  const viewerUrls = [...existing.map((path) => existingUrls[path]), ...previews]
 
   const addFiles = (picked: FileList | null) => {
     if (!picked || picked.length === 0) return
@@ -37,12 +57,21 @@ const PendingPhotos = ({
       <h2 className="m-0 text-lg font-semibold text-heading">{t('photos.title')}</h2>
 
       <div className="flex flex-wrap gap-3">
+        {existing.map((path, index) => (
+          <Thumb
+            key={path}
+            url={existingUrls[path]}
+            t={t}
+            onOpen={() => setViewerIndex(index)}
+            onDelete={onRemoveExisting ? () => onRemoveExisting(path) : undefined}
+          />
+        ))}
         {previews.map((url, index) => (
           <Thumb
             key={url}
             url={url}
             t={t}
-            onOpen={() => setViewerIndex(index)}
+            onOpen={() => setViewerIndex(existing.length + index)}
             onDelete={() => removeAt(index)}
           />
         ))}
@@ -55,7 +84,7 @@ const PendingPhotos = ({
 
       {viewerIndex !== null && (
         <PhotoViewer
-          urls={previews}
+          urls={viewerUrls}
           startIndex={viewerIndex}
           onClose={() => setViewerIndex(null)}
         />

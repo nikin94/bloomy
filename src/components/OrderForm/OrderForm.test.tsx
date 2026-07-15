@@ -34,9 +34,10 @@ vi.mock('../../firebase/orders', () => ({
 // the deferred-upload flow can be asserted.
 const uploadOrderPhoto = vi.fn()
 const deleteOrderPhoto = vi.fn().mockResolvedValue(undefined)
+const getPhotoUrl = vi.fn()
 vi.mock('../../firebase/photos', () => ({
   uploadOrderPhoto: (...a: unknown[]) => uploadOrderPhoto(...a),
-  getPhotoUrl: vi.fn(),
+  getPhotoUrl: (...a: unknown[]) => getPhotoUrl(...a),
   deleteOrderPhoto: (...a: unknown[]) => deleteOrderPhoto(...a),
 }))
 // Stub signOutUser so the real Firebase SDK stays out of the test.
@@ -101,6 +102,8 @@ beforeEach(() => {
   fetchOrders.mockResolvedValue([])
   createCustomer.mockResolvedValue('new-customer-id')
   deleteOrderPhoto.mockResolvedValue(undefined)
+  // The edit form resolves thumbnails for the order's SAVED photos.
+  getPhotoUrl.mockImplementation((path: string) => Promise.resolve(`https://cdn/${path}`))
   // jsdom has no object-URL support; the local photo previews need it.
   globalThis.URL.createObjectURL = vi.fn(() => 'blob:preview')
   globalThis.URL.revokeObjectURL = vi.fn()
@@ -295,11 +298,89 @@ describe('OrderForm', () => {
     )
   })
 
-  it('does NOT mount the photo gallery when editing (photos are managed on the detail page)', async () => {
+  it('mounts the photo picker when editing and appends new uploads to the existing photos', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
     fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
-    renderForm({ initialOrder: order({ customerId: 'c1' }) })
+    uploadOrderPhoto.mockResolvedValue('orders/owner-1/o1/new.jpg')
+    const { container } = renderForm({
+      onSubmit,
+      initialOrder: order({ id: 'o1', customerId: 'c1', photos: ['orders/owner-1/o1/old.jpg'] }),
+    })
     await screen.findByRole('combobox', { name: 'Существующий клиент' })
-    expect(screen.queryByRole('heading', { name: 'Фото' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Фото' })).toBeInTheDocument()
+
+    const file = new File(['x'], 'new.jpg', { type: 'image/jpeg' })
+    await user.upload(container.querySelector('input[type="file"]') as HTMLInputElement, file)
+    // Deferred like create: nothing uploads until the save.
+    expect(uploadOrderPhoto).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    // Uploaded under the EDITED order's own id (not a pre-generated create id),
+    // and the saved list keeps the existing photo with the new one appended.
+    expect(uploadOrderPhoto).toHaveBeenCalledWith('owner-1', 'o1', file)
+    const [orderArg, orderIdArg] = onSubmit.mock.calls[0]
+    expect(orderArg.photos).toEqual(['orders/owner-1/o1/old.jpg', 'orders/owner-1/o1/new.jpg'])
+    // The pre-generated id still rides along only on CREATE.
+    expect(orderIdArg).toBeUndefined()
+  })
+
+  it('re-sends the kept photo list unchanged on an edit that adds and removes none', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    renderForm({
+      onSubmit,
+      initialOrder: order({ id: 'o1', customerId: 'c1', photos: ['orders/owner-1/o1/old.jpg'] }),
+    })
+    await screen.findByRole('combobox', { name: 'Существующий клиент' })
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    // Nothing uploads and nothing is deleted; the saved list is the stored one
+    // verbatim (the form owns the photo list now, so the key is always sent
+    // while it's non-empty).
+    expect(uploadOrderPhoto).not.toHaveBeenCalled()
+    expect(deleteOrderPhoto).not.toHaveBeenCalled()
+    expect(onSubmit.mock.calls[0][0].photos).toEqual(['orders/owner-1/o1/old.jpg'])
+  })
+
+  it('stages an existing-photo removal: dropped from the payload, Storage delete only after the save', async () => {
+    let resolveSubmit!: () => void
+    // Typed with args so `mock.calls[0][0]` is reachable; resolution is held by
+    // the test to observe the delete-after-save ordering.
+    const onSubmit = vi.fn<(...args: unknown[]) => Promise<void>>(
+      () =>
+        new Promise<void>((res) => {
+          resolveSubmit = res
+        }),
+    )
+    const user = userEvent.setup()
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    renderForm({
+      onSubmit,
+      initialOrder: order({ id: 'o1', customerId: 'c1', photos: ['orders/owner-1/o1/old.jpg'] }),
+    })
+    await screen.findByRole('combobox', { name: 'Существующий клиент' })
+
+    // The saved photo shows as a thumbnail; its × drops it from the strip
+    // WITHOUT touching Storage — the removal is staged until the save.
+    await user.click(await screen.findByRole('button', { name: 'Удалить фото' }))
+    expect(screen.queryByRole('button', { name: 'Удалить фото' })).not.toBeInTheDocument()
+    expect(deleteOrderPhoto).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    // The last photo was removed → the key is omitted, so updateOrder CLEARS
+    // the stored field (photos is a clearable field)…
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('photos')
+    // …and the Storage file is deleted only once the save has landed.
+    expect(deleteOrderPhoto).not.toHaveBeenCalled()
+    resolveSubmit()
+    await waitFor(() =>
+      expect(deleteOrderPhoto).toHaveBeenCalledWith('orders/owner-1/o1/old.jpg'),
+    )
   })
 
   it('prefills the plant rows and existing-customer selection from initialOrder', async () => {
