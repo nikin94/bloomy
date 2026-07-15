@@ -15,7 +15,6 @@ const patchOrder = vi.fn()
 const softDeleteOrder = vi.fn()
 const restoreOrder = vi.fn()
 const fetchCustomer = vi.fn()
-const updateCustomer = vi.fn()
 const navigate = vi.fn()
 
 vi.mock('../../firebase/orders', () => ({
@@ -26,7 +25,6 @@ vi.mock('../../firebase/orders', () => ({
 }))
 vi.mock('../../firebase/customers', () => ({
   fetchCustomer: (...args: unknown[]) => fetchCustomer(...args),
-  updateCustomer: (...args: unknown[]) => updateCustomer(...args),
 }))
 // The photo gallery's storage layer is stubbed so the page never loads the
 // Storage SDK; getPhotoUrl never resolves here (orders under test have no photos).
@@ -76,7 +74,6 @@ beforeEach(() => {
   patchOrder.mockResolvedValue(undefined)
   softDeleteOrder.mockResolvedValue(undefined)
   restoreOrder.mockResolvedValue(undefined)
-  updateCustomer.mockResolvedValue(undefined)
 })
 
 describe('OrderDetailPage', () => {
@@ -208,37 +205,6 @@ describe('OrderDetailPage', () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/orders'))
   })
 
-  it('edits the customer in a dialog and reflects the new name live', async () => {
-    const user = userEvent.setup()
-    fetchCustomer.mockResolvedValue(customer({ name: 'Анна', phone: '+700' }))
-    renderPage()
-    await screen.findByRole('heading', { name: 'Заказ №5' })
-    expect(screen.getByText('Анна')).toBeInTheDocument()
-
-    // The edit button sits in the customer row; clicking it opens the form
-    // prefilled with the current customer values.
-    await user.click(screen.getByRole('button', { name: 'Редактировать клиента' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Редактирование клиента' })
-    const nameField = within(dialog).getByLabelText('Имя клиента')
-    expect(nameField).toHaveValue('Анна')
-    expect(within(dialog).getByLabelText('Телефон')).toHaveValue('+700')
-
-    await user.clear(nameField)
-    await user.type(nameField, 'Анна Петрова')
-    await user.click(within(dialog).getByRole('button', { name: 'Сохранить' }))
-
-    // The customer record is updated and the page reflects the new name without
-    // a refetch; the dialog closes.
-    await waitFor(() =>
-      expect(updateCustomer).toHaveBeenCalledWith(
-        'c1',
-        expect.objectContaining({ name: 'Анна Петрова', phone: '+700' }),
-      ),
-    )
-    expect(await screen.findByText('Анна Петрова')).toBeInTheDocument()
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  })
-
   it('persists a photo removal as a per-field patch of the new list', async () => {
     const user = userEvent.setup()
     fetchOrder.mockResolvedValue(order({ photos: ['orders/owner-1/o1/a.jpg'] }))
@@ -274,10 +240,6 @@ describe('OrderDetailPage', () => {
       // Statuses are plain text, not editable selects; the label still resolves.
       expect(screen.queryByRole('combobox', { name: 'Статус оплаты' })).not.toBeInTheDocument()
       expect(screen.getByText('Ожидает')).toBeInTheDocument()
-      // The "edit customer" pencil is hidden — read-only means no writes anywhere.
-      expect(
-        screen.queryByRole('button', { name: 'Редактировать клиента' }),
-      ).not.toBeInTheDocument()
     })
 
     it('shows existing photos read-only: no add tile, no per-thumb delete', async () => {

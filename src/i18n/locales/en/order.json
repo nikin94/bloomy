@@ -85,8 +85,6 @@
     "delete": "Delete",
     "deleteTitle": "Delete order #{{number}}?",
     "deleteBody": "The order will move to the trash and be permanently deleted in {{days}}. You can restore it until then.",
-    "editCustomer": "Edit customer",
-    "editCustomerTitle": "Edit customer",
     "customer": "Customer",
     "phone": "Phone",
     "deliveryAddress": "Delivery address",

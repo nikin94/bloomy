@@ -3,10 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { patchOrder, softDeleteOrder, restoreOrder } from '@/firebase/orders'
 import type { OrderPatch } from '@/firebase/orders'
-import { updateCustomer } from '@/firebase/customers'
-import type { CustomerEdits } from '@/firebase/customers'
 import { useOrder, useOrderCache } from '@/queries/orders'
-import { useCustomer, useCustomerCache } from '@/queries/customers'
+import { useCustomer } from '@/queries/customers'
 import { formatDate, formatMoney } from '@/utils/format'
 import {
   getSubtotalMinor,
@@ -26,14 +24,12 @@ import {
   paymentStatusOptions,
   shipmentStatusOptions,
 } from '@/lib/orderLabels'
-import { applyCustomerEdits } from '@/types/customer'
 import { asEnum } from '@/utils/asEnum'
 import { useOwnerId } from '@/hooks/useOwnerId'
 import { useNow } from '@/hooks/useNow'
 import Spinner from '@/components/Spinner/Spinner'
 import Button from '@/components/Button/Button'
 import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
-import CustomerEditModal from '@/components/CustomerEditModal/CustomerEditModal'
 import OrderPhotos from '@/components/OrderPhotos/OrderPhotos'
 import DetailRow from '@/components/DetailRow/DetailRow'
 import PencilIcon from '@/components/icons/PencilIcon'
@@ -60,7 +56,6 @@ const OrderDetailPage = () => {
   const customerQuery = useCustomer(order?.customerId)
   const customer = customerQuery.data ?? null
   const orderCache = useOrderCache()
-  const customerCache = useCustomerCache()
   // Loading until the order resolves and — for a found order — its customer too.
   const loading = orderQuery.isLoading || (order !== null && customerQuery.isLoading)
   const error = orderQuery.error ?? customerQuery.error
@@ -68,10 +63,6 @@ const OrderDetailPage = () => {
   const mountNow = useNow()
   // Delete is confirmed in a modal (destructive, so not a one-click action).
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-  // The customer's name lives on the customer record, not the order, so it's
-  // edited here in a dialog (the shared CustomerForm) — fixing it where it's seen
-  // rather than sending the user to the customers page.
-  const [editingCustomer, setEditingCustomer] = useState(false)
 
   // Save a single status change inline, optimistically: update the local order
   // right away so the UI feels instant, then write ONLY the changed field(s)
@@ -106,22 +97,6 @@ const OrderDetailPage = () => {
     orderCache.setOrder(ownerId, next.id, true, () => next)
     patchOrder(next.id, writePatch)
     orderCache.invalidateLists()
-  }
-
-  // Persist the customer's edited fields, then mirror them onto the local
-  // customer so the page (the "Customer"/"Phone" rows) updates live without a
-  // refetch. Empty optional fields drop to undefined, matching updateCustomer.
-  // updateCustomer is fire-and-forget (offline-safe), so this never blocks and
-  // the dialog closes at once; a failed write is reported to Sentry.
-  const handleSaveCustomer = async (edits: CustomerEdits) => {
-    if (!customer) return
-    updateCustomer(customer.id, edits)
-    // Optimistically update the single-customer cache (the page's "Customer"/"Phone"
-    // rows), then invalidate the list caches so the address book + orders name
-    // resolution re-read it.
-    customerCache.setCustomer(customer.id, (prev) => applyCustomerEdits(prev ?? customer, edits))
-    customerCache.invalidateLists()
-    setEditingCustomer(false)
   }
 
   // Update the order's photo list: reflect it locally at once, then persist the
@@ -283,19 +258,6 @@ const OrderDetailPage = () => {
                   '—'
                 )
               }
-              action={
-                customer && !isDeleted ? (
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    onClick={() => setEditingCustomer(true)}
-                    aria-label={t('detail.editCustomer')}
-                    title={t('detail.editCustomer')}
-                  >
-                    <PencilIcon />
-                  </Button>
-                ) : undefined
-              }
             />
             {customer?.phone && <DetailRow label={t('detail.phone')} value={customer.phone} />}
             <DetailRow label={t('detail.deliveryAddress')} value={order.address || '—'} />
@@ -404,15 +366,6 @@ const OrderDetailPage = () => {
             />
           )}
         </div>
-      )}
-
-      {editingCustomer && customer && (
-        <CustomerEditModal
-          customer={customer}
-          title={t('detail.editCustomerTitle')}
-          onClose={() => setEditingCustomer(false)}
-          onSubmit={handleSaveCustomer}
-        />
       )}
 
       {confirmingDelete && order && (

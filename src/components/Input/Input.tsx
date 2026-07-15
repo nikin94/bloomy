@@ -11,12 +11,23 @@ import { sanitizeDecimalInput, sanitizeIntegerInput } from '@/utils/format'
 // `bg-bg px-1` punches a notch in the top border (works because the field and its
 // container are both `bg-bg`). The motion is gated behind `motion-safe:` so a
 // reduced-motion user gets an instant snap instead of a slide.
+//
+// Browser AUTOFILL is a separate trigger: WebKit/Blink paint the saved value
+// without exposing it to JS or to `:placeholder-shown` until the user interacts,
+// so the value-driven float never fires and the label overlaps the autofilled
+// text (the login screen bug). The `:autofill` pseudo-class IS set in that state,
+// so float on it too. Two selector spellings on purpose — the standard
+// `:autofill` (peer-autofill) and the prefixed `:-webkit-autofill` — as separate
+// rules, because an unsupported selector would invalidate a combined list.
 const FLOATING_LABEL =
   'pointer-events-none absolute left-2 top-1/2 z-10 -translate-y-1/2 px-1 text-base text-placeholder ' +
   'motion-safe:transition-all motion-safe:duration-150 ' +
   'peer-focus:top-0 peer-focus:text-xs peer-focus:bg-bg peer-focus:text-primary ' +
   'peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:text-xs ' +
   'peer-[:not(:placeholder-shown)]:bg-bg peer-[:not(:placeholder-shown)]:text-text ' +
+  'peer-autofill:top-0 peer-autofill:text-xs peer-autofill:bg-bg peer-autofill:text-text ' +
+  'peer-[:-webkit-autofill]:top-0 peer-[:-webkit-autofill]:text-xs ' +
+  'peer-[:-webkit-autofill]:bg-bg peer-[:-webkit-autofill]:text-text ' +
   'peer-aria-[invalid=true]:text-danger'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
