@@ -144,6 +144,7 @@
     "giftName": "Gift name",
     "removeGift": "Remove gift",
     "giftAlreadySent": "This gift was already sent to this customer",
+    "draftRestored": "An unsaved order draft was restored. Photos are not kept in the draft — attach them again.",
     "cancelConfirmTitle": "Leave without saving?",
     "cancelConfirmBody": "The data you entered will be lost.",
     "cancelConfirmLeave": "Leave",

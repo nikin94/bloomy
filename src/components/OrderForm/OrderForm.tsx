@@ -662,6 +662,20 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
           <div className="flex w-full flex-col gap-5">
             <h1 className="m-0 text-[1.2222rem] font-semibold text-heading">{heading}</h1>
 
+          {/* Restored-draft notice. Photos never make it into the draft (File
+              objects don't serialize to localStorage), so a user who attached
+              photos, left, and came back would otherwise save the restored form
+              WITHOUT them and never know — the exact "заказ есть, фото нет"
+              report. Say it up front so they re-attach before saving. */}
+          {draft !== null && (
+            <p
+              role="status"
+              className="m-0 rounded-md border border-border bg-primary-bg px-3 py-2 text-sm text-text"
+            >
+              {t('form.draftRestored')}
+            </p>
+          )}
+
           <CustomerPicker
             mode={customerMode}
             customers={customers}
@@ -868,8 +882,12 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                 clear of the amount. From `sm` up the buttons show their text
                 labels at natural width, pushed right. Cancel confirms first when
                 the form is dirty (see handleCancel). aria-label keeps the
-                accessible name at the full text on every width. */}
-            <div className="flex items-center gap-3">
+                accessible name at the full text on every width. On a phone the
+                row stretches its items, so both buttons grow to the height of
+                the total block (label + amount + delivery note) and the trio
+                reads as one even-height bar; the buttons' own content stays
+                centred (Button is inline-flex items-center). */}
+            <div className="flex items-center gap-3 max-sm:items-stretch">
               {/* min-w-0 on a phone (shrink-0 only from sm up): this block sits
                   in a row with the ✕/✓ buttons, so it MUST be able to shrink —
                   an unshrinkable block plus a nowrap note exceeds a narrow
