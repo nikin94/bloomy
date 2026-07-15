@@ -17,8 +17,8 @@ vi.mock('firebase/firestore', () => ({
   Timestamp: { fromMillis: vi.fn((ms: number) => ({ __ts: ms })) },
 }))
 
-import { writeBatch, Timestamp } from 'firebase/firestore'
-import { buildSeedCustomers, buildSeedOrders, seedMockData, SEED_ORDER_COUNT } from './seed'
+import { writeBatch, Timestamp, getDocs, setDoc } from 'firebase/firestore'
+import { buildSeedCustomers, buildSeedOrders, seedMockData, wipeOwnerData, SEED_ORDER_COUNT } from './seed'
 import { STORED_CUSTOMER_SCHEMA } from '@/types/customer'
 import { STORED_ORDER_SCHEMA, CURRENCIES } from '@/types/order'
 
@@ -132,5 +132,33 @@ describe('seedMockData', () => {
     expect(active.some((d) => 'purgeAt' in d)).toBe(false)
     // purgeAt is derived via Timestamp.fromMillis (= deletedAt + retention window).
     expect(Timestamp.fromMillis).toHaveBeenCalled()
+  })
+})
+
+describe('wipeOwnerData', () => {
+  it('batch-deletes every owner order and customer and resets the number counter', async () => {
+    // getDocs is called once per collection (orders, then customers); return a
+    // distinct doc set for each so the counts can be told apart in the result.
+    const orderDocs = [{ ref: 'o1' }, { ref: 'o2' }, { ref: 'o3' }]
+    const customerDocs = [{ ref: 'c1' }, { ref: 'c2' }]
+    vi.mocked(getDocs)
+      .mockResolvedValueOnce({ docs: orderDocs, size: orderDocs.length } as never)
+      .mockResolvedValueOnce({ docs: customerDocs, size: customerDocs.length } as never)
+    const deleted: unknown[] = []
+    const batch = {
+      set: vi.fn(),
+      delete: (ref: unknown) => deleted.push(ref),
+      commit: vi.fn().mockResolvedValue(undefined),
+    }
+    vi.mocked(writeBatch).mockReturnValue(batch as unknown as ReturnType<typeof writeBatch>)
+
+    const result = await wipeOwnerData('owner-1')
+
+    // Every doc of both collections is deleted, and the reported counts match
+    // what the admin UI prints.
+    expect(deleted).toEqual(['o1', 'o2', 'o3', 'c1', 'c2'])
+    expect(result).toEqual({ removedOrders: 3, removedCustomers: 2 })
+    // The per-owner counter is reset so the next real order starts at №1.
+    expect(setDoc).toHaveBeenCalledWith(expect.anything(), { lastOrderNumber: 0 })
   })
 })

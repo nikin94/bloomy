@@ -14,6 +14,7 @@ import Modal from '@/components/Modal/Modal'
 import Select from '@/components/Select/Select'
 import SelectOptions from '@/components/SelectOptions/SelectOptions'
 import AdminSeedSection from '@/components/Settings/AdminSeedSection'
+import AdminWipeSection from '@/components/Settings/AdminWipeSection'
 import { settingsSectionsFor, isSettingsSection } from '@/components/Settings/sections'
 import Group from '@/components/Settings/Group'
 import Row from '@/components/Settings/Row'
@@ -366,7 +367,14 @@ const SettingsPage = () => {
             </div>
           )}
 
-          {section === 'admin' && adminUser && <AdminSeedSection ownerId={user.uid} />}
+          {section === 'admin' && adminUser && (
+            <>
+              <AdminSeedSection ownerId={user.uid} />
+              {/* Clean-slate wipe, below the seeder: deletes ALL of the admin's
+                  own orders/customers (see AdminWipeSection). */}
+              <AdminWipeSection ownerId={user.uid} />
+            </>
+          )}
         </div>
 
         {error && (

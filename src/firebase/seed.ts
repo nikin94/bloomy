@@ -224,6 +224,24 @@ export interface SeedResult {
   trashed: number
 }
 
+export interface WipeResult {
+  removedOrders: number
+  removedCustomers: number
+}
+
+// Hard-delete EVERY order and customer the owner has (active and trashed alike),
+// and reset the per-owner number counter so the next real order starts at №1.
+// The admin-tab "wipe" tool ahead of the status migration: the admin clears
+// their own test data first, so the migration only ever touches real users'
+// documents. Owner-scoped like the seeder — runs under the admin's login, the
+// rules never let it touch anyone else's data.
+export async function wipeOwnerData(ownerId: string): Promise<WipeResult> {
+  const removedOrders = await deleteOwnerCollection(ORDERS_COLLECTION, ownerId)
+  const removedCustomers = await deleteOwnerCollection(CUSTOMERS_COLLECTION, ownerId)
+  await setDoc(doc(db, COUNTERS_COLLECTION, ownerId), { lastOrderNumber: 0 })
+  return { removedOrders, removedCustomers }
+}
+
 // Seed the owner's account with mock data. When `reset` is true, the owner's
 // existing orders and customers are hard-deleted first (a clean slate); without
 // it the fixtures are added alongside whatever is already there.
