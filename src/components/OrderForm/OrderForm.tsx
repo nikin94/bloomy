@@ -103,9 +103,9 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // so those read from `initialOrder` alone and stay pristine on a repeat.
   const source = initialOrder ?? seed
 
-  // Photo attachments are offered on CREATE only (an existing order edits its
-  // photos on the detail page). A repeat seed does NOT carry the original's
-  // photos — they belong to that order — so the list starts empty.
+  // Whether this form CREATES an order (vs editing one in place). A repeat seed
+  // does NOT carry the original's photos — they belong to that order — so the
+  // pending-photo list below starts empty either way.
   const isCreate = initialOrder === undefined
 
   // Local draft (owner request): a plain CREATE form keeps what was typed in
@@ -125,9 +125,11 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // initializer so it's stable across renders.
   const [createId] = useState(newOrderId)
   const orderId = initialOrder?.id ?? createId
-  // Photos picked on a CREATE form are held LOCALLY (File objects) and only uploaded
+  // Photos picked on the form are held LOCALLY (File objects) and only uploaded
   // on submit — see handleSubmit. Nothing touches Storage until the order is being
-  // created, so abandoning the form leaves no orphaned blobs.
+  // saved, so abandoning the form leaves no orphaned blobs. On an EDIT these are
+  // the NEWLY added photos only — the order's existing ones stay untouched (their
+  // removal lives on the detail page) and the new paths are appended on save.
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
 
   // Customer selection. New orders default to "new"; an edited order already has
@@ -539,16 +541,17 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
       // original moment via the order's existing completedAt.
       const completedAt = resolveCompletedAt(shipmentStatus, initialOrder?.completedAt, Date.now())
 
-      // Deferred photo upload (create only): now that we're committing to create the
-      // order, upload the locally-picked files under orders/{ownerId}/{orderId}/ —
-      // the same id the doc is created with below. ALL-OR-NOTHING: if any upload
-      // fails, roll back the ones that DID land (so nothing is orphaned), surface the
-      // error and keep the user on the form to retry. Until this point nothing was
-      // uploaded, so a cancelled/abandoned form costs zero Storage writes. Uploads
-      // need a connection (Storage has no offline queue) — an offline save with
-      // photos attached fails here; a save with no photos still works offline.
+      // Deferred photo upload: now that we're committing to save the order, upload
+      // the locally-picked files under orders/{ownerId}/{orderId}/ — on create the
+      // same pre-generated id the doc is created with below, on edit the order's
+      // own id. ALL-OR-NOTHING: if any upload fails, roll back the ones that DID
+      // land (so nothing is orphaned), surface the error and keep the user on the
+      // form to retry. Until this point nothing was uploaded, so a cancelled/
+      // abandoned form costs zero Storage writes. Uploads need a connection
+      // (Storage has no offline queue) — an offline save with new photos attached
+      // fails here; a save with no new photos still works offline.
       let photoPaths: string[] = []
-      if (isCreate && pendingFiles.length > 0) {
+      if (pendingFiles.length > 0) {
         const results = await Promise.allSettled(
           pendingFiles.map((file) => uploadOrderPhoto(ownerId, orderId, file)),
         )
@@ -588,9 +591,14 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
           : {}),
         ...(comment.trim() !== '' ? { comment: comment.trim() } : {}),
         ...(completedAt !== undefined ? { completedAt } : {}),
-        // Deferred-upload photos (create only): the paths just returned from the
-        // submit-time upload above, included only when there are any.
-        ...(photoPaths.length > 0 ? { photos: photoPaths } : {}),
+        // Deferred-upload photos: the paths just returned from the submit-time
+        // upload above, APPENDED to the edited order's existing ones (create has
+        // none). Included only when new photos were added — omitting the key on a
+        // photo-less edit leaves the stored list untouched (updateOrder's per-field
+        // merge only clears fields listed in CLEARABLE_ORDER_FIELDS).
+        ...(photoPaths.length > 0
+          ? { photos: [...(initialOrder?.photos ?? []), ...photoPaths] }
+          : {}),
       }
 
       // The caller persists the order (create vs update) and navigates. The
@@ -797,11 +805,13 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
             onChange={(e) => setComment(e.target.value)}
           />
 
-          {/* Photo attachments — create only (an edit manages photos on the order
-              detail page). Picked photos are held LOCALLY and uploaded on submit
-              (see handleSubmit), so nothing hits Storage until the order is created —
-              no orphans if the form is abandoned. */}
-          {isCreate && ownerId && (
+          {/* Photo attachments, on create AND edit. Picked photos are held LOCALLY
+              and uploaded on submit (see handleSubmit), so nothing hits Storage
+              until the order is saved — no orphans if the form is abandoned. On an
+              edit this picker holds only the NEWLY added photos; the order's
+              existing gallery (view/remove) stays on the detail page, and the new
+              paths are appended to it on save. */}
+          {ownerId && (
             <>
               <span aria-hidden="true" className="h-px w-full bg-border" />
               <PendingPhotos files={pendingFiles} onChange={setPendingFiles} />

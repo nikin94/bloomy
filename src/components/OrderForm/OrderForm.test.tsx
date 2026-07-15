@@ -295,11 +295,50 @@ describe('OrderForm', () => {
     )
   })
 
-  it('does NOT mount the photo gallery when editing (photos are managed on the detail page)', async () => {
+  it('mounts the photo picker when editing and appends new uploads to the existing photos', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
     fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
-    renderForm({ initialOrder: order({ customerId: 'c1' }) })
+    uploadOrderPhoto.mockResolvedValue('orders/owner-1/o1/new.jpg')
+    const { container } = renderForm({
+      onSubmit,
+      initialOrder: order({ id: 'o1', customerId: 'c1', photos: ['orders/owner-1/o1/old.jpg'] }),
+    })
     await screen.findByRole('combobox', { name: 'Существующий клиент' })
-    expect(screen.queryByRole('heading', { name: 'Фото' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Фото' })).toBeInTheDocument()
+
+    const file = new File(['x'], 'new.jpg', { type: 'image/jpeg' })
+    await user.upload(container.querySelector('input[type="file"]') as HTMLInputElement, file)
+    // Deferred like create: nothing uploads until the save.
+    expect(uploadOrderPhoto).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    // Uploaded under the EDITED order's own id (not a pre-generated create id),
+    // and the saved list keeps the existing photo with the new one appended.
+    expect(uploadOrderPhoto).toHaveBeenCalledWith('owner-1', 'o1', file)
+    const [orderArg, orderIdArg] = onSubmit.mock.calls[0]
+    expect(orderArg.photos).toEqual(['orders/owner-1/o1/old.jpg', 'orders/owner-1/o1/new.jpg'])
+    // The pre-generated id still rides along only on CREATE.
+    expect(orderIdArg).toBeUndefined()
+  })
+
+  it('leaves the stored photos untouched on an edit that adds none', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    renderForm({
+      onSubmit,
+      initialOrder: order({ id: 'o1', customerId: 'c1', photos: ['orders/owner-1/o1/old.jpg'] }),
+    })
+    await screen.findByRole('combobox', { name: 'Существующий клиент' })
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    // No `photos` key at all: updateOrder's per-field merge then leaves the
+    // stored list exactly as it is (photos are not a clearable field).
+    expect(uploadOrderPhoto).not.toHaveBeenCalled()
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('photos')
   })
 
   it('prefills the plant rows and existing-customer selection from initialOrder', async () => {
