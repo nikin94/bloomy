@@ -3,10 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { patchOrder, softDeleteOrder, restoreOrder } from '@/firebase/orders'
 import type { OrderPatch } from '@/firebase/orders'
-import { updateCustomer } from '@/firebase/customers'
-import type { CustomerEdits } from '@/firebase/customers'
 import { useOrder, useOrderCache } from '@/queries/orders'
-import { useCustomer, useCustomerCache } from '@/queries/customers'
+import { useCustomer } from '@/queries/customers'
 import { formatDate, formatMoney } from '@/utils/format'
 import {
   getSubtotalMinor,
@@ -26,17 +24,17 @@ import {
   paymentStatusOptions,
   shipmentStatusOptions,
 } from '@/lib/orderLabels'
-import { applyCustomerEdits } from '@/types/customer'
 import { asEnum } from '@/utils/asEnum'
 import { useOwnerId } from '@/hooks/useOwnerId'
 import { useNow } from '@/hooks/useNow'
 import Spinner from '@/components/Spinner/Spinner'
 import Button from '@/components/Button/Button'
 import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
-import CustomerEditModal from '@/components/CustomerEditModal/CustomerEditModal'
 import OrderPhotos from '@/components/OrderPhotos/OrderPhotos'
 import DetailRow from '@/components/DetailRow/DetailRow'
 import PencilIcon from '@/components/icons/PencilIcon'
+import RepeatIcon from '@/components/icons/RepeatIcon'
+import TrashIcon from '@/components/icons/TrashIcon'
 import InlineStatusField from './InlineStatusField'
 import Total from './Total'
 import type { Order } from '@/types/order'
@@ -58,7 +56,6 @@ const OrderDetailPage = () => {
   const customerQuery = useCustomer(order?.customerId)
   const customer = customerQuery.data ?? null
   const orderCache = useOrderCache()
-  const customerCache = useCustomerCache()
   // Loading until the order resolves and — for a found order — its customer too.
   const loading = orderQuery.isLoading || (order !== null && customerQuery.isLoading)
   const error = orderQuery.error ?? customerQuery.error
@@ -66,10 +63,6 @@ const OrderDetailPage = () => {
   const mountNow = useNow()
   // Delete is confirmed in a modal (destructive, so not a one-click action).
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-  // The customer's name lives on the customer record, not the order, so it's
-  // edited here in a dialog (the shared CustomerForm) — fixing it where it's seen
-  // rather than sending the user to the customers page.
-  const [editingCustomer, setEditingCustomer] = useState(false)
 
   // Save a single status change inline, optimistically: update the local order
   // right away so the UI feels instant, then write ONLY the changed field(s)
@@ -104,22 +97,6 @@ const OrderDetailPage = () => {
     orderCache.setOrder(ownerId, next.id, true, () => next)
     patchOrder(next.id, writePatch)
     orderCache.invalidateLists()
-  }
-
-  // Persist the customer's edited fields, then mirror them onto the local
-  // customer so the page (the "Customer"/"Phone" rows) updates live without a
-  // refetch. Empty optional fields drop to undefined, matching updateCustomer.
-  // updateCustomer is fire-and-forget (offline-safe), so this never blocks and
-  // the dialog closes at once; a failed write is reported to Sentry.
-  const handleSaveCustomer = async (edits: CustomerEdits) => {
-    if (!customer) return
-    updateCustomer(customer.id, edits)
-    // Optimistically update the single-customer cache (the page's "Customer"/"Phone"
-    // rows), then invalidate the list caches so the address book + orders name
-    // resolution re-read it.
-    customerCache.setCustomer(customer.id, (prev) => applyCustomerEdits(prev ?? customer, edits))
-    customerCache.invalidateLists()
-    setEditingCustomer(false)
   }
 
   // Update the order's photo list: reflect it locally at once, then persist the
@@ -217,18 +194,24 @@ const OrderDetailPage = () => {
               <span className="text-sm text-text">{formatDate(order.dateCreated)}</span>
             </div>
             {/* A trashed order is read-only — Restore lives in the banner, so
-                edit/delete are hidden here until it's restored. On a phone the
-                actions stack full-width, one button per line (an easy tap target);
-                from sm up they collapse back to the compact inline row. */}
+                edit/delete are hidden here until it's restored. One row on every
+                width: on a phone the three buttons split the full width in equal
+                thirds with ICONS in place of the labels (three stacked full-width
+                buttons ate half the screen); from sm up the text labels return
+                and the row collapses to its natural inline width. aria-label
+                keeps the accessible name at the full text on every width, so
+                screen readers (and the tests) see one stable name. */}
             {!isDeleted && (
-              <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+              <div className="flex w-full items-center gap-3 sm:w-auto sm:flex-wrap">
                 <Button
                   variant="primary"
                   size="sm"
                   onClick={() => navigate(`/orders/${order.id}/edit`)}
-                  className="w-full sm:w-auto"
+                  aria-label={t('detail.edit')}
+                  className="flex-1 sm:flex-none"
                 >
-                  {t('detail.edit')}
+                  <PencilIcon className="size-5 sm:hidden" />
+                  <span className="max-sm:hidden">{t('detail.edit')}</span>
                 </Button>
                 {/* Repeat: open the create form seeded from this order's
                     contents (customer + plants + logistics), as a fresh order.
@@ -237,17 +220,21 @@ const OrderDetailPage = () => {
                   variant="secondary"
                   size="sm"
                   onClick={() => navigate('/orders/new', { state: { repeatOrder: order } })}
-                  className="w-full sm:w-auto"
+                  aria-label={t('detail.repeat')}
+                  className="flex-1 sm:flex-none"
                 >
-                  {t('detail.repeat')}
+                  <RepeatIcon className="size-5 sm:hidden" />
+                  <span className="max-sm:hidden">{t('detail.repeat')}</span>
                 </Button>
                 <Button
                   variant="danger"
                   size="sm"
                   onClick={() => setConfirmingDelete(true)}
-                  className="w-full sm:w-auto"
+                  aria-label={t('detail.delete')}
+                  className="flex-1 sm:flex-none"
                 >
-                  {t('detail.delete')}
+                  <TrashIcon className="size-5 sm:hidden" />
+                  <span className="max-sm:hidden">{t('detail.delete')}</span>
                 </Button>
               </div>
             )}
@@ -270,19 +257,6 @@ const OrderDetailPage = () => {
                 ) : (
                   '—'
                 )
-              }
-              action={
-                customer && !isDeleted ? (
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    onClick={() => setEditingCustomer(true)}
-                    aria-label={t('detail.editCustomer')}
-                    title={t('detail.editCustomer')}
-                  >
-                    <PencilIcon />
-                  </Button>
-                ) : undefined
               }
             />
             {customer?.phone && <DetailRow label={t('detail.phone')} value={customer.phone} />}
@@ -392,15 +366,6 @@ const OrderDetailPage = () => {
             />
           )}
         </div>
-      )}
-
-      {editingCustomer && customer && (
-        <CustomerEditModal
-          customer={customer}
-          title={t('detail.editCustomerTitle')}
-          onClose={() => setEditingCustomer(false)}
-          onSubmit={handleSaveCustomer}
-        />
       )}
 
       {confirmingDelete && order && (

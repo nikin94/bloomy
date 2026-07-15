@@ -9,16 +9,9 @@ describe('DetailRow', () => {
     expect(screen.getByText('+7 900 000-00-00')).toBeInTheDocument()
   })
 
-  it('renders a node value (e.g. a link) and an optional action slot', () => {
-    render(
-      <DetailRow
-        label="Клиент"
-        value={<a href="/customers/c1">Анна</a>}
-        action={<button type="button">Изм.</button>}
-      />,
-    )
+  it('renders a node value (e.g. a link)', () => {
+    render(<DetailRow label="Клиент" value={<a href="/customers/c1">Анна</a>} />)
     expect(screen.getByRole('link', { name: 'Анна' })).toHaveAttribute('href', '/customers/c1')
-    expect(screen.getByRole('button', { name: 'Изм.' })).toBeInTheDocument()
   })
 
   it('applies the default label basis (from sm: up), overridable via labelBasisClass', () => {
