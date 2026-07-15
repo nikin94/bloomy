@@ -323,15 +323,23 @@ describe('NewOrderPage', () => {
     )
   })
 
-  it('shows the live total from items plus delivery', async () => {
+  it('shows the plants-only total, with the delivery cost beside it in small type', async () => {
     const user = userEvent.setup()
     renderForm()
     await screen.findByLabelText('Имя клиента')
     await user.type(screen.getByLabelText('Название'), 'Роза')
     await user.type(screen.getByLabelText('Цена'), '100')
+
+    // With no delivery price entered, only the plants figure shows.
+    expect(screen.getByText(/100,00/)).toBeInTheDocument()
+    expect(screen.queryByText(/\+ доставка/)).not.toBeInTheDocument()
+
     await user.type(screen.getByLabelText('Стоимость доставки'), '50')
-    // 100 ₽ × 1 + 50 ₽ delivery = 150,00 ₽ (NBSP between number and symbol).
-    expect(screen.getByText(/150,00/)).toBeInTheDocument()
+    // The headline stays plants-only (100 ₽, NOT 150 ₽ with delivery folded in);
+    // delivery rides beside it as a small "+ доставка 50,00 ₽" note.
+    expect(screen.getByText(/100,00/)).toBeInTheDocument()
+    expect(screen.queryByText(/150,00/)).not.toBeInTheDocument()
+    expect(screen.getByText(/\+ доставка 50,00/)).toBeInTheDocument()
   })
 
   it('restores the prefilled address when toggling the mode slider back to existing', async () => {
