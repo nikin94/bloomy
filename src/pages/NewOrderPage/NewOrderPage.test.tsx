@@ -96,6 +96,9 @@ beforeEach(() => {
   fetchOrders.mockResolvedValue([])
   createCustomer.mockResolvedValue('new-customer-id')
   createOrder.mockResolvedValue('new-order-id')
+  // The create form persists a local draft keyed per owner; without this, a
+  // plant typed in one test restores into the next test's fresh form.
+  localStorage.clear()
 })
 
 describe('NewOrderPage', () => {

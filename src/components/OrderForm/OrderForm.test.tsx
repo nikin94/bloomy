@@ -104,7 +104,13 @@ beforeEach(() => {
   // jsdom has no object-URL support; the local photo previews need it.
   globalThis.URL.createObjectURL = vi.fn(() => 'blob:preview')
   globalThis.URL.revokeObjectURL = vi.fn()
+  // The create form persists a local draft; a leftover from a previous test
+  // must not restore into the next one's fresh form.
+  localStorage.clear()
 })
+
+// The localStorage key the create form's draft lands under (see draft.ts).
+const DRAFT_KEY = 'bloomy:order-draft:v1:owner-1'
 
 describe('OrderForm', () => {
   it('renders the heading and starts in new-customer mode with no initial order', async () => {
@@ -358,5 +364,119 @@ describe('OrderForm', () => {
 
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(onSubmit).not.toHaveBeenCalled()
+  })
+})
+
+describe('OrderForm draft (create only, localStorage)', () => {
+  it('persists a draft once a plant is named, but not for stray typing without one', async () => {
+    const user = userEvent.setup()
+    renderForm()
+    await screen.findByLabelText('Имя клиента')
+
+    // Address/name alone are below the bar: no named plant → no draft.
+    await user.type(screen.getByLabelText('Имя клиента'), 'Борис')
+    await user.type(screen.getByLabelText('Адрес доставки'), 'ул. Ленина, 1')
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull()
+
+    // Naming a plant crosses it: the draft appears, carrying everything typed.
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    const draft = JSON.parse(localStorage.getItem(DRAFT_KEY) as string)
+    expect(draft.items).toEqual([{ name: 'Роза', quantity: '', price: '' }])
+    expect(draft.newName).toBe('Борис')
+    expect(draft.address).toBe('ул. Ленина, 1')
+
+    // Clearing the only plant name drops back below the bar: draft removed.
+    await user.clear(screen.getByLabelText('Название'))
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull()
+  })
+
+  it('restores the draft into the next create form, and cancel asks before discarding', async () => {
+    const user = userEvent.setup()
+    const first = renderForm()
+    await screen.findByLabelText('Имя клиента')
+    await user.type(screen.getByLabelText('Имя клиента'), 'Борис')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Цена'), '149,90')
+    first.unmount()
+
+    // A fresh create form seeds itself from the stored draft.
+    const onCancel = vi.fn()
+    renderForm({ onCancel })
+    expect(await screen.findByLabelText('Название')).toHaveValue('Роза')
+    expect(screen.getByLabelText('Цена')).toHaveValue('149,90')
+    expect(screen.getByLabelText('Имя клиента')).toHaveValue('Борис')
+
+    // A restored draft counts as unsaved input: cancel confirms, and STAYING
+    // keeps both the form and the stored draft intact.
+    await user.click(screen.getByRole('button', { name: 'Отмена' }))
+    await user.click(await screen.findByRole('button', { name: 'Остаться' }))
+    expect(onCancel).not.toHaveBeenCalled()
+    expect(localStorage.getItem(DRAFT_KEY)).not.toBeNull()
+
+    // Confirming the cancel discards the draft along with the form.
+    await user.click(screen.getByRole('button', { name: 'Отмена' }))
+    await user.click(await screen.findByRole('button', { name: 'Выйти' }))
+    expect(onCancel).toHaveBeenCalledTimes(1)
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull()
+  })
+
+  it('clears the draft after a successful save', async () => {
+    const user = userEvent.setup()
+    renderForm()
+    await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Цена'), '100')
+    expect(localStorage.getItem(DRAFT_KEY)).not.toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).toBeNull())
+  })
+
+  it('keeps the draft when the save fails, so the input still survives a leave', async () => {
+    const user = userEvent.setup()
+    const onSubmit = vi.fn().mockRejectedValue(new Error('Не удалось сохранить'))
+    renderForm({ onSubmit })
+    await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Цена'), '100')
+
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await screen.findByRole('alert')
+    expect(localStorage.getItem(DRAFT_KEY)).not.toBeNull()
+  })
+
+  it('does not write a draft from an edit form, and does not restore one into it', async () => {
+    const user = userEvent.setup()
+    fetchCustomers.mockResolvedValue([customer()])
+    // A stored draft from an abandoned create session…
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        customerMode: 'new',
+        selectedCustomerId: '',
+        newName: 'Черновик',
+        newPhone: '',
+        address: 'черновой адрес',
+        items: [{ name: 'Фикус', quantity: '', price: '5' }],
+        giftName: null,
+        deliveryMethod: 'post',
+        deliveryPrice: '',
+        paymentMethod: 'cash',
+        currency: 'RUB',
+        paymentStatus: 'pending',
+        shipmentStatus: 'new',
+        comment: '',
+      }),
+    )
+
+    // …must not leak into an EDIT form (its truth is the order itself)…
+    renderForm({ initialOrder: order() })
+    expect(await screen.findByLabelText('Название')).toHaveValue('Кактус')
+    expect(screen.getByLabelText('Адрес доставки')).toHaveValue('ул. Пушкина, 1')
+
+    // …and typing in the edit form must not overwrite the stored create draft.
+    await user.type(screen.getByLabelText('Название'), '!')
+    const stored = JSON.parse(localStorage.getItem(DRAFT_KEY) as string)
+    expect(stored.items[0].name).toBe('Фикус')
   })
 })
