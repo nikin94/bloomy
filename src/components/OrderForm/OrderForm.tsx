@@ -36,6 +36,8 @@ import GiftRow from './GiftRow'
 import CustomerPicker from './CustomerPicker'
 import { emptyItem, initialItems } from './items'
 import type { ItemInput } from './items'
+import { loadOrderDraft, saveOrderDraft, clearOrderDraft } from './draft'
+import type { OrderDraft } from './draft'
 import type { CustomerMode } from './CustomerPicker'
 import { fetchOrders, newOrderId } from '@/firebase/orders'
 import { deleteOrderPhoto, uploadOrderPhoto } from '@/firebase/photos'
@@ -105,6 +107,17 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // photos on the detail page). A repeat seed does NOT carry the original's
   // photos — they belong to that order — so the list starts empty.
   const isCreate = initialOrder === undefined
+
+  // Local draft (owner request): a plain CREATE form keeps what was typed in
+  // localStorage, so leaving without saving doesn't lose the input. Scoped to
+  // the create-without-seed case only: an EDIT's source of truth is the order
+  // itself, and a REPEAT seed already prefills the form (restoring a draft over
+  // it would silently swap the just-repeated order for older scratch). Loaded
+  // once, before the state initializers below seed from it.
+  const draftEnabled = isCreate && seed === undefined
+  const [draft] = useState<OrderDraft | null>(() =>
+    draftEnabled && ownerId ? loadOrderDraft(ownerId) : null,
+  )
   // The order's document id, pre-generated for a create so the photos uploaded at
   // submit land under orders/{ownerId}/{orderId}/ — the SAME id the doc is created
   // with (passed to createOrder), keeping the storage path in lockstep with the
@@ -118,9 +131,13 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
 
   // Customer selection. New orders default to "new"; an edited order already has
-  // a customer, so it starts in "existing" mode with that customer selected.
+  // a customer, so it starts in "existing" mode with that customer selected. A
+  // restored draft wins over both defaults here and in the fields below — it IS
+  // the user's own last state for this form (never set alongside `source`).
   const [customers, setCustomers] = useState<Customer[]>([])
-  const [customerMode, setCustomerMode] = useState<CustomerMode>(source ? 'existing' : 'new')
+  const [customerMode, setCustomerMode] = useState<CustomerMode>(
+    draft?.customerMode ?? (source ? 'existing' : 'new'),
+  )
   // Gate the form on the customer fetch: the initial mode depends on whether the
   // address book is empty, so rendering the form before it resolves would paint
   // the slider at "new" and snap it to "existing" once the data arrives. Showing
@@ -129,17 +146,27 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // The slider pill only animates after the user interacts. The initial
   // fetch-driven switch to "existing" (for returning users) must not slide.
   const [animateModeSlider, setAnimateModeSlider] = useState(false)
-  const [selectedCustomerId, setSelectedCustomerId] = useState(source?.customerId ?? '')
-  const [newName, setNewName] = useState('')
-  const [newPhone, setNewPhone] = useState('')
+  const [selectedCustomerId, setSelectedCustomerId] = useState(
+    draft?.selectedCustomerId ?? source?.customerId ?? '',
+  )
+  const [newName, setNewName] = useState(draft?.newName ?? '')
+  const [newPhone, setNewPhone] = useState(draft?.newPhone ?? '')
 
-  const [address, setAddress] = useState(source?.address ?? '')
+  const [address, setAddress] = useState(draft?.address ?? source?.address ?? '')
   // Monotonic id source for item rows, so React keys stay stable across
   // add/remove instead of being tied to array position. Rows are seeded with ids
-  // 0..n-1 (see initialItems), so the ref continues from there for rows added later.
-  const itemIdRef = useRef(source ? source.plants.length - 1 : 0)
+  // 0..n-1 (see initialItems / the draft restore), so the ref continues from
+  // there for rows added later.
+  const itemIdRef = useRef(draft ? draft.items.length - 1 : source ? source.plants.length - 1 : 0)
   const nextItemId = () => (itemIdRef.current += 1)
-  const [items, setItems] = useState<ItemInput[]>(() => initialItems(source))
+  // A restored draft holds the rows as typed (strings, ids re-assigned by index);
+  // a draft is only ever written with at least one named plant, but stay
+  // defensive about an empty list so the form always has its one blank row.
+  const [items, setItems] = useState<ItemInput[]>(() =>
+    draft && draft.items.length > 0
+      ? draft.items.map((item, id) => ({ id, ...item }))
+      : initialItems(source),
+  )
   // The order's gift, or null when none. A gift is a free plant (quantity 1,
   // price 0 — see the schema note on `gifts`), so only its NAME is edited; the
   // string may be blank while typing and a blank gift is dropped on submit,
@@ -147,7 +174,9 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // repeating an order carries its gift, and the "already sent" warning below
   // then flags it, which is exactly the nudge to pick a different one. null vs
   // '' distinguishes "no gift row" from "row added, name not typed yet".
-  const [giftName, setGiftName] = useState<string | null>(source?.gifts?.[0]?.name ?? null)
+  const [giftName, setGiftName] = useState<string | null>(
+    draft ? draft.giftName : (source?.gifts?.[0]?.name ?? null),
+  )
   // Focus the gift name input only when the row was just added by the button —
   // not when it mounts prefilled from an edit/repeat seed.
   const [focusGift, setFocusGift] = useState(false)
@@ -156,24 +185,26 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // a prefill) so no row steals focus on load.
   const [focusItemId, setFocusItemId] = useState<number | null>(null)
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>(
-    source?.deliveryMethod ?? defaultDeliveryMethod,
+    draft?.deliveryMethod ?? source?.deliveryMethod ?? defaultDeliveryMethod,
   )
   const [deliveryPrice, setDeliveryPrice] = useState(
-    source ? formatMinorToInput(source.deliveryPriceMinor) : '',
+    draft?.deliveryPrice ?? (source ? formatMinorToInput(source.deliveryPriceMinor) : ''),
   )
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
-    source?.paymentMethod ?? defaultPaymentMethod,
+    draft?.paymentMethod ?? source?.paymentMethod ?? defaultPaymentMethod,
   )
   // A new order starts in the user's default currency; an edited order (or a
   // repeat) keeps the source currency — it is fixed per order, no conversion.
-  const [currency, setCurrency] = useState<Currency>(source?.currency ?? defaultCurrency)
+  const [currency, setCurrency] = useState<Currency>(
+    draft?.currency ?? source?.currency ?? defaultCurrency,
+  )
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(
-    initialOrder?.paymentStatus ?? 'pending',
+    draft?.paymentStatus ?? initialOrder?.paymentStatus ?? 'pending',
   )
   const [shipmentStatus, setShipmentStatus] = useState<ShipmentStatus>(
-    initialOrder?.shipmentStatus ?? 'new',
+    draft?.shipmentStatus ?? initialOrder?.shipmentStatus ?? 'new',
   )
-  const [comment, setComment] = useState(initialOrder?.comment ?? '')
+  const [comment, setComment] = useState(draft?.comment ?? initialOrder?.comment ?? '')
 
   const [saving, setSaving] = useState(false)
   // Becomes true on the first submit attempt; until then, incomplete-row hints
@@ -208,9 +239,56 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // useState initializer (not a ref): the first-render snapshot is state read
   // during render, which is legal where reading a ref in render is not.
   const [initialFields] = useState(fieldsSnapshot)
-  const isDirty = fieldsSnapshot !== initialFields
+  // A restored draft counts as dirty from the start: the snapshot already holds
+  // the draft values, but they ARE unsaved user input — cancel must still ask,
+  // and confirming is what discards the stored draft (see handleConfirmedCancel).
+  const isDirty = fieldsSnapshot !== initialFields || draft !== null
   const [confirmingCancel, setConfirmingCancel] = useState(false)
   const handleCancel = () => (isDirty ? setConfirmingCancel(true) : onCancel())
+  // A CONFIRMED cancel is the explicit "discard my input" — drop the stored
+  // draft too, so the next create form starts blank (owner-specified behaviour).
+  const handleConfirmedCancel = () => {
+    if (draftEnabled && ownerId) clearOrderDraft(ownerId)
+    onCancel()
+  }
+
+  // Draft autosave. Serialised in render (same technique as fieldsSnapshot) so
+  // the effect below re-runs only when the draft CONTENTS change, not on every
+  // render. Row ids are stripped — they are React keys, re-assigned on restore.
+  const draftJson = JSON.stringify({
+    customerMode,
+    selectedCustomerId,
+    newName,
+    newPhone,
+    address,
+    items: items.map(({ name, quantity, price }) => ({ name, quantity, price })),
+    giftName,
+    deliveryMethod,
+    deliveryPrice,
+    paymentMethod,
+    currency,
+    paymentStatus,
+    shipmentStatus,
+    comment,
+  } satisfies OrderDraft)
+  useEffect(() => {
+    // Paused while a submit is in flight (`saving`): the new-customer path flips
+    // customerMode/selectedCustomerId mid-submit, and this effect would re-save
+    // the draft AFTER the success path just cleared it. A FAILED submit resets
+    // `saving`, which re-runs this effect and re-saves — exactly right, the
+    // input must survive a leave after a failure.
+    if (!draftEnabled || !ownerId || saving) return
+    const current = JSON.parse(draftJson) as OrderDraft
+    // Owner-specified gate: a draft exists ONLY while the list holds at least
+    // one named plant. Below that bar the stored draft is removed (deleting the
+    // last plant name deletes the draft), so stray address/comment typing never
+    // resurrects on the next visit.
+    if (current.items.some((item) => item.name.trim() !== '')) {
+      saveOrderDraft(ownerId, current)
+    } else {
+      clearOrderDraft(ownerId)
+    }
+  }, [draftJson, draftEnabled, ownerId, saving])
 
   // Plant-name autocomplete: distinct names from the owner's existing orders,
   // offered as suggestions on each row's name input (see Autocomplete).
@@ -234,7 +312,10 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
         // that customer is absent from the active list — so the picker would drop
         // the current selection. Fetch it directly and keep it in the options
         // (labelled "(deleted)") so the order stays linked to it unless changed.
-        const seededId = source?.customerId
+        // A restored draft's selected customer gets the same treatment: it may
+        // have been deleted since the draft was written, and a dangling id must
+        // either resolve to a "(deleted)" option or be cleared, never saved.
+        const seededId = source?.customerId ?? (draft?.selectedCustomerId || undefined)
         let list = data
         if (seededId && !data.some((c) => c.id === seededId)) {
           // Treat a throw (transient network / rules change) the same as an
@@ -263,7 +344,10 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
           }
         }
         setCustomers(list)
-        if (list.length > 0) setCustomerMode('existing')
+        // Returning users land in "existing" mode — but NOT over a restored
+        // draft, which carries the mode the user actually left the form in
+        // (flipping would hide a half-typed new-customer name behind the picker).
+        if (list.length > 0 && !draft) setCustomerMode('existing')
       })
       .catch(() => {
         // Non-fatal: the picker just stays empty and the user adds a new
@@ -275,7 +359,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
     return () => {
       active = false
     }
-  }, [ownerId, source])
+  }, [ownerId, source, draft])
 
   // Load the autocomplete suggestions independently of the customer fetch: they
   // are non-critical, so a failure (or slow load) must never block or gate the
@@ -513,6 +597,10 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
       // pre-generated create id rides along so the doc lands on the same id the
       // photos were stored under (undefined/ignored on edit).
       await onSubmit(order, isCreate ? orderId : undefined)
+      // The order is saved — the draft has served its purpose. Cleared only
+      // AFTER onSubmit resolves, so a failed save (the catch below) keeps the
+      // draft and the input survives even a page-leave after the failure.
+      if (draftEnabled && ownerId) clearOrderDraft(ownerId)
     } catch (err: unknown) {
       // Roll back any photos already in Storage — the order doc will never exist
       // to trigger cloud-cleanup, so abandoning the form now would orphan them.
@@ -774,16 +862,17 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
       </form>
 
     {/* Leave-without-saving confirmation — mounted only when a dirty form's
-        cancel was pressed (see handleCancel). Confirming leaves via onCancel;
-        dismissing any way (stay button, backdrop, Esc) keeps the user on the
-        form with everything typed intact. */}
+        cancel was pressed (see handleCancel). Confirming leaves via
+        handleConfirmedCancel (which also discards the stored draft); dismissing
+        any way (stay button, backdrop, Esc) keeps the user on the form with
+        everything typed intact — and the draft untouched. */}
     {confirmingCancel && (
       <ConfirmModal
         title={t('form.cancelConfirmTitle')}
         body={t('form.cancelConfirmBody')}
         confirmLabel={t('form.cancelConfirmLeave')}
         cancelLabel={t('form.cancelConfirmStay')}
-        onConfirm={onCancel}
+        onConfirm={handleConfirmedCancel}
         onCancel={() => setConfirmingCancel(false)}
       />
     )}
