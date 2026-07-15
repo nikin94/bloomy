@@ -662,6 +662,20 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
           <div className="flex w-full flex-col gap-5">
             <h1 className="m-0 text-[1.2222rem] font-semibold text-heading">{heading}</h1>
 
+          {/* Restored-draft notice. Photos never make it into the draft (File
+              objects don't serialize to localStorage), so a user who attached
+              photos, left, and came back would otherwise save the restored form
+              WITHOUT them and never know — the exact "заказ есть, фото нет"
+              report. Say it up front so they re-attach before saving. */}
+          {draft !== null && (
+            <p
+              role="status"
+              className="m-0 rounded-md border border-border bg-primary-bg px-3 py-2 text-sm text-text"
+            >
+              {t('form.draftRestored')}
+            </p>
+          )}
+
           <CustomerPicker
             mode={customerMode}
             customers={customers}

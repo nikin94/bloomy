@@ -449,6 +449,23 @@ describe('OrderForm', () => {
 })
 
 describe('OrderForm draft (create only, localStorage)', () => {
+  it('announces a restored draft (photos are not part of it) and stays silent on a fresh form', async () => {
+    const user = userEvent.setup()
+    // A fresh create form: no notice.
+    const first = renderForm()
+    await screen.findByLabelText('Имя клиента')
+    expect(screen.queryByText(/Восстановлен черновик/)).not.toBeInTheDocument()
+
+    // Leave a draft behind, then open the create form again: the notice shows,
+    // warning that photos never ride in the draft and must be re-attached —
+    // the fix for "saved the restored form, photos silently gone".
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    first.unmount()
+    renderForm()
+    await screen.findByLabelText('Имя клиента')
+    expect(screen.getByRole('status')).toHaveTextContent(/Восстановлен черновик/)
+  })
+
   it('persists a draft once a plant is named, but not for stray typing without one', async () => {
     const user = userEvent.setup()
     renderForm()
