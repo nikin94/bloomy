@@ -80,13 +80,15 @@ const parentPath = (pathname: string): string => {
 }
 
 // Shared horizontal layout for every rail row (nav, create, settings). The row is
-// ALWAYS icon-left at a fixed `px-2.5` inset — collapsing no longer switches it to a
-// centred icon box (which dropped the label instantly). Instead the label fades and
-// the narrowing rail clips it away (`overflow-hidden` + the fading RailLabel). The
-// icon keeps its `px-2.5` offset, so its centre sits at 32px in BOTH the full rail
-// and the 64px collapsed strip (12px rail pad + 10px row pad + half a 20px icon = 32
-// = half of 64) — it never slides. `overflow-hidden` lets the rail swallow the label.
-const RAIL_ROW = 'gap-2 px-2.5 overflow-hidden'
+// ALWAYS icon-left at a fixed `px-1` inset (kept tight so the menu content sits
+// close to the "New order" button's own edge inset — owner request) — collapsing
+// no longer switches it to a centred icon box (which dropped the label instantly).
+// Instead the label fades and the narrowing rail clips it away (`overflow-hidden`
+// + the fading RailLabel). The icon keeps its `px-1` offset, so its centre sits at
+// 26px in BOTH the full rail and the 52px collapsed strip (12px rail pad + 4px row
+// pad + half a 20px icon = 26 = half of 52) — it never slides. `overflow-hidden`
+// lets the rail swallow the label.
+const RAIL_ROW = 'gap-2 px-1 overflow-hidden'
 
 // A nav destination in the vertical rail/drawer: a row, filled when its route is
 // active. Collapsing fades its label out (see RailLabel), not the row itself.
@@ -121,11 +123,11 @@ const settingsToggleClass = (active: boolean) =>
 // A section row in the settings nav (flyout / drawer accordion). A LIGHTER register
 // than the main destinations — muted normal-weight text, the active section
 // accent-coloured on a soft bg-primary-bg tint — so the second level reads as
-// subordinate to the main nav rather than a peer of it. Tight horizontal padding
-// (px-2) keeps the narrow flyout's content close to its edges.
+// subordinate to the main nav rather than a peer of it. `px-1` matches the main
+// rail rows' inset, so both menus keep the same tight gutter (see RAIL_ROW).
 const sectionLinkClass = (selected: boolean) =>
   cn(
-    'flex items-center rounded-md px-2 py-2 text-sm no-underline transition-colors',
+    'flex items-center rounded-md px-1.5 py-2 text-sm no-underline transition-colors',
     FOCUS_RING,
     selected ? 'bg-primary-bg font-semibold text-primary' : 'font-normal text-text hover:text-heading',
   )
@@ -340,7 +342,9 @@ const Sidebar = ({
         aria-label={t('menu')}
         className={cn(
           'relative hidden shrink-0 flex-col gap-2 border-r border-border p-3 transition-[width] duration-300 ease-out motion-reduce:transition-none md:flex',
-          collapsed ? 'w-16' : 'w-48',
+          // 52px keeps the icons centred in the collapsed strip with the tighter
+          // px-1 row inset (see RAIL_ROW's centring math).
+          collapsed ? 'w-13' : 'w-48',
         )}
       >
         {/* Collapse toggle: a small chevron button straddling the rail's right edge
@@ -430,7 +434,10 @@ const Sidebar = ({
           flyoutOpen ? 'w-40 border-r border-border' : 'w-0',
         )}
       >
-        <div className="flex w-40 flex-col gap-1 p-3">{sectionLinks()}</div>
+        {/* px-1 (not p-3): with the rows' own px-2 the section text sits 12px from
+            the panel edge — the same inset the main rail gives the New-order
+            button — instead of drifting to 20px. */}
+        <div className="flex w-40 flex-col gap-1 px-1 py-3">{sectionLinks()}</div>
       </nav>
 
       {/* Mobile top bar (below md). Left: the current page title (or the back
@@ -505,7 +512,9 @@ const Sidebar = ({
         aria-label={t('menu')}
         inert={!menuOpen}
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-64 max-w-[80%] flex-col gap-2 border-r border-border bg-bg p-4 shadow-lg transition-transform duration-300 ease-out motion-reduce:transition-none md:hidden',
+          // p-3 (not p-4) so the drawer's rows sit at the same edge inset as the
+          // desktop rail — the New-order button's surrounding padding everywhere.
+          'fixed inset-y-0 left-0 z-50 flex w-64 max-w-[80%] flex-col gap-2 border-r border-border bg-bg p-3 shadow-lg transition-transform duration-300 ease-out motion-reduce:transition-none md:hidden',
           menuOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
@@ -550,7 +559,7 @@ const Sidebar = ({
               settingsExpanded ? 'max-h-96' : 'max-h-0',
             )}
           >
-            <div className="flex flex-col gap-1 pl-4 pt-1">{sectionLinks(closeMenu)}</div>
+            <div className="flex flex-col gap-1 pl-2 pt-1">{sectionLinks(closeMenu)}</div>
           </div>
         </div>
       </nav>

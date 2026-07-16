@@ -42,6 +42,12 @@
     "confirmReset": "Delete ALL current orders and customers of this account and seed test data?",
     "result": "Done: +{{customers}} customers, +{{orders}} orders ({{trashed}} in trash). Reload the page to see the changes.",
     "resultReset": "Done: +{{customers}} customers, +{{orders}} orders ({{trashed}} in trash); removed {{removedOrders}} orders, {{removedCustomers}} customers. Reload the page to see the changes.",
-    "error": "Couldn't seed data"
+    "error": "Couldn't seed data",
+    "wipeTitle": "Data wipe (admin)",
+    "wipe": "Delete all orders and customers",
+    "wipeConfirmTitle": "Delete all account data?",
+    "wipeConfirmBody": "ALL orders (including the trash) and ALL customers of this account will be permanently deleted, and order numbering restarts at #1. This cannot be undone.",
+    "wipeResult": "Done: removed {{removedOrders}} orders and {{removedCustomers}} customers.",
+    "wipeError": "Couldn't delete the data"
   }
 }
