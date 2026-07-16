@@ -76,8 +76,10 @@ body::before {
 /* PHOTOGRAPHIC backdrop variant — a real greenhouse photo instead of the leaf
    pattern, for the owner to compare (preview toggle: open the app with
    `?bg=photo`; the attribute is set by the inline script in index.html). The
-   photo (public/greenhouse.jpg, Unsplash licence — free use, no attribution
-   required) sits under a heavy theme-coloured veil (--greenhouse-veil) plus a
+   photo (public/greenhouse.jpg, owner-supplied) is LANDSCAPE on purpose:
+   `cover` on a wide desktop viewport must not blow a portrait shot up to fill
+   the width (the zoomed/"stretched past the screen" look the first candidate
+   had). It sits under a heavy theme-coloured veil (--greenhouse-veil) plus a
    slight blur, so it reads as ambience and text contrast stays intact. The
    scale() hides the blur's edge fringe. Offline note: public/ assets are not
    in the SW precache, so offline this degrades to the veil colour ≈ plain bg. */
