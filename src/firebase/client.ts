@@ -66,9 +66,19 @@ const supportsPersistence = typeof window !== 'undefined' && typeof indexedDB !=
 // Note: transactions (createOrder's per-owner numbering) still require the
 // network and do NOT work offline — that is handled separately (deferred
 // numbering), not by this cache.
+//
+// experimentalAutoDetectLongPolling: when a middlebox (antivirus HTTPS
+// inspection, corporate proxy) breaks Firestore's long-lived WebChannel stream,
+// the SDK detects it and falls back to long-polling — plain short HTTPS
+// requests such filters let through. This is the SDK's default in recent
+// versions, so this is likely a no-op; it is set EXPLICITLY as insurance
+// against a future default change, because this exact failure mode is real for
+// us (the owner's Windows machine: Firestore worked on the phone but not the
+// desktop until the antivirus real-time web filtering was tamed).
 export const db: Firestore = supportsPersistence
   ? initializeFirestore(app, {
       localCache: persistentLocalCache({ tabManager: persistentSingleTabManager(undefined) }),
+      experimentalAutoDetectLongPolling: true,
     })
   : getFirestore(app)
 
