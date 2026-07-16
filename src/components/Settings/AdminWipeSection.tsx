@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/components/Button/Button'
 import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
+import { useOrderCache } from '@/queries/orders'
+import { useCustomerCache } from '@/queries/customers'
 import type { WipeResult } from '@/firebase/seed'
 
 // Admin-only "clean slate" tool, rendered in the settings page's admin tab (see
@@ -14,6 +16,8 @@ import type { WipeResult } from '@/firebase/seed'
 const AdminWipeSection = ({ ownerId }: { ownerId: string }) => {
   // common: the confirm dialog's Delete/Cancel button labels.
   const { t } = useTranslation(['settings', 'common'])
+  const orderCache = useOrderCache()
+  const customerCache = useCustomerCache()
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<WipeResult | null>(null)
@@ -28,6 +32,12 @@ const AdminWipeSection = ({ ownerId }: { ownerId: string }) => {
     try {
       const { wipeOwnerData } = await import('@/firebase/seed')
       setResult(await wipeOwnerData(ownerId))
+      // Drop every cached list/detail (orders, trash, customers): the shared
+      // query cache still holds the pre-wipe data, so without this the trash —
+      // or any list visited within the stale window — would keep showing the
+      // just-deleted documents until a full page reload.
+      orderCache.invalidateAll()
+      customerCache.invalidateAll()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('admin.wipeError'))
     } finally {

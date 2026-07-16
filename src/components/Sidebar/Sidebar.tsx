@@ -127,7 +127,7 @@ const settingsToggleClass = (active: boolean) =>
 // rail rows' inset, so both menus keep the same tight gutter (see RAIL_ROW).
 const sectionLinkClass = (selected: boolean) =>
   cn(
-    'flex items-center rounded-md px-1 py-2 text-sm no-underline transition-colors',
+    'flex items-center rounded-md px-1.5 py-2 text-sm no-underline transition-colors',
     FOCUS_RING,
     selected ? 'bg-primary-bg font-semibold text-primary' : 'font-normal text-text hover:text-heading',
   )
