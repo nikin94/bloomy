@@ -147,7 +147,7 @@ describe('PendingPhotos', () => {
     )
   })
 
-  it('reports a saved-photo removal up instead of deleting anything itself', async () => {
+  it('confirms a saved-photo removal, then reports it up instead of deleting anything itself', async () => {
     const user = userEvent.setup()
     const onRemoveExisting = vi.fn()
     render(
@@ -158,9 +158,35 @@ describe('PendingPhotos', () => {
         onRemoveExisting={onRemoveExisting}
       />,
     )
-    // The × only reports the path up — the parent form stages the removal and
-    // the actual Storage delete happens on save, never here.
+    // A SAVED photo's × is gated by a confirm (its endpoint is a permanent
+    // Storage delete); dismissing the dialog keeps the photo untouched.
     await user.click(await screen.findByRole('button', { name: 'Удалить фото' }))
+    const dismissed = await screen.findByRole('dialog', { name: 'Удалить фото?' })
+    await user.click(within(dismissed).getByRole('button', { name: 'Отмена' }))
+    expect(onRemoveExisting).not.toHaveBeenCalled()
+
+    // Confirming only reports the path up — the parent form stages the removal
+    // and the actual Storage delete happens on save, never here.
+    await user.click(screen.getByRole('button', { name: 'Удалить фото' }))
+    const confirmed = await screen.findByRole('dialog', { name: 'Удалить фото?' })
+    await user.click(within(confirmed).getByRole('button', { name: 'Удалить' }))
     expect(onRemoveExisting).toHaveBeenCalledWith('orders/owner-1/o1/a.jpg')
+  })
+
+  it('ignores picking a file that is already in the strip (no duplicate uploads later)', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    const a = image('a.jpg')
+    const b = image('b.jpg')
+    const { container } = render(<PendingPhotos files={[a]} onChange={onChange} />)
+
+    // Re-picking `a` (same name/size/lastModified) is dropped; `b` gets through.
+    await user.upload(container.querySelector('input[type="file"]') as HTMLInputElement, [a, b])
+    expect(onChange).toHaveBeenCalledWith([a, b])
+
+    // A pick consisting ONLY of duplicates reports nothing at all.
+    onChange.mockClear()
+    await user.upload(container.querySelector('input[type="file"]') as HTMLInputElement, [a])
+    expect(onChange).not.toHaveBeenCalled()
   })
 })

@@ -36,8 +36,7 @@ import GiftRow from './GiftRow'
 import CustomerPicker from './CustomerPicker'
 import { emptyItem, initialItems } from './items'
 import type { ItemInput } from './items'
-import { loadOrderDraft, saveOrderDraft, clearOrderDraft } from './draft'
-import type { OrderDraft } from './draft'
+import { loadOrderDraft, saveOrderDraft, clearOrderDraft, type OrderDraft } from './draft'
 import type { CustomerMode } from './CustomerPicker'
 import { fetchOrders, newOrderId } from '@/firebase/orders'
 import { deleteOrderPhoto, uploadOrderPhoto } from '@/firebase/photos'
@@ -115,9 +114,25 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // it would silently swap the just-repeated order for older scratch). Loaded
   // once, before the state initializers below seed from it.
   const draftEnabled = isCreate && seed === undefined
+  // The owner the draft belongs to, CAPTURED once on mount. Every draft
+  // read/write below uses this capture, never the live `ownerId`: if the auth
+  // user somehow changed while the form is open, a live read would save user
+  // A's typed content under user B's key. The flip side — mounting before auth
+  // resolves (ownerId still undefined) permanently disables the draft for this
+  // mount — is fine: under ProtectedRoute the user is always resolved first.
+  // Drafts are also single-tab by design: two tabs on the create form are
+  // last-write-wins on the same key (no `storage` listener), which matches the
+  // app's single-operator usage.
+  const [draftOwnerId] = useState(ownerId)
   const [draft] = useState<OrderDraft | null>(() =>
-    draftEnabled && ownerId ? loadOrderDraft(ownerId) : null,
+    draftEnabled && draftOwnerId ? loadOrderDraft(draftOwnerId) : null,
   )
+  // Restored-draft notice, part 1 of 2: starts hidden and is flipped on a
+  // beat AFTER the form paints (see the timeout effect below) — inserting the
+  // text into an already-mounted `role="status"` region is what makes screen
+  // readers actually announce it; content present at first paint is skipped.
+  // Part 2 (whether it SHOWS) is derived per render, see `showDraftNotice`.
+  const [draftNoticeRevealed, setDraftNoticeRevealed] = useState(false)
   // The order's document id, pre-generated for a create so the photos uploaded at
   // submit land under orders/{ownerId}/{orderId}/ — the SAME id the doc is created
   // with (passed to createOrder), keeping the storage path in lockstep with the
@@ -257,7 +272,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // A CONFIRMED cancel is the explicit "discard my input" — drop the stored
   // draft too, so the next create form starts blank (owner-specified behaviour).
   const handleConfirmedCancel = () => {
-    if (draftEnabled && ownerId) clearOrderDraft(ownerId)
+    if (draftEnabled && draftOwnerId) clearOrderDraft(draftOwnerId)
     onCancel()
   }
 
@@ -280,24 +295,40 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
     status: orderStatus,
     comment,
   } satisfies OrderDraft)
+  // Owner-specified gate: a draft exists ONLY while the list holds at least
+  // one named plant (see the autosave effect). Also keys the restored-draft
+  // notice: it shows exactly while a stored draft exists, so it can never
+  // describe a draft that has already been deleted.
+  const hasNamedPlant = items.some((item) => item.name.trim() !== '')
+  const showDraftNotice = draftNoticeRevealed && hasNamedPlant
   useEffect(() => {
     // Paused while a submit is in flight (`saving`): the new-customer path flips
     // customerMode/selectedCustomerId mid-submit, and this effect would re-save
     // the draft AFTER the success path just cleared it. A FAILED submit resets
     // `saving`, which re-runs this effect and re-saves — exactly right, the
     // input must survive a leave after a failure.
-    if (!draftEnabled || !ownerId || saving) return
-    const current = JSON.parse(draftJson) as OrderDraft
-    // Owner-specified gate: a draft exists ONLY while the list holds at least
-    // one named plant. Below that bar the stored draft is removed (deleting the
-    // last plant name deletes the draft), so stray address/comment typing never
+    if (!draftEnabled || !draftOwnerId || saving) return
+    // Below the named-plant bar the stored draft is removed (deleting the last
+    // plant name deletes the draft), so stray address/comment typing never
     // resurrects on the next visit.
-    if (current.items.some((item) => item.name.trim() !== '')) {
-      saveOrderDraft(ownerId, current)
+    if (hasNamedPlant) {
+      saveOrderDraft(draftOwnerId, JSON.parse(draftJson) as OrderDraft)
     } else {
-      clearOrderDraft(ownerId)
+      clearOrderDraft(draftOwnerId)
     }
-  }, [draftJson, draftEnabled, ownerId, saving])
+  }, [draftJson, hasNamedPlant, draftEnabled, draftOwnerId, saving])
+
+  // Reveal the restored-draft notice only after the form has painted (the
+  // customer fetch gates the first paint): the `role="status"` region mounts
+  // empty and the text is inserted on a later, post-paint commit — a CHANGE
+  // inside a live region, which screen readers announce; text already present
+  // at first paint would be skipped silently. The zero timeout (not a sync
+  // setState in the effect) is what pushes the flip past the paint.
+  useEffect(() => {
+    if (customersLoading || draft === null) return
+    const id = window.setTimeout(() => setDraftNoticeRevealed(true), 0)
+    return () => window.clearTimeout(id)
+  }, [customersLoading, draft])
 
   // Plant-name autocomplete: distinct names from the owner's existing orders,
   // offered as suggestions on each row's name input (see Autocomplete).
@@ -629,7 +660,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
       // The order is saved — the draft has served its purpose. Cleared only
       // AFTER onSubmit resolves, so a failed save (the catch below) keeps the
       // draft and the input survives even a page-leave after the failure.
-      if (draftEnabled && ownerId) clearOrderDraft(ownerId)
+      if (draftEnabled && draftOwnerId) clearOrderDraft(draftOwnerId)
     } catch (err: unknown) {
       // Roll back any photos already in Storage — the order doc will never exist
       // to trigger cloud-cleanup, so abandoning the form now would orphan them.
@@ -666,13 +697,20 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               objects don't serialize to localStorage), so a user who attached
               photos, left, and came back would otherwise save the restored form
               WITHOUT them and never know — the exact "заказ есть, фото нет"
-              report. Say it up front so they re-attach before saving. */}
+              report. Say it up front so they re-attach before saving. The
+              region mounts EMPTY (sr-only) and the text arrives via the effect
+              above, so screen readers announce it; it empties again when the
+              stored draft is deleted (see the autosave effect). */}
           {draft !== null && (
             <p
               role="status"
-              className="m-0 rounded-md border border-border bg-primary-bg px-3 py-2 text-sm text-text"
+              className={
+                showDraftNotice
+                  ? 'm-0 rounded-md border border-border bg-primary-bg px-3 py-2 text-sm text-text'
+                  : 'sr-only m-0'
+              }
             >
-              {t('form.draftRestored')}
+              {showDraftNotice && t('form.draftRestored')}
             </p>
           )}
 

@@ -107,6 +107,8 @@
     "open": "Open photo",
     "alt": "Order photo",
     "delete": "Delete photo",
+    "deleteTitle": "Delete photo?",
+    "deleteBody": "The photo will be permanently removed from the order when it is saved. Until then, leaving the form without saving keeps it.",
     "add": "Add photo",
     "fromGallery": "From gallery",
     "capture": "Take a photo",

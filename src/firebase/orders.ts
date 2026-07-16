@@ -245,7 +245,10 @@ export function updateOrder(id: string, order: Omit<Order, 'id'>): void {
     if (!(field in order)) writes[field] = deleteField()
   }
   void updateDoc(doc(db, ORDERS_COLLECTION, id), writes).catch((err) =>
-    reportError(err, 'updateOrder'),
+    // The doc id in the tag makes a failed save actionable from the logs: the
+    // form deletes/uploads Storage files around this write, so a rejected write
+    // can leave orphan blobs under orders/{ownerId}/{id}/ — the id says where.
+    reportError(err, `updateOrder:${id}`),
   )
 }
 
@@ -262,6 +265,10 @@ export type OrderPatch = Partial<{
   status: OrderStatus
   completedAt: number | null
   // The full new list of photo storage paths (read-modify-write on the client).
+  // KNOWN LIMIT: two tabs editing the same order's photos concurrently are
+  // last-write-wins — the loser's uploaded blob stays orphaned in Storage.
+  // Accepted for this single-user app (arrayUnion/arrayRemove would fix adds
+  // but break the user-visible display ORDER the array encodes).
   // Written as a single field so a photo add/remove merges cleanly with a
   // concurrent status change on another device.
   photos: string[]
@@ -275,7 +282,7 @@ export function patchOrder(id: string, patch: OrderPatch): void {
   // the field is dropped, not stored as a literal null (which the schema rejects).
   if (patch.completedAt === null) writes.completedAt = deleteField()
   void updateDoc(doc(db, ORDERS_COLLECTION, id), writes).catch((err) =>
-    reportError(err, 'patchOrder'),
+    reportError(err, `patchOrder:${id}`),
   )
 }
 

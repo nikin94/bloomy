@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
@@ -364,9 +364,14 @@ describe('OrderForm', () => {
     })
     await screen.findByRole('combobox', { name: 'Существующий клиент' })
 
-    // The saved photo shows as a thumbnail; its × drops it from the strip
-    // WITHOUT touching Storage — the removal is staged until the save.
+    // The saved photo shows as a thumbnail; its × asks for confirmation first
+    // (its endpoint is a permanent Storage delete), and only the confirm drops
+    // it from the strip — WITHOUT touching Storage: the removal is staged
+    // until the save.
     await user.click(await screen.findByRole('button', { name: 'Удалить фото' }))
+    const removeDialog = await screen.findByRole('dialog', { name: 'Удалить фото?' })
+    expect(deleteOrderPhoto).not.toHaveBeenCalled()
+    await user.click(within(removeDialog).getByRole('button', { name: 'Удалить' }))
     expect(screen.queryByRole('button', { name: 'Удалить фото' })).not.toBeInTheDocument()
     expect(deleteOrderPhoto).not.toHaveBeenCalled()
 
@@ -463,7 +468,25 @@ describe('OrderForm draft (create only, localStorage)', () => {
     first.unmount()
     renderForm()
     await screen.findByLabelText('Имя клиента')
-    expect(screen.getByRole('status')).toHaveTextContent(/Восстановлен черновик/)
+    // findBy: the text is inserted into the status region a beat AFTER the
+    // form paints (that's what makes screen readers announce it).
+    expect(await screen.findByText(/Восстановлен черновик/)).toBeInTheDocument()
+  })
+
+  it('drops the restored-draft notice once the last plant name is cleared', async () => {
+    const user = userEvent.setup()
+    const first = renderForm()
+    await screen.findByLabelText('Имя клиента')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    first.unmount()
+
+    renderForm()
+    expect(await screen.findByText(/Восстановлен черновик/)).toBeInTheDocument()
+    // Clearing the only named plant deletes the stored draft — a notice about
+    // a draft that no longer exists must not linger.
+    await user.clear(screen.getByLabelText('Название'))
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull()
+    expect(screen.queryByText(/Восстановлен черновик/)).not.toBeInTheDocument()
   })
 
   it('persists a draft once a plant is named, but not for stray typing without one', async () => {
