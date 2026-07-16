@@ -4,7 +4,7 @@ import {
   DELIVERY_METHOD_SCHEMA,
   PAYMENT_METHOD_SCHEMA,
   PAYMENT_STATUS_SCHEMA,
-  SHIPMENT_STATUS_SCHEMA,
+  STORED_SHIPMENT_STATUS_SCHEMA,
 } from '@/types/order'
 
 // Local draft of the CREATE order form (see OrderForm). Written to localStorage —
@@ -40,7 +40,10 @@ export const ORDER_DRAFT_SCHEMA = z.object({
   paymentMethod: PAYMENT_METHOD_SCHEMA,
   currency: CURRENCY_SCHEMA,
   paymentStatus: PAYMENT_STATUS_SCHEMA,
-  shipmentStatus: SHIPMENT_STATUS_SCHEMA,
+  // Legacy-tolerant on purpose: drafts saved before the three-state status
+  // model carry 'new' — the same normalizing schema the stored order uses maps
+  // them to 'processing' instead of silently discarding the whole draft.
+  shipmentStatus: STORED_SHIPMENT_STATUS_SCHEMA,
   comment: z.string(),
 })
 

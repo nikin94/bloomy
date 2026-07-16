@@ -10,9 +10,15 @@ import {
   Timestamp,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore'
 import { db } from './client'
-import { STORED_ORDER_SCHEMA, TRASH_RETENTION_DAYS, isOrderDeleted } from '@/types/order'
+import {
+  LEGACY_SHIPMENT_STATUSES,
+  STORED_ORDER_SCHEMA,
+  TRASH_RETENTION_DAYS,
+  isOrderDeleted,
+} from '@/types/order'
 import type { Order, PaymentStatus, ShipmentStatus } from '@/types/order'
 import { reportError } from '@/observability/reportError'
 
@@ -154,6 +160,35 @@ export async function reconcileOrderNumbers(ownerId: string): Promise<boolean> {
     }
   }
   return numberedAny
+}
+
+// One-shot, owner-scoped status migration: rewrite every stored LEGACY shipment
+// status (new/packing/shipped — all "still in progress") to 'processing', the
+// three-state model's single non-terminal value. Runs lazily under each user's
+// own login (Firestore rules only ever allow touching one's OWN documents, and
+// there is no backend to sweep all tenants), fired on the orders-list mount —
+// see useMigrateOrderStatuses. Reading is already safe without it (parseOrder
+// normalizes legacy values), so this only settles the STORED data; once every
+// account has run it, the legacy values can be dropped from the schema.
+//
+// Reads the raw snapshot data (not parseOrder) on purpose: the parse transform
+// hides exactly the legacy values this function needs to find. Covers active
+// AND trashed orders (same owner query as fetchOrders, no deleted filter).
+// A single batch is plenty: Firestore allows 500 writes per batch, far above
+// any real per-owner order count here. Returns whether anything was migrated.
+export async function migrateOrderStatuses(ownerId: string): Promise<boolean> {
+  const q = query(collection(db, ORDERS_COLLECTION), where('ownerId', '==', ownerId))
+  const snapshot = await getDocs(q)
+  const legacy = snapshot.docs.filter((d) =>
+    (LEGACY_SHIPMENT_STATUSES as readonly string[]).includes(d.data().shipmentStatus as string),
+  )
+  if (legacy.length === 0) return false
+  const batch = writeBatch(db)
+  for (const docSnap of legacy) {
+    batch.update(doc(db, ORDERS_COLLECTION, docSnap.id), { shipmentStatus: 'processing' })
+  }
+  await batch.commit()
+  return true
 }
 
 // Optional order fields that can be CLEARED by an edit. The edit form omits a

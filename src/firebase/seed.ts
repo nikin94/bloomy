@@ -31,7 +31,7 @@ export const SEED_ORDER_COUNT = 100
 const SEED_DELETED_CUSTOMER_COUNT = 2
 
 const PAYMENT_STATUSES = ['pending', 'paid', 'refunded'] as const
-const SHIPMENT_STATUSES = ['new', 'packing', 'shipped', 'delivered', 'cancelled'] as const
+const SHIPMENT_STATUSES = ['processing', 'delivered', 'cancelled'] as const
 const PAYMENT_METHODS: PaymentMethod[] = ['cash', 'card', 'bank']
 const DELIVERY_METHODS: DeliveryMethod[] = ['bus', 'post', 'pickup', 'cdek', 'taxi', 'other']
 const TERMINAL = new Set(['delivered', 'cancelled'])

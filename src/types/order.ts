@@ -7,17 +7,28 @@ import { z } from 'zod'
 export const PAYMENT_STATUS_SCHEMA = z.enum(['pending', 'paid', 'refunded'])
 export type PaymentStatus = z.infer<typeof PAYMENT_STATUS_SCHEMA>
 
-// Shipment status of an order, in workflow order. 'packing' must stay here:
-// real production orders are saved with it, so dropping it makes parseOrder throw
-// on those documents and crashes the whole list.
-export const SHIPMENT_STATUS_SCHEMA = z.enum([
-  'new',
-  'packing',
-  'shipped',
-  'delivered',
-  'cancelled',
-])
+// The order's workflow status ("статус заказа" — formerly the shipment status).
+// Reduced to exactly three states by owner decision: an order is being worked
+// on, done, or cancelled. The field keeps its stored name `shipmentStatus` —
+// renaming it would force a field-rename migration for zero data value.
+export const SHIPMENT_STATUS_SCHEMA = z.enum(['processing', 'delivered', 'cancelled'])
 export type ShipmentStatus = z.infer<typeof SHIPMENT_STATUS_SCHEMA>
+
+// The retired statuses real production documents still carry. They must stay
+// READABLE until migrateOrderStatuses has rewritten every user's orders —
+// narrowing a stored enum before the data is migrated makes parseOrder throw
+// and crashes the whole list (the `packing` lesson). All of them meant "still
+// being worked on", so they normalize to 'processing'.
+export const LEGACY_SHIPMENT_STATUSES = ['new', 'packing', 'shipped'] as const
+const LEGACY_SET: ReadonlySet<string> = new Set(LEGACY_SHIPMENT_STATUSES)
+
+// What the DOCUMENT may hold (current + legacy), collapsed to the current
+// three-state union on parse. Every read path goes through this, so the rest of
+// the app only ever sees 'processing' | 'delivered' | 'cancelled'; the lazy
+// migration rewrites the stored value to match (see migrateOrderStatuses).
+export const STORED_SHIPMENT_STATUS_SCHEMA = z
+  .enum([...LEGACY_SHIPMENT_STATUSES, ...SHIPMENT_STATUS_SCHEMA.options])
+  .transform((s): ShipmentStatus => (LEGACY_SET.has(s) ? 'processing' : (s as ShipmentStatus)))
 
 export const PAYMENT_METHOD_SCHEMA = z.enum(['cash', 'card', 'bank'])
 export type PaymentMethod = z.infer<typeof PAYMENT_METHOD_SCHEMA>
@@ -89,7 +100,7 @@ export const STORED_ORDER_SCHEMA = z.object({
   // valid without a migration (widening is safe; narrowing is not).
   gifts: z.array(ORDER_ITEM_SCHEMA).optional(),
   paymentStatus: PAYMENT_STATUS_SCHEMA,
-  shipmentStatus: SHIPMENT_STATUS_SCHEMA,
+  shipmentStatus: STORED_SHIPMENT_STATUS_SCHEMA,
   comment: z.string().optional(),
   // When the order was completed (ms timestamp). An order is "completed" once it
   // reaches a terminal shipment status (delivered or cancelled); this is stamped

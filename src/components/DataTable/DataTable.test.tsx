@@ -244,7 +244,7 @@ describe('DataTable (mobile card layout)', () => {
     expect(plantItems[1]).toHaveTextContent('Роза ×2')
     // Payment and shipment statuses are both shown.
     expect(within(card).getByText('Оплата')).toBeInTheDocument()
-    expect(within(card).getByText('Отправка')).toBeInTheDocument()
+    expect(within(card).getByText('Статус')).toBeInTheDocument()
   })
 
   it('highlights only the matching card for the new-order animation', () => {

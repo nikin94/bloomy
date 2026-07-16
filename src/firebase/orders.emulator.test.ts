@@ -32,7 +32,7 @@ const makeOrder = (ownerId: string): NewOrder => ({
   deliveryPriceMinor: 0,
   currency: 'RUB',
   paymentStatus: 'pending',
-  shipmentStatus: 'new',
+  shipmentStatus: 'processing',
 })
 
 // Create an order AND give it its real number, the way the app does across a
@@ -187,11 +187,11 @@ describe('patchOrder (emulator)', () => {
     // the payment status, the other the shipment status. A per-field merge keeps
     // BOTH — a wholesale replace would have let the later write erase the earlier.
     await patchOrder(id, { paymentStatus: 'paid' })
-    await patchOrder(id, { shipmentStatus: 'shipped' })
+    await patchOrder(id, { shipmentStatus: 'delivered' })
 
     const merged = await fetchOrder(id, owner)
     expect(merged?.paymentStatus).toBe('paid')
-    expect(merged?.shipmentStatus).toBe('shipped')
+    expect(merged?.shipmentStatus).toBe('delivered')
     // The rest of the order is untouched by either partial write.
     expect(merged?.address).toBe('Main St 1')
     expect(merged?.number).toBe(1)
@@ -203,11 +203,11 @@ describe('patchOrder (emulator)', () => {
     await patchOrder(id, { shipmentStatus: 'delivered', completedAt: 1700 })
     expect((await fetchOrder(id, owner))?.completedAt).toBe(1700)
 
-    await patchOrder(id, { shipmentStatus: 'new', completedAt: null })
+    await patchOrder(id, { shipmentStatus: 'processing', completedAt: null })
 
     const reopened = await fetchOrder(id, owner)
     expect(reopened?.completedAt).toBeUndefined()
-    expect(reopened?.shipmentStatus).toBe('new')
+    expect(reopened?.shipmentStatus).toBe('processing')
   })
 
   it('does not bump the owner counter (a later create still increments by one)', async () => {

@@ -110,7 +110,7 @@ describe('EditOrderPage', () => {
     await screen.findByRole('heading', { name: 'Редактирование заказа №5' })
 
     // Change a status and save.
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус заказа' }), 'shipped')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус заказа' }), 'delivered')
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
 
     await waitFor(() => expect(updateOrder).toHaveBeenCalledTimes(1))
@@ -122,7 +122,7 @@ describe('EditOrderPage', () => {
         dateCreated: 1000,
         customerId: 'c1',
         // Edited field.
-        shipmentStatus: 'shipped',
+        shipmentStatus: 'delivered',
       }),
     )
     // Returns to the order's detail page after saving.

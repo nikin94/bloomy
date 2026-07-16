@@ -19,6 +19,9 @@ const fetchCustomers = vi.fn()
 vi.mock('../../firebase/orders', () => ({
   fetchOrders: (...a: unknown[]) => fetchOrders(...a),
   reconcileOrderNumbers: (...a: unknown[]) => reconcileOrderNumbers(...a),
+  // The lazy status migration fires on the list mount; a no-op here (nothing
+  // legacy in the fixtures) so it never touches the mocked Firestore.
+  migrateOrderStatuses: vi.fn().mockResolvedValue(false),
 }))
 vi.mock('../../firebase/customers', () => ({ fetchCustomers: (...a: unknown[]) => fetchCustomers(...a) }))
 // Sidebar imports signOutUser from here; stub it so firebase stays untouched.
@@ -87,8 +90,8 @@ beforeEach(() => {
     customer({ id: 'c-boris', name: 'Борис' }),
   ])
   fetchOrders.mockResolvedValue([
-    order({ id: 'o1', number: 1, customerId: 'c-anna', shipmentStatus: 'new' }),
-    order({ id: 'o2', number: 2, customerId: 'c-boris', shipmentStatus: 'shipped' }),
+    order({ id: 'o1', number: 1, customerId: 'c-anna', shipmentStatus: 'processing' }),
+    order({ id: 'o2', number: 2, customerId: 'c-boris', shipmentStatus: 'delivered' }),
   ])
 })
 
@@ -148,22 +151,22 @@ describe('OrdersPage filtering', () => {
     expect(table().queryByText('Анна')).not.toBeInTheDocument()
   })
 
-  it('filters by shipment status, chosen in the filter dialog', async () => {
+  it('filters by order status, chosen in the filter dialog', async () => {
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('orders-table')
 
     // The status filters live behind the filter icon, not inline.
-    expect(screen.queryByRole('combobox', { name: 'Статус отправки' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Статус заказа' })).not.toBeInTheDocument()
     await user.click(await header().findByRole('button', { name: 'Фильтры' }))
     await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Статус отправки' }),
-      'shipped',
+      screen.getByRole('combobox', { name: 'Статус заказа' }),
+      'delivered',
     )
     // Close the dialog to see the filtered list.
     await user.click(screen.getByRole('button', { name: 'Готово' }))
 
-    // Only the shipped order (Борис) remains.
+    // Only the delivered order (Борис) remains.
     expect(table().getByText('Борис')).toBeInTheDocument()
     expect(table().queryByText('Анна')).not.toBeInTheDocument()
   })
@@ -175,8 +178,8 @@ describe('OrdersPage filtering', () => {
 
     await user.click(await header().findByRole('button', { name: 'Фильтры' }))
     await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Статус отправки' }),
-      'shipped',
+      screen.getByRole('combobox', { name: 'Статус заказа' }),
+      'delivered',
     )
     await user.click(screen.getByRole('button', { name: 'Сбросить' }))
     await user.click(screen.getByRole('button', { name: 'Готово' }))
@@ -200,8 +203,8 @@ describe('OrdersPage filtering', () => {
 
     await user.click(filterBtn())
     await user.selectOptions(
-      screen.getByRole('combobox', { name: 'Статус отправки' }),
-      'shipped',
+      screen.getByRole('combobox', { name: 'Статус заказа' }),
+      'delivered',
     )
     await user.click(screen.getByRole('button', { name: 'Готово' }))
 

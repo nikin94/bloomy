@@ -41,7 +41,7 @@ describe('seedMockData (emulator)', () => {
       deliveryPriceMinor: 0,
       currency: 'RUB',
       paymentStatus: 'pending',
-      shipmentStatus: 'new',
+      shipmentStatus: 'processing',
     })
     await waitForPendingWrites(db)
     await reconcileOrderNumbers(owner)

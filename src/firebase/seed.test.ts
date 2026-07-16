@@ -67,7 +67,7 @@ describe('buildSeedOrders', () => {
   it('covers every shipment and payment status (varied categories)', () => {
     const shipments = new Set(orders.map((o) => o.shipmentStatus))
     const payments = new Set(orders.map((o) => o.paymentStatus))
-    expect(shipments).toEqual(new Set(['new', 'packing', 'shipped', 'delivered', 'cancelled']))
+    expect(shipments).toEqual(new Set(['processing', 'delivered', 'cancelled']))
     expect(payments).toEqual(new Set(['pending', 'paid', 'refunded']))
   })
 

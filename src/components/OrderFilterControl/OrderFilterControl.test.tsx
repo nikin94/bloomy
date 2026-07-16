@@ -50,10 +50,10 @@ describe('OrderFilterControl', () => {
     // Inactive: outlined (secondary), not pressed, dialog closed.
     expect(funnel()).toHaveAttribute('aria-pressed', 'false')
     expect(funnel()).not.toHaveClass('bg-primary')
-    expect(screen.queryByRole('combobox', { name: 'Статус отправки' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Статус заказа' })).not.toBeInTheDocument()
 
     await user.click(funnel())
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус отправки' }), 'shipped')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус заказа' }), 'delivered')
     await user.click(screen.getByRole('button', { name: 'Готово' }))
 
     // Active: the funnel fills in (primary) and reports the pressed state.

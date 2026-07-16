@@ -4,6 +4,7 @@ import {
   fetchOrders,
   fetchDeletedOrders,
   fetchOrder,
+  migrateOrderStatuses,
   reconcileOrderNumbers,
 } from '@/firebase/orders'
 import type { Order } from '@/types/order'
@@ -116,4 +117,25 @@ export const useReconcileOrderNumbers = (ownerId: string | undefined) => {
       window.removeEventListener('online', run)
     }
   }, [ownerId, queryClient])
+}
+
+// Lazily settle the stored three-state order statuses for this owner (see
+// migrateOrderStatuses): fired once on the orders-list mount, retried on
+// reconnect, mirroring useReconcileOrderNumbers. No cache invalidation is
+// needed on success — parseOrder already normalizes legacy values on read, so
+// the migration changes what is STORED, never what is displayed.
+export const useMigrateOrderStatuses = (ownerId: string | undefined) => {
+  useEffect(() => {
+    if (!ownerId) return
+    const run = () =>
+      migrateOrderStatuses(ownerId).catch(() => {
+        // Offline / Firebase unreachable: reads stay correct via the parse
+        // normalization; the rewrite just waits for the next online load.
+      })
+    void run()
+    window.addEventListener('online', run)
+    return () => {
+      window.removeEventListener('online', run)
+    }
+  }, [ownerId])
 }

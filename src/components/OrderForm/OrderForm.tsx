@@ -210,7 +210,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
     draft?.paymentStatus ?? initialOrder?.paymentStatus ?? 'pending',
   )
   const [shipmentStatus, setShipmentStatus] = useState<ShipmentStatus>(
-    draft?.shipmentStatus ?? initialOrder?.shipmentStatus ?? 'new',
+    draft?.shipmentStatus ?? initialOrder?.shipmentStatus ?? 'processing',
   )
   const [comment, setComment] = useState(draft?.comment ?? initialOrder?.comment ?? '')
 

@@ -46,7 +46,7 @@ const makeOrder = (overrides: Partial<Order> = {}): Order => ({
   deliveryPriceMinor: 0,
   currency: 'RUB',
   paymentStatus: 'pending',
-  shipmentStatus: 'new',
+  shipmentStatus: 'processing',
   ...overrides,
 })
 
@@ -84,8 +84,7 @@ describe('isTerminalShipmentStatus', () => {
   it('is true only for delivered and cancelled', () => {
     expect(isTerminalShipmentStatus('delivered')).toBe(true)
     expect(isTerminalShipmentStatus('cancelled')).toBe(true)
-    expect(isTerminalShipmentStatus('new')).toBe(false)
-    expect(isTerminalShipmentStatus('shipped')).toBe(false)
+    expect(isTerminalShipmentStatus('processing')).toBe(false)
   })
 })
 
@@ -100,8 +99,8 @@ describe('resolveCompletedAt', () => {
   })
 
   it('clears the stamp when the status is not terminal', () => {
-    expect(resolveCompletedAt('new', 1000, 9999)).toBeUndefined()
-    expect(resolveCompletedAt('shipped', undefined, 9999)).toBeUndefined()
+    expect(resolveCompletedAt('processing', 1000, 9999)).toBeUndefined()
+    expect(resolveCompletedAt('processing', undefined, 9999)).toBeUndefined()
   })
 })
 
@@ -174,7 +173,7 @@ describe('isOrderFilterActive', () => {
   it('is true when any of query / payment / shipment / price is set', () => {
     expect(isOrderFilterActive({ ...EMPTY_ORDER_FILTER, query: 'роза' })).toBe(true)
     expect(isOrderFilterActive({ ...EMPTY_ORDER_FILTER, paymentStatus: 'paid' })).toBe(true)
-    expect(isOrderFilterActive({ ...EMPTY_ORDER_FILTER, shipmentStatus: 'shipped' })).toBe(true)
+    expect(isOrderFilterActive({ ...EMPTY_ORDER_FILTER, shipmentStatus: 'processing' })).toBe(true)
     expect(isOrderFilterActive({ ...EMPTY_ORDER_FILTER, minPriceMinor: 5000 })).toBe(true)
     expect(isOrderFilterActive({ ...EMPTY_ORDER_FILTER, maxPriceMinor: 5000 })).toBe(true)
   })
@@ -186,7 +185,7 @@ describe('isModalFilterActive', () => {
     expect(isModalFilterActive(EMPTY_ORDER_FILTER)).toBe(false)
     expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, query: 'роза' })).toBe(false)
     expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, paymentStatus: 'paid' })).toBe(true)
-    expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, shipmentStatus: 'shipped' })).toBe(true)
+    expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, shipmentStatus: 'processing' })).toBe(true)
     expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, currency: 'USD' })).toBe(true)
     expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, minPriceMinor: 5000 })).toBe(true)
     expect(isModalFilterActive({ ...EMPTY_ORDER_FILTER, maxPriceMinor: 5000 })).toBe(true)
@@ -199,9 +198,9 @@ describe('filterOrders', () => {
   const names: Record<string, string> = { 'c-anna': 'Анна', 'c-boris': 'Борис' }
   const getName = (id: string) => names[id] ?? '—'
   const orders = [
-    makeOrder({ id: 'o1', number: 1, customerId: 'c-anna', paymentStatus: 'paid', shipmentStatus: 'new' }),
-    makeOrder({ id: 'o2', number: 2, customerId: 'c-boris', paymentStatus: 'pending', shipmentStatus: 'shipped' }),
-    makeOrder({ id: 'o3', number: 13, customerId: 'c-anna', paymentStatus: 'pending', shipmentStatus: 'new' }),
+    makeOrder({ id: 'o1', number: 1, customerId: 'c-anna', paymentStatus: 'paid', shipmentStatus: 'processing' }),
+    makeOrder({ id: 'o2', number: 2, customerId: 'c-boris', paymentStatus: 'pending', shipmentStatus: 'delivered' }),
+    makeOrder({ id: 'o3', number: 13, customerId: 'c-anna', paymentStatus: 'pending', shipmentStatus: 'processing' }),
   ]
 
   it('returns every order for the empty filter', () => {
@@ -219,7 +218,7 @@ describe('filterOrders', () => {
 
   it('filters by an exact status', () => {
     expect(
-      filterOrders(orders, { ...EMPTY_ORDER_FILTER, shipmentStatus: 'shipped' }, getName).map((o) => o.id),
+      filterOrders(orders, { ...EMPTY_ORDER_FILTER, shipmentStatus: 'delivered' }, getName).map((o) => o.id),
     ).toEqual(['o2'])
   })
 
@@ -354,11 +353,31 @@ describe('STORED_ORDER_SCHEMA', () => {
     deliveryPriceMinor: 0,
     currency: 'RUB',
     paymentStatus: 'pending',
-    shipmentStatus: 'new',
+    shipmentStatus: 'processing',
   })
 
   it('accepts a valid document', () => {
     expect(STORED_ORDER_SCHEMA.safeParse(validDoc()).success).toBe(true)
+  })
+
+  it('normalizes every legacy shipment status to "processing" on parse', () => {
+    // Documents written before the three-state model still carry these values;
+    // parseOrder must keep reading them (the `packing` lesson) until
+    // migrateOrderStatuses has rewritten every account's stored data.
+    for (const legacy of ['new', 'packing', 'shipped']) {
+      const parsed = STORED_ORDER_SCHEMA.parse({ ...validDoc(), shipmentStatus: legacy })
+      expect(parsed.shipmentStatus).toBe('processing')
+    }
+  })
+
+  it('keeps the three current statuses as-is and rejects an unknown one', () => {
+    for (const status of ['processing', 'delivered', 'cancelled']) {
+      const parsed = STORED_ORDER_SCHEMA.parse({ ...validDoc(), shipmentStatus: status })
+      expect(parsed.shipmentStatus).toBe(status)
+    }
+    expect(
+      STORED_ORDER_SCHEMA.safeParse({ ...validDoc(), shipmentStatus: 'lost' }).success,
+    ).toBe(false)
   })
 
   it('defaults deliveryMethod to "post" on legacy documents that lack it', () => {

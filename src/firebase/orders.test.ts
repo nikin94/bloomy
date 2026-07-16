@@ -13,12 +13,14 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore'
 import {
   createOrder,
   fetchDeletedOrders,
   fetchOrder,
   fetchOrders,
+  migrateOrderStatuses,
   patchOrder,
   reconcileOrderNumbers,
   restoreOrder,
@@ -43,6 +45,7 @@ vi.mock('firebase/firestore', () => ({
   Timestamp: { fromMillis: vi.fn((ms: number) => ({ __ts: ms })) },
   updateDoc: vi.fn(),
   where: vi.fn(() => ({})),
+  writeBatch: vi.fn(),
 }))
 
 // A valid stored order document (everything Firestore holds, minus the doc id).
@@ -58,7 +61,7 @@ const storedOrder = (overrides: Partial<Record<string, unknown>> = {}) => ({
   deliveryPriceMinor: 30000,
   currency: 'RUB',
   paymentStatus: 'pending',
-  shipmentStatus: 'new',
+  shipmentStatus: 'processing',
   ...overrides,
 })
 
@@ -73,7 +76,7 @@ const newOrder: NewOrder = {
   deliveryPriceMinor: 0,
   currency: 'RUB',
   paymentStatus: 'pending',
-  shipmentStatus: 'new',
+  shipmentStatus: 'processing',
 }
 
 beforeEach(() => {
@@ -210,10 +213,10 @@ describe('patchOrder', () => {
   })
 
   it('removes the completion stamp when completedAt is null', async () => {
-    await patchOrder('o1', { shipmentStatus: 'new', completedAt: null })
+    await patchOrder('o1', { shipmentStatus: 'processing', completedAt: null })
 
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
-      shipmentStatus: 'new',
+      shipmentStatus: 'processing',
       completedAt: { __deleted: true },
     })
   })
@@ -373,5 +376,40 @@ describe('softDeleteOrder', () => {
     const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000
     expect(writes.purgeAt).toEqual({ __ts: deletedAt + THIRTY_DAYS })
     expect(writes).not.toHaveProperty('isDeleted')
+  })
+})
+
+describe('migrateOrderStatuses', () => {
+  it('batch-rewrites only the legacy statuses to "processing" and reports it', async () => {
+    // Raw snapshot data on purpose: the migration reads d.data() directly, since
+    // parseOrder's normalization HIDES exactly the legacy values it must find.
+    vi.mocked(getDocs).mockResolvedValue({
+      docs: [
+        { id: 'a', data: () => ({ shipmentStatus: 'new' }) },
+        { id: 'b', data: () => ({ shipmentStatus: 'shipped' }) },
+        { id: 'c', data: () => ({ shipmentStatus: 'delivered' }) },
+      ],
+    } as unknown as Awaited<ReturnType<typeof getDocs>>)
+    const batch = { update: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) }
+    vi.mocked(writeBatch).mockReturnValue(batch as unknown as ReturnType<typeof writeBatch>)
+
+    await expect(migrateOrderStatuses('owner-1')).resolves.toBe(true)
+
+    // Both legacy docs are rewritten; the already-current one is left alone.
+    expect(batch.update).toHaveBeenCalledTimes(2)
+    expect(batch.update).toHaveBeenCalledWith(expect.anything(), { shipmentStatus: 'processing' })
+    expect(batch.commit).toHaveBeenCalledTimes(1)
+  })
+
+  it('writes nothing when every stored status is already current', async () => {
+    vi.mocked(getDocs).mockResolvedValue({
+      docs: [
+        { id: 'a', data: () => ({ shipmentStatus: 'processing' }) },
+        { id: 'b', data: () => ({ shipmentStatus: 'cancelled' }) },
+      ],
+    } as unknown as Awaited<ReturnType<typeof getDocs>>)
+
+    await expect(migrateOrderStatuses('owner-1')).resolves.toBe(false)
+    expect(writeBatch).not.toHaveBeenCalled()
   })
 })

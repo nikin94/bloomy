@@ -183,7 +183,7 @@ describe('NewOrderPage', () => {
     expect(screen.getByRole('combobox', { name: 'Валюта' })).toHaveValue('USD')
     // …but the per-instance state starts pristine, not cloned from the source.
     expect(screen.getByRole('combobox', { name: 'Статус оплаты' })).toHaveValue('pending')
-    expect(screen.getByRole('combobox', { name: 'Статус заказа' })).toHaveValue('new')
+    expect(screen.getByRole('combobox', { name: 'Статус заказа' })).toHaveValue('processing')
     expect(screen.queryByDisplayValue('был особый')).not.toBeInTheDocument()
   })
 
