@@ -84,6 +84,11 @@
      as a LIGHT ink on the dark bg. */
   --greenhouse-ink: rgba(126, 164, 103, 0.07);
   --greenhouse-glow: rgba(126, 164, 103, 0.09);
+  /* Veil over the PHOTO backdrop variant (see index.css, `data-bg='photo'`):
+     the theme bg at high alpha, laid over the photograph so it reads as a dim
+     ambience layer and text keeps its contrast. Preview-only for now — the
+     owner is comparing it against the SVG pattern. */
+  --greenhouse-veil: rgba(22, 23, 29, 0.86);
 
   /* Typography (theme-independent). */
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
@@ -148,6 +153,8 @@
      negligible-contrast-shift guarantee as the dark values (see :root). */
   --greenhouse-ink: rgba(24, 51, 12, 0.06);
   --greenhouse-glow: rgba(93, 124, 57, 0.12);
+  /* Photo-variant veil — the light bg at high alpha (see the dark value). */
+  --greenhouse-veil: rgba(205, 206, 211, 0.84);
 }
 
 /* Expose the tokens to Tailwind as semantic colour utilities

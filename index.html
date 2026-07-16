@@ -16,6 +16,17 @@
       } catch (e) {
         document.documentElement.setAttribute('data-theme', 'dark')
       }
+      // TEMPORARY preview toggle while the owner picks a backdrop: opening the
+      // app with ?bg=photo swaps the SVG leaf pattern for the photographic
+      // greenhouse variant (see index.css, `data-bg='photo'`). Not persisted —
+      // a plain reload returns to the default pattern.
+      try {
+        if (new URLSearchParams(location.search).get('bg') === 'photo') {
+          document.documentElement.setAttribute('data-bg', 'photo')
+        }
+      } catch (e) {
+        /* no-op: the default pattern stays */
+      }
       // Restore the chosen language before React runs, so the document's `lang`
       // is correct from first paint (the cache is written by SettingsProvider;
       // the Firestore setting reconciles it once loaded). Defaults to ru.
