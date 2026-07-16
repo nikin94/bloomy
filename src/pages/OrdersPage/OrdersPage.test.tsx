@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import type { User } from 'firebase/auth'
@@ -15,13 +15,14 @@ import { order as baseOrder, customer as baseCustomer } from '@/test/factories'
 const fetchOrders = vi.fn()
 const reconcileOrderNumbers = vi.fn()
 const fetchCustomers = vi.fn()
+// The lazy status migration fires on the list mount; a no-op by default
+// (nothing legacy in the fixtures) so it never touches the mocked Firestore.
+const migrateOrderStatuses = vi.fn()
 
 vi.mock('../../firebase/orders', () => ({
   fetchOrders: (...a: unknown[]) => fetchOrders(...a),
   reconcileOrderNumbers: (...a: unknown[]) => reconcileOrderNumbers(...a),
-  // The lazy status migration fires on the list mount; a no-op here (nothing
-  // legacy in the fixtures) so it never touches the mocked Firestore.
-  migrateOrderStatuses: vi.fn().mockResolvedValue(false),
+  migrateOrderStatuses: (...a: unknown[]) => migrateOrderStatuses(...a),
 }))
 vi.mock('../../firebase/customers', () => ({ fetchCustomers: (...a: unknown[]) => fetchCustomers(...a) }))
 // Sidebar imports signOutUser from here; stub it so firebase stays untouched.
@@ -83,6 +84,10 @@ const openSearch = async (user: ReturnType<typeof userEvent.setup>) => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // The migration hook stamps a per-owner done-flag in localStorage; a leftover
+  // from one test must not short-circuit the next one's mount.
+  localStorage.clear()
+  migrateOrderStatuses.mockResolvedValue(false)
   // No offline orders to number by default — the page reconciles before fetching.
   reconcileOrderNumbers.mockResolvedValue(false)
   fetchCustomers.mockResolvedValue([
@@ -354,5 +359,24 @@ describe('OrdersPage offline numbering', () => {
     expect(table().queryByText('Борис')).not.toBeInTheDocument()
     // The date bound is a dialog filter, so the funnel button reads as active.
     expect(await header().findByRole('button', { name: 'Фильтры' })).toHaveClass('bg-primary')
+  })
+})
+
+describe('OrdersPage status migration', () => {
+  const FLAG_KEY = 'bloomy:order-status-migration:v1:owner-1'
+
+  it('runs the lazy migration on mount and stamps the per-owner done-flag', async () => {
+    renderPage()
+    await screen.findByTestId('orders-table')
+    await waitFor(() => expect(migrateOrderStatuses).toHaveBeenCalledWith('owner-1'))
+    // The flag stops later mounts from re-scanning the whole collection.
+    await waitFor(() => expect(localStorage.getItem(FLAG_KEY)).not.toBeNull())
+  })
+
+  it('skips the migration scan entirely when the done-flag is already set', async () => {
+    localStorage.setItem(FLAG_KEY, '1')
+    renderPage()
+    await screen.findByTestId('orders-table')
+    expect(migrateOrderStatuses).not.toHaveBeenCalled()
   })
 })

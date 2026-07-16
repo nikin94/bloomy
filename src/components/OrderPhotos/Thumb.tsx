@@ -7,11 +7,16 @@ import { FOCUS_RING } from '@/styles/fieldStyles'
 // × requests deletion.
 const Thumb = ({
   url,
+  alt,
   t,
   onOpen,
   onDelete,
 }: {
   url: string | undefined
+  // Accessible name of the image, e.g. "Фото заказа 2" — pass the 1-based
+  // position so identical thumbnails stay distinguishable to a screen reader.
+  // Falls back to the generic label when omitted.
+  alt?: string
   // Passed from the parent (which subscribes to i18next once) so each thumbnail
   // row doesn't open its own useTranslation subscription.
   t: TFunction<['order', 'common']>
@@ -33,7 +38,7 @@ const Thumb = ({
         // decoding off-screen thumbs cleanly (loading="lazy").
         <img
           src={url}
-          alt={t('photos.alt')}
+          alt={alt ?? t('photos.alt')}
           width={80}
           height={80}
           loading="lazy"

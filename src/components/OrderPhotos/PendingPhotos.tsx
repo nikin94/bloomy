@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AddPhotoTile from './AddPhotoTile'
+import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
 import PhotoViewer from './PhotoViewer'
 import Thumb from './Thumb'
 import { usePhotoUrls } from './usePhotoUrls'
+
+// Identity of a picked file, for de-duplication: the same file picked twice
+// (double-tap on a phone, re-picking from the gallery) must not become two
+// Storage uploads. name+size+lastModified is the strongest identity the File
+// API offers without reading the bytes.
+const fileKey = (file: File) => `${file.name}:${file.size}:${file.lastModified}`
 
 // Stable fallback so callers that pass no `existing` list (the create form)
 // don't hand the URL resolver a fresh [] every render.
@@ -34,6 +41,12 @@ const PendingPhotos = ({
 }) => {
   const { t } = useTranslation(['order', 'common'])
   const [viewerIndex, setViewerIndex] = useState<number | null>(null)
+  // Path of the SAVED photo whose × was pressed, awaiting confirmation. Only
+  // saved photos are gated: their file is eventually deleted from Storage (on
+  // save), so the removal deserves the same confirm the detail page used to
+  // show. A newly picked file is local-only — removing it costs nothing, so
+  // its × stays instant.
+  const [confirmingRemove, setConfirmingRemove] = useState<string | null>(null)
 
   // Download URLs for the saved photos, resolved lazily (no-op on create).
   const existingUrls = usePhotoUrls(existing)
@@ -48,7 +61,14 @@ const PendingPhotos = ({
 
   const addFiles = (picked: FileList | null) => {
     if (!picked || picked.length === 0) return
-    onChange([...files, ...Array.from(picked)])
+    // Drop files already in the strip (and duplicates within one pick).
+    const known = new Set(files.map(fileKey))
+    const fresh = Array.from(picked).filter((file) => {
+      if (known.has(fileKey(file))) return false
+      known.add(fileKey(file))
+      return true
+    })
+    if (fresh.length > 0) onChange([...files, ...fresh])
   }
   const removeAt = (index: number) => onChange(files.filter((_, i) => i !== index))
 
@@ -61,15 +81,17 @@ const PendingPhotos = ({
           <Thumb
             key={path}
             url={existingUrls[path]}
+            alt={`${t('photos.alt')} ${index + 1}`}
             t={t}
             onOpen={() => setViewerIndex(index)}
-            onDelete={onRemoveExisting ? () => onRemoveExisting(path) : undefined}
+            onDelete={onRemoveExisting ? () => setConfirmingRemove(path) : undefined}
           />
         ))}
         {previews.map((url, index) => (
           <Thumb
             key={url}
             url={url}
+            alt={`${t('photos.alt')} ${existing.length + index + 1}`}
             t={t}
             onOpen={() => setViewerIndex(existing.length + index)}
             onDelete={() => removeAt(index)}
@@ -87,6 +109,24 @@ const PendingPhotos = ({
           urls={viewerUrls}
           startIndex={viewerIndex}
           onClose={() => setViewerIndex(null)}
+        />
+      )}
+
+      {/* Confirm before dropping a SAVED photo from the strip. The removal is
+          still only STAGED (applied on save, reversible until then), but its
+          endpoint is a permanent Storage delete — same confirm the detail-page
+          gallery used to show for the same action. */}
+      {confirmingRemove !== null && (
+        <ConfirmModal
+          title={t('photos.deleteTitle')}
+          body={t('photos.deleteBody')}
+          confirmLabel={t('common:delete')}
+          cancelLabel={t('common:cancel')}
+          onConfirm={() => {
+            onRemoveExisting?.(confirmingRemove)
+            setConfirmingRemove(null)
+          }}
+          onCancel={() => setConfirmingRemove(null)}
         />
       )}
     </section>

@@ -23,7 +23,13 @@ const OrderPhotos = ({ photos }: { photos: string[] }) => {
 
       <div className="flex flex-wrap gap-3">
         {photos.map((path, index) => (
-          <Thumb key={path} url={urls[path]} t={t} onOpen={() => setViewerIndex(index)} />
+          <Thumb
+            key={path}
+            url={urls[path]}
+            alt={`${t('photos.alt')} ${index + 1}`}
+            t={t}
+            onOpen={() => setViewerIndex(index)}
+          />
         ))}
       </div>
 
