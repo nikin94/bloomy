@@ -123,11 +123,11 @@ const settingsToggleClass = (active: boolean) =>
 // A section row in the settings nav (flyout / drawer accordion). A LIGHTER register
 // than the main destinations — muted normal-weight text, the active section
 // accent-coloured on a soft bg-primary-bg tint — so the second level reads as
-// subordinate to the main nav rather than a peer of it. Tight horizontal padding
-// (px-2) keeps the narrow flyout's content close to its edges.
+// subordinate to the main nav rather than a peer of it. `px-1` matches the main
+// rail rows' inset, so both menus keep the same tight gutter (see RAIL_ROW).
 const sectionLinkClass = (selected: boolean) =>
   cn(
-    'flex items-center rounded-md px-2 py-2 text-sm no-underline transition-colors',
+    'flex items-center rounded-md px-1 py-2 text-sm no-underline transition-colors',
     FOCUS_RING,
     selected ? 'bg-primary-bg font-semibold text-primary' : 'font-normal text-text hover:text-heading',
   )
