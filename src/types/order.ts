@@ -7,28 +7,42 @@ import { z } from 'zod'
 export const PAYMENT_STATUS_SCHEMA = z.enum(['pending', 'paid', 'refunded'])
 export type PaymentStatus = z.infer<typeof PAYMENT_STATUS_SCHEMA>
 
-// The order's workflow status ("статус заказа" — formerly the shipment status).
-// Reduced to exactly three states by owner decision: an order is being worked
-// on, done, or cancelled. The field keeps its stored name `shipmentStatus` —
-// renaming it would force a field-rename migration for zero data value.
-export const SHIPMENT_STATUS_SCHEMA = z.enum(['processing', 'delivered', 'cancelled'])
-export type ShipmentStatus = z.infer<typeof SHIPMENT_STATUS_SCHEMA>
+// The order's workflow status ("статус заказа" — formerly the SHIPMENT status,
+// hence the legacy stored field name below). Reduced to exactly three states by
+// owner decision: an order is being worked on, done, or cancelled. Named
+// ORDER_STATUS (not just STATUS) because PaymentStatus lives right beside it.
+export const ORDER_STATUS_SCHEMA = z.enum(['processing', 'delivered', 'cancelled'])
+export type OrderStatus = z.infer<typeof ORDER_STATUS_SCHEMA>
 
-// The retired statuses real production documents still carry. They must stay
-// READABLE until migrateOrderStatuses has rewritten every user's orders —
+// The retired status VALUES real production documents still carry. They must
+// stay READABLE until migrateOrderStatuses has rewritten every user's orders —
 // narrowing a stored enum before the data is migrated makes parseOrder throw
 // and crashes the whole list (the `packing` lesson). All of them meant "still
 // being worked on", so they normalize to 'processing'.
-export const LEGACY_SHIPMENT_STATUSES = ['new', 'packing', 'shipped'] as const
-const LEGACY_SET: ReadonlySet<string> = new Set(LEGACY_SHIPMENT_STATUSES)
+export const LEGACY_ORDER_STATUSES = ['new', 'packing', 'shipped'] as const
+const LEGACY_SET: ReadonlySet<string> = new Set(LEGACY_ORDER_STATUSES)
 
-// What the DOCUMENT may hold (current + legacy), collapsed to the current
+// What the DOCUMENT may hold (current + legacy values), collapsed to the current
 // three-state union on parse. Every read path goes through this, so the rest of
 // the app only ever sees 'processing' | 'delivered' | 'cancelled'; the lazy
 // migration rewrites the stored value to match (see migrateOrderStatuses).
-export const STORED_SHIPMENT_STATUS_SCHEMA = z
-  .enum([...LEGACY_SHIPMENT_STATUSES, ...SHIPMENT_STATUS_SCHEMA.options])
-  .transform((s): ShipmentStatus => (LEGACY_SET.has(s) ? 'processing' : (s as ShipmentStatus)))
+export const STORED_ORDER_STATUS_SCHEMA = z
+  .enum([...LEGACY_ORDER_STATUSES, ...ORDER_STATUS_SCHEMA.options])
+  .transform((s): OrderStatus => (LEGACY_SET.has(s) ? 'processing' : (s as OrderStatus)))
+
+// The status field was RENAMED in storage: documents written before the rename
+// hold it as `shipmentStatus`, current ones as `status`. Lift the legacy field
+// into `status` before validation so both shapes parse; when both are somehow
+// present, the new field wins. Shared by the stored-order schema and the form
+// draft (whose saved copies predate the rename the same way); the lazy
+// migration (migrateOrderStatuses) renames the field in the documents themselves.
+export const liftLegacyStatusField = (data: unknown): unknown =>
+  data !== null &&
+  typeof data === 'object' &&
+  !('status' in data) &&
+  'shipmentStatus' in data
+    ? { ...data, status: (data as Record<string, unknown>).shipmentStatus }
+    : data
 
 export const PAYMENT_METHOD_SCHEMA = z.enum(['cash', 'card', 'bank'])
 export type PaymentMethod = z.infer<typeof PAYMENT_METHOD_SCHEMA>
@@ -69,7 +83,13 @@ export type OrderItem = z.infer<typeof ORDER_ITEM_SCHEMA>
 // stored — they are derived from the items (see getSubtotalMinor/getTotalMinor).
 // Only delivery is an independent input and is stored. This keeps the order a
 // live "notebook": editing items recomputes the totals, no stale snapshot.
-export const STORED_ORDER_SCHEMA = z.object({
+//
+// Wrapped in a preprocess that lifts the legacy `shipmentStatus` field into
+// `status` (see liftLegacyStatusField), so documents from before the rename
+// parse without waiting for the lazy migration to rewrite them.
+export const STORED_ORDER_SCHEMA = z.preprocess(
+  liftLegacyStatusField,
+  z.object({
   // Per-owner sequential number. NULLABLE because an order can be created while
   // OFFLINE, where the numbering transaction (which needs the server) can't run:
   // such an order is written with `number: null` and gets its real number later,
@@ -100,10 +120,10 @@ export const STORED_ORDER_SCHEMA = z.object({
   // valid without a migration (widening is safe; narrowing is not).
   gifts: z.array(ORDER_ITEM_SCHEMA).optional(),
   paymentStatus: PAYMENT_STATUS_SCHEMA,
-  shipmentStatus: STORED_SHIPMENT_STATUS_SCHEMA,
+  status: STORED_ORDER_STATUS_SCHEMA,
   comment: z.string().optional(),
   // When the order was completed (ms timestamp). An order is "completed" once it
-  // reaches a terminal shipment status (delivered or cancelled); this is stamped
+  // reaches a terminal status (delivered or cancelled); this is stamped
   // automatically on that transition and cleared if it leaves one (see
   // resolveCompletedAt). Optional so orders that aren't finished — and any
   // written before this field existed — stay valid without a migration.
@@ -112,7 +132,7 @@ export const STORED_ORDER_SCHEMA = z.object({
   // for an active order. This is the CANONICAL "in trash" signal and also seeds
   // the auto-purge countdown (deletedAt + TRASH_RETENTION_DAYS). Optional so an
   // active order — and any document written before this field — stays valid.
-  // Distinct from "cancelled", which is a shipment status that keeps the order
+  // Distinct from "cancelled", which is an order status that keeps the order
   // visible. See `isOrderDeleted` / `trashDaysLeft`.
   deletedAt: z.number().optional(),
   // LEGACY soft-delete flag, superseded by `deletedAt`. Kept readable so an order
@@ -130,7 +150,8 @@ export const STORED_ORDER_SCHEMA = z.object({
   // existed, so pre-existing orders stay valid without a migration (widening the
   // schema is safe; narrowing is not — see the `packing` lesson).
   photos: z.array(z.string()).optional(),
-})
+  }),
+)
 
 // A single order for potted plants and flowers = one table row. The doc id is
 // added to the stored shape.
@@ -174,24 +195,24 @@ export const getTotalMinor = (order: Order): number =>
   getSubtotalMinor(order) + order.deliveryPriceMinor
 
 // An order is "completed" once it is delivered or cancelled — both are terminal
-// shipment states with no further work to do on the order.
-export const TERMINAL_SHIPMENT_STATUSES = ['delivered', 'cancelled'] as const
+// states with no further work to do on the order.
+export const TERMINAL_ORDER_STATUSES = ['delivered', 'cancelled'] as const
 
-export const isTerminalShipmentStatus = (status: ShipmentStatus): boolean =>
-  (TERMINAL_SHIPMENT_STATUSES as readonly ShipmentStatus[]).includes(status)
+export const isTerminalOrderStatus = (status: OrderStatus): boolean =>
+  (TERMINAL_ORDER_STATUSES as readonly OrderStatus[]).includes(status)
 
-// The completion timestamp an order should carry for a given shipment status.
+// The completion timestamp an order should carry for a given order status.
 // Entering a terminal status stamps the completion time (keeping an existing
 // stamp on a re-save, so the original completion moment survives); a
 // non-terminal status clears it. Pure (takes `now`) so it stays unit-testable
-// and is applied wherever the shipment status is written — the create/edit form
+// and is applied wherever the status is written — the create/edit form
 // and the inline status save on the detail page.
 export const resolveCompletedAt = (
-  shipmentStatus: ShipmentStatus,
+  status: OrderStatus,
   previousCompletedAt: number | undefined,
   now: number,
 ): number | undefined =>
-  isTerminalShipmentStatus(shipmentStatus) ? (previousCompletedAt ?? now) : undefined
+  isTerminalOrderStatus(status) ? (previousCompletedAt ?? now) : undefined
 
 // Plants ordered for display: the most valuable line first (unit price ×
 // quantity), descending. Returns a copy, so the stored order array is never
@@ -288,12 +309,12 @@ export const plantLineLabel = (item: OrderItem): string =>
   item.quantity === 1 ? item.name : `${item.name} ×${item.quantity}`
 
 // Canonical option values, in display order. Status/method values keep their
-// workflow order (e.g. new → shipped → delivered). Labels are NOT stored here:
+// workflow order (e.g. processing → delivered). Labels are NOT stored here:
 // they are resolved per render from the `order` i18n namespace, so the UI follows
 // the chosen language (the latin value IS the translation key, so a value can
 // never drift apart from its label).
 export const PAYMENT_STATUS_VALUES = PAYMENT_STATUS_SCHEMA.options
-export const SHIPMENT_STATUS_VALUES = SHIPMENT_STATUS_SCHEMA.options
+export const ORDER_STATUS_VALUES = ORDER_STATUS_SCHEMA.options
 export const PAYMENT_METHOD_VALUES = PAYMENT_METHOD_SCHEMA.options
 export const DELIVERY_METHOD_VALUES = DELIVERY_METHOD_SCHEMA.options
 
@@ -304,7 +325,7 @@ export const DELIVERY_METHOD_VALUES = DELIVERY_METHOD_SCHEMA.options
 export interface OrderFilter {
   query: string
   paymentStatus: PaymentStatus | ''
-  shipmentStatus: ShipmentStatus | ''
+  status: OrderStatus | ''
   // Empty string means "any currency"; otherwise the order's currency must match.
   currency: Currency | ''
   minPriceMinor: number
@@ -319,7 +340,7 @@ export interface OrderFilter {
 export const EMPTY_ORDER_FILTER: OrderFilter = {
   query: '',
   paymentStatus: '',
-  shipmentStatus: '',
+  status: '',
   currency: '',
   minPriceMinor: 0,
   maxPriceMinor: null,
@@ -333,11 +354,11 @@ export const isOrderFilterActive = (filter: OrderFilter): boolean =>
   filter.query.trim() !== '' || isModalFilterActive(filter)
 
 // True when any filter that lives behind the filter dialog is set (payment
-// status, shipment status, or the price range). Drives the filter-icon's active
+// status, order status, or the price range). Drives the filter-icon's active
 // dot — the inline search query is shown separately and isn't counted here.
 export const isModalFilterActive = (filter: OrderFilter): boolean =>
   filter.paymentStatus !== '' ||
-  filter.shipmentStatus !== '' ||
+  filter.status !== '' ||
   filter.currency !== '' ||
   filter.minPriceMinor > 0 ||
   filter.maxPriceMinor !== null ||
@@ -359,7 +380,7 @@ export const filterOrders = (
   const q = filter.query.trim().toLowerCase()
   return orders.filter((o) => {
     if (filter.paymentStatus !== '' && o.paymentStatus !== filter.paymentStatus) return false
-    if (filter.shipmentStatus !== '' && o.shipmentStatus !== filter.shipmentStatus) return false
+    if (filter.status !== '' && o.status !== filter.status) return false
     if (filter.currency !== '' && o.currency !== filter.currency) return false
     const total = getTotalMinor(o)
     if (total < filter.minPriceMinor) return false

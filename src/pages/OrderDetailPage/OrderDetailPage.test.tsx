@@ -137,7 +137,7 @@ describe('OrderDetailPage', () => {
     // to another field (on another device) is never clobbered.
     expect(patchOrder).toHaveBeenCalledWith('o1', { paymentStatus: 'paid' })
     const saved = patchOrder.mock.calls[0][1]
-    expect(saved).not.toHaveProperty('shipmentStatus')
+    expect(saved).not.toHaveProperty('status')
     expect(saved).not.toHaveProperty('id')
     // The optimistic value sticks on success.
     expect(screen.getByRole('combobox', { name: 'Статус оплаты' })).toHaveValue('paid')
@@ -152,7 +152,7 @@ describe('OrderDetailPage', () => {
 
     await waitFor(() => expect(patchOrder).toHaveBeenCalledTimes(1))
     const saved = patchOrder.mock.calls[0][1]
-    expect(saved.shipmentStatus).toBe('delivered')
+    expect(saved.status).toBe('delivered')
     expect(typeof saved.completedAt).toBe('number')
     // The completion row appears once stamped.
     expect(await screen.findByText('Завершён')).toBeInTheDocument()
@@ -160,7 +160,7 @@ describe('OrderDetailPage', () => {
 
   it('clears the completion time when a completed order leaves a terminal status', async () => {
     const user = userEvent.setup()
-    fetchOrder.mockResolvedValue(order({ shipmentStatus: 'delivered', completedAt: 1700 }))
+    fetchOrder.mockResolvedValue(order({ status: 'delivered', completedAt: 1700 }))
     renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })
     expect(screen.getByText('Завершён')).toBeInTheDocument()

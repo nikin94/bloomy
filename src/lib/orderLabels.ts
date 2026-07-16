@@ -5,14 +5,14 @@ import {
   DELIVERY_METHOD_VALUES,
   PAYMENT_METHOD_VALUES,
   PAYMENT_STATUS_VALUES,
-  SHIPMENT_STATUS_VALUES,
+  ORDER_STATUS_VALUES,
 } from '@/types/order'
 import type {
   Currency,
   DeliveryMethod,
   PaymentMethod,
   PaymentStatus,
-  ShipmentStatus,
+  OrderStatus,
 } from '@/types/order'
 
 // The i18n layer for orders: turns the stored latin status/method/currency VALUES
@@ -30,8 +30,8 @@ export type OrderT = TFunction<'order'>
 // key's leaf, so the union of values maps to a union of valid keys (type-safe).
 export const paymentStatusLabel = (t: OrderT, value: PaymentStatus): string =>
   t(`paymentStatus.${value}`)
-export const shipmentStatusLabel = (t: OrderT, value: ShipmentStatus): string =>
-  t(`shipmentStatus.${value}`)
+export const orderStatusLabel = (t: OrderT, value: OrderStatus): string =>
+  t(`status.${value}`)
 export const paymentMethodLabel = (t: OrderT, value: PaymentMethod): string =>
   t(`paymentMethod.${value}`)
 export const deliveryMethodLabel = (t: OrderT, value: DeliveryMethod): string =>
@@ -49,8 +49,8 @@ export const currencyLabel = (t: OrderT, value: Currency): string =>
 // useTranslation), so the options rebuild with the new labels.
 export const paymentStatusOptions = (t: OrderT) =>
   PAYMENT_STATUS_VALUES.map((value) => ({ value, label: paymentStatusLabel(t, value) }))
-export const shipmentStatusOptions = (t: OrderT) =>
-  SHIPMENT_STATUS_VALUES.map((value) => ({ value, label: shipmentStatusLabel(t, value) }))
+export const orderStatusOptions = (t: OrderT) =>
+  ORDER_STATUS_VALUES.map((value) => ({ value, label: orderStatusLabel(t, value) }))
 export const paymentMethodOptions = (t: OrderT) =>
   PAYMENT_METHOD_VALUES.map((value) => ({ value, label: paymentMethodLabel(t, value) }))
 export const currencyOptions = (t: OrderT) =>

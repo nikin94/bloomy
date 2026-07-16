@@ -44,7 +44,7 @@ const order = (ownerId: string) => ({
   deliveryPriceMinor: 0,
   currency: 'RUB',
   paymentStatus: 'pending',
-  shipmentStatus: 'processing',
+  status: 'processing',
 })
 
 const customer = (ownerId: string) => ({ ownerId, name: 'Иван', createdAt: 1000 })

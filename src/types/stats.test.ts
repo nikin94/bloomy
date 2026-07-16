@@ -29,7 +29,7 @@ const makeOrder = (overrides: Partial<Order> = {}): Order => ({
   deliveryPriceMinor: 0,
   currency: 'RUB',
   paymentStatus: 'pending',
-  shipmentStatus: 'processing',
+  status: 'processing',
   ...overrides,
 })
 
@@ -145,12 +145,12 @@ describe('deliveryByCurrencyMinor', () => {
 describe('statusBreakdown', () => {
   it('splits orders into delivered / cancelled / in-progress', () => {
     const orders = [
-      makeOrder({ shipmentStatus: 'delivered' }),
-      makeOrder({ shipmentStatus: 'delivered' }),
-      makeOrder({ shipmentStatus: 'cancelled' }),
-      makeOrder({ shipmentStatus: 'processing' }),
-      makeOrder({ shipmentStatus: 'processing' }),
-      makeOrder({ shipmentStatus: 'processing' }),
+      makeOrder({ status: 'delivered' }),
+      makeOrder({ status: 'delivered' }),
+      makeOrder({ status: 'cancelled' }),
+      makeOrder({ status: 'processing' }),
+      makeOrder({ status: 'processing' }),
+      makeOrder({ status: 'processing' }),
     ]
     expect(statusBreakdown(orders)).toEqual({
       delivered: 2,

@@ -90,8 +90,8 @@ beforeEach(() => {
     customer({ id: 'c-boris', name: 'Борис' }),
   ])
   fetchOrders.mockResolvedValue([
-    order({ id: 'o1', number: 1, customerId: 'c-anna', shipmentStatus: 'processing' }),
-    order({ id: 'o2', number: 2, customerId: 'c-boris', shipmentStatus: 'delivered' }),
+    order({ id: 'o1', number: 1, customerId: 'c-anna', status: 'processing' }),
+    order({ id: 'o2', number: 2, customerId: 'c-boris', status: 'delivered' }),
   ])
 })
 

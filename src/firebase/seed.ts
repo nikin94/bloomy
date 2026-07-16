@@ -31,7 +31,7 @@ export const SEED_ORDER_COUNT = 100
 const SEED_DELETED_CUSTOMER_COUNT = 2
 
 const PAYMENT_STATUSES = ['pending', 'paid', 'refunded'] as const
-const SHIPMENT_STATUSES = ['processing', 'delivered', 'cancelled'] as const
+const ORDER_STATUSES = ['processing', 'delivered', 'cancelled'] as const
 const PAYMENT_METHODS: PaymentMethod[] = ['cash', 'card', 'bank']
 const DELIVERY_METHODS: DeliveryMethod[] = ['bus', 'post', 'pickup', 'cdek', 'taxi', 'other']
 const TERMINAL = new Set(['delivered', 'cancelled'])
@@ -159,9 +159,9 @@ export function buildSeedOrders(
 ): Omit<Order, 'id'>[] {
   if (customerIds.length === 0) throw new Error('buildSeedOrders needs at least one customer id')
   return Array.from({ length: SEED_ORDER_COUNT }, (_, i) => {
-    const shipmentStatus = SHIPMENT_STATUSES[i % SHIPMENT_STATUSES.length]
+    const status = ORDER_STATUSES[i % ORDER_STATUSES.length]
     const dateCreated = now - (SEED_ORDER_COUNT - i) * DAY_MS
-    const isTerminal = TERMINAL.has(shipmentStatus)
+    const isTerminal = TERMINAL.has(status)
     return {
       number: i + 1,
       dateCreated,
@@ -174,7 +174,7 @@ export function buildSeedOrders(
       deliveryPriceMinor: (i % 4) * 25000,
       currency: pickCurrency(i),
       paymentStatus: PAYMENT_STATUSES[i % PAYMENT_STATUSES.length],
-      shipmentStatus,
+      status,
       ...(i % 4 === 0 ? { comment: `Тестовый комментарий №${i + 1}` } : {}),
       ...(isTerminal ? { completedAt: Math.min(now, dateCreated + 3 * DAY_MS) } : {}),
       // ~1 in 6 lands in the trash so the "Trash" page has content. Stamped with

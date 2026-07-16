@@ -16,13 +16,13 @@ import {
   trashDaysLeft,
   TRASH_RETENTION_DAYS,
   PAYMENT_STATUS_VALUES,
-  SHIPMENT_STATUS_VALUES,
+  ORDER_STATUS_VALUES,
 } from '@/types/order'
 import {
   deliveryMethodLabel,
   paymentMethodLabel,
   paymentStatusOptions,
-  shipmentStatusOptions,
+  orderStatusOptions,
 } from '@/lib/orderLabels'
 import { asEnum } from '@/utils/asEnum'
 import { useOwnerId } from '@/hooks/useOwnerId'
@@ -74,14 +74,14 @@ const OrderDetailPage = () => {
     if (!order) return
     const next = { ...order, ...patch }
     // The write touches only the fields the caller changed (paymentStatus OR
-    // shipmentStatus), so the merge stays field-scoped.
+    // status), so the merge stays field-scoped.
     const writePatch: OrderPatch = {}
     if (patch.paymentStatus !== undefined) writePatch.paymentStatus = patch.paymentStatus
-    // Completion is derived from the shipment status: delivered/cancelled stamps
+    // Completion is derived from the order status: delivered/cancelled stamps
     // the completion time, any other status clears it (null → removed in patchOrder).
-    if (patch.shipmentStatus !== undefined) {
-      writePatch.shipmentStatus = patch.shipmentStatus
-      const completedAt = resolveCompletedAt(next.shipmentStatus, order.completedAt, Date.now())
+    if (patch.status !== undefined) {
+      writePatch.status = patch.status
+      const completedAt = resolveCompletedAt(next.status, order.completedAt, Date.now())
       if (completedAt === undefined) {
         delete next.completedAt
         writePatch.completedAt = null
@@ -260,10 +260,10 @@ const OrderDetailPage = () => {
               readOnly={isDeleted}
             />
             <InlineStatusField
-              label={t('detail.shipmentStatus')}
-              value={order.shipmentStatus}
-              options={shipmentStatusOptions(tOrder)}
-              onChange={(value) => saveStatus({ shipmentStatus: asEnum(SHIPMENT_STATUS_VALUES, value, order.shipmentStatus) })}
+              label={t('detail.status')}
+              value={order.status}
+              options={orderStatusOptions(tOrder)}
+              onChange={(value) => saveStatus({ status: asEnum(ORDER_STATUS_VALUES, value, order.status) })}
               readOnly={isDeleted}
             />
             {order.completedAt && <DetailRow label={t('detail.completed')} value={formatDate(order.completedAt)} />}

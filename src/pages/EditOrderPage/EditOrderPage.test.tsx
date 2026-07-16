@@ -122,7 +122,7 @@ describe('EditOrderPage', () => {
         dateCreated: 1000,
         customerId: 'c1',
         // Edited field.
-        shipmentStatus: 'delivered',
+        status: 'delivered',
       }),
     )
     // Returns to the order's detail page after saving.

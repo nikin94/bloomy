@@ -28,7 +28,7 @@ export const order = (over: Partial<Order> = {}): Order => ({
   deliveryPriceMinor: 0,
   currency: 'RUB',
   paymentStatus: 'pending',
-  shipmentStatus: 'processing',
+  status: 'processing',
   ...over,
 })
 

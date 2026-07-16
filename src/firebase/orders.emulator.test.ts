@@ -32,7 +32,7 @@ const makeOrder = (ownerId: string): NewOrder => ({
   deliveryPriceMinor: 0,
   currency: 'RUB',
   paymentStatus: 'pending',
-  shipmentStatus: 'processing',
+  status: 'processing',
 })
 
 // Create an order AND give it its real number, the way the app does across a
@@ -156,7 +156,7 @@ describe('updateOrder (emulator)', () => {
     const id = await createNumbered(makeOrder(owner))
     const original = await fetchOrder(id, owner)
 
-    await updateOrder(id, { ...original!, shipmentStatus: 'delivered', completedAt: 1700 })
+    await updateOrder(id, { ...original!, status: 'delivered', completedAt: 1700 })
 
     const updated = await fetchOrder(id, owner)
     expect(updated?.completedAt).toBe(1700)
@@ -184,14 +184,14 @@ describe('patchOrder (emulator)', () => {
     const id = await createNumbered(makeOrder(owner))
 
     // Two independent inline patches, as two devices would send them: one flips
-    // the payment status, the other the shipment status. A per-field merge keeps
+    // the payment status, the other the order status. A per-field merge keeps
     // BOTH — a wholesale replace would have let the later write erase the earlier.
     await patchOrder(id, { paymentStatus: 'paid' })
-    await patchOrder(id, { shipmentStatus: 'delivered' })
+    await patchOrder(id, { status: 'delivered' })
 
     const merged = await fetchOrder(id, owner)
     expect(merged?.paymentStatus).toBe('paid')
-    expect(merged?.shipmentStatus).toBe('delivered')
+    expect(merged?.status).toBe('delivered')
     // The rest of the order is untouched by either partial write.
     expect(merged?.address).toBe('Main St 1')
     expect(merged?.number).toBe(1)
@@ -200,14 +200,14 @@ describe('patchOrder (emulator)', () => {
   it('drops the completion stamp when patched with completedAt: null', async () => {
     const owner = 'owner-patch-clear'
     const id = await createNumbered(makeOrder(owner))
-    await patchOrder(id, { shipmentStatus: 'delivered', completedAt: 1700 })
+    await patchOrder(id, { status: 'delivered', completedAt: 1700 })
     expect((await fetchOrder(id, owner))?.completedAt).toBe(1700)
 
-    await patchOrder(id, { shipmentStatus: 'processing', completedAt: null })
+    await patchOrder(id, { status: 'processing', completedAt: null })
 
     const reopened = await fetchOrder(id, owner)
     expect(reopened?.completedAt).toBeUndefined()
-    expect(reopened?.shipmentStatus).toBe('processing')
+    expect(reopened?.status).toBe('processing')
   })
 
   it('does not bump the owner counter (a later create still increments by one)', async () => {

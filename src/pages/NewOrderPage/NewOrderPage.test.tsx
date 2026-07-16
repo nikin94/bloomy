@@ -160,7 +160,7 @@ describe('NewOrderPage', () => {
       currency: 'USD',
       // Per-instance state that must NOT carry over to the fresh order.
       paymentStatus: 'paid',
-      shipmentStatus: 'delivered',
+      status: 'delivered',
       comment: 'был особый',
     }
     render(

@@ -78,7 +78,7 @@ describe('StatsPage', () => {
 
   it('renders KPIs, the status breakdown, and the monthly chart for the current period', async () => {
     fetchOrders.mockResolvedValue([
-      order({ id: 'a', dateCreated: Date.now(), paymentStatus: 'paid', shipmentStatus: 'delivered' }),
+      order({ id: 'a', dateCreated: Date.now(), paymentStatus: 'paid', status: 'delivered' }),
     ])
     renderPage()
 
