@@ -74,6 +74,17 @@
   --danger: #ef4444;
   --danger-bg: rgba(239, 68, 68, 0.15);
 
+  /* Greenhouse backdrop (see index.css). `--greenhouse-ink` paints the leaf
+     pattern (an alpha-masked layer, so the WHOLE colour — hue and opacity —
+     lives here per theme); `--greenhouse-glow` is the soft "light through the
+     canopy" radial tint at the top of the page. Both are decorative ambience:
+     the alphas are low enough that measured text contrast on the blended bg
+     moves by < 0.1 (e.g. --text stays ≥ 5.7:1 on the darkest blend), so every
+     WCAG figure documented above still holds. Sage (the accent hue) reads best
+     as a LIGHT ink on the dark bg. */
+  --greenhouse-ink: rgba(126, 164, 103, 0.07);
+  --greenhouse-glow: rgba(126, 164, 103, 0.09);
+
   /* Typography (theme-independent). */
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --mono: ui-monospace, Consolas, monospace;
@@ -131,6 +142,12 @@
   /* Deepened so danger text clears AA on the greyer bg (#a51616 = 4.9:1). */
   --danger: #a51616;
   --danger-bg: rgba(165, 22, 22, 0.1);
+
+  /* Greenhouse backdrop — a DARK ink on the light grey bg (the deep forest
+     brand hue), where the dark theme's light sage would wash out. Same
+     negligible-contrast-shift guarantee as the dark values (see :root). */
+  --greenhouse-ink: rgba(24, 51, 12, 0.06);
+  --greenhouse-glow: rgba(93, 124, 57, 0.12);
 }
 
 /* Expose the tokens to Tailwind as semantic colour utilities
