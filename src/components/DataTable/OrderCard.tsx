@@ -8,7 +8,7 @@ import { FOCUS_RING_INSET } from '@/styles/fieldStyles'
 // The same order as a card (mobile layout). Unlike the desktop table — a flat
 // "label → value" row per column — the card regroups the SAME column values into
 // a richer phone layout: a number/date header, stacked customer + address, each
-// plant in its own bordered block, the total on one line, and payment/shipment
+// plant in its own bordered block, the total on one line, and payment/order
 // side by side. Every value still comes from the OrderColumn config (looked up by
 // id), so customer-name resolution, the order's currency, status labels and plant
 // formatting stay the single source of truth shared with the table.
@@ -76,13 +76,13 @@ const OrderCard = ({
         </ul>
       </div>
 
-      {/* Payment status on the left, shipment pushed to the right edge
+      {/* Payment status on the left, the order status pushed to the right edge
           (right-aligned, label over value). */}
       <div className="flex items-start justify-between gap-4">
         <CardField label={label('paymentStatus')} value={value('paymentStatus')} />
         <CardField
-          label={label('shipmentStatus')}
-          value={value('shipmentStatus')}
+          label={label('status')}
+          value={value('status')}
           className="items-end text-right"
         />
       </div>

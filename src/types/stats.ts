@@ -94,7 +94,7 @@ export const deliveryByCurrencyMinor = (orders: Order[]): Map<Currency, number> 
 }
 
 // How the period's orders split by outcome: delivered, cancelled, or still in
-// progress (any non-terminal shipment status — new/packing/shipped). This is the
+// progress (the non-terminal order status — processing). This is the
 // "share completed vs cancelled" view — the cancel rate is a number that appears
 // nowhere else (the active list only shows the current backlog).
 export interface StatusBreakdown {
@@ -108,8 +108,8 @@ export const statusBreakdown = (orders: Order[]): StatusBreakdown => {
   let delivered = 0
   let cancelled = 0
   for (const order of orders) {
-    if (order.shipmentStatus === 'delivered') delivered += 1
-    else if (order.shipmentStatus === 'cancelled') cancelled += 1
+    if (order.status === 'delivered') delivered += 1
+    else if (order.status === 'cancelled') cancelled += 1
   }
   return { delivered, cancelled, inProgress: orders.length - delivered - cancelled, total: orders.length }
 }

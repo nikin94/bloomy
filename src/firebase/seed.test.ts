@@ -64,10 +64,10 @@ describe('buildSeedOrders', () => {
     expect(orders[0].dateCreated).toBeLessThan(orders[orders.length - 1].dateCreated)
   })
 
-  it('covers every shipment and payment status (varied categories)', () => {
-    const shipments = new Set(orders.map((o) => o.shipmentStatus))
+  it('covers every order and payment status (varied categories)', () => {
+    const statuses = new Set(orders.map((o) => o.status))
     const payments = new Set(orders.map((o) => o.paymentStatus))
-    expect(shipments).toEqual(new Set(['new', 'packing', 'shipped', 'delivered', 'cancelled']))
+    expect(statuses).toEqual(new Set(['processing', 'delivered', 'cancelled']))
     expect(payments).toEqual(new Set(['pending', 'paid', 'refunded']))
   })
 
@@ -91,7 +91,7 @@ describe('buildSeedOrders', () => {
 
   it('stamps completedAt exactly on terminal orders, never in the future', () => {
     for (const o of orders) {
-      const terminal = o.shipmentStatus === 'delivered' || o.shipmentStatus === 'cancelled'
+      const terminal = o.status === 'delivered' || o.status === 'cancelled'
       expect('completedAt' in o).toBe(terminal)
       if (o.completedAt !== undefined) expect(o.completedAt).toBeLessThanOrEqual(NOW)
     }
@@ -120,8 +120,8 @@ describe('seedMockData', () => {
     // trash (deletedAt), not the always-0 legacy `isDeleted` count.
     expect(result.trashed).toBeGreaterThan(0)
 
-    // Isolate the ORDER payloads (customer payloads have no shipmentStatus).
-    const orders = writes.filter((d) => 'shipmentStatus' in d)
+    // Isolate the ORDER payloads (customer payloads have no status).
+    const orders = writes.filter((d) => 'status' in d)
     const trashed = orders.filter((d) => d.deletedAt !== undefined)
     const active = orders.filter((d) => d.deletedAt === undefined)
 

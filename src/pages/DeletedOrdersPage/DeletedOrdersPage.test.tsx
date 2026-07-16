@@ -147,11 +147,11 @@ describe('DeletedOrdersPage', () => {
     expect(table().queryByText('Анна')).not.toBeInTheDocument()
   })
 
-  it('filters the trash by shipment status from the filter dialog (same as the active list)', async () => {
+  it('filters the trash by order status from the filter dialog (same as the active list)', async () => {
     const user = userEvent.setup()
     fetchDeletedOrders.mockResolvedValue([
-      order({ id: 'o1', number: 5, customerId: 'c1', shipmentStatus: 'new' }),
-      order({ id: 'o2', number: 6, customerId: 'c2', shipmentStatus: 'shipped' }),
+      order({ id: 'o1', number: 5, customerId: 'c1', status: 'processing' }),
+      order({ id: 'o2', number: 6, customerId: 'c2', status: 'delivered' }),
     ])
     fetchCustomers.mockResolvedValue([
       customer({ id: 'c1', name: 'Анна' }),
@@ -161,10 +161,10 @@ describe('DeletedOrdersPage', () => {
     await screen.findByTestId('orders-table')
 
     await user.click(await header().findByRole('button', { name: 'Фильтры' }))
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус отправки' }), 'shipped')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус заказа' }), 'delivered')
     await user.click(screen.getByRole('button', { name: 'Готово' }))
 
-    // Only the shipped order remains.
+    // Only the delivered order remains.
     expect(table().getByText('Борис')).toBeInTheDocument()
     expect(table().queryByText('Анна')).not.toBeInTheDocument()
   })

@@ -11,14 +11,14 @@ import {
   DELIVERY_METHOD_VALUES,
   PAYMENT_METHOD_VALUES,
   PAYMENT_STATUS_VALUES,
-  SHIPMENT_STATUS_VALUES,
+  ORDER_STATUS_VALUES,
 } from '@/types/order'
 import {
   currencyOptions,
   deliveryMethodOptions,
   paymentMethodOptions,
   paymentStatusOptions,
-  shipmentStatusOptions,
+  orderStatusOptions,
 } from '@/lib/orderLabels'
 import { asEnum } from '@/utils/asEnum'
 import Spinner from '@/components/Spinner/Spinner'
@@ -50,7 +50,7 @@ import type {
   OrderItem,
   PaymentMethod,
   PaymentStatus,
-  ShipmentStatus,
+  OrderStatus,
 } from '@/types/order'
 import type { Customer, NewCustomer } from '@/types/customer'
 
@@ -209,8 +209,8 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(
     draft?.paymentStatus ?? initialOrder?.paymentStatus ?? 'pending',
   )
-  const [shipmentStatus, setShipmentStatus] = useState<ShipmentStatus>(
-    draft?.shipmentStatus ?? initialOrder?.shipmentStatus ?? 'new',
+  const [orderStatus, setOrderStatus] = useState<OrderStatus>(
+    draft?.status ?? initialOrder?.status ?? 'processing',
   )
   const [comment, setComment] = useState(draft?.comment ?? initialOrder?.comment ?? '')
 
@@ -240,7 +240,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
     paymentMethod,
     currency,
     paymentStatus,
-    shipmentStatus,
+    orderStatus,
     comment,
     pendingFiles.length,
     keptPhotos,
@@ -277,7 +277,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
     paymentMethod,
     currency,
     paymentStatus,
-    shipmentStatus,
+    status: orderStatus,
     comment,
   } satisfies OrderDraft)
   useEffect(() => {
@@ -549,7 +549,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
       // Completion stamp derived from the chosen status (e.g. creating or
       // editing an order straight into "delivered"); a re-save keeps the
       // original moment via the order's existing completedAt.
-      const completedAt = resolveCompletedAt(shipmentStatus, initialOrder?.completedAt, Date.now())
+      const completedAt = resolveCompletedAt(orderStatus, initialOrder?.completedAt, Date.now())
 
       // Deferred photo upload: now that we're committing to save the order, upload
       // the locally-picked files under orders/{ownerId}/{orderId}/ — on create the
@@ -592,7 +592,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
         deliveryPriceMinor: parseRublesToMinor(deliveryPrice),
         currency,
         paymentStatus,
-        shipmentStatus,
+        status: orderStatus,
         // The gift, when one was added and named. A blank gift row is dropped
         // silently, like empty plant rows. Free by definition: price 0 and
         // quantity 1, so it never moves the totals (they read `plants` only).
@@ -825,11 +825,11 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
             </Select>
 
             <Select
-              label={t('form.shipmentStatus')}
-              value={shipmentStatus}
-              onChange={(e) => setShipmentStatus(asEnum(SHIPMENT_STATUS_VALUES, e.target.value, shipmentStatus))}
+              label={t('form.status')}
+              value={orderStatus}
+              onChange={(e) => setOrderStatus(asEnum(ORDER_STATUS_VALUES, e.target.value, orderStatus))}
             >
-              <SelectOptions options={shipmentStatusOptions(tOrder)} />
+              <SelectOptions options={orderStatusOptions(tOrder)} />
             </Select>
           </div>
 

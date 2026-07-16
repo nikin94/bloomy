@@ -1,5 +1,5 @@
 // A small "label above, value below" pair used by the mobile card for the
-// customer, address and the paired payment/shipment statuses.
+// customer, address and the paired payment/order statuses.
 const CardField = ({
   label,
   value,

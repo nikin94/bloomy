@@ -4,7 +4,11 @@ import { useNavigate } from 'react-router-dom'
 import DataTable from '@/components/DataTable/DataTable'
 import SearchControl from '@/components/SearchControl/SearchControl'
 import OrderFilterControl from '@/components/OrderFilterControl/OrderFilterControl'
-import { useOrdersSuspense, useReconcileOrderNumbers } from '@/queries/orders'
+import {
+  useMigrateOrderStatuses,
+  useOrdersSuspense,
+  useReconcileOrderNumbers,
+} from '@/queries/orders'
 import { useCustomersSuspense } from '@/queries/customers'
 import { useRequiredOwnerId } from '@/hooks/useOwnerId'
 import { useConsumeNavState } from '@/hooks/useConsumeNavState'
@@ -36,6 +40,9 @@ const OrdersPage = () => {
   // Background: assign real numbers to any orders created offline, then invalidate
   // the list so the freshly-numbered rows refetch (runs on mount + on reconnect).
   useReconcileOrderNumbers(ownerId)
+  // Background: settle any legacy stored order statuses (new/packing/shipped →
+  // processing) for this owner — the lazy three-state migration.
+  useMigrateOrderStatuses(ownerId)
   // List sort, lifted here so BOTH the DataTable headers (desktop) and the filter
   // dialog's sort control (phones, no headers) drive the same order. Ephemeral —
   // resets to the natural order on remount, matching the old header-only sort.

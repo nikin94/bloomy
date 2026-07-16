@@ -12,18 +12,16 @@
     "plants": "Plants",
     "total": "Total",
     "paymentStatus": "Payment",
-    "shipmentStatus": "Shipment"
+    "status": "Status"
   },
   "paymentStatus": {
     "pending": "Pending",
     "paid": "Paid",
     "refunded": "Refunded"
   },
-  "shipmentStatus": {
-    "new": "New",
-    "packing": "Packing",
-    "shipped": "Shipped",
-    "delivered": "Delivered",
+  "status": {
+    "processing": "In progress",
+    "delivered": "Completed",
     "cancelled": "Cancelled"
   },
   "paymentMethod": {
@@ -48,7 +46,7 @@
     "title": "Filters",
     "open": "Filters",
     "paymentStatus": "Payment status",
-    "shipmentStatus": "Shipment status",
+    "status": "Order status",
     "currency": "Currency",
     "all": "All",
     "priceRange": "Order total",
@@ -91,7 +89,7 @@
     "deliveryMethod": "Delivery method",
     "paymentMethod": "Payment method",
     "paymentStatus": "Payment status",
-    "shipmentStatus": "Shipment status",
+    "status": "Order status",
     "completed": "Completed",
     "comment": "Comment",
     "plantsTitle": "Plants",
@@ -154,7 +152,7 @@
     "currency": "Currency",
     "paymentMethod": "Payment type",
     "paymentStatus": "Payment status",
-    "shipmentStatus": "Order status",
+    "status": "Order status",
     "comment": "Comment",
     "total": "Total",
     "totalDelivery": "+ delivery {{amount}}",

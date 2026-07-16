@@ -17,13 +17,13 @@ import {
   isModalFilterActive,
   CURRENCIES,
   PAYMENT_STATUS_VALUES,
-  SHIPMENT_STATUS_VALUES,
+  ORDER_STATUS_VALUES,
 } from '@/types/order'
 import type { Order, OrderFilter } from '@/types/order'
 import {
   currencyOptions,
   paymentStatusOptions,
-  shipmentStatusOptions,
+  orderStatusOptions,
 } from '@/lib/orderLabels'
 import { sortableColumns, SORT_DIRECTIONS } from '@/components/DataTable/orderColumns'
 import type { OrderColumn, OrderSort } from '@/components/DataTable/orderColumns'
@@ -205,14 +205,14 @@ const OrderFilterControl = ({
             </Select>
 
             <Select
-              label={t('filters.shipmentStatus')}
-              value={filter.shipmentStatus}
+              label={t('filters.status')}
+              value={filter.status}
               onChange={(e) =>
-                onChange((f) => ({ ...f, shipmentStatus: asEnum(SHIPMENT_STATUS_VALUES, e.target.value, '' as const) }))
+                onChange((f) => ({ ...f, status: asEnum(ORDER_STATUS_VALUES, e.target.value, '' as const) }))
               }
             >
               <option value="">{t('filters.all')}</option>
-              <SelectOptions options={shipmentStatusOptions(tOrder)} />
+              <SelectOptions options={orderStatusOptions(tOrder)} />
             </Select>
 
             {/* Currency filter — each order keeps its own currency, so this
@@ -305,7 +305,7 @@ const OrderFilterControl = ({
                   onChange((f) => ({
                     ...f,
                     paymentStatus: '',
-                    shipmentStatus: '',
+                    status: '',
                     currency: '',
                     minPriceMinor: 0,
                     maxPriceMinor: null,

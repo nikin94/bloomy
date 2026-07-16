@@ -13,12 +13,14 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore'
 import {
   createOrder,
   fetchDeletedOrders,
   fetchOrder,
   fetchOrders,
+  migrateOrderStatuses,
   patchOrder,
   reconcileOrderNumbers,
   restoreOrder,
@@ -43,6 +45,7 @@ vi.mock('firebase/firestore', () => ({
   Timestamp: { fromMillis: vi.fn((ms: number) => ({ __ts: ms })) },
   updateDoc: vi.fn(),
   where: vi.fn(() => ({})),
+  writeBatch: vi.fn(),
 }))
 
 // A valid stored order document (everything Firestore holds, minus the doc id).
@@ -58,7 +61,7 @@ const storedOrder = (overrides: Partial<Record<string, unknown>> = {}) => ({
   deliveryPriceMinor: 30000,
   currency: 'RUB',
   paymentStatus: 'pending',
-  shipmentStatus: 'new',
+  status: 'processing',
   ...overrides,
 })
 
@@ -73,7 +76,7 @@ const newOrder: NewOrder = {
   deliveryPriceMinor: 0,
   currency: 'RUB',
   paymentStatus: 'pending',
-  shipmentStatus: 'new',
+  status: 'processing',
 }
 
 beforeEach(() => {
@@ -164,7 +167,9 @@ describe('updateOrder', () => {
     // No comment / completedAt / gifts / photos on the body → they must be
     // deleteField()'d so a field the user cleared is actually removed, not left
     // lingering by the merge (e.g. removing the gift row — or the last photo —
-    // on an edit really drops the field).
+    // on an edit really drops the field). The legacy `shipmentStatus` field
+    // rides the same list, so every edit lazily cleans a pre-rename document
+    // (a deleteField on an absent field is a no-op).
     const body = storedOrder({ number: 7, paymentStatus: 'paid' }) as Omit<Order, 'id'>
 
     await updateOrder('o1', body)
@@ -178,6 +183,7 @@ describe('updateOrder', () => {
       completedAt: { __deleted: true },
       gifts: { __deleted: true },
       photos: { __deleted: true },
+      shipmentStatus: { __deleted: true },
     })
     expect(setDoc).not.toHaveBeenCalled()
     // No numbering transaction on edit.
@@ -210,10 +216,10 @@ describe('patchOrder', () => {
   })
 
   it('removes the completion stamp when completedAt is null', async () => {
-    await patchOrder('o1', { shipmentStatus: 'new', completedAt: null })
+    await patchOrder('o1', { status: 'processing', completedAt: null })
 
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
-      shipmentStatus: 'new',
+      status: 'processing',
       completedAt: { __deleted: true },
     })
   })
@@ -373,5 +379,56 @@ describe('softDeleteOrder', () => {
     const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000
     expect(writes.purgeAt).toEqual({ __ts: deletedAt + THIRTY_DAYS })
     expect(writes).not.toHaveProperty('isDeleted')
+  })
+})
+
+describe('migrateOrderStatuses', () => {
+  it('renames the legacy shipmentStatus field and collapses legacy values in one batch', async () => {
+    // Raw snapshot data on purpose: the migration reads d.data() directly, since
+    // parseOrder's lift/normalization HIDES exactly the legacy shapes it must find.
+    vi.mocked(getDocs).mockResolvedValue({
+      docs: [
+        // Legacy VALUE already under the new field name.
+        { id: 'a', data: () => ({ status: 'new' }) },
+        // Pre-rename documents: the legacy FIELD, with a legacy and a current value.
+        { id: 'b', data: () => ({ shipmentStatus: 'shipped' }) },
+        { id: 'c', data: () => ({ shipmentStatus: 'delivered' }) },
+        // Already migrated — must be left alone.
+        { id: 'd', data: () => ({ status: 'delivered' }) },
+      ],
+    } as unknown as Awaited<ReturnType<typeof getDocs>>)
+    const batch = { update: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) }
+    vi.mocked(writeBatch).mockReturnValue(batch as unknown as ReturnType<typeof writeBatch>)
+
+    await expect(migrateOrderStatuses('owner-1')).resolves.toBe(true)
+
+    // Every stale doc is settled in BOTH shapes: the (normalized) value lands
+    // under `status` and the legacy field is deleted — a no-op where absent.
+    expect(batch.update).toHaveBeenCalledTimes(3)
+    expect(batch.update).toHaveBeenNthCalledWith(1, expect.anything(), {
+      status: 'processing',
+      shipmentStatus: { __deleted: true },
+    })
+    expect(batch.update).toHaveBeenNthCalledWith(2, expect.anything(), {
+      status: 'processing',
+      shipmentStatus: { __deleted: true },
+    })
+    expect(batch.update).toHaveBeenNthCalledWith(3, expect.anything(), {
+      status: 'delivered',
+      shipmentStatus: { __deleted: true },
+    })
+    expect(batch.commit).toHaveBeenCalledTimes(1)
+  })
+
+  it('writes nothing when every document already carries the current field and values', async () => {
+    vi.mocked(getDocs).mockResolvedValue({
+      docs: [
+        { id: 'a', data: () => ({ status: 'processing' }) },
+        { id: 'b', data: () => ({ status: 'cancelled' }) },
+      ],
+    } as unknown as Awaited<ReturnType<typeof getDocs>>)
+
+    await expect(migrateOrderStatuses('owner-1')).resolves.toBe(false)
+    expect(writeBatch).not.toHaveBeenCalled()
   })
 })

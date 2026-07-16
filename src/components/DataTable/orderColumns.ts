@@ -6,7 +6,7 @@ import {
   plantsByValueDesc,
 } from '@/types/order'
 import type { Order } from '@/types/order'
-import { paymentStatusLabel, shipmentStatusLabel } from '@/lib/orderLabels'
+import { paymentStatusLabel, orderStatusLabel } from '@/lib/orderLabels'
 import type { OrderT } from '@/lib/orderLabels'
 
 // The table's column configuration — the view layer for the orders list, split
@@ -153,10 +153,10 @@ export function buildOrderColumns(
       width: 'w-28',
     },
     {
-      id: 'shipmentStatus',
-      header: t('columns.shipmentStatus'),
-      format: (o) => shipmentStatusLabel(t, o.shipmentStatus),
-      sortValue: (o) => shipmentStatusLabel(t, o.shipmentStatus),
+      id: 'status',
+      header: t('columns.status'),
+      format: (o) => orderStatusLabel(t, o.status),
+      sortValue: (o) => orderStatusLabel(t, o.status),
       width: 'w-28',
     },
   ]

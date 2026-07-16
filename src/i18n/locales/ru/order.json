@@ -12,18 +12,16 @@
     "plants": "Растения",
     "total": "Сумма",
     "paymentStatus": "Оплата",
-    "shipmentStatus": "Отправка"
+    "status": "Статус"
   },
   "paymentStatus": {
     "pending": "Ожидает",
     "paid": "Оплачен",
     "refunded": "Возврат"
   },
-  "shipmentStatus": {
-    "new": "Новый",
-    "packing": "Сборка",
-    "shipped": "Отправлен",
-    "delivered": "Доставлен",
+  "status": {
+    "processing": "В работе",
+    "delivered": "Выполнен",
     "cancelled": "Отменён"
   },
   "paymentMethod": {
@@ -48,7 +46,7 @@
     "title": "Фильтры",
     "open": "Фильтры",
     "paymentStatus": "Статус оплаты",
-    "shipmentStatus": "Статус отправки",
+    "status": "Статус заказа",
     "currency": "Валюта",
     "all": "Все",
     "priceRange": "Сумма заказа",
@@ -91,7 +89,7 @@
     "deliveryMethod": "Способ доставки",
     "paymentMethod": "Способ оплаты",
     "paymentStatus": "Статус оплаты",
-    "shipmentStatus": "Статус отправки",
+    "status": "Статус заказа",
     "completed": "Завершён",
     "comment": "Комментарий",
     "plantsTitle": "Растения",
@@ -154,7 +152,7 @@
     "currency": "Валюта",
     "paymentMethod": "Тип оплаты",
     "paymentStatus": "Статус оплаты",
-    "shipmentStatus": "Статус заказа",
+    "status": "Статус заказа",
     "comment": "Комментарий",
     "total": "Итого",
     "totalDelivery": "+ доставка {{amount}}",

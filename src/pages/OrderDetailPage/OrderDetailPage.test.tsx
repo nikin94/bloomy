@@ -82,7 +82,7 @@ describe('OrderDetailPage', () => {
     expect(await screen.findByRole('heading', { name: 'Заказ №5' })).toBeInTheDocument()
     // The two statuses render as selects pre-set to the order's current values.
     expect(screen.getByRole('combobox', { name: 'Статус оплаты' })).toHaveValue('pending')
-    expect(screen.getByRole('combobox', { name: 'Статус отправки' })).toHaveValue('new')
+    expect(screen.getByRole('combobox', { name: 'Статус заказа' })).toHaveValue('processing')
   })
 
   it('numbers each plant row and shows the quantity as a plain number', async () => {
@@ -137,7 +137,7 @@ describe('OrderDetailPage', () => {
     // to another field (on another device) is never clobbered.
     expect(patchOrder).toHaveBeenCalledWith('o1', { paymentStatus: 'paid' })
     const saved = patchOrder.mock.calls[0][1]
-    expect(saved).not.toHaveProperty('shipmentStatus')
+    expect(saved).not.toHaveProperty('status')
     expect(saved).not.toHaveProperty('id')
     // The optimistic value sticks on success.
     expect(screen.getByRole('combobox', { name: 'Статус оплаты' })).toHaveValue('paid')
@@ -148,11 +148,11 @@ describe('OrderDetailPage', () => {
     renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус отправки' }), 'delivered')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус заказа' }), 'delivered')
 
     await waitFor(() => expect(patchOrder).toHaveBeenCalledTimes(1))
     const saved = patchOrder.mock.calls[0][1]
-    expect(saved.shipmentStatus).toBe('delivered')
+    expect(saved.status).toBe('delivered')
     expect(typeof saved.completedAt).toBe('number')
     // The completion row appears once stamped.
     expect(await screen.findByText('Завершён')).toBeInTheDocument()
@@ -160,12 +160,12 @@ describe('OrderDetailPage', () => {
 
   it('clears the completion time when a completed order leaves a terminal status', async () => {
     const user = userEvent.setup()
-    fetchOrder.mockResolvedValue(order({ shipmentStatus: 'delivered', completedAt: 1700 }))
+    fetchOrder.mockResolvedValue(order({ status: 'delivered', completedAt: 1700 }))
     renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })
     expect(screen.getByText('Завершён')).toBeInTheDocument()
 
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус отправки' }), 'new')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус заказа' }), 'processing')
 
     await waitFor(() => expect(patchOrder).toHaveBeenCalledTimes(1))
     // Reopened — the patch carries completedAt: null, the signal patchOrder turns
