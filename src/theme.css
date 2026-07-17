@@ -74,6 +74,20 @@
   --danger: #ef4444;
   --danger-bg: rgba(239, 68, 68, 0.15);
 
+  /* Order-status row tints (orders table rows + mobile cards — see the
+     `status-tint-*` utilities in index.css): a cancelled order blushes red, a
+     delivered one green, so the outcome reads at a glance down the list. Each
+     `-hover` value is the SAME hue stepped up — on a tinted row it replaces the
+     default primary-bg hover (a green hover over a red row would read as a
+     state change, not a hover). Low alphas on purpose ("слегка"): the blended
+     background shifts row-text contrast by well under the AA margin documented
+     for --text above. Sage for "done" (the accent hue — light enough to show
+     on the dark bg), the danger red for "cancelled". */
+  --row-done: rgba(126, 164, 103, 0.1);
+  --row-done-hover: rgba(126, 164, 103, 0.22);
+  --row-cancelled: rgba(239, 68, 68, 0.09);
+  --row-cancelled-hover: rgba(239, 68, 68, 0.18);
+
   /* Greenhouse backdrop (see index.css). `--greenhouse-ink` paints the leaf
      pattern (an alpha-masked layer, so the WHOLE colour — hue and opacity —
      lives here per theme); `--greenhouse-glow` is the soft "light through the
@@ -148,6 +162,15 @@
   /* Deepened so danger text clears AA on the greyer bg (#a51616 = 4.9:1). */
   --danger: #a51616;
   --danger-bg: rgba(165, 22, 22, 0.1);
+
+  /* Order-status row tints — the light palette's DEEPER hues (olive + the
+     darkened danger red): the dark theme's light sage / bright red would wash
+     out on the grey bg. Slightly higher alphas for the same reason. Same
+     hover-replaces-primary-bg and AA notes as the dark values (see :root). */
+  --row-done: rgba(93, 124, 57, 0.14);
+  --row-done-hover: rgba(93, 124, 57, 0.26);
+  --row-cancelled: rgba(165, 22, 22, 0.1);
+  --row-cancelled-hover: rgba(165, 22, 22, 0.2);
 
   /* Greenhouse backdrop — a DARK ink on the light grey bg (the deep forest
      brand hue), where the dark theme's light sage would wash out. Same
