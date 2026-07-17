@@ -320,7 +320,9 @@ const DataTable = ({
       </table>
 
       {/* Mobile: one card per order. */}
-      <div data-testid="orders-cards" className="flex flex-col gap-3 p-4 lg:hidden">
+      {/* p-2 (not p-4): the owner asked for HALF the screen gutter on a phone —
+          the narrow width goes to the cards, not the edges. */}
+      <div data-testid="orders-cards" className="flex flex-col gap-3 p-2 lg:hidden">
         {rows.map((row) => (
           <OrderCard
             key={row.id}

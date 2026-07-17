@@ -442,7 +442,10 @@ const Sidebar = ({
           width) and `has-…:flex-1` lets the page-controls wrapper grow to fill it.
           While closed the title keeps its flex-1 (pushing the controls + burger to
           the right edge). Sync + burger stay fixed (shrink-0) as the anchored edge. */}
-      <div className="group flex items-center gap-2 border-b border-border bg-bg px-4 py-3 md:hidden">
+      {/* px-2 py-1.5 (was px-4 py-3): halved with the rest of the phone screen
+          gutters (owner request) — the bar's controls carry their own hit-area
+          padding, so the thinner chrome stays tappable. */}
+      <div className="group flex items-center gap-2 border-b border-border bg-bg px-2 py-1.5 md:hidden">
         <div className="flex min-w-0 flex-1 items-center gap-2 group-has-[.js-search-open]:hidden">
           {showBack && (
             <Button
