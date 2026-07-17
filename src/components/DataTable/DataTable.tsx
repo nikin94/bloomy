@@ -235,7 +235,12 @@ const DataTable = ({
                     key={header.id}
                     aria-sort={header.column.getCanSort() ? ariaSort(sorted) : undefined}
                     className={cn(
-                      'sticky top-0 z-10 whitespace-nowrap border-b border-border bg-bg px-4 py-3 text-left font-semibold text-heading',
+                      // bg-bg/80 + backdrop-blur (not the old opaque bg-bg): over the
+                      // photo backdrop a solid header read as a glaring white slab
+                      // against the translucent rows. The blur keeps rows scrolling
+                      // under the sticky header illegible (its masking job) while the
+                      // header stays in the same tinted register as the content scrim.
+                      'sticky top-0 z-10 whitespace-nowrap border-b border-border bg-bg/80 backdrop-blur-sm px-4 py-3 text-left font-semibold text-heading',
                       columnById.get(header.column.id)?.width,
                     )}
                   >

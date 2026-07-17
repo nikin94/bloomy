@@ -38,7 +38,12 @@ const AppLayout = () => {
     <HeaderActionsContext.Provider value={setActions}>
       <div className="flex h-full flex-col md:flex-row">
         <Sidebar actions={actions} onDrawerOpenChange={setDrawerOpen} />
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col" inert={drawerOpen}>
+        {/* bg-bg/70: a translucent theme-bg scrim under the CONTENT column only.
+            The photo backdrop stays at its true colours (the owner's ask), but
+            the text-bearing area gets a consistent tinted underlay so table
+            rows/labels don't sit straight on busy foliage. The sidebar is left
+            unscrimmed — it has few, large labels and keeps the photo visible. */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-bg/70" inert={drawerOpen}>
           {/* One content-area boundary + Suspense for every signed-in page: a
               page's data load suspends to the Spinner here, and a failed load
               shows the shared inline retry — the sidebar/header stay mounted
