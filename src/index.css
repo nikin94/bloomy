@@ -47,20 +47,23 @@
   }
 }
 
-/* Greenhouse leaf pattern — the decorative backdrop the owner asked for ("вид
-   теплицы"), drawn behind every screen. ONE inline SVG tile (scattered leaves +
-   two sprigs, ~1 kB — no image download, offline-safe) is used as an alpha MASK
-   over a plain colour fill, so the pattern recolours per theme from a single
-   asset: `--greenhouse-ink` (theme.css) supplies both the hue and the low
-   opacity. A fixed, pointer-inert underlay: content scrolls over a stationary
-   backdrop, opaque surfaces (cards, the pinned form footer, the drawer) simply
-   cover it, and clicks pass straight through. z-index -1 tucks it under #root's
-   content while it still paints over the page background above. */
+/* Greenhouse leaf pattern — the OFFLINE/loading BACKUP under the photographic
+   backdrop (body::after below). ONE inline SVG tile (scattered leaves + two
+   sprigs, ~1 kB — zero-download, always available offline) is used as an alpha
+   MASK over a plain colour fill, so the pattern recolours per theme from a
+   single asset: `--greenhouse-ink` (theme.css) supplies both the hue and the
+   low opacity. A fixed, pointer-inert underlay: content scrolls over a
+   stationary backdrop, opaque surfaces (cards, the pinned form footer, the
+   drawer) simply cover it, and clicks pass straight through. z-index -2 tucks
+   it UNDER the photo layer: while the photo is loading — or offline, where
+   public/ assets are not in the SW precache — the semi-transparent veil on the
+   photo layer lets this pattern show through, so the page never falls back to
+   a flat empty colour. */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: -2;
   pointer-events: none;
   background-color: var(--greenhouse-ink);
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cdefs%3E%3Cpath id='l' d='M18 0C32 14 36 36 18 56C0 36 4 14 18 0Z'/%3E%3Cg id='s'%3E%3Cpath d='M2 56C10 40 10 20 22 2' fill='none' stroke='black' stroke-width='2'/%3E%3Cuse href='%23l' transform='translate(6 34) scale(0.28) rotate(-40)'/%3E%3Cuse href='%23l' transform='translate(14 22) scale(0.28) rotate(30)'/%3E%3Cuse href='%23l' transform='translate(16 8) scale(0.28) rotate(-30)'/%3E%3C/g%3E%3C/defs%3E%3Cuse href='%23l' transform='translate(28 26) rotate(24)'/%3E%3Cuse href='%23l' transform='translate(150 120) rotate(-18) scale(0.8)'/%3E%3Cuse href='%23l' transform='translate(90 180) rotate(40) scale(0.6)'/%3E%3Cuse href='%23s' transform='translate(170 30)'/%3E%3Cuse href='%23s' transform='translate(40 130) rotate(15)'/%3E%3C/svg%3E");
@@ -73,24 +76,26 @@ body::before {
   mask-repeat: repeat;
 }
 
-/* PHOTOGRAPHIC backdrop variant — a real greenhouse photo instead of the leaf
-   pattern, for the owner to compare (preview toggle: open the app with
-   `?bg=photo`; the attribute is set by the inline script in index.html). The
-   photo (public/greenhouse.jpg, owner-supplied) is LANDSCAPE on purpose:
-   `cover` on a wide desktop viewport must not blow a portrait shot up to fill
-   the width (the zoomed/"stretched past the screen" look the first candidate
-   had). It sits under a heavy theme-coloured veil (--greenhouse-veil) plus a
-   slight blur, so it reads as ambience and text contrast stays intact. The
-   scale() hides the blur's edge fringe. Offline note: public/ assets are not
-   in the SW precache, so offline this degrades to the veil colour ≈ plain bg. */
-:root[data-bg='photo'] body::before {
-  background-color: transparent;
+/* PHOTOGRAPHIC backdrop — the DEFAULT (owner's pick over the pattern-only
+   variant; the leaf pattern above stays as the offline/loading backup). Dense
+   conservatory foliage (public/greenhouse.jpg, Unsplash licence — free use, no
+   attribution required), 2560px wide so `cover` on a desktop viewport shows no
+   pixelation. LANDSCAPE on purpose: `cover` on a wide viewport must not blow a
+   portrait shot up to fill the width (the zoomed/"stretched past the screen"
+   look an early candidate had). It sits under a theme-coloured veil
+   (--greenhouse-veil — heavier on dark, lighter on light so the photo reads
+   closer to its real look there) plus a slight blur, so content stays
+   legible over it. The scale() hides the blur's edge fringe. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background-image: linear-gradient(var(--greenhouse-veil), var(--greenhouse-veil)),
     url('/greenhouse.jpg');
   background-size: cover;
   background-position: center;
-  -webkit-mask-image: none;
-  mask-image: none;
   filter: blur(2px);
   transform: scale(1.03);
 }
