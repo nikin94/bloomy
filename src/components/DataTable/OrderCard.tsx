@@ -1,5 +1,8 @@
+import type { TFunction } from 'i18next'
+import { getSubtotalMinor } from '@/types/order'
 import type { Order } from '@/types/order'
 import type { OrderColumn } from '@/components/DataTable/orderColumns'
+import { formatMoney } from '@/utils/format'
 import { cellValue, activationProps, statusTintClass } from './rowHelpers'
 import CardField from './CardField'
 import { cn } from '@/lib/cn'
@@ -17,11 +20,15 @@ const OrderCard = ({
   columnById,
   highlighted,
   onActivate,
+  t,
 }: {
   order: Order
   columnById: Map<string, OrderColumn>
   highlighted: boolean
   onActivate: (order: Order) => void
+  // Passed from DataTable (single i18next subscription) for the delivery note —
+  // the same pattern as Thumb/PlantItemRow.
+  t: TFunction<'order'>
 }) => {
   const value = (id: string) => {
     const column = columnById.get(id)
@@ -90,10 +97,26 @@ const OrderCard = ({
         />
       </div>
 
-      {/* Total at the bottom, set off by a divider: label and amount on one line. */}
+      {/* Total at the bottom, set off by a divider. Same money presentation the
+          form footer settled on (#175): the headline is the PLANTS-ONLY sum (not
+          the stored total, which includes delivery), and the delivery cost sits
+          in small type directly under it — rendered only when one was entered,
+          so a free delivery doesn't print a noisy "+ delivery 0". The desktop
+          table's Сумма column intentionally keeps the full total. */}
       <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3">
         <span className="text-sm font-medium text-text">{label('total')}</span>
-        <span className="font-semibold text-heading tabular-nums">{value('total')}</span>
+        <span className="flex flex-col items-end">
+          <span className="font-semibold text-heading tabular-nums">
+            {formatMoney(getSubtotalMinor(order), order.currency)}
+          </span>
+          {order.deliveryPriceMinor > 0 && (
+            <span className="whitespace-nowrap text-xs text-text">
+              {t('form.totalDelivery', {
+                amount: formatMoney(order.deliveryPriceMinor, order.currency),
+              })}
+            </span>
+          )}
+        </span>
       </div>
     </div>
   )

@@ -236,6 +236,29 @@ describe('DataTable (mobile card layout)', () => {
     expect(within(card).getByText('Роза ×2')).toBeInTheDocument()
   })
 
+  it('shows the plants-only sum with the delivery cost on its own line under it', () => {
+    render(
+      <DataTable
+        orders={[order({ deliveryPriceMinor: 5000 })]}
+        columns={columns}
+        onRowClick={vi.fn()}
+      />,
+    )
+    const card = cards().getByRole('link')
+    // Роза ×2 @150 → the headline is the 300,00 plants sum, NOT the stored
+    // 350,00 total with delivery baked in (same presentation as the form footer).
+    expect(within(card).getByText(/300,00/)).toBeInTheDocument()
+    expect(within(card).queryByText(/350,00/)).not.toBeInTheDocument()
+    // The delivery cost rides in the small note under the amount.
+    expect(within(card).getByText(/доставка/)).toHaveTextContent(/50,00/)
+  })
+
+  it('omits the delivery note when no delivery price is set', () => {
+    // The factory's default order has deliveryPriceMinor 0 — no noisy "+ 0" note.
+    render(<DataTable orders={[order()]} columns={columns} onRowClick={vi.fn()} />)
+    expect(cards().queryByText(/доставка/)).not.toBeInTheDocument()
+  })
+
   it('activates a card with a click and with the keyboard', async () => {
     const onRowClick = vi.fn()
     render(<DataTable orders={[order()]} columns={columns} onRowClick={onRowClick} />)

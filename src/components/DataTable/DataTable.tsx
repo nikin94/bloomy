@@ -115,6 +115,9 @@ const DataTable = ({
   onSortChange,
 }: DataTableProps) => {
   const { t } = useTranslation()
+  // The mobile card's delivery note reuses the order form's `form.totalDelivery`
+  // key; one subscription here, passed down so each card doesn't open its own.
+  const { t: tOrder } = useTranslation('order')
   // Memoize the column defs so the table instance keeps a stable reference
   // (TanStack recomputes its models when columns/data identity changes).
   const columnDefs = useMemo(() => columns.map(toColumnDef), [columns])
@@ -328,6 +331,7 @@ const DataTable = ({
             columnById={columnById}
             highlighted={row.original.id === highlightOrderId}
             onActivate={onRowClick}
+            t={tOrder}
           />
         ))}
       </div>
