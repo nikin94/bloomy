@@ -1,6 +1,6 @@
 import type { Order } from '@/types/order'
 import type { OrderColumn } from '@/components/DataTable/orderColumns'
-import { cellValue, activationProps } from './rowHelpers'
+import { cellValue, activationProps, statusTintClass } from './rowHelpers'
 import CardField from './CardField'
 import { cn } from '@/lib/cn'
 import { FOCUS_RING_INSET } from '@/styles/fieldStyles'
@@ -36,7 +36,10 @@ const OrderCard = ({
   return (
     <div
       className={cn(
-        'flex cursor-pointer flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg',
+        'flex cursor-pointer flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition-colors',
+        // The status tint lays over bg-surface as a gradient (see index.css) and
+        // carries its own hover; untinted cards keep the primary-bg hover.
+        statusTintClass(order) ?? 'hover:bg-primary-bg focus-visible:bg-primary-bg',
         // Skip rendering/layout/paint of off-screen cards: the browser only lays a
         // card out once it nears the viewport, so a long list scrolls cheaply with
         // no JS virtualizer for the (tall, variable-height) mobile layout. The

@@ -5,7 +5,7 @@ import type { OrderColumn } from '@/components/DataTable/orderColumns'
 import { TABLE_CELL_BASE, TABLE_CELL_NOWRAP, TABLE_CELL_WRAP } from '@/styles/tableStyles'
 import { FOCUS_RING_INSET } from '@/styles/fieldStyles'
 import { cn } from '@/lib/cn'
-import { activationProps } from './rowHelpers'
+import { activationProps, statusTintClass } from './rowHelpers'
 
 // One order as a table row (desktop layout). Extracted from the map so the loop
 // body is a real component with a stable render boundary.
@@ -34,7 +34,11 @@ const OrderTableRow = ({
     ref={measureRef}
     data-index={index}
     className={cn(
-      'cursor-pointer transition-colors hover:bg-primary-bg focus-visible:bg-primary-bg',
+      'cursor-pointer transition-colors',
+      // Terminal orders sit on their status tint (green delivered / red
+      // cancelled), which brings its own stepped-up hover; an in-progress row
+      // keeps the default primary-bg hover. Never both — see statusTintClass.
+      statusTintClass(row.original) ?? 'hover:bg-primary-bg focus-visible:bg-primary-bg',
       FOCUS_RING_INSET,
       highlighted && 'row-highlight',
     )}

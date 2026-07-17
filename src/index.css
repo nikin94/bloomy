@@ -16,6 +16,30 @@
   }
 }
 
+/* Order-status row tints (orders table rows + mobile cards; colours per theme
+   in theme.css, applied via statusTintClass in rowHelpers). The tint is a
+   background-IMAGE (a flat gradient), not background-color, so ONE utility
+   serves both hosts: on a (transparent) table row it blends into the page
+   scrim, and on a card it lays OVER the opaque `bg-surface` instead of
+   replacing it — a background-color tint would turn the card into a
+   translucent window onto the backdrop photo. Hover/focus step the same hue
+   up; on tinted rows this REPLACES the primary-bg hover (see the components),
+   so a red row never turns green under the pointer. */
+@utility status-tint-done {
+  background-image: linear-gradient(var(--row-done), var(--row-done));
+  &:hover,
+  &:focus-visible {
+    background-image: linear-gradient(var(--row-done-hover), var(--row-done-hover));
+  }
+}
+@utility status-tint-cancelled {
+  background-image: linear-gradient(var(--row-cancelled), var(--row-cancelled));
+  &:hover,
+  &:focus-visible {
+    background-image: linear-gradient(var(--row-cancelled-hover), var(--row-cancelled-hover));
+  }
+}
+
 /* Base document styling, applied via the design tokens defined in theme.css. */
 :root {
   font-family: var(--sans);

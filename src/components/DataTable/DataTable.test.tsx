@@ -104,6 +104,30 @@ describe('DataTable (table layout)', () => {
     render(<DataTable orders={[order()]} columns={columns} onRowClick={vi.fn()} />)
     expect(table().getByRole('link')).not.toHaveClass('row-highlight')
   })
+
+  it('tints terminal rows by status: delivered green, cancelled red, in-progress none', () => {
+    render(
+      <DataTable
+        orders={[
+          order({ id: 'o1', status: 'delivered' }),
+          order({ id: 'o2', number: 2, status: 'cancelled' }),
+          order({ id: 'o3', number: 3, status: 'processing' }),
+        ]}
+        columns={columns}
+        onRowClick={vi.fn()}
+      />,
+    )
+    const [delivered, cancelled, processing] = table().getAllByRole('link')
+    expect(delivered).toHaveClass('status-tint-done')
+    expect(cancelled).toHaveClass('status-tint-cancelled')
+    // The tint utility carries its own hover, so a tinted row must NOT also
+    // have the primary-bg hover (a red row would turn green under the pointer).
+    expect(cancelled).not.toHaveClass('hover:bg-primary-bg')
+    // An in-progress row is untinted and keeps the default hover.
+    expect(processing).not.toHaveClass('status-tint-done')
+    expect(processing).not.toHaveClass('status-tint-cancelled')
+    expect(processing).toHaveClass('hover:bg-primary-bg')
+  })
 })
 
 describe('DataTable (sorting)', () => {
@@ -259,6 +283,26 @@ describe('DataTable (mobile card layout)', () => {
     const [first, second] = cards().getAllByRole('link')
     expect(first).not.toHaveClass('row-highlight')
     expect(second).toHaveClass('row-highlight')
+  })
+
+  it('tints terminal cards by status, keeping the opaque card surface', () => {
+    render(
+      <DataTable
+        orders={[
+          order({ id: 'o1', status: 'delivered' }),
+          order({ id: 'o2', number: 2, status: 'cancelled' }),
+        ]}
+        columns={columns}
+        onRowClick={vi.fn()}
+      />,
+    )
+    const [delivered, cancelled] = cards().getAllByRole('link')
+    expect(delivered).toHaveClass('status-tint-done')
+    expect(cancelled).toHaveClass('status-tint-cancelled')
+    // The tint is a gradient OVER the surface — bg-surface must stay, or the
+    // card becomes a translucent window onto the backdrop photo.
+    expect(cancelled).toHaveClass('bg-surface')
+    expect(cancelled).not.toHaveClass('hover:bg-primary-bg')
   })
 })
 
