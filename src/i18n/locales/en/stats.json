@@ -18,7 +18,7 @@
     "title": "Money",
     "withDelivery": "Incl. delivery",
     "delivery": "Delivery",
-    "total": "Total cost",
+    "total": "Plants cost",
     "hint": "Paid orders only",
     "empty": "No paid orders in this period",
     "emptyPeriod": "No orders in this period"

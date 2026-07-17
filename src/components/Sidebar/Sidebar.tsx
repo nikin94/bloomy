@@ -339,7 +339,12 @@ const Sidebar = ({
         data-collapsed={collapsed}
         aria-label={t('menu')}
         className={cn(
-          'relative hidden shrink-0 flex-col gap-2 border-r border-border p-3 transition-[width] duration-300 ease-out motion-reduce:transition-none md:flex',
+          // bg-bg/55: a lighter scrim than the content column's — the nav
+          // labels sit straight on the photo backdrop, and the thinned global
+          // veil (immersion pass) no longer dims it enough for text on its own.
+          // Lighter than the content's 75% on purpose: the rail is where the
+          // greenery shows most, so it keeps more of the photo.
+          'relative hidden shrink-0 flex-col gap-2 border-r border-border bg-bg/55 p-3 transition-[width] duration-300 ease-out motion-reduce:transition-none md:flex',
           collapsed ? 'w-16' : 'w-48',
         )}
       >

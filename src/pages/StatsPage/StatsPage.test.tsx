@@ -87,7 +87,7 @@ describe('StatsPage', () => {
     expect(totalCount().getByText('1')).toBeInTheDocument()
     // Money + status + chart sections are present.
     expect(screen.getByText('С учётом доставки')).toBeInTheDocument()
-    expect(screen.getByText('Общая стоимость')).toBeInTheDocument()
+    expect(screen.getByText('Стоимость растений')).toBeInTheDocument()
     expect(screen.getByText('Статусы заказов')).toBeInTheDocument()
     expect(screen.getByText('Доставлено')).toBeInTheDocument()
     expect(screen.getByText('Заказы по месяцам')).toBeInTheDocument()
