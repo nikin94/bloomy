@@ -4,6 +4,7 @@ import type {
   Currency,
   DeliveryMethod,
   Order,
+  OrderSource,
   PaymentMethod,
   PaymentStatus,
   OrderStatus,
@@ -40,6 +41,10 @@ export interface OrderFormFields {
   currency: Currency
   paymentStatus: PaymentStatus
   status: OrderStatus
+  // Marketplace the order came in from, or null for a direct order. The form
+  // edits it as the "Заказ с Авито" checkbox; null (not undefined) so the value
+  // serialises into the draft/snapshot JSON like every other field.
+  source: OrderSource | null
   comment: string
   // Photos picked on the form, held LOCALLY (File objects) and uploaded only on
   // submit — abandoning the form leaves no orphaned blobs.
@@ -208,6 +213,11 @@ const createInitialState = ({ draft, source, initialOrder, defaults }: OrderForm
       paymentStatus: draft?.paymentStatus ?? initialOrder?.paymentStatus ?? 'pending',
       status: draft?.status ?? initialOrder?.status ?? 'processing',
       comment: draft?.comment ?? initialOrder?.comment ?? '',
+      // The marketplace source rides the CONTENTS (edit and repeat both prefill
+      // it): repeating an Avito customer's order almost always means the same
+      // channel again, and unchecking is one tap. `?? null` also covers a draft
+      // saved before this field existed (its schema key is optional).
+      source: draft ? (draft.source ?? null) : (source?.source ?? null),
       pendingFiles: [],
       keptPhotos: initialOrder?.photos ?? [],
     },
@@ -245,6 +255,7 @@ export function useOrderFormState(init: OrderFormInit) {
     fields.currency,
     fields.paymentStatus,
     fields.status,
+    fields.source,
     fields.comment,
     fields.pendingFiles.length,
     fields.keptPhotos,

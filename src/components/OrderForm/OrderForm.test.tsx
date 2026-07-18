@@ -421,6 +421,50 @@ describe('OrderForm', () => {
     expect(payload).not.toHaveProperty('dateCreated')
   })
 
+  it('saves the Avito source when the checkbox is ticked, omits it when not', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    renderForm({ onSubmit, initialOrder: order({ customerId: 'c1' }) })
+    await screen.findByRole('combobox', { name: 'Существующий клиент' })
+
+    // Unchecked by default (no source on the order) → the payload omits the
+    // field entirely, so a direct order stores nothing. One submit per mount:
+    // a successful save keeps the form in its `saving` state (the caller
+    // navigates away in the app), so the ticked case gets a fresh mount.
+    const checkbox = screen.getByRole('checkbox', { name: 'Заказ с Авито' })
+    expect(checkbox).not.toBeChecked()
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('source')
+  })
+
+  it('saves source: "avito" when the checkbox is ticked', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    renderForm({ onSubmit, initialOrder: order({ customerId: 'c1' }) })
+    await screen.findByRole('combobox', { name: 'Существующий клиент' })
+
+    await user.click(screen.getByRole('checkbox', { name: 'Заказ с Авито' }))
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0].source).toBe('avito')
+  })
+
+  it('prefills the Avito checkbox from an edited order and from a repeat seed', async () => {
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    // Edit: the order's own source checks the box.
+    const { unmount } = renderForm({ initialOrder: order({ customerId: 'c1', source: 'avito' }) })
+    expect(await screen.findByRole('checkbox', { name: 'Заказ с Авито' })).toBeChecked()
+    unmount()
+
+    // Repeat: the source rides the CONTENTS — the same customer repeating an
+    // Avito order almost always comes through the same channel again.
+    renderForm({ seed: order({ customerId: 'c1', source: 'avito' }) })
+    expect(await screen.findByRole('checkbox', { name: 'Заказ с Авито' })).toBeChecked()
+  })
+
   it('drops a dangling customer FK when the seeded customer no longer exists', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
     const user = userEvent.setup()

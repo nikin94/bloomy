@@ -85,6 +85,7 @@ export function useOrderDraftSync(
     currency: fields.currency,
     paymentStatus: fields.paymentStatus,
     status: fields.status,
+    source: fields.source,
     comment: fields.comment,
   } satisfies OrderDraft)
 

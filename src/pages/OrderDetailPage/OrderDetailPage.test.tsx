@@ -125,6 +125,22 @@ describe('OrderDetailPage', () => {
     expect(screen.queryByText(/Подарок:/)).not.toBeInTheDocument()
   })
 
+  it('shows the marketplace source row only for a marked order', async () => {
+    // An Avito order gets an "Источник: Авито" detail row…
+    fetchOrder.mockResolvedValue(order({ source: 'avito' }))
+    const { unmount } = renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    expect(screen.getByText('Источник')).toBeInTheDocument()
+    expect(screen.getByText('Авито')).toBeInTheDocument()
+    unmount()
+
+    // …while a direct order (no stored field) adds no row at all.
+    fetchOrder.mockResolvedValue(order())
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    expect(screen.queryByText('Источник')).not.toBeInTheDocument()
+  })
+
   it('saves a status change as a partial patch (only the changed field)', async () => {
     const user = userEvent.setup()
     renderPage()

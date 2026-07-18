@@ -2,6 +2,7 @@ import { z } from 'zod'
 import {
   CURRENCY_SCHEMA,
   DELIVERY_METHOD_SCHEMA,
+  ORDER_SOURCE_SCHEMA,
   ORDER_STATUS_SCHEMA,
   PAYMENT_METHOD_SCHEMA,
   PAYMENT_STATUS_SCHEMA,
@@ -44,6 +45,10 @@ export const ORDER_DRAFT_SCHEMA = z.object({
   // legacy status values/field names existed simply fails validation and is
   // discarded (the documented stale-draft contract) — never crashes the form.
   status: ORDER_STATUS_SCHEMA,
+  // Marketplace source, null for a direct order. OPTIONAL (unlike the fields
+  // above) so a draft saved before this field existed still restores instead of
+  // being discarded — the reader treats a missing key as null.
+  source: ORDER_SOURCE_SCHEMA.nullable().optional(),
   comment: z.string(),
 })
 

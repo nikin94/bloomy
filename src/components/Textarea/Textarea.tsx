@@ -14,13 +14,17 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 // the top border. See Input's FLOATING_LABEL for why the floated state lives only
 // in the peer-* variants and why the input carries `placeholder=" "`.
 const FLOATING_LABEL =
-  // `rounded` for the floated pill's corners — same reasoning as Input/Select.
-  'pointer-events-none absolute left-2 top-3 z-10 rounded px-1 text-base text-placeholder ' +
+  // `rounded` + the transparent-resting border for the floated pill — same
+  // reasoning as Input: the border colour fades in via `transition-all` while
+  // the label travels up, and transparent (not width 0) keeps the box size
+  // stable mid-flight.
+  'pointer-events-none absolute left-2 top-3 z-10 rounded border border-transparent px-1 text-base text-placeholder ' +
   'motion-safe:transition-all motion-safe:duration-150 ' +
   'peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-focus:bg-bg peer-focus:text-primary ' +
+  'peer-focus:border-border ' +
   'peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 ' +
   'peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:bg-bg ' +
-  'peer-[:not(:placeholder-shown)]:text-text'
+  'peer-[:not(:placeholder-shown)]:text-text peer-[:not(:placeholder-shown)]:border-border'
 
 // The app's standard multi-line text field. Shares the same visual base as Input
 // (border, focus ring, padding) and is vertically resizable; pass `label` for a
