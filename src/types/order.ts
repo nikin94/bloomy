@@ -186,17 +186,10 @@ export const trashDaysLeft = (order: Order, now: number): number | null => {
   return Math.max(0, Math.ceil((purgeAt - now) / DAY_MS))
 }
 
-// Derived money selectors. All amounts are integers in minor units (kopecks).
-// Subtotal = sum of item line totals; total = subtotal + delivery.
-export const getSubtotalMinor = (order: Order): number =>
-  order.plants.reduce((sum, item) => sum + item.unitPriceMinor * item.quantity, 0)
-
-export const getTotalMinor = (order: Order): number =>
-  getSubtotalMinor(order) + order.deliveryPriceMinor
-
 // An order is "completed" once it is delivered or cancelled — both are terminal
-// states with no further work to do on the order.
-export const TERMINAL_ORDER_STATUSES = ['delivered', 'cancelled'] as const
+// states with no further work to do on the order. Module-private: every outside
+// consumer goes through isTerminalOrderStatus.
+const TERMINAL_ORDER_STATUSES = ['delivered', 'cancelled'] as const
 
 export const isTerminalOrderStatus = (status: OrderStatus): boolean =>
   (TERMINAL_ORDER_STATUSES as readonly OrderStatus[]).includes(status)
@@ -214,100 +207,6 @@ export const resolveCompletedAt = (
 ): number | undefined =>
   isTerminalOrderStatus(status) ? (previousCompletedAt ?? now) : undefined
 
-// Plants ordered for display: the most valuable line first (unit price ×
-// quantity), descending. Returns a copy, so the stored order array is never
-// mutated. Used wherever the plant list is shown (orders table + detail page).
-export const plantsByValueDesc = (plants: OrderItem[]): OrderItem[] =>
-  [...plants].sort((a, b) => b.unitPriceMinor * b.quantity - a.unitPriceMinor * a.quantity)
-
-// --- Aggregate stats (customer page; reused later by the statistics tab) ------
-//
-// All computed in memory from already-loaded orders, so they stay offline-safe
-// and need no extra reads or schema change. Callers pass an ALREADY-FILTERED
-// list (e.g. one customer's orders, deleted ones excluded) — these helpers don't
-// filter by owner/customer/trash themselves.
-
-// Total PAID revenue grouped by currency (minor units). Orders priced in
-// different currencies are never summed together — there is no conversion (see
-// the multi-currency model) — so the result is one running total per currency.
-// Only `paid` orders count as revenue; pending/refunded and cancelled don't.
-export const revenueByCurrencyMinor = (orders: Order[]): Map<Currency, number> => {
-  const totals = new Map<Currency, number>()
-  for (const order of orders) {
-    if (order.paymentStatus !== 'paid') continue
-    totals.set(order.currency, (totals.get(order.currency) ?? 0) + getTotalMinor(order))
-  }
-  return totals
-}
-
-// The most-ordered plants across the given orders, by total quantity (summed
-// across every order), highest first. Returns at most `limit` { name, quantity }
-// entries — used for the customer page's "frequent plants" summary.
-export const topPlantsByQuantity = (
-  orders: Order[],
-  limit: number,
-): { name: string; quantity: number }[] => {
-  const totals = new Map<string, number>()
-  for (const order of orders) {
-    for (const plant of order.plants) {
-      totals.set(plant.name, (totals.get(plant.name) ?? 0) + plant.quantity)
-    }
-  }
-  return [...totals.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([name, quantity]) => ({ name, quantity }))
-}
-
-// Distinct plant names across the given orders, trimmed and sorted (ru locale),
-// for the order form's name autocomplete. Deduped case-insensitively, keeping the
-// FIRST-seen original casing as the suggestion — so picking one reuses an exact
-// existing spelling. That is the whole point: fewer near-duplicate names ("Кактус"
-// vs "кактус") means cleaner per-plant stats. Blank names are dropped.
-export const collectPlantNames = (orders: Order[]): string[] => {
-  const byKey = new Map<string, string>()
-  for (const order of orders) {
-    for (const plant of order.plants) {
-      const name = plant.name.trim()
-      if (name === '') continue
-      const key = name.toLowerCase()
-      if (!byKey.has(key)) byKey.set(key, name)
-    }
-  }
-  return [...byKey.values()].sort((a, b) => a.localeCompare(b, 'ru'))
-}
-
-// Every gift occurrence across the given orders (the caller passes an
-// already-filtered list, e.g. one customer's orders), newest first, each
-// stamped with the date of the order it was sent with. Deliberately NOT
-// deduped: the customer page lists each handed-over gift as its own row — two
-// orders gifting the same plant are two separate givings, and the dates are
-// what tells them apart. (The order form's "already sent" warning keeps its
-// own case-insensitive per-customer set — a repeat only needs flagging once
-// there.) Blank names are dropped, mirroring the form's blank-row drop.
-export interface GiftOccurrence {
-  name: string
-  dateCreated: number // the carrying order's creation timestamp (ms)
-  orderId: string
-}
-export const giftsByDateDesc = (orders: Order[]): GiftOccurrence[] => {
-  const entries: GiftOccurrence[] = []
-  for (const order of orders) {
-    for (const gift of order.gifts ?? []) {
-      const name = gift.name.trim()
-      if (name === '') continue
-      entries.push({ name, dateCreated: order.dateCreated, orderId: order.id })
-    }
-  }
-  return entries.sort((a, b) => b.dateCreated - a.dateCreated)
-}
-
-// Compact per-line label for the orders-table list: the name, plus the quantity
-// as ×N only when it is more than 1 (a quantity of 1 is the common case and just
-// adds noise).
-export const plantLineLabel = (item: OrderItem): string =>
-  item.quantity === 1 ? item.name : `${item.name} ×${item.quantity}`
-
 // Canonical option values, in display order. Status/method values keep their
 // workflow order (e.g. processing → delivered). Labels are NOT stored here:
 // they are resolved per render from the `order` i18n namespace, so the UI follows
@@ -318,81 +217,10 @@ export const ORDER_STATUS_VALUES = ORDER_STATUS_SCHEMA.options
 export const PAYMENT_METHOD_VALUES = PAYMENT_METHOD_SCHEMA.options
 export const DELIVERY_METHOD_VALUES = DELIVERY_METHOD_SCHEMA.options
 
-// Active filters for the orders list. An empty string in a status field means
-// "any"; an empty query matches everything. The price range is in minor units
-// (kopecks): `minPriceMinor` defaults to 0 and `maxPriceMinor` is null when
-// there is no upper bound (the order total is matched against this range).
-export interface OrderFilter {
-  query: string
-  paymentStatus: PaymentStatus | ''
-  status: OrderStatus | ''
-  // Empty string means "any currency"; otherwise the order's currency must match.
-  currency: Currency | ''
-  minPriceMinor: number
-  maxPriceMinor: number | null
-  // Inclusive creation-date range (ms). null on a side means that bound is open.
-  // Set from the filter dialog's date fields, or seeded when a monthly-chart bar
-  // on the statistics tab is clicked (opens the list scoped to that month).
-  minDate: number | null
-  maxDate: number | null
-}
-
-export const EMPTY_ORDER_FILTER: OrderFilter = {
-  query: '',
-  paymentStatus: '',
-  status: '',
-  currency: '',
-  minPriceMinor: 0,
-  maxPriceMinor: null,
-  minDate: null,
-  maxDate: null,
-}
-
-// True when no filter is active — used to tell "no orders yet" apart from
-// "nothing matched the filter".
-export const isOrderFilterActive = (filter: OrderFilter): boolean =>
-  filter.query.trim() !== '' || isModalFilterActive(filter)
-
-// True when any filter that lives behind the filter dialog is set (payment
-// status, order status, or the price range). Drives the filter-icon's active
-// dot — the inline search query is shown separately and isn't counted here.
-export const isModalFilterActive = (filter: OrderFilter): boolean =>
-  filter.paymentStatus !== '' ||
-  filter.status !== '' ||
-  filter.currency !== '' ||
-  filter.minPriceMinor > 0 ||
-  filter.maxPriceMinor !== null ||
-  filter.minDate !== null ||
-  filter.maxDate !== null
-
-// Filter the orders list in memory (the dataset is small and already loaded, so
-// no extra query). `query` matches the order number, the resolved customer name,
-// or any plant name, case- and whitespace-insensitive; each set status must
-// match exactly; the order total must fall within the price range and its
-// creation date within the date range. The customer
-// name is resolved via the same lookup the table uses, so a search finds orders
-// by who they belong to even though the order stores only an id.
-export const filterOrders = (
-  orders: Order[],
-  filter: OrderFilter,
-  getCustomerName: (customerId: string) => string,
-): Order[] => {
-  const q = filter.query.trim().toLowerCase()
-  return orders.filter((o) => {
-    if (filter.paymentStatus !== '' && o.paymentStatus !== filter.paymentStatus) return false
-    if (filter.status !== '' && o.status !== filter.status) return false
-    if (filter.currency !== '' && o.currency !== filter.currency) return false
-    const total = getTotalMinor(o)
-    if (total < filter.minPriceMinor) return false
-    if (filter.maxPriceMinor !== null && total > filter.maxPriceMinor) return false
-    if (filter.minDate !== null && o.dateCreated < filter.minDate) return false
-    if (filter.maxDate !== null && o.dateCreated > filter.maxDate) return false
-    if (q === '') return true
-    const plantNames = o.plants.map((p) => p.name).join(' ')
-    // `number ?? ''` so an unsynced order (number null) isn't searchable as the
-    // literal "null"; it still matches by customer/plant.
-    return `${o.number ?? ''} ${getCustomerName(o.customerId)} ${plantNames}`
-      .toLowerCase()
-      .includes(q)
-  })
-}
+// The derived read-side lives in sibling modules — selectors (money, plant
+// lists, gift history) and the list filter — re-exported here so this module
+// stays the single import surface for the order domain while the FILE stays
+// about the stored schema. Their imports from here are type-only, so the
+// re-export creates no runtime cycle.
+export * from './orderSelectors'
+export * from './orderFilter'

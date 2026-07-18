@@ -94,10 +94,14 @@ export const sanitizeIntegerInput = (value: string): string => value.replace(/\D
 
 // Parse a user-entered amount in the major unit (rubles, e.g. "149,90") into
 // integer minor units (kopecks). Accepts a comma or a dot as the decimal
-// separator. Returns 0 for empty or non-numeric input.
+// separator. Returns 0 for empty or non-numeric input. Clamped to ≥ 0: every
+// caller feeds sanitized input (sanitizeDecimalInput strips the minus), but a
+// negative slipping through would violate the schema's nonnegative() and make
+// parseOrder THROW on the next read — crashing the whole list — so the guard
+// belongs at this boundary, not only in the input filter.
 export const parseRublesToMinor = (value: string): number => {
   const rubles = Number(value.replace(',', '.').trim())
-  return Number.isFinite(rubles) ? Math.round(rubles * 100) : 0
+  return Number.isFinite(rubles) ? Math.max(0, Math.round(rubles * 100)) : 0
 }
 
 // Inverse of parseRublesToMinor: turn stored minor units (kopecks) back into the

@@ -93,3 +93,20 @@ describe('Modal', () => {
     expect(opener).toHaveFocus()
   })
 })
+
+describe('Modal body scroll lock', () => {
+  it('locks page scroll while mounted and restores the previous value on close', () => {
+    // A pre-existing inline overflow must be RESTORED, not blanked — otherwise
+    // unmount order across nested dialogs could strand the page unscrollable.
+    document.body.style.overflow = 'scroll'
+    const { unmount } = render(
+      <Modal title="Заголовок" onClose={() => {}}>
+        <p>Тело</p>
+      </Modal>,
+    )
+    expect(document.body.style.overflow).toBe('hidden')
+    unmount()
+    expect(document.body.style.overflow).toBe('scroll')
+    document.body.style.overflow = ''
+  })
+})

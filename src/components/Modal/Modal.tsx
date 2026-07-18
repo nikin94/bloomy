@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/components/Button/Button'
 import CloseIcon from '@/components/icons/CloseIcon'
+import { cn } from '@/lib/cn'
 
 interface ModalProps {
   // Heading shown in the dialog header and used as its accessible name.
@@ -49,6 +50,18 @@ const Modal = ({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  // Body scroll lock: while a dialog is up, the page behind it must not scroll
+  // (a tall dialog's inner body scrolls instead — see the min-h-0 wrapper). The
+  // previous overflow value is restored, not blanked, so nesting/unmount order
+  // can't strand the page unscrollable. Runs once — the caller mounts on open.
+  useEffect(() => {
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [])
 
   // Focus trap: move focus into the dialog on open, keep Tab/Shift+Tab cycling
   // inside it (aria-modal hides the rest from screen readers but doesn't stop
@@ -114,14 +127,17 @@ const Modal = ({
           overflows the screen; the header stays fixed and the body scrolls. */}
       <div
         ref={panelRef}
-        className={`relative z-10 flex max-h-full w-full ${widthClassName} flex-col gap-6 rounded-lg border border-border bg-bg p-4 shadow-xl sm:p-6`}
+        className={cn(
+          'relative z-10 flex max-h-full w-full flex-col gap-6 rounded-lg border border-border bg-bg p-4 shadow-xl sm:p-6',
+          widthClassName,
+        )}
       >
         <header
-          className={`flex items-center gap-3 ${centerTitle ? 'justify-center' : 'justify-between'}`}
+          className={cn('flex items-center gap-3', centerTitle ? 'justify-center' : 'justify-between')}
         >
           <h2
             id={titleId}
-            className={`m-0 text-lg font-semibold text-heading ${centerTitle ? 'text-center' : ''}`}
+            className={cn('m-0 text-lg font-semibold text-heading', centerTitle && 'text-center')}
           >
             {title}
           </h2>
