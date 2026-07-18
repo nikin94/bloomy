@@ -1,11 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import type { User } from 'firebase/auth'
-import { QueryWrapper } from '@/test/queryWrapper'
-import { AuthContext } from '@/context/authContext'
-import AppLayout from '@/components/AppLayout/AppLayout'
+import { renderPageInLayout } from '@/test/renderPageInLayout'
 import type { Order } from '@/types/order'
 import { order as baseOrder, customer } from '@/test/factories'
 
@@ -33,7 +29,6 @@ vi.mock('react-router-dom', async (importOriginal) => ({
 // Imported after the mocks above are registered.
 import DeletedOrdersPage from './DeletedOrdersPage'
 
-const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
 
 // Same observable defaults as before consolidation: a trashed order №5 with a
 // latin address (the canonical Роза×1 line and zero delivery are reused as-is).
@@ -50,20 +45,7 @@ const order = (over: Partial<Order> = {}): Order =>
 // page publishes its search + filter controls into it via the header-actions
 // slot — so the page is mounted inside AppLayout here, as in the app, for the
 // header and its actions to render.
-const renderPage = () =>
-  render(
-    <QueryWrapper>
-      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-        <MemoryRouter>
-          <Routes>
-            <Route element={<AppLayout />}>
-              <Route path="*" element={<DeletedOrdersPage />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </AuthContext.Provider>
-    </QueryWrapper>,
-  )
+const renderPage = () => renderPageInLayout(<DeletedOrdersPage />)
 
 // The desktop table and mobile cards both render in jsdom; scope to one layout.
 const table = () => within(screen.getByTestId('orders-table'))

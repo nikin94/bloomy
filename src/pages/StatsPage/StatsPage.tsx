@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import LegendItem from './LegendItem'
 import Select from '@/components/Select/Select'
 import { FIELD_BASE, FIELD_NORMAL, FOCUS_RING } from '@/styles/fieldStyles'
+import { cn } from '@/lib/cn'
 import { useOrdersSuspense } from '@/queries/orders'
 import { useRequiredOwnerId } from '@/hooks/useOwnerId'
 import { useNow } from '@/hooks/useNow'
@@ -144,7 +145,7 @@ const StatsPage = () => {
                 min={minDateInput}
                 max={customTo || maxDateInput}
                 onChange={(e) => setCustomFrom(e.target.value)}
-                className={`${FIELD_BASE} ${FIELD_NORMAL} px-3 py-2 text-heading max-[424px]:w-full`}
+                className={cn(FIELD_BASE, FIELD_NORMAL, 'px-3 py-2 text-heading max-[424px]:w-full')}
               />
             </label>
             <label className="flex flex-col gap-1 text-sm text-text max-[424px]:w-full">
@@ -155,7 +156,7 @@ const StatsPage = () => {
                 min={customFrom || minDateInput}
                 max={maxDateInput}
                 onChange={(e) => setCustomTo(e.target.value)}
-                className={`${FIELD_BASE} ${FIELD_NORMAL} px-3 py-2 text-heading max-[424px]:w-full`}
+                className={cn(FIELD_BASE, FIELD_NORMAL, 'px-3 py-2 text-heading max-[424px]:w-full')}
               />
             </label>
           </div>
@@ -309,9 +310,10 @@ const StatsPage = () => {
                         />
                       </div>
                       <span
-                        className={`whitespace-nowrap text-xs font-semibold text-heading ${
-                          labelOnMobile ? '' : 'invisible sm:visible'
-                        }`}
+                        className={cn(
+                          'whitespace-nowrap text-xs font-semibold text-heading',
+                          !labelOnMobile && 'invisible sm:visible',
+                        )}
                       >
                         {monthShort(bucket.monthStart)}
                       </span>
@@ -329,7 +331,10 @@ const StatsPage = () => {
                       onClick={() => openMonth(bucket.monthStart)}
                       title={`${monthLong(bucket.monthStart)} — ${t('orders', { count: bucket.count })}`}
                       aria-label={`${monthLong(bucket.monthStart)}: ${t('orders', { count: bucket.count })}. ${t('chart.openMonth')}`}
-                      className={`group flex min-w-0 flex-1 flex-col items-center gap-1 rounded px-0.5 py-1 transition-colors hover:bg-primary-bg ${FOCUS_RING}`}
+                      className={cn(
+                        'group flex min-w-0 flex-1 flex-col items-center gap-1 rounded px-0.5 py-1 transition-colors hover:bg-primary-bg',
+                        FOCUS_RING,
+                      )}
                     >
                       {body}
                     </button>

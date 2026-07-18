@@ -1,11 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import type { User } from 'firebase/auth'
-import { QueryWrapper } from '@/test/queryWrapper'
-import { AuthContext } from '@/context/authContext'
-import AppLayout from '@/components/AppLayout/AppLayout'
+import { renderPageInLayout } from '@/test/renderPageInLayout'
 import { customer } from '@/test/factories'
 
 // Firebase-touching modules are mocked so the page never initializes the real
@@ -25,26 +21,12 @@ vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
 // Imported after the mocks above are registered.
 import CustomersPage from './CustomersPage'
 
-const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
 
 // The header now lives in AppLayout (above the page in the route tree), and the
 // page publishes its search control into it via the header-actions slot — so the
 // page is mounted inside AppLayout here, exactly as in the app, for the header +
 // its actions to render.
-const renderPage = () =>
-  render(
-    <QueryWrapper>
-      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-        <MemoryRouter>
-          <Routes>
-            <Route element={<AppLayout />}>
-              <Route path="*" element={<CustomersPage />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </AuthContext.Provider>
-    </QueryWrapper>,
-  )
+const renderPage = () => renderPageInLayout(<CustomersPage />)
 
 // The list renders BOTH the desktop table and the mobile card stack — jsdom has
 // no media queries, so both are in the DOM. Scope content/action assertions to

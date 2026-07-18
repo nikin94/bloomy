@@ -1,11 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import type { User } from 'firebase/auth'
-import { QueryWrapper } from '@/test/queryWrapper'
-import { AuthContext } from '@/context/authContext'
-import AppLayout from '@/components/AppLayout/AppLayout'
+import { renderPageInLayout } from '@/test/renderPageInLayout'
 import type { Order } from '@/types/order'
 import type { Customer } from '@/types/customer'
 import { order as baseOrder, customer as baseCustomer } from '@/test/factories'
@@ -31,7 +27,6 @@ vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
 // Imported after the mocks above are registered.
 import OrdersPage from './OrdersPage'
 
-const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
 
 // Same observable defaults as before consolidation: this page pairs an order
 // with a `c-anna` customer (so the list resolves the customer name), a real
@@ -52,20 +47,7 @@ const customer = (over: Partial<Customer> = {}): Customer =>
 // page publishes its search + filter controls into it via the header-actions
 // slot — so the page is mounted inside AppLayout here, as in the app, for the
 // header and its actions to render.
-const renderPage = () =>
-  render(
-    <QueryWrapper>
-      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-        <MemoryRouter>
-          <Routes>
-            <Route element={<AppLayout />}>
-              <Route path="*" element={<OrdersPage />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </AuthContext.Provider>
-    </QueryWrapper>,
-  )
+const renderPage = () => renderPageInLayout(<OrdersPage />)
 
 // The desktop table and mobile cards both render in jsdom; scope to one layout.
 const table = () => within(screen.getByTestId('orders-table'))
@@ -327,31 +309,19 @@ describe('OrdersPage offline numbering', () => {
       order({ id: 'jun', number: 1, customerId: 'c-anna', dateCreated: jun }),
       order({ id: 'jan', number: 2, customerId: 'c-boris', dateCreated: jan }),
     ])
-    render(
-      <QueryWrapper>
-        <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-          <MemoryRouter
-            initialEntries={[
-              {
-                pathname: '/orders',
-                state: {
-                  dateFilter: {
-                    minDate: new Date(2026, 5, 1, 0, 0, 0, 0).getTime(),
-                    maxDate: new Date(2026, 5, 30, 23, 59, 59, 999).getTime(),
-                  },
-                },
-              },
-            ]}
-          >
-            <Routes>
-              <Route element={<AppLayout />}>
-                <Route path="*" element={<OrdersPage />} />
-              </Route>
-            </Routes>
-          </MemoryRouter>
-        </AuthContext.Provider>
-      </QueryWrapper>,
-    )
+    renderPageInLayout(<OrdersPage />, {
+      initialEntries: [
+        {
+          pathname: '/orders',
+          state: {
+            dateFilter: {
+              minDate: new Date(2026, 5, 1, 0, 0, 0, 0).getTime(),
+              maxDate: new Date(2026, 5, 30, 23, 59, 59, 999).getTime(),
+            },
+          },
+        },
+      ],
+    })
 
     await screen.findByTestId('orders-table')
     // Only the June order shows; the January one is filtered out on first render.
