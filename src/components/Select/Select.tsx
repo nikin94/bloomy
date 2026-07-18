@@ -11,8 +11,10 @@ import { FIELD_BASE, FIELD_INVALID, FIELD_NORMAL } from '@/styles/fieldStyles'
 // pill sticks out ABOVE the field: over the page background (not just the
 // border notch) square corners read as a stray rectangle — on the login/photo
 // backdrop especially — so the chip's corners follow the field's rounding.
+// The thin `border-border` is STATIC here (Input/Textarea fade it in during the
+// float): this label never travels, so it simply matches their floated end state.
 const FLOATING_LABEL =
-  'pointer-events-none absolute left-2 top-0 z-10 -translate-y-1/2 rounded bg-bg px-1 text-xs text-text ' +
+  'pointer-events-none absolute left-2 top-0 z-10 -translate-y-1/2 rounded border border-border bg-bg px-1 text-xs text-text ' +
   'peer-focus:text-primary peer-aria-[invalid=true]:text-danger'
 
 // A native <select> styled to match the app's inputs (it shares FIELD_BASE with

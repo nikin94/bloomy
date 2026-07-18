@@ -581,8 +581,12 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               Checked ⇢ source: 'avito', unchecked ⇢ null (stored as an absent
               field — see payload.ts). The label wraps the input, so the whole
               text is tappable — a comfortable target on a phone without extra
-              layout. `accent-primary` keeps the native checkbox on-theme. */}
-          <label className="flex w-fit cursor-pointer items-center gap-2 py-1 text-sm text-text">
+              layout. `accent-primary` keeps the native checkbox on-theme.
+              `-my-2.5` tightens the row against the column's gap-5 (a one-line
+              checkbox doesn't need a full field's breathing room above and
+              below); the kept `py-1` stays INSIDE the label, so the tap target
+              doesn't shrink with the visual gap. */}
+          <label className="-my-2.5 flex w-fit cursor-pointer items-center gap-2 py-1 text-sm text-text">
             <input
               type="checkbox"
               checked={fields.source === 'avito'}

@@ -20,17 +20,22 @@ import { sanitizeDecimalInput, sanitizeIntegerInput } from '@/utils/format'
 // `:autofill` (peer-autofill) and the prefixed `:-webkit-autofill` — as separate
 // rules, because an unsupported selector would invalidate a combined list.
 const FLOATING_LABEL =
-  // `rounded` matters only once floated (the resting label has no background):
-  // the floated pill straddles the top border and its half above the field sits
-  // on the page background, where square corners read as a stray rectangle.
-  'pointer-events-none absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded px-1 text-base text-placeholder ' +
+  // `rounded` + the thin border matter only once floated (the resting label has
+  // no background): the floated pill straddles the top border and its half above
+  // the field sits on the page background, where square borderless edges read as
+  // a stray rectangle. The border rests TRANSPARENT (not width 0) so the box
+  // never changes size mid-flight, and `transition-all` fades its colour in over
+  // the same 150ms the label travels up — the outline appears as the pill lifts.
+  'pointer-events-none absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded border border-transparent px-1 text-base text-placeholder ' +
   'motion-safe:transition-all motion-safe:duration-150 ' +
-  'peer-focus:top-0 peer-focus:text-xs peer-focus:bg-bg peer-focus:text-primary ' +
+  'peer-focus:top-0 peer-focus:text-xs peer-focus:bg-bg peer-focus:text-primary peer-focus:border-border ' +
   'peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:text-xs ' +
   'peer-[:not(:placeholder-shown)]:bg-bg peer-[:not(:placeholder-shown)]:text-text ' +
+  'peer-[:not(:placeholder-shown)]:border-border ' +
   'peer-autofill:top-0 peer-autofill:text-xs peer-autofill:bg-bg peer-autofill:text-text ' +
+  'peer-autofill:border-border ' +
   'peer-[:-webkit-autofill]:top-0 peer-[:-webkit-autofill]:text-xs ' +
-  'peer-[:-webkit-autofill]:bg-bg peer-[:-webkit-autofill]:text-text ' +
+  'peer-[:-webkit-autofill]:bg-bg peer-[:-webkit-autofill]:text-text peer-[:-webkit-autofill]:border-border ' +
   'peer-aria-[invalid=true]:text-danger'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
