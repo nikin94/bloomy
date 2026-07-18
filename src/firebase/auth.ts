@@ -31,12 +31,14 @@ export const signInWithGoogle = () => signInWithPopup(auth, provider)
 // Crimea user, whose machine blocks the Google OAuth flow (accounts.google.com).
 // Note this still talks to identitytoolkit.googleapis.com — the same Auth backend
 // the popup uses — so it only helps if the block is specific to the OAuth flow,
-// not the whole Firebase Auth domain. Accounts are created admin-side (Firebase
-// console) — there is no open sign-up.
+// not the whole Firebase Auth domain. Accounts come from either the console or
+// the app's own open registration below (owner decision 2026-07-18).
 export const signInWithEmail = (email: string, password: string) =>
   signInWithEmailAndPassword(auth, email, password)
 
-// Email/password REGISTRATION (open self-sign-up). createUserWithEmailAndPassword
+// Email/password REGISTRATION — open self-sign-up, BY DESIGN (owner decision
+// 2026-07-18: new users may register themselves; data stays owner-scoped, so a
+// fresh account only ever sees its own empty tenant). createUserWithEmailAndPassword
 // creates the account AND signs the new user straight in, so onAuthStateChanged
 // fires and the app redirects exactly like a sign-in — no separate confirm step.
 // Same identitytoolkit.googleapis.com backend as sign-in (so the Crimea domain

@@ -92,9 +92,16 @@ const OrderDetailPage = () => {
     }
     // Optimistically hold the change in the order-detail cache (what this page
     // reads), then persist just the changed field(s) and invalidate the list caches
-    // so returning to a list within the stale window shows the new status. The
-    // `includeDeleted: true` flag matches this page's useOrder read — same cache key.
+    // so returning to a list within the stale window shows the new status.
+    //
+    // BOTH single-order cache entries are updated: the key includes `includeDeleted`
+    // (this page reads `true`, the EDIT page reads `false`), so writing only this
+    // page's entry would leave the edit form's entry stale-but-fresh — opening Edit
+    // within the stale window would then prefill the OLD status, and saving would
+    // silently revert this change (and wipe completedAt). saveStatus only runs on
+    // an active order (a trashed one is read-only), so the `false` entry is valid.
     orderCache.setOrder(ownerId, next.id, true, () => next)
+    orderCache.setOrder(ownerId, next.id, false, () => next)
     patchOrder(next.id, writePatch)
     orderCache.invalidateLists()
   }

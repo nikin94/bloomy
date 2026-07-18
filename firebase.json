@@ -6,6 +6,19 @@
     "rewrites": [{ "source": "**", "destination": "/index.html" }],
     "headers": [
       {
+        "comment": "Security headers on every response (defense-in-depth; the app has no HTML-injection sink today, this guards against future drift). CSP notes: script/style need 'unsafe-inline' because index.html carries the no-flash theme script and React sets inline style attributes (RangeSlider/StatsPage bars) — external script origins are still locked down, which is the main win. connect-src covers Firestore/Auth/Storage (*.googleapis.com incl. long-polling), the auth helper (*.google.com) and Sentry ingest; frame-src covers the Google sign-in popup/iframe (authDomain on firebaseapp.com + accounts.google.com); img-src allows the app's own assets, object-URL photo previews (blob:), Storage downloads and Google avatars. If a legit origin ever gets blocked, loosen the single directive — or drop this block wholesale to roll back.",
+        "source": "**",
+        "headers": [
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.googleapis.com https://*.google.com https://*.ingest.de.sentry.io https://*.ingest.sentry.io; img-src 'self' data: blob: https://firebasestorage.googleapis.com https://lh3.googleusercontent.com; frame-src https://*.firebaseapp.com https://accounts.google.com; worker-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+          },
+          { "key": "X-Content-Type-Options", "value": "nosniff" },
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+          { "key": "Permissions-Policy", "value": "camera=(self), microphone=(), geolocation=()" }
+        ]
+      },
+      {
         "comment": "version.json, index.html and sw.js must never be cached. A stale version.json/index.html would hide a new build from a long-open tab; a stale sw.js would pin an old service worker (Firebase Hosting's default 1h cache would otherwise delay every SW update by up to an hour).",
         "source": "/@(version.json|index.html|sw.js)",
         "headers": [{ "key": "Cache-Control", "value": "no-cache, max-age=0" }]
