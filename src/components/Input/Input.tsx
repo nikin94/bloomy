@@ -20,7 +20,10 @@ import { sanitizeDecimalInput, sanitizeIntegerInput } from '@/utils/format'
 // `:autofill` (peer-autofill) and the prefixed `:-webkit-autofill` — as separate
 // rules, because an unsupported selector would invalidate a combined list.
 const FLOATING_LABEL =
-  'pointer-events-none absolute left-2 top-1/2 z-10 -translate-y-1/2 px-1 text-base text-placeholder ' +
+  // `rounded` matters only once floated (the resting label has no background):
+  // the floated pill straddles the top border and its half above the field sits
+  // on the page background, where square corners read as a stray rectangle.
+  'pointer-events-none absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded px-1 text-base text-placeholder ' +
   'motion-safe:transition-all motion-safe:duration-150 ' +
   'peer-focus:top-0 peer-focus:text-xs peer-focus:bg-bg peer-focus:text-primary ' +
   'peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:text-xs ' +

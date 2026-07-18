@@ -7,9 +7,12 @@ import { FIELD_BASE, FIELD_INVALID, FIELD_NORMAL } from '@/styles/fieldStyles'
 // field" state to animate from — the label simply stays in the floated (notched,
 // top-border) position, matching the floated look of a filled input. `bg-bg px-1`
 // punches the notch in the border; the colour follows focus / the invalid state
-// so it reads consistently with Input/Textarea.
+// so it reads consistently with Input/Textarea. `rounded` because the label's
+// pill sticks out ABOVE the field: over the page background (not just the
+// border notch) square corners read as a stray rectangle — on the login/photo
+// backdrop especially — so the chip's corners follow the field's rounding.
 const FLOATING_LABEL =
-  'pointer-events-none absolute left-2 top-0 z-10 -translate-y-1/2 bg-bg px-1 text-xs text-text ' +
+  'pointer-events-none absolute left-2 top-0 z-10 -translate-y-1/2 rounded bg-bg px-1 text-xs text-text ' +
   'peer-focus:text-primary peer-aria-[invalid=true]:text-danger'
 
 // A native <select> styled to match the app's inputs (it shares FIELD_BASE with
