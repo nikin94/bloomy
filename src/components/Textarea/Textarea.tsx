@@ -14,7 +14,8 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 // the top border. See Input's FLOATING_LABEL for why the floated state lives only
 // in the peer-* variants and why the input carries `placeholder=" "`.
 const FLOATING_LABEL =
-  'pointer-events-none absolute left-2 top-3 z-10 px-1 text-base text-placeholder ' +
+  // `rounded` for the floated pill's corners — same reasoning as Input/Select.
+  'pointer-events-none absolute left-2 top-3 z-10 rounded px-1 text-base text-placeholder ' +
   'motion-safe:transition-all motion-safe:duration-150 ' +
   'peer-focus:top-0 peer-focus:-translate-y-1/2 peer-focus:text-xs peer-focus:bg-bg peer-focus:text-primary ' +
   'peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:-translate-y-1/2 ' +

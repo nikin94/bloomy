@@ -13,14 +13,12 @@ import {
   setDoc,
   updateDoc,
   where,
-  writeBatch,
 } from 'firebase/firestore'
 import {
   createOrder,
   fetchDeletedOrders,
   fetchOrder,
   fetchOrders,
-  migrateOrderStatuses,
   patchOrder,
   reconcileOrderNumbers,
   restoreOrder,
@@ -45,7 +43,6 @@ vi.mock('firebase/firestore', () => ({
   Timestamp: { fromMillis: vi.fn((ms: number) => ({ __ts: ms })) },
   updateDoc: vi.fn(),
   where: vi.fn(() => ({})),
-  writeBatch: vi.fn(),
 }))
 
 // A valid stored order document (everything Firestore holds, minus the doc id).
@@ -167,9 +164,7 @@ describe('updateOrder', () => {
     // No comment / completedAt / gifts / photos on the body → they must be
     // deleteField()'d so a field the user cleared is actually removed, not left
     // lingering by the merge (e.g. removing the gift row — or the last photo —
-    // on an edit really drops the field). The legacy `shipmentStatus` field
-    // rides the same list, so every edit lazily cleans a pre-rename document
-    // (a deleteField on an absent field is a no-op).
+    // on an edit really drops the field).
     const body = storedOrder({ number: 7, paymentStatus: 'paid' }) as Omit<Order, 'id'>
 
     await updateOrder('o1', body)
@@ -183,7 +178,6 @@ describe('updateOrder', () => {
       completedAt: { __deleted: true },
       gifts: { __deleted: true },
       photos: { __deleted: true },
-      shipmentStatus: { __deleted: true },
     })
     expect(setDoc).not.toHaveBeenCalled()
     // No numbering transaction on edit.
@@ -219,8 +213,6 @@ describe('updateOrder', () => {
 
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
       address: 'New St 2',
-      // The lazy pre-rename cleanup always rides along (no-op when absent).
-      shipmentStatus: { __deleted: true },
     })
   })
 
@@ -239,7 +231,6 @@ describe('updateOrder', () => {
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
       comment: { __deleted: true },
       completedAt: { __deleted: true },
-      shipmentStatus: { __deleted: true },
     })
   })
 })
@@ -417,84 +408,5 @@ describe('softDeleteOrder', () => {
     const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000
     expect(writes.purgeAt).toEqual({ __ts: deletedAt + THIRTY_DAYS })
     expect(writes).not.toHaveProperty('isDeleted')
-  })
-})
-
-describe('migrateOrderStatuses', () => {
-  it('renames the legacy shipmentStatus field and collapses legacy values in one batch', async () => {
-    // Raw snapshot data on purpose: the migration reads d.data() directly, since
-    // parseOrder's lift/normalization HIDES exactly the legacy shapes it must find.
-    vi.mocked(getDocs).mockResolvedValue({
-      docs: [
-        // Legacy VALUE already under the new field name.
-        { id: 'a', data: () => ({ status: 'new' }) },
-        // Pre-rename documents: the legacy FIELD, with a legacy and a current value.
-        { id: 'b', data: () => ({ shipmentStatus: 'shipped' }) },
-        { id: 'c', data: () => ({ shipmentStatus: 'delivered' }) },
-        // Already migrated — must be left alone.
-        { id: 'd', data: () => ({ status: 'delivered' }) },
-      ],
-    } as unknown as Awaited<ReturnType<typeof getDocs>>)
-    const batch = { update: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) }
-    vi.mocked(writeBatch).mockReturnValue(batch as unknown as ReturnType<typeof writeBatch>)
-
-    await expect(migrateOrderStatuses('owner-1')).resolves.toBe(true)
-
-    // Every stale doc is settled in BOTH shapes: the (normalized) value lands
-    // under `status` and the legacy field is deleted — a no-op where absent.
-    expect(batch.update).toHaveBeenCalledTimes(3)
-    expect(batch.update).toHaveBeenNthCalledWith(1, expect.anything(), {
-      status: 'processing',
-      shipmentStatus: { __deleted: true },
-    })
-    expect(batch.update).toHaveBeenNthCalledWith(2, expect.anything(), {
-      status: 'processing',
-      shipmentStatus: { __deleted: true },
-    })
-    expect(batch.update).toHaveBeenNthCalledWith(3, expect.anything(), {
-      status: 'delivered',
-      shipmentStatus: { __deleted: true },
-    })
-    expect(batch.commit).toHaveBeenCalledTimes(1)
-  })
-
-  it('writes nothing when every document already carries the current field and values', async () => {
-    vi.mocked(getDocs).mockResolvedValue({
-      docs: [
-        { id: 'a', data: () => ({ status: 'processing' }) },
-        { id: 'b', data: () => ({ status: 'cancelled' }) },
-      ],
-    } as unknown as Awaited<ReturnType<typeof getDocs>>)
-
-    await expect(migrateOrderStatuses('owner-1')).resolves.toBe(false)
-    expect(writeBatch).not.toHaveBeenCalled()
-  })
-
-  it('chunks the rewrite under the 500-writes batch cap for a large backlog', async () => {
-    // 401 stale docs: a single batch would exceed nothing here, but proves the
-    // 400-per-batch split — one full chunk plus a 1-write remainder. Without
-    // chunking, an account with 500+ stale orders would fail commit() forever
-    // (the done-flag never sets, so every list mount re-runs and re-fails).
-    vi.mocked(getDocs).mockResolvedValue({
-      docs: Array.from({ length: 401 }, (_, i) => ({
-        id: `o${i}`,
-        data: () => ({ shipmentStatus: 'new' }),
-      })),
-    } as unknown as Awaited<ReturnType<typeof getDocs>>)
-    // A fresh batch per writeBatch() call, so per-chunk update counts are visible.
-    const batches: { update: ReturnType<typeof vi.fn>; commit: ReturnType<typeof vi.fn> }[] = []
-    vi.mocked(writeBatch).mockImplementation(() => {
-      const batch = { update: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) }
-      batches.push(batch)
-      return batch as unknown as ReturnType<typeof writeBatch>
-    })
-
-    await expect(migrateOrderStatuses('owner-1')).resolves.toBe(true)
-
-    expect(batches).toHaveLength(2)
-    expect(batches[0].update).toHaveBeenCalledTimes(400)
-    expect(batches[1].update).toHaveBeenCalledTimes(1)
-    expect(batches[0].commit).toHaveBeenCalledTimes(1)
-    expect(batches[1].commit).toHaveBeenCalledTimes(1)
   })
 })

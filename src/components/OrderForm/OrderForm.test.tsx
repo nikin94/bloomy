@@ -591,7 +591,7 @@ describe('OrderForm draft (create only, localStorage)', () => {
         paymentMethod: 'cash',
         currency: 'RUB',
         paymentStatus: 'pending',
-        shipmentStatus: 'new',
+        status: 'processing',
         comment: '',
       }),
     )

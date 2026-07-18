@@ -7,42 +7,16 @@ import { z } from 'zod'
 export const PAYMENT_STATUS_SCHEMA = z.enum(['pending', 'paid', 'refunded'])
 export type PaymentStatus = z.infer<typeof PAYMENT_STATUS_SCHEMA>
 
-// The order's workflow status ("статус заказа" — formerly the SHIPMENT status,
-// hence the legacy stored field name below). Reduced to exactly three states by
-// owner decision: an order is being worked on, done, or cancelled. Named
-// ORDER_STATUS (not just STATUS) because PaymentStatus lives right beside it.
+// The order's workflow status ("статус заказа"). Reduced to exactly three
+// states by owner decision: an order is being worked on, done, or cancelled.
+// Named ORDER_STATUS (not just STATUS) because PaymentStatus lives right beside
+// it. HISTORY: documents once carried retired values ('new'/'packing'/'shipped')
+// under a retired field name (`shipmentStatus`); a lazy per-owner migration
+// rewrote every stored document to this exact shape, after which the tolerant
+// read schema, the field lift and the migration itself were removed — the
+// stored data now matches this enum verbatim.
 export const ORDER_STATUS_SCHEMA = z.enum(['processing', 'delivered', 'cancelled'])
 export type OrderStatus = z.infer<typeof ORDER_STATUS_SCHEMA>
-
-// The retired status VALUES real production documents still carry. They must
-// stay READABLE until migrateOrderStatuses has rewritten every user's orders —
-// narrowing a stored enum before the data is migrated makes parseOrder throw
-// and crashes the whole list (the `packing` lesson). All of them meant "still
-// being worked on", so they normalize to 'processing'.
-export const LEGACY_ORDER_STATUSES = ['new', 'packing', 'shipped'] as const
-const LEGACY_SET: ReadonlySet<string> = new Set(LEGACY_ORDER_STATUSES)
-
-// What the DOCUMENT may hold (current + legacy values), collapsed to the current
-// three-state union on parse. Every read path goes through this, so the rest of
-// the app only ever sees 'processing' | 'delivered' | 'cancelled'; the lazy
-// migration rewrites the stored value to match (see migrateOrderStatuses).
-export const STORED_ORDER_STATUS_SCHEMA = z
-  .enum([...LEGACY_ORDER_STATUSES, ...ORDER_STATUS_SCHEMA.options])
-  .transform((s): OrderStatus => (LEGACY_SET.has(s) ? 'processing' : (s as OrderStatus)))
-
-// The status field was RENAMED in storage: documents written before the rename
-// hold it as `shipmentStatus`, current ones as `status`. Lift the legacy field
-// into `status` before validation so both shapes parse; when both are somehow
-// present, the new field wins. Shared by the stored-order schema and the form
-// draft (whose saved copies predate the rename the same way); the lazy
-// migration (migrateOrderStatuses) renames the field in the documents themselves.
-export const liftLegacyStatusField = (data: unknown): unknown =>
-  data !== null &&
-  typeof data === 'object' &&
-  !('status' in data) &&
-  'shipmentStatus' in data
-    ? { ...data, status: (data as Record<string, unknown>).shipmentStatus }
-    : data
 
 export const PAYMENT_METHOD_SCHEMA = z.enum(['cash', 'card', 'bank'])
 export type PaymentMethod = z.infer<typeof PAYMENT_METHOD_SCHEMA>
@@ -83,13 +57,7 @@ export type OrderItem = z.infer<typeof ORDER_ITEM_SCHEMA>
 // stored — they are derived from the items (see getSubtotalMinor/getTotalMinor).
 // Only delivery is an independent input and is stored. This keeps the order a
 // live "notebook": editing items recomputes the totals, no stale snapshot.
-//
-// Wrapped in a preprocess that lifts the legacy `shipmentStatus` field into
-// `status` (see liftLegacyStatusField), so documents from before the rename
-// parse without waiting for the lazy migration to rewrite them.
-export const STORED_ORDER_SCHEMA = z.preprocess(
-  liftLegacyStatusField,
-  z.object({
+export const STORED_ORDER_SCHEMA = z.object({
   // Per-owner sequential number. NULLABLE because an order can be created while
   // OFFLINE, where the numbering transaction (which needs the server) can't run:
   // such an order is written with `number: null` and gets its real number later,
@@ -120,7 +88,7 @@ export const STORED_ORDER_SCHEMA = z.preprocess(
   // valid without a migration (widening is safe; narrowing is not).
   gifts: z.array(ORDER_ITEM_SCHEMA).optional(),
   paymentStatus: PAYMENT_STATUS_SCHEMA,
-  status: STORED_ORDER_STATUS_SCHEMA,
+  status: ORDER_STATUS_SCHEMA,
   comment: z.string().optional(),
   // When the order was completed (ms timestamp). An order is "completed" once it
   // reaches a terminal status (delivered or cancelled); this is stamped
@@ -150,8 +118,7 @@ export const STORED_ORDER_SCHEMA = z.preprocess(
   // existed, so pre-existing orders stay valid without a migration (widening the
   // schema is safe; narrowing is not — see the `packing` lesson).
   photos: z.array(z.string()).optional(),
-  }),
-)
+})
 
 // A single order for potted plants and flowers = one table row. The doc id is
 // added to the stored shape.

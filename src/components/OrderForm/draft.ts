@@ -2,10 +2,9 @@ import { z } from 'zod'
 import {
   CURRENCY_SCHEMA,
   DELIVERY_METHOD_SCHEMA,
+  ORDER_STATUS_SCHEMA,
   PAYMENT_METHOD_SCHEMA,
   PAYMENT_STATUS_SCHEMA,
-  STORED_ORDER_STATUS_SCHEMA,
-  liftLegacyStatusField,
 } from '@/types/order'
 
 // Local draft of the CREATE order form (see OrderForm). Written to localStorage —
@@ -28,12 +27,7 @@ const DRAFT_ITEM_SCHEMA = z.object({
   price: z.string(),
 })
 
-// Wrapped in the same legacy lift the stored order uses: a draft saved before
-// the field rename holds the status under `shipmentStatus` — lift it into
-// `status` so that draft still restores instead of being silently discarded.
-export const ORDER_DRAFT_SCHEMA = z.preprocess(
-  liftLegacyStatusField,
-  z.object({
+export const ORDER_DRAFT_SCHEMA = z.object({
   customerMode: z.enum(['existing', 'new']),
   selectedCustomerId: z.string(),
   newName: z.string(),
@@ -46,13 +40,12 @@ export const ORDER_DRAFT_SCHEMA = z.preprocess(
   paymentMethod: PAYMENT_METHOD_SCHEMA,
   currency: CURRENCY_SCHEMA,
   paymentStatus: PAYMENT_STATUS_SCHEMA,
-  // Legacy-tolerant on purpose: drafts saved before the three-state status
-  // model carry 'new' — the same normalizing schema the stored order uses maps
-  // them to 'processing' instead of silently discarding the whole draft.
-  status: STORED_ORDER_STATUS_SCHEMA,
+  // Strict three-state enum, like the stored order: a draft written back when
+  // legacy status values/field names existed simply fails validation and is
+  // discarded (the documented stale-draft contract) — never crashes the form.
+  status: ORDER_STATUS_SCHEMA,
   comment: z.string(),
-  }),
-)
+})
 
 export type OrderDraft = z.infer<typeof ORDER_DRAFT_SCHEMA>
 

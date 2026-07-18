@@ -360,30 +360,21 @@ describe('STORED_ORDER_SCHEMA', () => {
     expect(STORED_ORDER_SCHEMA.safeParse(validDoc()).success).toBe(true)
   })
 
-  it('lifts the legacy shipmentStatus FIELD into status (pre-rename documents)', () => {
-    // Documents written before the field rename hold the status under
-    // `shipmentStatus`; the schema's preprocess lifts it so they keep parsing
-    // until migrateOrderStatuses has renamed the field in storage.
-    const legacy: Record<string, unknown> = { ...validDoc() }
-    delete legacy.status
-    legacy.shipmentStatus = 'shipped'
-    const parsed = STORED_ORDER_SCHEMA.parse(legacy)
-    // Lifted AND value-normalized in one pass; the old key is stripped.
-    expect(parsed.status).toBe('processing')
-    expect(parsed).not.toHaveProperty('shipmentStatus')
-    // When both fields are somehow present, the new one wins.
-    const both = { ...validDoc(), status: 'delivered', shipmentStatus: 'new' }
-    expect(STORED_ORDER_SCHEMA.parse(both).status).toBe('delivered')
-  })
-
-  it('normalizes every legacy status value to "processing" on parse', () => {
-    // Documents written before the three-state model still carry these values;
-    // parseOrder must keep reading them (the `packing` lesson) until
-    // migrateOrderStatuses has rewritten every account's stored data.
-    for (const legacy of ['new', 'packing', 'shipped']) {
-      const parsed = STORED_ORDER_SCHEMA.parse({ ...validDoc(), status: legacy })
-      expect(parsed.status).toBe('processing')
+  it('rejects the retired legacy status shapes — the schema is deliberately strict now', () => {
+    // The lazy per-owner migration rewrote every stored document (field rename
+    // `shipmentStatus`→`status`, values new/packing/shipped→'processing'), after
+    // which the tolerant read schema was REMOVED by owner decision. These
+    // shapes must now fail parse: if one ever reappears in production it should
+    // surface loudly (parseOrder throws → Sentry), not be silently re-tolerated.
+    for (const legacyValue of ['new', 'packing', 'shipped']) {
+      expect(
+        STORED_ORDER_SCHEMA.safeParse({ ...validDoc(), status: legacyValue }).success,
+      ).toBe(false)
     }
+    const renamed: Record<string, unknown> = { ...validDoc() }
+    delete renamed.status
+    renamed.shipmentStatus = 'delivered'
+    expect(STORED_ORDER_SCHEMA.safeParse(renamed).success).toBe(false)
   })
 
   it('keeps the three current statuses as-is and rejects an unknown one', () => {
