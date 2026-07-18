@@ -24,6 +24,9 @@
     "delivered": "Completed",
     "cancelled": "Cancelled"
   },
+  "source": {
+    "avito": "Avito"
+  },
   "paymentMethod": {
     "cash": "Cash",
     "card": "Card",
@@ -90,6 +93,7 @@
     "paymentMethod": "Payment method",
     "paymentStatus": "Payment status",
     "status": "Order status",
+    "source": "Source",
     "completed": "Completed",
     "comment": "Comment",
     "plantsTitle": "Plants",
@@ -155,6 +159,7 @@
     "paymentMethod": "Payment type",
     "paymentStatus": "Payment status",
     "status": "Order status",
+    "sourceAvito": "Avito order",
     "comment": "Comment",
     "total": "Total",
     "totalDelivery": "+ delivery {{amount}}",

@@ -38,6 +38,17 @@ export const CURRENCY_SCHEMA = z.enum(['RUB', 'USD', 'EUR'])
 export type Currency = z.infer<typeof CURRENCY_SCHEMA>
 export const CURRENCIES = CURRENCY_SCHEMA.options
 
+// Where the order came in from. A single-value enum ON PURPOSE (not a boolean
+// `fromAvito`): marketplaces multiply — a second source is one more value here
+// with zero migration, where a boolean would dead-end into either flag
+// proliferation or a stored-data rewrite. The ABSENCE of the field is the
+// "direct order" default, so every pre-existing document stays valid without a
+// migration (widening is safe; narrowing is not) and the common case stores
+// nothing. Latin value doubles as the i18n label key (`source.avito`), matching
+// the status/method convention.
+export const ORDER_SOURCE_SCHEMA = z.enum(['avito'])
+export type OrderSource = z.infer<typeof ORDER_SOURCE_SCHEMA>
+
 // A single line item in an order — a plant/flower.
 // Starts as plain text (the plant name); saved together with quantity and a
 // unit price. Amounts are integers in minor units (kopecks) to avoid float
@@ -89,6 +100,9 @@ export const STORED_ORDER_SCHEMA = z.object({
   gifts: z.array(ORDER_ITEM_SCHEMA).optional(),
   paymentStatus: PAYMENT_STATUS_SCHEMA,
   status: ORDER_STATUS_SCHEMA,
+  // Marketplace the order came in from (today: Avito). Absent = a direct order —
+  // see ORDER_SOURCE_SCHEMA for why this is an optional enum, not a boolean.
+  source: ORDER_SOURCE_SCHEMA.optional(),
   comment: z.string().optional(),
   // When the order was completed (ms timestamp). An order is "completed" once it
   // reaches a terminal status (delivered or cancelled); this is stamped

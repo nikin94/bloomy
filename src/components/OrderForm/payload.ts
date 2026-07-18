@@ -64,6 +64,10 @@ export function buildOrderPayload({
     currency: fields.currency,
     paymentStatus: fields.paymentStatus,
     status: fields.status,
+    // Marketplace source: stored only when set — a direct order stores nothing
+    // (see ORDER_SOURCE_SCHEMA), and on an edit the omission becomes deleteField
+    // via CLEARABLE_ORDER_FIELDS, so unchecking really clears the stored field.
+    ...(fields.source !== null ? { source: fields.source } : {}),
     // The gift, when one was added and named. A blank gift row is dropped
     // silently, like empty plant rows. Free by definition: price 0, quantity 1,
     // so it never moves the totals (they read `plants` only).

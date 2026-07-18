@@ -259,6 +259,11 @@ const OrderDetailPage = () => {
             <DetailRow label={t('detail.deliveryAddress')} value={order.address || '—'} />
             <DetailRow label={t('detail.deliveryMethod')} value={deliveryMethodLabel(tOrder, order.deliveryMethod)} />
             <DetailRow label={t('detail.paymentMethod')} value={paymentMethodLabel(tOrder, order.paymentMethod)} />
+            {/* Marketplace source — shown only when the order carries one, so a
+                direct order (the common case, stored with no field) adds no row. */}
+            {order.source && (
+              <DetailRow label={t('detail.source')} value={tOrder(`source.${order.source}`)} />
+            )}
             <InlineStatusField
               label={t('detail.paymentStatus')}
               value={order.paymentStatus}

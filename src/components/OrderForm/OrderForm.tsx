@@ -575,6 +575,23 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
             </Select>
           </div>
 
+          {/* Marketplace source — a plain full-width checkbox row, deliberately
+              NOT a fourth cell in the 3-column select grid above (which would
+              break its rhythm on desktop and orphan a lone control on phones).
+              Checked ⇢ source: 'avito', unchecked ⇢ null (stored as an absent
+              field — see payload.ts). The label wraps the input, so the whole
+              text is tappable — a comfortable target on a phone without extra
+              layout. `accent-primary` keeps the native checkbox on-theme. */}
+          <label className="flex w-fit cursor-pointer items-center gap-2 py-1 text-sm text-text">
+            <input
+              type="checkbox"
+              checked={fields.source === 'avito'}
+              onChange={(e) => form.setFields({ source: e.target.checked ? 'avito' : null })}
+              className="size-4 accent-primary"
+            />
+            {t('form.sourceAvito')}
+          </label>
+
           <Textarea
             className="min-h-20 w-full"
             label={t('form.comment')}

@@ -18,6 +18,7 @@ const fields = (over: Partial<OrderFormFields> = {}): OrderFormFields => ({
   currency: 'RUB',
   paymentStatus: 'pending',
   status: 'processing',
+  source: null,
   comment: '',
   pendingFiles: [],
   keptPhotos: [],
@@ -96,6 +97,13 @@ describe('buildOrderPayload', () => {
     expect(order.gifts).toEqual([{ name: 'Суккулент', quantity: 1, unitPriceMinor: 0 }])
     expect(order.comment).toBe('note')
     expect(order.completedAt).toBe(1700)
+  })
+
+  it('stores the marketplace source when set and omits it for a direct order', () => {
+    // Absent field = direct order (the common case stores nothing); on an edit
+    // the omission becomes deleteField via CLEARABLE_ORDER_FIELDS.
+    expect(buildOrderPayload({ ...base, fields: fields({ source: 'avito' }) }).source).toBe('avito')
+    expect(buildOrderPayload({ ...base, fields: fields() })).not.toHaveProperty('source')
   })
 
   it('merges kept photos with the just-uploaded paths, kept first', () => {

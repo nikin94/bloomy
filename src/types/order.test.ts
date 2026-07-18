@@ -387,6 +387,15 @@ describe('STORED_ORDER_SCHEMA', () => {
     ).toBe(false)
   })
 
+  it('accepts an optional marketplace source and rejects an unknown one', () => {
+    // Absent = a direct order (every pre-existing document stays valid); today
+    // the only marketplace is Avito, and a stray value must fail loudly rather
+    // than parse into the app.
+    expect(STORED_ORDER_SCHEMA.safeParse(validDoc()).success).toBe(true)
+    expect(STORED_ORDER_SCHEMA.parse({ ...validDoc(), source: 'avito' }).source).toBe('avito')
+    expect(STORED_ORDER_SCHEMA.safeParse({ ...validDoc(), source: 'wildberries' }).success).toBe(false)
+  })
+
   it('defaults deliveryMethod to "post" on legacy documents that lack it', () => {
     const legacy: Record<string, unknown> = { ...validDoc() }
     delete legacy.deliveryMethod

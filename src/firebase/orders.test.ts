@@ -178,6 +178,7 @@ describe('updateOrder', () => {
       completedAt: { __deleted: true },
       gifts: { __deleted: true },
       photos: { __deleted: true },
+      source: { __deleted: true },
     })
     expect(setDoc).not.toHaveBeenCalled()
     // No numbering transaction on edit.
@@ -226,11 +227,25 @@ describe('updateOrder', () => {
 
     await updateOrder('o1', next as Omit<Order, 'id'>, base)
 
-    // Cleared-from-base fields become explicit deletes; gifts/photos were never
-    // on the order, so no delete is written for them (unlike the no-base path).
+    // Cleared-from-base fields become explicit deletes; gifts/photos/source were
+    // never on the order, so no delete is written for them (unlike the no-base path).
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
       comment: { __deleted: true },
       completedAt: { __deleted: true },
+    })
+  })
+
+  it('with a base, unchecking the marketplace source deletes the stored field', async () => {
+    // The order was saved as an Avito one; the edit unchecks the box, so the
+    // payload omits `source` — the diff must turn that into an explicit delete.
+    const base = storedOrder({ number: 7, source: 'avito' }) as Omit<Order, 'id'>
+    const next = { ...base } as Record<string, unknown>
+    delete next.source
+
+    await updateOrder('o1', next as Omit<Order, 'id'>, base)
+
+    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
+      source: { __deleted: true },
     })
   })
 })
