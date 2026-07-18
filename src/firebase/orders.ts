@@ -178,8 +178,11 @@ export async function reconcileOrderNumbers(ownerId: string): Promise<boolean> {
 // Reads the raw snapshot data (not parseOrder) on purpose: the parse transform
 // hides exactly the legacy shapes this function needs to find. Covers active
 // AND trashed orders (same owner query as fetchOrders, no deleted filter).
-// A single batch is plenty: Firestore allows 500 writes per batch, far above
-// any real per-owner order count here. Returns whether anything was migrated.
+// Writes are CHUNKED below Firestore's 500-writes-per-batch cap (mirroring the
+// seeder's commitInBatches): a single batch over 500+ stale documents would
+// reject on commit, the done-flag would never be set, and every list mount
+// would re-run the scan and fail again forever. Returns whether anything was
+// migrated.
 export async function migrateOrderStatuses(ownerId: string): Promise<boolean> {
   const q = query(collection(db, ORDERS_COLLECTION), where('ownerId', '==', ownerId))
   const snapshot = await getDocs(q)
@@ -191,22 +194,28 @@ export async function migrateOrderStatuses(ownerId: string): Promise<boolean> {
     )
   })
   if (stale.length === 0) return false
-  const batch = writeBatch(db)
-  let staged = false
+  // Stage every rewrite first, then commit in chunks under the batch cap.
+  const updates: { id: string; status: OrderStatus }[] = []
   for (const docSnap of stale) {
     const data = docSnap.data()
     // Normalize through the same schema the reader uses; a value it rejects is
     // junk we refuse to overwrite (leave that document alone rather than guess).
     const parsed = STORED_ORDER_STATUS_SCHEMA.safeParse(data.status ?? data.shipmentStatus)
     if (!parsed.success) continue
-    batch.update(doc(db, ORDERS_COLLECTION, docSnap.id), {
-      status: parsed.data,
-      shipmentStatus: deleteField(),
-    })
-    staged = true
+    updates.push({ id: docSnap.id, status: parsed.data })
   }
-  if (!staged) return false
-  await batch.commit()
+  if (updates.length === 0) return false
+  const BATCH_LIMIT = 400 // headroom under Firestore's hard 500-writes cap
+  for (let i = 0; i < updates.length; i += BATCH_LIMIT) {
+    const batch = writeBatch(db)
+    for (const { id, status } of updates.slice(i, i + BATCH_LIMIT)) {
+      batch.update(doc(db, ORDERS_COLLECTION, id), {
+        status,
+        shipmentStatus: deleteField(),
+      })
+    }
+    await batch.commit()
+  }
   return true
 }
 
@@ -219,30 +228,53 @@ export async function migrateOrderStatuses(ownerId: string): Promise<boolean> {
 // files that were just deleted from Storage.
 const CLEARABLE_ORDER_FIELDS = ['comment', 'completedAt', 'gifts', 'photos', 'shipmentStatus'] as const
 
+// Field-level equality for the diff below. The order's fields are primitives or
+// small arrays of plain objects built with a stable key order (plants/gifts/photos),
+// so a JSON comparison is exact here — no need for a deep-equal library.
+const sameFieldValue = (a: unknown, b: unknown): boolean =>
+  a === b || JSON.stringify(a) === JSON.stringify(b)
+
 // Save an edited order in place (used by the edit screen). Unlike createOrder,
 // this runs NO numbering transaction: editing keeps the order's id and
 // human-readable `number`, so the caller passes the full field set (including
 // the original `number` and `dateCreated`).
 //
-// PER-FIELD MERGE: writes with `updateDoc` (not `setDoc`), so each field is set
-// individually. That matters offline across two devices — if the phone changed
-// the status while the desktop edits the address, the two writes touch different
-// fields and BOTH survive the sync, instead of a wholesale `setDoc` replace
-// clobbering whichever synced last. The edit form sends every form field, so a
-// field the user cleared (comment, completedAt) is absent here; we turn those
-// absences into `deleteField()` so clearing still clears rather than lingering.
-// `shipmentStatus` (the RENAMED status field, never present on today's Order)
-// rides the same mechanism: every edit of a not-yet-migrated document drops the
-// stale legacy field as a free lazy cleanup.
+// PER-FIELD MERGE, FOR REAL: writes with `updateDoc` AND — when the caller
+// supplies `base`, the order as it was when the form mounted — only the fields
+// the edit actually CHANGED. Previously the full field set was always written,
+// which silently re-sent mount-time values: an inline status change made on the
+// detail page (or another device) between opening the edit form and saving it
+// was overwritten back, and its completedAt stamp deleteField()'d away. Diffing
+// against `base` means an untouched field is simply absent from the write, so a
+// concurrent change to it survives. A field the user CLEARED (in `base`, absent
+// now — comment, completedAt, gifts, photos) becomes an explicit `deleteField()`
+// so clearing still clears rather than lingering.
+//
+// Without `base` (no snapshot to diff against) the legacy full-write behaviour
+// applies: every field is sent and absent clearable fields are deleted — a
+// whole-document last-write-wins.
+//
+// `shipmentStatus` (the pre-rename status field, never present on a parsed
+// Order) is always deleteField()'d: every edit of a not-yet-migrated document
+// drops the stale legacy field as a free lazy cleanup (a no-op when absent).
 //
 // Fire-and-forget (like createOrder): the write is NOT awaited, so saving an edit
 // never blocks and works OFFLINE — it lands in the local cache at once and flushes
 // on reconnect. A genuine failure (e.g. an online permission-denied) has no caller
 // to catch it, so it is routed to reportError (Sentry).
-export function updateOrder(id: string, order: Omit<Order, 'id'>): void {
-  const writes: Record<string, unknown> = { ...order }
+export function updateOrder(id: string, order: Omit<Order, 'id'>, base?: Omit<Order, 'id'>): void {
+  const next = order as Record<string, unknown>
+  const prev = base as Record<string, unknown> | undefined
+  const writes: Record<string, unknown> = {}
+  for (const key of Object.keys(next)) {
+    if (!prev || !sameFieldValue(prev[key], next[key])) writes[key] = next[key]
+  }
   for (const field of CLEARABLE_ORDER_FIELDS) {
-    if (!(field in order)) writes[field] = deleteField()
+    if (field in next) continue
+    // With a base, only clear a field the order actually HAD — except the legacy
+    // shipmentStatus cleanup, which must fire regardless (the parsed base never
+    // carries it, but the stored document still might).
+    if (!prev || field in prev || field === 'shipmentStatus') writes[field] = deleteField()
   }
   void updateDoc(doc(db, ORDERS_COLLECTION, id), writes).catch((err) =>
     // The doc id in the tag makes a failed save actionable from the logs: the

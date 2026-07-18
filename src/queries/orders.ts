@@ -105,7 +105,11 @@ export const useReconcileOrderNumbers = (ownerId: string | undefined) => {
       reconcileOrderNumbers(ownerId)
         .then((numbered) => {
           if (active && numbered) {
+            // Both lists: the reconcile scan has no deleted filter, so an order
+            // created offline and then trashed gets numbered too — without this
+            // the trash would keep showing "—" until its stale window lapses.
             void queryClient.invalidateQueries({ queryKey: queryKeys.orders(ownerId) })
+            void queryClient.invalidateQueries({ queryKey: queryKeys.deletedOrders(ownerId) })
           }
         })
         .catch(() => {

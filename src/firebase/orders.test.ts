@@ -204,6 +204,44 @@ describe('updateOrder', () => {
     expect(written.completedAt).toBe(1700)
     expect(written.gifts).toEqual([{ name: 'Суккулент', quantity: 1, unitPriceMinor: 0 }])
   })
+
+  it('with a base, writes ONLY the changed fields so a concurrent edit survives', async () => {
+    // The lost-update scenario this guards: device B inline-marks the order
+    // delivered (patchOrder writes status+completedAt) while device A has the
+    // edit form open (mount-time status: processing). A saves an ADDRESS change —
+    // the diff must send the address and NOT re-send the stale status, so B's
+    // change is untouched (previously the full field set was written and the
+    // mount-time status silently reverted it, deleteField()'ing completedAt too).
+    const base = storedOrder({ number: 7 }) as Omit<Order, 'id'>
+    const next = { ...base, address: 'New St 2' } as Omit<Order, 'id'>
+
+    await updateOrder('o1', next, base)
+
+    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
+      address: 'New St 2',
+      // The lazy pre-rename cleanup always rides along (no-op when absent).
+      shipmentStatus: { __deleted: true },
+    })
+  })
+
+  it('with a base, clears a field only when the order actually had it', async () => {
+    const base = storedOrder({ number: 7, comment: 'note', completedAt: 1700 }) as Omit<Order, 'id'>
+    // The edit drops the comment and completedAt (cleared in the form) and
+    // changes nothing else.
+    const next = { ...base } as Record<string, unknown>
+    delete next.comment
+    delete next.completedAt
+
+    await updateOrder('o1', next as Omit<Order, 'id'>, base)
+
+    // Cleared-from-base fields become explicit deletes; gifts/photos were never
+    // on the order, so no delete is written for them (unlike the no-base path).
+    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
+      comment: { __deleted: true },
+      completedAt: { __deleted: true },
+      shipmentStatus: { __deleted: true },
+    })
+  })
 })
 
 describe('patchOrder', () => {
@@ -430,5 +468,33 @@ describe('migrateOrderStatuses', () => {
 
     await expect(migrateOrderStatuses('owner-1')).resolves.toBe(false)
     expect(writeBatch).not.toHaveBeenCalled()
+  })
+
+  it('chunks the rewrite under the 500-writes batch cap for a large backlog', async () => {
+    // 401 stale docs: a single batch would exceed nothing here, but proves the
+    // 400-per-batch split — one full chunk plus a 1-write remainder. Without
+    // chunking, an account with 500+ stale orders would fail commit() forever
+    // (the done-flag never sets, so every list mount re-runs and re-fails).
+    vi.mocked(getDocs).mockResolvedValue({
+      docs: Array.from({ length: 401 }, (_, i) => ({
+        id: `o${i}`,
+        data: () => ({ shipmentStatus: 'new' }),
+      })),
+    } as unknown as Awaited<ReturnType<typeof getDocs>>)
+    // A fresh batch per writeBatch() call, so per-chunk update counts are visible.
+    const batches: { update: ReturnType<typeof vi.fn>; commit: ReturnType<typeof vi.fn> }[] = []
+    vi.mocked(writeBatch).mockImplementation(() => {
+      const batch = { update: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) }
+      batches.push(batch)
+      return batch as unknown as ReturnType<typeof writeBatch>
+    })
+
+    await expect(migrateOrderStatuses('owner-1')).resolves.toBe(true)
+
+    expect(batches).toHaveLength(2)
+    expect(batches[0].update).toHaveBeenCalledTimes(400)
+    expect(batches[1].update).toHaveBeenCalledTimes(1)
+    expect(batches[0].commit).toHaveBeenCalledTimes(1)
+    expect(batches[1].commit).toHaveBeenCalledTimes(1)
   })
 })

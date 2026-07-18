@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/context/authContext'
 import { useSettings } from '@/context/settingsContext'
 import { signOutUser } from '@/firebase/auth'
+import { clearOrderDraft } from '@/components/OrderForm/draft'
 import { LANGUAGES } from '@/types/settings'
 import type { Language, ThemeMode } from '@/types/settings'
 import { currencyOptions, deliveryMethodOptions, paymentMethodOptions } from '@/lib/orderLabels'
@@ -196,6 +197,12 @@ const SettingsPage = () => {
     // navigates away via the auth change anyway).
     setError(null)
     try {
+      // Drop the order-form draft BEFORE signing out: it holds typed customer
+      // PII (name/phone/address) in plaintext localStorage and would otherwise
+      // linger on the device indefinitely after logout. Cleared first (while
+      // the uid is still known); a failed sign-out leaves the session live, and
+      // losing a draft in that edge is an acceptable trade for never leaking one.
+      if (user) clearOrderDraft(user.uid)
       await signOutUser()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('settings:signOutError'))

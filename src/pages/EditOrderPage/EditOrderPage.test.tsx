@@ -124,6 +124,9 @@ describe('EditOrderPage', () => {
         // Edited field.
         status: 'delivered',
       }),
+      // The mount-time order rides along as the diff base, so updateOrder can
+      // write only what this edit changed (see the concurrent-edit fix).
+      expect.objectContaining({ id: 'o1', status: 'processing' }),
     )
     // Returns to the order's detail page after saving.
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/orders/o1'))

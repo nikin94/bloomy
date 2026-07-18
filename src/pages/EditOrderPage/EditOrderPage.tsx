@@ -44,15 +44,24 @@ const EditOrderPage = () => {
       onCancel={() => navigate(`/orders/${order.id}`)}
       onSubmit={async (fields) => {
         // Save in place (per-field merge), preserving the original id, number and
-        // dateCreated; only the form-owned fields change. updateOrder is fire-and-
-        // forget (offline-safe), so this never blocks. Invalidate the order + customer
-        // caches (the edit — and any new customer the form created — must show on the
-        // lists and the detail page), then navigate straight back.
-        updateOrder(order.id, {
-          ...fields,
-          number: order.number,
-          dateCreated: order.dateCreated,
-        })
+        // dateCreated; only the form-owned fields change. The mount-time `order`
+        // rides along as the diff BASE: updateOrder writes only the fields this
+        // edit actually changed, so a concurrent change to an untouched field
+        // (e.g. an inline status flip on the detail page or another device)
+        // survives instead of being overwritten with the mount-time value.
+        // updateOrder is fire-and-forget (offline-safe), so this never blocks.
+        // Invalidate the order + customer caches (the edit — and any new customer
+        // the form created — must show on the lists and the detail page), then
+        // navigate straight back.
+        updateOrder(
+          order.id,
+          {
+            ...fields,
+            number: order.number,
+            dateCreated: order.dateCreated,
+          },
+          order,
+        )
         orderCache.invalidateAll()
         customerCache.invalidateAll()
         navigate(`/orders/${order.id}`)
