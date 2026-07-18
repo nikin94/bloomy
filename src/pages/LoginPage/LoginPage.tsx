@@ -176,112 +176,120 @@ const LoginPage = () => {
   }
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-6 p-6 text-center">
-      <h1 className="m-0 text-4xl font-semibold text-heading">Bloomy</h1>
-      <p className="m-0 text-text">{t('tagline')}</p>
+    <div className="flex h-full flex-col items-center justify-center overflow-auto p-4 text-center sm:p-6">
+      {/* The login screen lives OUTSIDE AppLayout, so it gets none of the
+          content-column scrim the signed-in screens have — after the greener
+          backdrop (#185) the title/tagline/mode-toggle sat straight on busy
+          foliage. Same remedy as everywhere else: readability comes from a
+          LOCAL scrim — this card, at the content column's 75% theme-bg — while
+          the photo stays at its true colours around it. */}
+      <div className="flex w-full max-w-md flex-col items-center gap-6 rounded-xl border border-border bg-bg/75 p-6 shadow-lg sm:p-8">
+        <h1 className="m-0 text-4xl font-semibold text-heading">Bloomy</h1>
+        <p className="m-0 text-text">{t('tagline')}</p>
 
-      {/* Session dropped unexpectedly (not a deliberate sign-out). We can't read
-          the browser console on the user's machine, so we put a screenshottable
-          explanation on screen: the likely cause AND the live connection state,
-          which together confirm whether a blocked token refresh is to blame. */}
-      {sessionLost && (
-        <div
-          role="alert"
-          className="max-w-md rounded-lg border border-danger bg-danger-bg p-4 text-left text-sm text-text"
-        >
-          <p className="m-0 font-medium text-heading">{t('sessionLostTitle')}</p>
-          <p className="m-0 mt-1">{t('sessionLostBody')}</p>
-          <p className="m-0 mt-2 text-text/80">
-            {t('connection', { state: navigator.onLine ? t('online') : t('offline') })}
-          </p>
+        {/* Session dropped unexpectedly (not a deliberate sign-out). We can't read
+            the browser console on the user's machine, so we put a screenshottable
+            explanation on screen: the likely cause AND the live connection state,
+            which together confirm whether a blocked token refresh is to blame. */}
+        {sessionLost && (
+          <div
+            role="alert"
+            className="max-w-md rounded-lg border border-danger bg-danger-bg p-4 text-left text-sm text-text"
+          >
+            <p className="m-0 font-medium text-heading">{t('sessionLostTitle')}</p>
+            <p className="m-0 mt-1">{t('sessionLostBody')}</p>
+            <p className="m-0 mt-2 text-text/80">
+              {t('connection', { state: navigator.onLine ? t('online') : t('offline') })}
+            </p>
+          </div>
+        )}
+
+        <Button variant="primary" onClick={handleSignIn} isLoading={signingIn}>
+          {t('googleSignIn')}
+        </Button>
+
+        {/* Divider between the two sign-in methods. */}
+        <div className="flex w-full max-w-xs items-center gap-3" aria-hidden="true">
+          <span className="h-px flex-1 bg-border" />
+          <span className="text-sm text-text">{t('or')}</span>
+          <span className="h-px flex-1 bg-border" />
         </div>
-      )}
 
-      <Button variant="primary" onClick={handleSignIn} isLoading={signingIn}>
-        {t('googleSignIn')}
-      </Button>
-
-      {/* Divider between the two sign-in methods. */}
-      <div className="flex w-full max-w-xs items-center gap-3" aria-hidden="true">
-        <span className="h-px flex-1 bg-border" />
-        <span className="text-sm text-text">{t('or')}</span>
-        <span className="h-px flex-1 bg-border" />
-      </div>
-
-      {/* Email/password — an alternative that skips the Google OAuth popup (which
-          is blocked on the main user's machine). The same form signs in to an
-          existing account or registers a new one, toggled below. */}
-      <form onSubmit={handleEmailSubmit} className="flex w-full max-w-xs flex-col gap-3 text-left">
-        <Input
-          type="email"
-          autoComplete="email"
-          label={t('email')}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <Input
-          // Reveal/mask is controlled by the eye toggle in the suffix below.
-          type={showPassword ? 'text' : 'password'}
-          // A new account needs a fresh password; an existing one offers the
-          // saved credential — hint the right autofill for each mode.
-          autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-          label={t('password')}
-          // The 6-char minimum only matters when creating a password.
-          hint={mode === 'register' ? t('passwordHint') : undefined}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          suffix={
-            <button
-              type="button"
-              onClick={() => setShowPassword((s) => !s)}
-              aria-label={showPassword ? t('hidePassword') : t('showPassword')}
-              aria-pressed={showPassword}
-              className={`flex items-center rounded p-1 text-text hover:text-heading ${FOCUS_RING}`}
-            >
-              <EyeIcon crossed={showPassword} />
-            </button>
-          }
-        />
-        {/* Confirmation — registration only. Shares the eye toggle's reveal state
-            so both password fields show/hide together. */}
-        {mode === 'register' && (
+        {/* Email/password — an alternative that skips the Google OAuth popup (which
+            is blocked on the main user's machine). The same form signs in to an
+            existing account or registers a new one, toggled below. */}
+        <form onSubmit={handleEmailSubmit} className="flex w-full max-w-xs flex-col gap-3 text-left">
           <Input
-            type={showPassword ? 'text' : 'password'}
-            autoComplete="new-password"
-            label={t('confirmPassword')}
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            type="email"
+            autoComplete="email"
+            label={t('email')}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
+          <Input
+            // Reveal/mask is controlled by the eye toggle in the suffix below.
+            type={showPassword ? 'text' : 'password'}
+            // A new account needs a fresh password; an existing one offers the
+            // saved credential — hint the right autofill for each mode.
+            autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+            label={t('password')}
+            // The 6-char minimum only matters when creating a password.
+            hint={mode === 'register' ? t('passwordHint') : undefined}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            suffix={
+              <button
+                type="button"
+                onClick={() => setShowPassword((s) => !s)}
+                aria-label={showPassword ? t('hidePassword') : t('showPassword')}
+                aria-pressed={showPassword}
+                className={`flex items-center rounded p-1 text-text hover:text-heading ${FOCUS_RING}`}
+              >
+                <EyeIcon crossed={showPassword} />
+              </button>
+            }
+          />
+          {/* Confirmation — registration only. Shares the eye toggle's reveal state
+              so both password fields show/hide together. */}
+          {mode === 'register' && (
+            <Input
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              label={t('confirmPassword')}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+          )}
+          <Button type="submit" variant="secondary" isLoading={signingIn}>
+            {mode === 'register' ? t('register') : t('signIn')}
+          </Button>
+        </form>
+
+        {/* Switch between sign-in and registration. Registration itself handles
+            the "account exists but has no password" case (sends a set-password
+            email), so no separate reset button is needed. */}
+        <button
+          type="button"
+          onClick={toggleMode}
+          className={`text-sm text-primary underline-offset-2 hover:underline ${FOCUS_RING}`}
+        >
+          {mode === 'register' ? t('toSignIn') : t('toRegister')}
+        </button>
+
+        {error && (
+          <p role="alert" className="m-0 max-w-xs text-danger">
+            {error}
+          </p>
         )}
-        <Button type="submit" variant="secondary" isLoading={signingIn}>
-          {mode === 'register' ? t('register') : t('signIn')}
-        </Button>
-      </form>
-
-      {/* Switch between sign-in and registration. Registration itself handles
-          the "account exists but has no password" case (sends a set-password
-          email), so no separate reset button is needed. */}
-      <button
-        type="button"
-        onClick={toggleMode}
-        className={`text-sm text-primary underline-offset-2 hover:underline ${FOCUS_RING}`}
-      >
-        {mode === 'register' ? t('toSignIn') : t('toRegister')}
-      </button>
-
-      {error && (
-        <p role="alert" className="m-0 max-w-xs text-danger">
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p role="status" className="m-0 max-w-xs text-accent">
-          {notice}
-        </p>
-      )}
+        {notice && (
+          <p role="status" className="m-0 max-w-xs text-accent">
+            {notice}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
