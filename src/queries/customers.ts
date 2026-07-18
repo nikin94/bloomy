@@ -28,6 +28,19 @@ export const useCustomersSuspense = (
   })
 }
 
+// NON-suspending variant of the active address book, on the SAME cache key as
+// useCustomersSuspense (includeDeleted: false) — one shared entry, so the order
+// form reuses the list the Customers page already loaded. For callers that gate
+// their own paint (the form shows its Spinner until this resolves, because the
+// initial customer-mode depends on whether the book is empty) instead of
+// suspending the whole route subtree.
+export const useCustomers = (ownerId: string | undefined) =>
+  useQuery({
+    queryKey: queryKeys.customers(ownerId, false),
+    queryFn: () => fetchCustomers(ownerId as string),
+    enabled: ownerId !== undefined,
+  })
+
 // A single customer by id (e.g. the live name on the order page). Kept null when
 // the customer was deleted — a dangling customerId must not crash the page. This
 // stays a plain useQuery (NOT suspense): `null` is a legitimate non-loading state

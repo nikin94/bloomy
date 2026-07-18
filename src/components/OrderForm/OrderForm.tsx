@@ -1,12 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { createCustomer, fetchCustomer, fetchCustomers } from '@/firebase/customers'
+import { createCustomer } from '@/firebase/customers'
 import { useOwnerId } from '@/hooks/useOwnerId'
 import { useSettings } from '@/context/settingsContext'
-import { formatMinorToInput, formatMoney, parseRublesToMinor } from '@/utils/format'
+import { formatMoney } from '@/utils/format'
 import {
   resolveCompletedAt,
-  collectPlantNames,
   CURRENCIES,
   DELIVERY_METHOD_VALUES,
   PAYMENT_METHOD_VALUES,
@@ -34,24 +33,20 @@ import SelectOptions from '@/components/SelectOptions/SelectOptions'
 import PlantItemRow from './PlantItemRow'
 import GiftRow from './GiftRow'
 import CustomerPicker from './CustomerPicker'
-import { emptyItem, initialItems } from './items'
+import { useOrderFormState } from './useOrderFormState'
+import type { OrderFormFields } from './useOrderFormState'
+import { useOrderDraft, useOrderDraftSync } from './useOrderDraft'
+import { useCustomerOptions } from './useCustomerOptions'
+import { usePlantHistory } from './usePlantHistory'
+import { parsePlants, buildOrderPayload } from './payload'
 import type { ItemInput } from './items'
-import { loadOrderDraft, saveOrderDraft, clearOrderDraft, type OrderDraft } from './draft'
 import type { CustomerMode } from './CustomerPicker'
-import { fetchOrders, newOrderId } from '@/firebase/orders'
+import { newOrderId } from '@/firebase/orders'
 import { deleteOrderPhoto, uploadOrderPhoto } from '@/firebase/photos'
 import { reportError } from '@/observability/reportError'
 import type { NewOrder } from '@/firebase/orders'
-import type {
-  Currency,
-  DeliveryMethod,
-  Order,
-  OrderItem,
-  PaymentMethod,
-  PaymentStatus,
-  OrderStatus,
-} from '@/types/order'
-import type { Customer, NewCustomer } from '@/types/customer'
+import type { Order } from '@/types/order'
+import type { NewCustomer } from '@/types/customer'
 
 interface OrderFormProps {
   // Screen heading, e.g. "New order" / "Edit order".
@@ -83,9 +78,24 @@ interface OrderFormProps {
   onCancel: () => void
 }
 
-// The order form screen, shared by the create and edit pages. Owns all form
-// state and validation; the caller supplies the heading and how a finished order
-// is persisted (see OrderFormProps).
+// The order form screen, shared by the create and edit pages. The caller
+// supplies the heading and how a finished order is persisted (OrderFormProps);
+// the form's own concerns are split across sibling modules, each independently
+// unit-testable:
+//   • useOrderFormState — every user-editable field, in one reducer, plus the
+//     derived values (dirtiness, totals, add-row gates);
+//   • useOrderDraft / useOrderDraftSync — the localStorage draft's load /
+//     autosave / clear lifecycle and the restored-draft notice;
+//   • useCustomerOptions — the customer picker's options via the shared
+//     TanStack cache, incl. the soft-deleted seeded customer and dangling-FK
+//     cleanup, gating the form's first paint;
+//   • usePlantHistory — plant-name suggestions + the per-customer gift history
+//     (non-critical, never gates the form);
+//   • payload — the pure field→document assembly (parsePlants /
+//     buildOrderPayload).
+// What REMAINS here is the orchestration only: validation order, the submit
+// flow (customer creation → deferred photo upload with rollback → onSubmit →
+// staged-removal cleanup → draft clear) and the markup.
 const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFormProps) => {
   const { t } = useTranslation(['order', 'common'])
   // Order-bound t for the option helpers (typed TFunction<'order'>).
@@ -98,136 +108,43 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
 
   // The order whose CONTENTS prefill the form: the edited order, or a repeat
   // seed. Both fill customer/plants/address/methods/currency identically; only
-  // an EDIT additionally carries the per-instance state (statuses, comment),
-  // so those read from `initialOrder` alone and stay pristine on a repeat.
+  // an EDIT additionally carries the per-instance state (statuses, comment,
+  // photos), so those read from `initialOrder` alone and stay pristine on a
+  // repeat (see useOrderFormState's initializer).
   const source = initialOrder ?? seed
 
   // Whether this form CREATES an order (vs editing one in place). A repeat seed
   // does NOT carry the original's photos — they belong to that order — so the
-  // pending-photo list below starts empty either way.
+  // pending-photo list starts empty either way.
   const isCreate = initialOrder === undefined
 
   // Local draft (owner request): a plain CREATE form keeps what was typed in
-  // localStorage, so leaving without saving doesn't lose the input. Scoped to
-  // the create-without-seed case only: an EDIT's source of truth is the order
-  // itself, and a REPEAT seed already prefills the form (restoring a draft over
-  // it would silently swap the just-repeated order for older scratch). Loaded
-  // once, before the state initializers below seed from it.
-  const draftEnabled = isCreate && seed === undefined
-  // The owner the draft belongs to, CAPTURED once on mount. Every draft
-  // read/write below uses this capture, never the live `ownerId`: if the auth
-  // user somehow changed while the form is open, a live read would save user
-  // A's typed content under user B's key. The flip side — mounting before auth
-  // resolves (ownerId still undefined) permanently disables the draft for this
-  // mount — is fine: under ProtectedRoute the user is always resolved first.
-  // Drafts are also single-tab by design: two tabs on the create form are
-  // last-write-wins on the same key (no `storage` listener), which matches the
-  // app's single-operator usage.
-  const [draftOwnerId] = useState(ownerId)
-  const [draft] = useState<OrderDraft | null>(() =>
-    draftEnabled && draftOwnerId ? loadOrderDraft(draftOwnerId) : null,
-  )
-  // Restored-draft notice, part 1 of 2: starts hidden and is flipped on a
-  // beat AFTER the form paints (see the timeout effect below) — inserting the
-  // text into an already-mounted `role="status"` region is what makes screen
-  // readers actually announce it; content present at first paint is skipped.
-  // Part 2 (whether it SHOWS) is derived per render, see `showDraftNotice`.
-  const [draftNoticeRevealed, setDraftNoticeRevealed] = useState(false)
-  // The order's document id, pre-generated for a create so the photos uploaded at
-  // submit land under orders/{ownerId}/{orderId}/ — the SAME id the doc is created
-  // with (passed to createOrder), keeping the storage path in lockstep with the
-  // cleanup function's `{orderId}` prefix. An edit already has its id. `useState`
-  // initializer so it's stable across renders.
+  // localStorage. Scoped to the create-without-seed case only: an EDIT's source
+  // of truth is the order itself, and a REPEAT seed already prefills the form
+  // (restoring a draft over it would silently swap the just-repeated order for
+  // older scratch). Loaded once, before the reducer below seeds from it.
+  const draftHandle = useOrderDraft(ownerId, isCreate && seed === undefined)
+  const { draft } = draftHandle
+
+  // The order's document id, pre-generated for a create so the photos uploaded
+  // at submit land under orders/{ownerId}/{orderId}/ — the SAME id the doc is
+  // created with (passed to createOrder), keeping the storage path in lockstep
+  // with the cleanup function's `{orderId}` prefix. An edit already has its id.
   const [createId] = useState(newOrderId)
   const orderId = initialOrder?.id ?? createId
-  // Photos picked on the form are held LOCALLY (File objects) and only uploaded
-  // on submit — see handleSubmit. Nothing touches Storage until the order is being
-  // saved, so abandoning the form leaves no orphaned blobs. On an EDIT these are
-  // the NEWLY added photos only — the order's existing ones stay untouched (their
-  // removal lives on the detail page) and the new paths are appended on save.
-  const [pendingFiles, setPendingFiles] = useState<File[]>([])
-  // The edited order's saved photos still kept on it (starts as all of them;
-  // empty on create). Removing one in the picker only STAGES the removal — this
-  // list is what gets saved, and the Storage files of the removed photos are
-  // deleted only after a successful save — so cancelling the form (or a failed
-  // save) leaves every saved photo untouched.
-  const [keptPhotos, setKeptPhotos] = useState<string[]>(initialOrder?.photos ?? [])
 
-  // Customer selection. New orders default to "new"; an edited order already has
-  // a customer, so it starts in "existing" mode with that customer selected. A
-  // restored draft wins over both defaults here and in the fields below — it IS
-  // the user's own last state for this form (never set alongside `source`).
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [customerMode, setCustomerMode] = useState<CustomerMode>(
-    draft?.customerMode ?? (source ? 'existing' : 'new'),
-  )
-  // Gate the form on the customer fetch: the initial mode depends on whether the
-  // address book is empty, so rendering the form before it resolves would paint
-  // the slider at "new" and snap it to "existing" once the data arrives. Showing
-  // the spinner until then means the form first paints with the mode correct.
-  const [customersLoading, setCustomersLoading] = useState(true)
-  // The slider pill only animates after the user interacts. The initial
-  // fetch-driven switch to "existing" (for returning users) must not slide.
-  const [animateModeSlider, setAnimateModeSlider] = useState(false)
-  const [selectedCustomerId, setSelectedCustomerId] = useState(
-    draft?.selectedCustomerId ?? source?.customerId ?? '',
-  )
-  const [newName, setNewName] = useState(draft?.newName ?? '')
-  const [newPhone, setNewPhone] = useState(draft?.newPhone ?? '')
-
-  const [address, setAddress] = useState(draft?.address ?? source?.address ?? '')
-  // Monotonic id source for item rows, so React keys stay stable across
-  // add/remove instead of being tied to array position. Rows are seeded with ids
-  // 0..n-1 (see initialItems / the draft restore), so the ref continues from
-  // there for rows added later.
-  const itemIdRef = useRef(draft ? draft.items.length - 1 : source ? source.plants.length - 1 : 0)
-  const nextItemId = () => (itemIdRef.current += 1)
-  // A restored draft holds the rows as typed (strings, ids re-assigned by index);
-  // a draft is only ever written with at least one named plant, but stay
-  // defensive about an empty list so the form always has its one blank row.
-  const [items, setItems] = useState<ItemInput[]>(() =>
-    draft && draft.items.length > 0
-      ? draft.items.map((item, id) => ({ id, ...item }))
-      : initialItems(source),
-  )
-  // The order's gift, or null when none. A gift is a free plant (quantity 1,
-  // price 0 — see the schema note on `gifts`), so only its NAME is edited; the
-  // string may be blank while typing and a blank gift is dropped on submit,
-  // like an empty plant row. Seeded from the edited order or a repeat seed —
-  // repeating an order carries its gift, and the "already sent" warning below
-  // then flags it, which is exactly the nudge to pick a different one. null vs
-  // '' distinguishes "no gift row" from "row added, name not typed yet".
-  const [giftName, setGiftName] = useState<string | null>(
-    draft ? draft.giftName : (source?.gifts?.[0]?.name ?? null),
-  )
-  // Focus the gift name input only when the row was just added by the button —
-  // not when it mounts prefilled from an edit/repeat seed.
-  const [focusGift, setFocusGift] = useState(false)
-  // Id of the row whose name input should grab focus on mount — set when a row
-  // is added so the user can type immediately. Null at first render (and after
-  // a prefill) so no row steals focus on load.
-  const [focusItemId, setFocusItemId] = useState<number | null>(null)
-  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>(
-    draft?.deliveryMethod ?? source?.deliveryMethod ?? defaultDeliveryMethod,
-  )
-  const [deliveryPrice, setDeliveryPrice] = useState(
-    draft?.deliveryPrice ?? (source ? formatMinorToInput(source.deliveryPriceMinor) : ''),
-  )
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
-    draft?.paymentMethod ?? source?.paymentMethod ?? defaultPaymentMethod,
-  )
-  // A new order starts in the user's default currency; an edited order (or a
-  // repeat) keeps the source currency — it is fixed per order, no conversion.
-  const [currency, setCurrency] = useState<Currency>(
-    draft?.currency ?? source?.currency ?? defaultCurrency,
-  )
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(
-    draft?.paymentStatus ?? initialOrder?.paymentStatus ?? 'pending',
-  )
-  const [orderStatus, setOrderStatus] = useState<OrderStatus>(
-    draft?.status ?? initialOrder?.status ?? 'processing',
-  )
-  const [comment, setComment] = useState(draft?.comment ?? initialOrder?.comment ?? '')
+  // Every user-editable field, one reducer (see useOrderFormState).
+  const form = useOrderFormState({
+    draft,
+    source,
+    initialOrder,
+    defaults: {
+      deliveryMethod: defaultDeliveryMethod,
+      paymentMethod: defaultPaymentMethod,
+      currency: defaultCurrency,
+    },
+  })
+  const { fields } = form
 
   const [saving, setSaving] = useState(false)
   // Becomes true on the first submit attempt; until then, incomplete-row hints
@@ -235,282 +152,80 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // while the user is still filling it in.
   const [submitAttempted, setSubmitAttempted] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
+
+  // The picker's options via the shared query cache. `ready` gates the form's
+  // first paint (the Spinner below): the initial customer mode depends on
+  // whether the address book is empty, so painting earlier would show the
+  // slider at "new" and snap it to "existing" once the data arrives. The
+  // one-shot `onReady` applies the resolved landing in the same commit —
+  // through `setFields` (not `selectMode`), so the flip never animates.
+  const { customers, ready } = useCustomerOptions({
+    ownerId,
+    // The seeded selection that must resolve to an option or be cleared, never
+    // silently saved: the edit/repeat source's customer, or a restored draft's.
+    seededId: source?.customerId ?? (draft?.selectedCustomerId || undefined),
+    // A restored draft carries the mode the user actually left the form in —
+    // flipping to "existing" over it would hide a half-typed new-customer name.
+    hasDraft: draft !== null,
+    onReady: ({ clearDanglingSelection, mode }) => {
+      const patch: Partial<OrderFormFields> = {}
+      if (clearDanglingSelection) patch.selectedCustomerId = ''
+      if (mode !== null) patch.customerMode = mode
+      if (Object.keys(patch).length > 0) form.setFields(patch)
+    },
+  })
+
+  // Plant-name suggestions + gift history from the owner's orders (shared cache;
+  // non-critical, so it never gates the form). The edited order is excluded so
+  // a form seeded with its own gift doesn't warn about itself.
+  const { suggestions: plantNameSuggestions, sentGiftsByCustomer } = usePlantHistory(
+    ownerId,
+    initialOrder?.id,
+  )
+
+  // Draft autosave + the restored-draft notice (announced to screen readers
+  // only after the form's first paint — hence `formReady`).
+  const { showDraftNotice } = useOrderDraftSync(draftHandle, {
+    fields,
+    hasNamedPlant: form.hasNamedPlant,
+    saving,
+    formReady: ready,
+  })
 
   // Cancel guard: once the user has started composing the order, "Отмена" asks
-  // for confirmation instead of silently discarding the input. Dirtiness is a
-  // per-render comparison of the user-editable fields against a snapshot taken
-  // on the FIRST render (state still holds its initial values then), so an
-  // edit/repeat prefill does NOT count as dirty — only the user's own changes
-  // do. customerMode is deliberately excluded: the customer fetch flips it to
-  // "existing" on its own (no user action) once the address book resolves.
-  const fieldsSnapshot = JSON.stringify([
-    items,
-    giftName,
-    address,
-    newName,
-    newPhone,
-    selectedCustomerId,
-    deliveryMethod,
-    deliveryPrice,
-    paymentMethod,
-    currency,
-    paymentStatus,
-    orderStatus,
-    comment,
-    pendingFiles.length,
-    keptPhotos,
-  ])
-  // useState initializer (not a ref): the first-render snapshot is state read
-  // during render, which is legal where reading a ref in render is not.
-  const [initialFields] = useState(fieldsSnapshot)
-  // A restored draft counts as dirty from the start: the snapshot already holds
-  // the draft values, but they ARE unsaved user input — cancel must still ask,
-  // and confirming is what discards the stored draft (see handleConfirmedCancel).
-  const isDirty = fieldsSnapshot !== initialFields || draft !== null
-  const [confirmingCancel, setConfirmingCancel] = useState(false)
-  const handleCancel = () => (isDirty ? setConfirmingCancel(true) : onCancel())
-  // A CONFIRMED cancel is the explicit "discard my input" — drop the stored
-  // draft too, so the next create form starts blank (owner-specified behaviour).
+  // for confirmation instead of silently discarding the input (dirtiness lives
+  // in useOrderFormState). A CONFIRMED cancel is the explicit "discard my
+  // input" — drop the stored draft too, so the next create form starts blank.
+  const handleCancel = () => (form.isDirty ? setConfirmingCancel(true) : onCancel())
   const handleConfirmedCancel = () => {
-    if (draftEnabled && draftOwnerId) clearOrderDraft(draftOwnerId)
+    draftHandle.clear()
     onCancel()
   }
 
-  // Draft autosave. Serialised in render (same technique as fieldsSnapshot) so
-  // the effect below re-runs only when the draft CONTENTS change, not on every
-  // render. Row ids are stripped — they are React keys, re-assigned on restore.
-  const draftJson = JSON.stringify({
-    customerMode,
-    selectedCustomerId,
-    newName,
-    newPhone,
-    address,
-    items: items.map(({ name, quantity, price }) => ({ name, quantity, price })),
-    giftName,
-    deliveryMethod,
-    deliveryPrice,
-    paymentMethod,
-    currency,
-    paymentStatus,
-    status: orderStatus,
-    comment,
-  } satisfies OrderDraft)
-  // Owner-specified gate: a draft exists ONLY while the list holds at least
-  // one named plant (see the autosave effect). Also keys the restored-draft
-  // notice: it shows exactly while a stored draft exists, so it can never
-  // describe a draft that has already been deleted.
-  const hasNamedPlant = items.some((item) => item.name.trim() !== '')
-  const showDraftNotice = draftNoticeRevealed && hasNamedPlant
-  useEffect(() => {
-    // Paused while a submit is in flight (`saving`): the new-customer path flips
-    // customerMode/selectedCustomerId mid-submit, and this effect would re-save
-    // the draft AFTER the success path just cleared it. A FAILED submit resets
-    // `saving`, which re-runs this effect and re-saves — exactly right, the
-    // input must survive a leave after a failure.
-    if (!draftEnabled || !draftOwnerId || saving) return
-    // Below the named-plant bar the stored draft is removed (deleting the last
-    // plant name deletes the draft), so stray address/comment typing never
-    // resurrects on the next visit.
-    if (hasNamedPlant) {
-      saveOrderDraft(draftOwnerId, JSON.parse(draftJson) as OrderDraft)
-    } else {
-      clearOrderDraft(draftOwnerId)
-    }
-  }, [draftJson, hasNamedPlant, draftEnabled, draftOwnerId, saving])
-
-  // Reveal the restored-draft notice only after the form has painted (the
-  // customer fetch gates the first paint): the `role="status"` region mounts
-  // empty and the text is inserted on a later, post-paint commit — a CHANGE
-  // inside a live region, which screen readers announce; text already present
-  // at first paint would be skipped silently. The zero timeout (not a sync
-  // setState in the effect) is what pushes the flip past the paint.
-  useEffect(() => {
-    if (customersLoading || draft === null) return
-    const id = window.setTimeout(() => setDraftNoticeRevealed(true), 0)
-    return () => window.clearTimeout(id)
-  }, [customersLoading, draft])
-
-  // Plant-name autocomplete: distinct names from the owner's existing orders,
-  // offered as suggestions on each row's name input (see Autocomplete).
-  const [plantNameSuggestions, setPlantNameSuggestions] = useState<string[]>([])
-  // Gifts already sent, per customer: customerId → lowercased gift names. Feeds
-  // the non-blocking "this gift was already sent to this customer" warning so
-  // the operator doesn't repeat a gift. Built from the same order fetch as the
-  // suggestions (no extra read); the order being EDITED is excluded so a form
-  // seeded with its own gift doesn't warn about itself.
-  const [sentGiftsByCustomer, setSentGiftsByCustomer] = useState<Map<string, Set<string>>>(
-    () => new Map(),
-  )
-
-  useEffect(() => {
-    if (!ownerId) return
-    let active = true
-    fetchCustomers(ownerId)
-      .then(async (data) => {
-        if (!active) return
-        // When editing (or repeating) an order whose customer was soft-deleted,
-        // that customer is absent from the active list — so the picker would drop
-        // the current selection. Fetch it directly and keep it in the options
-        // (labelled "(deleted)") so the order stays linked to it unless changed.
-        // A restored draft's selected customer gets the same treatment: it may
-        // have been deleted since the draft was written, and a dangling id must
-        // either resolve to a "(deleted)" option or be cleared, never saved.
-        const seededId = source?.customerId ?? (draft?.selectedCustomerId || undefined)
-        let list = data
-        if (seededId && !data.some((c) => c.id === seededId)) {
-          // Treat a throw (transient network / rules change) the same as an
-          // unresolved customer: the whole point of this branch is dropping a
-          // dangling FK, so a swallowed error must not leave the stale id in
-          // place — otherwise the outer .catch would let it save anyway.
-          let seededCustomer: Customer | null
-          try {
-            seededCustomer = await fetchCustomer(seededId)
-          } catch {
-            seededCustomer = null
-          }
-          if (!active) return
-          if (seededCustomer) {
-            list = [...data, seededCustomer]
-          } else {
-            // The seeded customer is truly gone (hard-deleted, e.g. via the admin
-            // reset). fetchCustomer returns SOFT-deleted ones, so a null here
-            // means no such document at all. Drop the dangling selection: the
-            // submit guard only rejects an EMPTY id, so a stale id would sail
-            // through and save the order against a non-existent customer FK
-            // (rendering "—" everywhere). Clearing it forces the user to re-pick,
-            // or to enter a new customer when the address book is now empty.
-            setSelectedCustomerId('')
-            if (data.length === 0) setCustomerMode('new')
-          }
-        }
-        setCustomers(list)
-        // Returning users land in "existing" mode — but NOT over a restored
-        // draft, which carries the mode the user actually left the form in
-        // (flipping would hide a half-typed new-customer name behind the picker).
-        if (list.length > 0 && !draft) setCustomerMode('existing')
-      })
-      .catch(() => {
-        // Non-fatal: the picker just stays empty and the user adds a new
-        // customer. Order-save errors are surfaced separately.
-      })
-      .finally(() => {
-        if (active) setCustomersLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [ownerId, source, draft])
-
-  // Load the autocomplete suggestions independently of the customer fetch: they
-  // are non-critical, so a failure (or slow load) must never block or gate the
-  // form — it just falls back to a plain name input. Active orders only
-  // (fetchOrders drops deleted), i.e. the current assortment.
-  useEffect(() => {
-    if (!ownerId) return
-    let active = true
-    fetchOrders(ownerId)
-      .then((orders) => {
-        if (!active) return
-        setPlantNameSuggestions(collectPlantNames(orders))
-        // Gift history per customer, for the already-sent warning. Lowercased
-        // for the case-insensitive match; the edited order itself is skipped.
-        const sent = new Map<string, Set<string>>()
-        for (const o of orders) {
-          if (o.id === initialOrder?.id) continue
-          for (const gift of o.gifts ?? []) {
-            const key = gift.name.trim().toLowerCase()
-            if (key === '') continue
-            const names = sent.get(o.customerId) ?? new Set<string>()
-            names.add(key)
-            sent.set(o.customerId, names)
-          }
-        }
-        setSentGiftsByCustomer(sent)
-      })
-      .catch(() => {
-        // No suggestions on failure — the field still works as a plain input.
-      })
-    return () => {
-      active = false
-    }
-  }, [ownerId, initialOrder?.id])
-
-  const updateItem = (index: number, patch: Partial<ItemInput>) => {
-    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
+  // Picking a real customer also clears the "select a customer" validation
+  // error; the field prefill itself lives in the reducer (customerPrefill).
+  const selectCustomer = (id: string) => {
+    form.selectCustomer(id, customers.find((c) => c.id === id))
+    if (id !== '') setError((prev) => (prev === t('form.errors.selectCustomer') ? null : prev))
   }
-  // Allow adding a new row only when the last one has a name — otherwise the
-  // user could pile up empty rows. Empty rows are also dropped on submit.
-  const lastItem = items[items.length - 1]
-  const canAddItem = lastItem !== undefined && lastItem.name.trim() !== ''
-  const addItem = () => {
-    if (!canAddItem) return
-    const id = nextItemId()
-    setItems((prev) => [...prev, emptyItem(id)])
-    setFocusItemId(id) // focus the new row's name input once it mounts
-  }
-  const removeItem = (index: number) =>
-    setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev))
+  const selectMode = (mode: CustomerMode) =>
+    form.selectMode(mode, customers.find((c) => c.id === fields.selectedCustomerId))
 
-  // At most ONE gift per order (the schema is an array for the future, the form
-  // enforces today's limit): the add button disables while a gift row exists.
-  const addGift = () => {
-    if (giftName !== null) return
-    setGiftName('')
-    setFocusGift(true)
-  }
   // Warn (never block) when the chosen existing customer already received the
   // same gift on an earlier order — matched case-insensitively. A new customer
   // has no history, so no warning in "new" mode.
   const giftAlreadySent =
-    giftName !== null &&
-    customerMode === 'existing' &&
-    (sentGiftsByCustomer.get(selectedCustomerId)?.has(giftName.trim().toLowerCase()) ?? false)
+    fields.giftName !== null &&
+    fields.customerMode === 'existing' &&
+    (sentGiftsByCustomer.get(fields.selectedCustomerId)?.has(fields.giftName.trim().toLowerCase()) ??
+      false)
 
   // A row that has a name but no price is incomplete — flag its price input, but
   // only after a submit attempt so the field doesn't turn red while the user is
   // still typing. The trailing empty placeholder (no name yet) is never flagged.
   const isPriceMissing = (item: ItemInput) =>
     submitAttempted && item.name.trim() !== '' && item.price.trim() === ''
-
-  // Single source of truth for prefilling order fields from an existing
-  // customer. Pass the customer to fill, or undefined to clear. Every field that
-  // is derived from the customer must be set here (and only here) so that adding
-  // a new prefilled field stays a one-line change covered by all entry points:
-  // picking a customer, clearing the picker, and toggling the mode slider.
-  const applyCustomerToForm = (customer: Customer | undefined) => {
-    setAddress(customer?.address ?? '')
-  }
-
-  const selectCustomer = (id: string) => {
-    setSelectedCustomerId(id)
-    // Reset prefilled fields, then fill from the newly picked customer. Always
-    // resetting first means a previous customer's data can't linger when the new
-    // pick (or the "— select a customer —" placeholder, id === '') lacks it.
-    applyCustomerToForm(customers.find((c) => c.id === id))
-    // Picking a real customer clears the "select a customer" validation error.
-    if (id !== '') setError((prev) => (prev === t('form.errors.selectCustomer') ? null : prev))
-  }
-
-  const selectMode = (mode: CustomerMode) => {
-    setAnimateModeSlider(true)
-    setCustomerMode(mode)
-    // "new" starts a fresh customer → clear prefilled fields. "existing" re-syncs
-    // the form with the still-selected customer (the "new" branch cleared it).
-    applyCustomerToForm(
-      mode === 'new' ? undefined : customers.find((c) => c.id === selectedCustomerId),
-    )
-  }
-
-  // Live preview of the derived totals (same money model as the order itself).
-  // The footer's headline figure is the PLANTS-ONLY subtotal — the number the
-  // operator runs the shop by (matching the stats money card) — with the
-  // delivery cost shown beside it in small type, not folded into the total.
-  const subtotalMinor = items.reduce(
-    // A blank/zero quantity counts as 1 here, matching what gets saved.
-    (sum, item) => sum + parseRublesToMinor(item.price) * (Number(item.quantity) || 1),
-    0,
-  )
-  const deliveryMinor = parseRublesToMinor(deliveryPrice)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -523,19 +238,13 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
       return
     }
 
-    const plants: OrderItem[] = items
-      .filter((item) => item.name.trim() !== '')
-      .map((item) => ({
-        name: item.name.trim(),
-        quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)),
-        unitPriceMinor: parseRublesToMinor(item.price),
-      }))
+    const plants = parsePlants(fields.items)
 
-    if (customerMode === 'existing' && selectedCustomerId === '') {
+    if (fields.customerMode === 'existing' && fields.selectedCustomerId === '') {
       setError(t('form.errors.selectCustomer'))
       return
     }
-    if (customerMode === 'new' && newName.trim() === '') {
+    if (fields.customerMode === 'new' && fields.newName.trim() === '') {
       setError(t('form.errors.customerName'))
       return
     }
@@ -545,42 +254,41 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
     }
     // A named plant with no price is incomplete — block the save (the matching
     // price input is already flagged red via isPriceMissing).
-    if (items.some((item) => item.name.trim() !== '' && item.price.trim() === '')) {
+    if (fields.items.some((item) => item.name.trim() !== '' && item.price.trim() === '')) {
       setError(t('form.errors.plantPrice'))
       return
     }
 
     setSaving(true)
-    // Tracks photos that made it into Storage this attempt, so the catch below can
-    // roll them back if the order write itself fails (all uploads succeeded but
-    // onSubmit throws) — the doc never lands, so cloud-cleanup (#110) would never
-    // fire for these, and abandoning the form now would orphan them permanently.
+    // Tracks photos that made it into Storage this attempt, so the catch below
+    // can roll them back if the order write itself fails (all uploads succeeded
+    // but onSubmit throws) — the doc never lands, so cloud-cleanup (#110) would
+    // never fire for these, and abandoning the form would orphan them permanently.
     const uploadedPhotoPaths: string[] = []
     try {
       // Resolve the customer id: reuse the selected one, or create a new
       // customer first. The delivery address also seeds the new customer's
       // default address.
-      let customerId = selectedCustomerId
-      if (customerMode === 'new') {
+      let customerId = fields.selectedCustomerId
+      if (fields.customerMode === 'new') {
         const newCustomer: NewCustomer = {
           ownerId,
-          name: newName.trim(),
+          name: fields.newName.trim(),
           createdAt: Date.now(),
-          ...(newPhone.trim() !== '' ? { phone: newPhone.trim() } : {}),
-          ...(address.trim() !== '' ? { address: address.trim() } : {}),
+          ...(fields.newPhone.trim() !== '' ? { phone: fields.newPhone.trim() } : {}),
+          ...(fields.address.trim() !== '' ? { address: fields.address.trim() } : {}),
         }
         customerId = await createCustomer(newCustomer)
         // The customer document now exists. If the save below fails and the user
         // retries, switch to the "existing" branch so we reuse this id instead
         // of creating a duplicate customer on every retry.
-        setSelectedCustomerId(customerId)
-        setCustomerMode('existing')
+        form.setFields({ selectedCustomerId: customerId, customerMode: 'existing' })
       }
 
       // Completion stamp derived from the chosen status (e.g. creating or
       // editing an order straight into "delivered"); a re-save keeps the
       // original moment via the order's existing completedAt.
-      const completedAt = resolveCompletedAt(orderStatus, initialOrder?.completedAt, Date.now())
+      const completedAt = resolveCompletedAt(fields.status, initialOrder?.completedAt, Date.now())
 
       // Deferred photo upload: now that we're committing to save the order, upload
       // the locally-picked files under orders/{ownerId}/{orderId}/ — on create the
@@ -592,9 +300,9 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
       // (Storage has no offline queue) — an offline save with new photos attached
       // fails here; a save with no new photos still works offline.
       let photoPaths: string[] = []
-      if (pendingFiles.length > 0) {
+      if (fields.pendingFiles.length > 0) {
         const results = await Promise.allSettled(
-          pendingFiles.map((file) => uploadOrderPhoto(ownerId, orderId, file)),
+          fields.pendingFiles.map((file) => uploadOrderPhoto(ownerId, orderId, file)),
         )
         if (results.some((r) => r.status === 'rejected')) {
           results.forEach((r) => {
@@ -611,36 +319,16 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
         uploadedPhotoPaths.push(...photoPaths)
       }
 
-      // `dateCreated` is set by the caller (Date.now() on create, original on
-      // edit), so it is intentionally absent here.
-      const order: Omit<NewOrder, 'dateCreated'> = {
+      // Pure field→document assembly (see payload.ts). `dateCreated` is set by
+      // the caller (Date.now() on create, the original on edit).
+      const order = buildOrderPayload({
+        fields,
+        plants,
         ownerId,
         customerId,
-        address: address.trim(),
-        plants,
-        paymentMethod,
-        deliveryMethod,
-        deliveryPriceMinor: parseRublesToMinor(deliveryPrice),
-        currency,
-        paymentStatus,
-        status: orderStatus,
-        // The gift, when one was added and named. A blank gift row is dropped
-        // silently, like empty plant rows. Free by definition: price 0 and
-        // quantity 1, so it never moves the totals (they read `plants` only).
-        ...(giftName !== null && giftName.trim() !== ''
-          ? { gifts: [{ name: giftName.trim(), quantity: 1, unitPriceMinor: 0 }] }
-          : {}),
-        ...(comment.trim() !== '' ? { comment: comment.trim() } : {}),
-        ...(completedAt !== undefined ? { completedAt } : {}),
-        // The photo list to save: the KEPT saved photos (removals staged in the
-        // picker are applied here) plus the paths just uploaded. Omitted when the
-        // result is empty — createOrder then writes no field, and updateOrder
-        // CLEARS the stored list (photos is in CLEARABLE_ORDER_FIELDS), so
-        // removing the last photo really removes it.
-        ...(keptPhotos.length + photoPaths.length > 0
-          ? { photos: [...keptPhotos, ...photoPaths] }
-          : {}),
-      }
+        completedAt,
+        uploadedPhotoPaths: photoPaths,
+      })
 
       // The caller persists the order (create vs update) and navigates. The
       // pre-generated create id rides along so the doc lands on the same id the
@@ -652,7 +340,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
       // save never touches them; best-effort — a failure here only leaves an
       // orphan blob, not a UI error.
       const removedPhotos = (initialOrder?.photos ?? []).filter(
-        (path) => !keptPhotos.includes(path),
+        (path) => !fields.keptPhotos.includes(path),
       )
       removedPhotos.forEach((path) =>
         deleteOrderPhoto(path).catch((e) => reportError(e, 'orderFormRemovePhoto')),
@@ -660,7 +348,7 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
       // The order is saved — the draft has served its purpose. Cleared only
       // AFTER onSubmit resolves, so a failed save (the catch below) keeps the
       // draft and the input survives even a page-leave after the failure.
-      if (draftEnabled && draftOwnerId) clearOrderDraft(draftOwnerId)
+      draftHandle.clear()
     } catch (err: unknown) {
       // Roll back any photos already in Storage — the order doc will never exist
       // to trigger cloud-cleanup, so abandoning the form now would orphan them.
@@ -676,9 +364,9 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // Cancel just leaves the form — nothing to clean up. Locally-picked photos were
   // never uploaded (deferred to submit), so abandoning them costs nothing.
 
-  // Wait for the customer fetch before painting the form, so the slider starts
-  // in the correct position instead of snapping from "new" to "existing".
-  if (customersLoading) return <Spinner />
+  // Wait for the customer options before painting the form, so the mode slider
+  // starts in the correct position instead of snapping from "new" to "existing".
+  if (!ready) return <Spinner />
 
   return (
     <>
@@ -698,9 +386,9 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               photos, left, and came back would otherwise save the restored form
               WITHOUT them and never know — the exact "заказ есть, фото нет"
               report. Say it up front so they re-attach before saving. The
-              region mounts EMPTY (sr-only) and the text arrives via the effect
-              above, so screen readers announce it; it empties again when the
-              stored draft is deleted (see the autosave effect). */}
+              region mounts EMPTY (sr-only) and the text arrives via the reveal
+              effect (useOrderDraftSync), so screen readers announce it; it
+              empties again when the stored draft is deleted (the autosave). */}
           {draft !== null && (
             <p
               role="status"
@@ -715,24 +403,24 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
           )}
 
           <CustomerPicker
-            mode={customerMode}
+            mode={fields.customerMode}
             customers={customers}
-            selectedCustomerId={selectedCustomerId}
-            newName={newName}
-            newPhone={newPhone}
-            animate={animateModeSlider}
+            selectedCustomerId={fields.selectedCustomerId}
+            newName={fields.newName}
+            newPhone={fields.newPhone}
+            animate={form.animateModeSlider}
             t={t}
             onSelectMode={selectMode}
             onSelectCustomer={selectCustomer}
-            onChangeNewName={setNewName}
-            onChangeNewPhone={setNewPhone}
+            onChangeNewName={(value) => form.setFields({ newName: value })}
+            onChangeNewPhone={(value) => form.setFields({ newPhone: value })}
           />
 
           <Input
             className="w-full"
             label={t('form.deliveryAddress')}
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            value={fields.address}
+            onChange={(e) => form.setFields({ address: e.target.value })}
           />
 
           {/* The plant list is set off by a divider above and below instead of a
@@ -748,31 +436,31 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               From `sm` up each item is a single line, so gap-2 suffices. */}
           <fieldset className="flex min-w-0 flex-col gap-4 border-0 p-0 sm:gap-2">
             <legend className="sr-only">{t('form.plants')}</legend>
-            {items.map((item, index) => (
+            {fields.items.map((item, index) => (
               <PlantItemRow
                 key={item.id}
                 position={index + 1}
                 item={item}
                 priceMissing={isPriceMissing(item)}
-                canRemove={items.length > 1}
-                autoFocus={item.id === focusItemId}
+                canRemove={fields.items.length > 1}
+                autoFocus={item.id === form.focusItemId}
                 suggestions={plantNameSuggestions}
                 t={t}
-                onChange={(patch) => updateItem(index, patch)}
-                onRemove={() => removeItem(index)}
+                onChange={(patch) => form.updateItem(index, patch)}
+                onRemove={() => form.removeItem(index)}
               />
             ))}
             {/* The gift line sits under the priced plant rows: a free plant
                 (name only), at most one per order — see GiftRow / the schema. */}
-            {giftName !== null && (
+            {fields.giftName !== null && (
               <GiftRow
-                name={giftName}
+                name={fields.giftName}
                 alreadySent={giftAlreadySent}
-                autoFocus={focusGift}
+                autoFocus={form.focusGift}
                 suggestions={plantNameSuggestions}
                 t={t}
-                onChange={setGiftName}
-                onRemove={() => setGiftName(null)}
+                onChange={(value) => form.setFields({ giftName: value })}
+                onRemove={form.removeGift}
               />
             )}
             {/* One row on every width. While a gift can still be added the pair
@@ -787,12 +475,12 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={addItem}
-                disabled={!canAddItem}
+                onClick={form.addItem}
+                disabled={!form.canAddItem}
                 aria-label={t('form.addPlant')}
                 className="whitespace-nowrap max-sm:flex-1"
               >
-                {giftName === null ? (
+                {fields.giftName === null ? (
                   <>
                     <span className="sm:hidden">{t('form.addPlantShort')}</span>
                     <span className="max-sm:hidden">{t('form.addPlant')}</span>
@@ -801,11 +489,11 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                   t('form.addPlant')
                 )}
               </Button>
-              {giftName === null && (
+              {fields.giftName === null && (
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={addGift}
+                  onClick={form.addGift}
                   aria-label={t('form.addGift')}
                   className="whitespace-nowrap max-sm:flex-1"
                 >
@@ -820,8 +508,12 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <Select
               label={t('form.deliveryMethod')}
-              value={deliveryMethod}
-              onChange={(e) => setDeliveryMethod(asEnum(DELIVERY_METHOD_VALUES, e.target.value, deliveryMethod))}
+              value={fields.deliveryMethod}
+              onChange={(e) =>
+                form.setFields({
+                  deliveryMethod: asEnum(DELIVERY_METHOD_VALUES, e.target.value, fields.deliveryMethod),
+                })
+              }
             >
               <SelectOptions options={deliveryMethodOptions(tOrder)} />
             </Select>
@@ -830,16 +522,18 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               className="w-full"
               numeric="decimal"
               label={t('form.deliveryPrice')}
-              value={deliveryPrice}
-              onChange={(e) => setDeliveryPrice(e.target.value)}
+              value={fields.deliveryPrice}
+              onChange={(e) => form.setFields({ deliveryPrice: e.target.value })}
             />
 
             {/* Currency governs every amount in the order (plant prices, delivery,
                 total). Each option shows the localized name plus its symbol. */}
             <Select
               label={t('form.currency')}
-              value={currency}
-              onChange={(e) => setCurrency(asEnum(CURRENCIES, e.target.value, currency))}
+              value={fields.currency}
+              onChange={(e) =>
+                form.setFields({ currency: asEnum(CURRENCIES, e.target.value, fields.currency) })
+              }
             >
               <SelectOptions options={currencyOptions(tOrder)} />
             </Select>
@@ -848,24 +542,34 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <Select
               label={t('form.paymentMethod')}
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(asEnum(PAYMENT_METHOD_VALUES, e.target.value, paymentMethod))}
+              value={fields.paymentMethod}
+              onChange={(e) =>
+                form.setFields({
+                  paymentMethod: asEnum(PAYMENT_METHOD_VALUES, e.target.value, fields.paymentMethod),
+                })
+              }
             >
               <SelectOptions options={paymentMethodOptions(tOrder)} />
             </Select>
 
             <Select
               label={t('form.paymentStatus')}
-              value={paymentStatus}
-              onChange={(e) => setPaymentStatus(asEnum(PAYMENT_STATUS_VALUES, e.target.value, paymentStatus))}
+              value={fields.paymentStatus}
+              onChange={(e) =>
+                form.setFields({
+                  paymentStatus: asEnum(PAYMENT_STATUS_VALUES, e.target.value, fields.paymentStatus),
+                })
+              }
             >
               <SelectOptions options={paymentStatusOptions(tOrder)} />
             </Select>
 
             <Select
               label={t('form.status')}
-              value={orderStatus}
-              onChange={(e) => setOrderStatus(asEnum(ORDER_STATUS_VALUES, e.target.value, orderStatus))}
+              value={fields.status}
+              onChange={(e) =>
+                form.setFields({ status: asEnum(ORDER_STATUS_VALUES, e.target.value, fields.status) })
+              }
             >
               <SelectOptions options={orderStatusOptions(tOrder)} />
             </Select>
@@ -874,8 +578,8 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
           <Textarea
             className="min-h-20 w-full"
             label={t('form.comment')}
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
+            value={fields.comment}
+            onChange={(e) => form.setFields({ comment: e.target.value })}
           />
 
           {/* Photo attachments, on create AND edit. Newly picked photos are held
@@ -889,11 +593,11 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
             <>
               <span aria-hidden="true" className="h-px w-full bg-border" />
               <PendingPhotos
-                files={pendingFiles}
-                onChange={setPendingFiles}
-                existing={keptPhotos}
+                files={fields.pendingFiles}
+                onChange={(files) => form.setFields({ pendingFiles: files })}
+                existing={fields.keptPhotos}
                 onRemoveExisting={(path) =>
-                  setKeptPhotos((prev) => prev.filter((p) => p !== path))
+                  form.setFields({ keptPhotos: fields.keptPhotos.filter((p) => p !== path) })
                 }
               />
             </>
@@ -944,11 +648,13 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                     inside formatMoney) instead of forcing the row wider. */}
                 <span className="flex items-baseline gap-1.5 max-sm:min-w-0 max-sm:flex-col max-sm:gap-0">
                   <span className="text-lg font-semibold text-heading">
-                    {formatMoney(subtotalMinor, currency)}
+                    {formatMoney(form.subtotalMinor, fields.currency)}
                   </span>
-                  {deliveryMinor > 0 && (
+                  {form.deliveryMinor > 0 && (
                     <span className="text-xs text-text sm:whitespace-nowrap">
-                      {t('form.totalDelivery', { amount: formatMoney(deliveryMinor, currency) })}
+                      {t('form.totalDelivery', {
+                        amount: formatMoney(form.deliveryMinor, fields.currency),
+                      })}
                     </span>
                   )}
                 </span>

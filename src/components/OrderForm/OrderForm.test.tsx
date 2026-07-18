@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
 import { AuthContext } from '@/context/authContext'
 import { SettingsContext } from '@/context/settingsContext'
+import { QueryWrapper } from '@/test/queryWrapper'
 import type { SettingsState } from '@/context/settingsContext'
 import type { Order } from '@/types/order'
 import { order as baseOrder, customer } from '@/test/factories'
@@ -78,21 +79,26 @@ const settings = (): SettingsState => ({
   saveSettings: vi.fn(),
 })
 
+// QueryWrapper outermost: the form reads its customer options / plant history
+// through the shared TanStack hooks now, so the tree needs a QueryClient (fresh
+// per render — no cache leaks between cases).
 const renderForm = (props: Partial<React.ComponentProps<typeof OrderForm>> = {}) =>
   render(
-    <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-      <SettingsContext.Provider value={settings()}>
-        <MemoryRouter>
-          <OrderForm
-            heading="Новый заказ"
-            onSubmit={props.onSubmit ?? vi.fn().mockResolvedValue(undefined)}
-            onCancel={props.onCancel ?? vi.fn()}
-            initialOrder={props.initialOrder}
-            seed={props.seed}
-          />
-        </MemoryRouter>
-      </SettingsContext.Provider>
-    </AuthContext.Provider>,
+    <QueryWrapper>
+      <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+        <SettingsContext.Provider value={settings()}>
+          <MemoryRouter>
+            <OrderForm
+              heading="Новый заказ"
+              onSubmit={props.onSubmit ?? vi.fn().mockResolvedValue(undefined)}
+              onCancel={props.onCancel ?? vi.fn()}
+              initialOrder={props.initialOrder}
+              seed={props.seed}
+            />
+          </MemoryRouter>
+        </SettingsContext.Provider>
+      </AuthContext.Provider>
+    </QueryWrapper>,
   )
 
 beforeEach(() => {

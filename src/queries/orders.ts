@@ -41,6 +41,19 @@ export const useDeletedOrdersSuspense = (ownerId: string) =>
     queryFn: () => fetchDeletedOrders(ownerId),
   })
 
+// NON-suspending variant of the active-orders list, on the SAME cache key as
+// useOrdersSuspense — the two share one entry, so a form mounted right after the
+// orders list reuses the already-parsed array instead of re-running getDocs. For
+// callers whose data is a nice-to-have (the order form's plant-name suggestions
+// and gift history): a suspense read there would gate the whole form on a fetch
+// it can happily render without.
+export const useOrders = (ownerId: string | undefined) =>
+  useQuery({
+    queryKey: queryKeys.orders(ownerId),
+    queryFn: () => fetchOrders(ownerId as string),
+    enabled: ownerId !== undefined,
+  })
+
 // A single order by id. `includeDeleted` lets the detail page open a trashed order
 // read-only instead of dead-ending on "not found".
 export const useOrder = (
