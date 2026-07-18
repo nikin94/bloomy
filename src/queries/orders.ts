@@ -1,14 +1,7 @@
 import { useEffect } from 'react'
 import { useQuery, useSuspenseQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  fetchOrders,
-  fetchDeletedOrders,
-  fetchOrder,
-  migrateOrderStatuses,
-  reconcileOrderNumbers,
-} from '@/firebase/orders'
+import { fetchOrders, fetchDeletedOrders, fetchOrder, reconcileOrderNumbers } from '@/firebase/orders'
 import type { Order } from '@/types/order'
-import { reportError } from '@/observability/reportError'
 import { queryKeys } from './keys'
 
 // Order-list / order-detail reads, cached per owner. These replace the hand-rolled
@@ -135,52 +128,4 @@ export const useReconcileOrderNumbers = (ownerId: string | undefined) => {
       window.removeEventListener('online', run)
     }
   }, [ownerId, queryClient])
-}
-
-// Per-owner "already migrated" marker. Once a run completes, the scan inside
-// migrateOrderStatuses (a full-collection getDocs per OrdersPage mount) is pure
-// waste, so later mounts short-circuit on this flag. localStorage only: losing
-// it (another device, cleared storage) just costs one extra no-op scan, and a
-// legacy document that somehow appears later is still read correctly — the
-// schema normalizes legacy values on parse regardless of the stored shape.
-const migrationDoneKey = (ownerId: string) => `bloomy:order-status-migration:v1:${ownerId}`
-
-// Lazily settle the stored three-state order statuses for this owner (see
-// migrateOrderStatuses): fired once on the orders-list mount, retried on
-// reconnect, mirroring useReconcileOrderNumbers. No cache invalidation is
-// needed on success — parseOrder already normalizes legacy values on read, so
-// the migration changes what is STORED, never what is displayed.
-export const useMigrateOrderStatuses = (ownerId: string | undefined) => {
-  useEffect(() => {
-    if (!ownerId) return
-    try {
-      if (localStorage.getItem(migrationDoneKey(ownerId)) !== null) return
-    } catch {
-      // Storage unavailable (private mode): no flag to read — just run.
-    }
-    const run = () =>
-      migrateOrderStatuses(ownerId)
-        .then(() => {
-          // Done for this account — stop re-scanning on every mount. A failed
-          // flag write only means the next mount re-runs, which is safe.
-          try {
-            localStorage.setItem(migrationDoneKey(ownerId), String(Date.now()))
-          } catch {
-            // Ignore: see above.
-          }
-          window.removeEventListener('online', run)
-        })
-        .catch((err: unknown) => {
-          // Reads stay correct either way (the parse normalization), and an
-          // offline failure simply retries on the next online load — but a
-          // PERSISTENT failure (e.g. a rules mismatch) must be observable, so
-          // route it to Sentry like every other background write.
-          reportError(err, 'migrateOrderStatuses')
-        })
-    void run()
-    window.addEventListener('online', run)
-    return () => {
-      window.removeEventListener('online', run)
-    }
-  }, [ownerId])
 }
