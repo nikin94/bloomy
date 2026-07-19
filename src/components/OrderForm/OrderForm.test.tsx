@@ -470,6 +470,28 @@ describe('OrderForm', () => {
     expect(onSubmit.mock.calls[0][0].source).toBe('avito')
   })
 
+  it('puts the statuses (and prepaid amount) right after the plants block, before the logistics', async () => {
+    const user = userEvent.setup()
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    renderForm({ initialOrder: order({ customerId: 'c1' }) })
+    await screen.findByRole('combobox', { name: 'Существующий клиент' })
+
+    // DOM order mirrors the detail page (owner request): payment status and
+    // order status come before the delivery/payment-method grid…
+    const paymentStatus = screen.getByRole('combobox', { name: 'Статус оплаты' })
+    const deliveryMethod = screen.getByRole('combobox', { name: 'Способ доставки' })
+    expect(
+      paymentStatus.compareDocumentPosition(deliveryMethod) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+
+    // …and the prepaid input appears between them, not below the logistics.
+    await user.selectOptions(paymentStatus, 'prepaid')
+    const prepaid = screen.getByLabelText('Сумма предоплаты')
+    expect(
+      prepaid.compareDocumentPosition(deliveryMethod) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
   it('shows the prepaid-amount input only for the prepaid status and keeps its value across a switch', async () => {
     const user = userEvent.setup()
     fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])

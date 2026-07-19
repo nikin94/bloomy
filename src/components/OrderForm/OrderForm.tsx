@@ -536,44 +536,11 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
           </fieldset>
           <span aria-hidden="true" className="h-px w-full bg-border" />
 
-          {/* Two columns now: the currency select left this grid — the order's
-              currency comes from the global settings default (an edit keeps the
-              order's own stored currency; there is still no conversion). */}
+          {/* Statuses FIRST after the plants (owner request, mirroring the
+              detail page's row order): the payment/order status — and the
+              prepaid amount tied to them — sit right under the list, before
+              the logistics below. */}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-            <Select
-              label={t('form.deliveryMethod')}
-              value={fields.deliveryMethod}
-              onChange={(e) =>
-                form.setFields({
-                  deliveryMethod: asEnum(DELIVERY_METHOD_VALUES, e.target.value, fields.deliveryMethod),
-                })
-              }
-            >
-              <SelectOptions options={deliveryMethodOptions(tOrder)} />
-            </Select>
-
-            <Input
-              className="w-full"
-              numeric="decimal"
-              label={t('form.deliveryPrice')}
-              value={fields.deliveryPrice}
-              onChange={(e) => form.setFields({ deliveryPrice: e.target.value })}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-            <Select
-              label={t('form.paymentMethod')}
-              value={fields.paymentMethod}
-              onChange={(e) =>
-                form.setFields({
-                  paymentMethod: asEnum(PAYMENT_METHOD_VALUES, e.target.value, fields.paymentMethod),
-                })
-              }
-            >
-              <SelectOptions options={paymentMethodOptions(tOrder)} />
-            </Select>
-
             <Select
               label={t('form.paymentStatus')}
               value={fields.paymentStatus}
@@ -599,8 +566,8 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
 
           {/* Prepaid amount — shown only while the payment status is
               "Предоплата" (the one state where a partial payment exists to
-              record). A separate conditional row, not a fourth grid cell, for
-              the same rhythm reason as the checkbox below. The VALUE survives
+              record). A separate conditional row, not a grid cell, for the
+              same rhythm reason as the checkbox below. The VALUE survives
               a status switch (see useOrderFormState) — hiding the input never
               wipes what was typed — and payload.ts stores it independently of
               the status, so prepaid → paid keeps the payment history.
@@ -614,6 +581,46 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               onChange={(e) => form.setFields({ prepaidAmount: e.target.value })}
             />
           )}
+
+          {/* Logistics: how the order travels and how it's paid for. The
+              payment-method select joined this grid when the statuses moved up
+              (its old grid dissolved), refilling the third column the currency
+              select vacated — the order's currency now comes from the global
+              settings default (an edit keeps the order's own stored currency;
+              there is still no conversion). */}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+            <Select
+              label={t('form.deliveryMethod')}
+              value={fields.deliveryMethod}
+              onChange={(e) =>
+                form.setFields({
+                  deliveryMethod: asEnum(DELIVERY_METHOD_VALUES, e.target.value, fields.deliveryMethod),
+                })
+              }
+            >
+              <SelectOptions options={deliveryMethodOptions(tOrder)} />
+            </Select>
+
+            <Input
+              className="w-full"
+              numeric="decimal"
+              label={t('form.deliveryPrice')}
+              value={fields.deliveryPrice}
+              onChange={(e) => form.setFields({ deliveryPrice: e.target.value })}
+            />
+
+            <Select
+              label={t('form.paymentMethod')}
+              value={fields.paymentMethod}
+              onChange={(e) =>
+                form.setFields({
+                  paymentMethod: asEnum(PAYMENT_METHOD_VALUES, e.target.value, fields.paymentMethod),
+                })
+              }
+            >
+              <SelectOptions options={paymentMethodOptions(tOrder)} />
+            </Select>
+          </div>
 
           {/* Marketplace source — a plain full-width checkbox row, deliberately
               NOT a fourth cell in the 3-column select grid above (which would
