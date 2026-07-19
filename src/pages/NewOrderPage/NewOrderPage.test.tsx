@@ -444,9 +444,30 @@ describe('NewOrderPage', () => {
     renderForm(settingsState({ defaultDeliveryMethod: 'cdek', defaultPaymentMethod: 'card' }))
     await screen.findByLabelText('Имя клиента')
 
-    // A fresh order opens with the user's saved default methods, not post/cash.
+    // A fresh order opens with the user's saved default methods, not post/cash —
+    // delivery is a select again (6 options were too many pills), payment
+    // stays a chip radiogroup, so its default rides a checked radio.
     expect(screen.getByRole('combobox', { name: 'Способ доставки' })).toHaveValue('cdek')
-    expect(screen.getByRole('combobox', { name: 'Тип оплаты' })).toHaveValue('card')
+    expect(screen.getByRole('radio', { name: 'Карта' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Наличные' })).not.toBeChecked()
+  })
+
+  it('saves a payment method picked by clicking its chip', async () => {
+    const user = userEvent.setup()
+    renderForm()
+    await user.type(await screen.findByLabelText('Имя клиента'), 'Борис')
+    await user.type(screen.getByLabelText('Название'), 'Роза')
+    await user.type(screen.getByLabelText('Цена'), '100')
+
+    // One tap on a pill selects it (no dropdown), and the picked value lands on
+    // the stored order as the same typed enum the select used to write.
+    await user.click(screen.getByRole('radio', { name: 'Перевод' }))
+    expect(screen.getByRole('radio', { name: 'Перевод' })).toBeChecked()
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+
+    await waitFor(() => expect(createOrder).toHaveBeenCalledTimes(1))
+    const payload = vi.mocked(createOrder).mock.calls[0][0] as Record<string, unknown>
+    expect(payload.paymentMethod).toBe('bank')
   })
 
   it('adds a single free gift and submits it as gifts: [{ qty 1, price 0 }]', async () => {

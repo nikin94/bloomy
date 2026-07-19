@@ -10,6 +10,7 @@
 // `size` covers the three places it's needed: `sm` inside buttons (replacing the
 // "Saving…" text), `lg` as the full-page overlay (see Spinner). Carries the
 // `status` role + a translated label so a button in its loading state announces it.
+import { useLayoutEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 type LoaderSize = 'sm' | 'md' | 'lg'
@@ -22,8 +23,22 @@ const sizeClass: Record<LoaderSize, string> = {
 
 const Loader = ({ size = 'md', className = '' }: { size?: LoaderSize; className?: string }) => {
   const { t } = useTranslation()
+  const ref = useRef<HTMLSpanElement>(null)
+  // Phase-sync to the page clock: `animate-spin` is a 1s loop that starts at 0°
+  // on MOUNT, so when one loading source hands off to another (the route
+  // Suspense fallback → a form's own spinner, the auth gate → the route
+  // fallback) the freshly mounted ring visibly snaps back and reads as a SECOND
+  // loader starting over. A negative delay of (now mod 1s) starts every
+  // instance mid-cycle exactly where an uninterrupted ring would be, so
+  // consecutive spinners look like one continuous loader. A LAYOUT effect (not
+  // render — performance.now is impure there, and not a passive effect — that
+  // would paint one 0° frame first) sets it before the browser paints.
+  useLayoutEffect(() => {
+    ref.current?.style.setProperty('animation-delay', `-${performance.now() % 1000}ms`)
+  }, [])
   return (
     <span
+      ref={ref}
       role="status"
       aria-label={t('loading')}
       className={`inline-block shrink-0 animate-spin rounded-full border-transparent border-t-current ${sizeClass[size]} ${className}`}

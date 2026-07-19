@@ -47,18 +47,26 @@ export const useOrders = (ownerId: string | undefined) =>
     enabled: ownerId !== undefined,
   })
 
-// A single order by id. `includeDeleted` lets the detail page open a trashed order
-// read-only instead of dead-ending on "not found".
-export const useOrder = (
+// SUSPENDING single-order read for the detail/edit screens, on the SAME cache
+// key as useOrder (one shared entry — useOrderCache's optimistic setOrder still
+// lands here). Suspending is what keeps the loading UX ONE spinner: the lazy
+// route chunk and this data read fall to the same route-level <Suspense>
+// (AppLayout), so its fallback stays mounted continuously instead of handing
+// off to a page-local Spinner that restarts the ring animation. There is no
+// `enabled` on suspense queries, so the possibly-missing route param is folded
+// into the queryFn: no id ⇒ resolve null, the caller's "not found" branch.
+// A fetch FAILURE now throws to the route error boundary (the shared inline
+// retry, same as the list pages) instead of a page-local error line.
+export const useOrderSuspense = (
   id: string | undefined,
-  ownerId: string | undefined,
+  ownerId: string,
   options?: { includeDeleted?: boolean },
 ) =>
-  useQuery({
+  useSuspenseQuery({
     queryKey: queryKeys.order(id, ownerId, options?.includeDeleted ?? false),
-    queryFn: () => fetchOrder(id as string, ownerId as string, options),
-    enabled: id !== undefined && ownerId !== undefined,
+    queryFn: () => (id === undefined ? null : fetchOrder(id, ownerId, options)),
   })
+
 
 // Cache writers for order mutations. Invalidation uses the KEY PREFIX (`['orders']`
 // etc. — the first segment of the keys above), so a thin caller like NewOrderPage

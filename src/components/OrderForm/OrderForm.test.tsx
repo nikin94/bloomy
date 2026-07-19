@@ -477,18 +477,23 @@ describe('OrderForm', () => {
     await screen.findByRole('combobox', { name: 'Существующий клиент' })
 
     // DOM order mirrors the detail page (owner request): payment status and
-    // order status come before the delivery/payment-method grid…
+    // order status come before the logistics — which now leads with the
+    // payment-method chip group, the delivery select below it…
     const paymentStatus = screen.getByRole('combobox', { name: 'Статус оплаты' })
+    const paymentMethod = screen.getByRole('group', { name: 'Тип оплаты' })
     const deliveryMethod = screen.getByRole('combobox', { name: 'Способ доставки' })
     expect(
-      paymentStatus.compareDocumentPosition(deliveryMethod) & Node.DOCUMENT_POSITION_FOLLOWING,
+      paymentStatus.compareDocumentPosition(paymentMethod) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      paymentMethod.compareDocumentPosition(deliveryMethod) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
 
-    // …and the prepaid input appears between them, not below the logistics.
+    // …and the prepaid input appears between the statuses and the logistics.
     await user.selectOptions(paymentStatus, 'prepaid')
     const prepaid = screen.getByLabelText('Сумма предоплаты')
     expect(
-      prepaid.compareDocumentPosition(deliveryMethod) & Node.DOCUMENT_POSITION_FOLLOWING,
+      prepaid.compareDocumentPosition(paymentMethod) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
   })
 

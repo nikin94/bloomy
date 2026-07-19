@@ -1,11 +1,10 @@
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import OrderForm from '@/components/OrderForm/OrderForm'
-import Spinner from '@/components/Spinner/Spinner'
 import { updateOrder } from '@/firebase/orders'
-import { useOrder, useOrderCache } from '@/queries/orders'
+import { useOrderSuspense, useOrderCache } from '@/queries/orders'
 import { useCustomerCache } from '@/queries/customers'
-import { useOwnerId } from '@/hooks/useOwnerId'
+import { useRequiredOwnerId } from '@/hooks/useOwnerId'
 import { formatOrderNumber } from '@/types/order'
 import { SCREEN_PADDING } from '@/styles/screenStyles'
 
@@ -18,22 +17,22 @@ const EditOrderPage = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { t } = useTranslation('order')
-  const ownerId = useOwnerId()
+  const ownerId = useRequiredOwnerId()
 
   // Prefill order from the shared query cache (active order — edit isn't offered on
-  // a trashed one). The form reads `initialOrder` once, so it's mounted only once
-  // the order is loaded.
-  const orderQuery = useOrder(id, ownerId)
-  const order = orderQuery.data ?? null
+  // a trashed one). The read SUSPENDS to the route-level <Suspense> (AppLayout) —
+  // the same boundary that holds the lazy chunk — so the first visit shows one
+  // continuous spinner instead of a chunk-fallback → page-Spinner handoff that
+  // restarted the ring; a load failure throws to the route error boundary. The
+  // form reads `initialOrder` once, so it mounts only with the order resolved.
+  const order = useOrderSuspense(id, ownerId).data
   const orderCache = useOrderCache()
   const customerCache = useCustomerCache()
 
-  if (orderQuery.isLoading) return <Spinner />
-
-  if (orderQuery.error || !order) {
+  if (!order) {
     return (
       <div className={SCREEN_PADDING}>
-        <p className="text-text">{orderQuery.error?.message || t('detail.notFound')}</p>
+        <p className="text-text">{t('detail.notFound')}</p>
       </div>
     )
   }
