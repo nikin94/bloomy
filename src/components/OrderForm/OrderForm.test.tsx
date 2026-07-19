@@ -477,9 +477,9 @@ describe('OrderForm', () => {
     await screen.findByRole('combobox', { name: 'Существующий клиент' })
 
     // DOM order mirrors the detail page (owner request): payment status and
-    // order status come before the delivery/payment-method grid…
+    // order status come before the logistics (now a chip radiogroup)…
     const paymentStatus = screen.getByRole('combobox', { name: 'Статус оплаты' })
-    const deliveryMethod = screen.getByRole('combobox', { name: 'Способ доставки' })
+    const deliveryMethod = screen.getByRole('group', { name: 'Способ доставки' })
     expect(
       paymentStatus.compareDocumentPosition(deliveryMethod) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()

@@ -6,8 +6,6 @@ import { useSettings } from '@/context/settingsContext'
 import { formatMoney } from '@/utils/format'
 import {
   resolveCompletedAt,
-  DELIVERY_METHOD_VALUES,
-  PAYMENT_METHOD_VALUES,
   PAYMENT_STATUS_VALUES,
   ORDER_STATUS_VALUES,
 } from '@/types/order'
@@ -28,6 +26,7 @@ import Input from '@/components/Input/Input'
 import Textarea from '@/components/Textarea/Textarea'
 import PendingPhotos from '@/components/OrderPhotos/PendingPhotos'
 import SelectOptions from '@/components/SelectOptions/SelectOptions'
+import ChipRadioGroup from '@/components/ChipRadioGroup/ChipRadioGroup'
 import PlantItemRow from './PlantItemRow'
 import GiftRow from './GiftRow'
 import CustomerPicker from './CustomerPicker'
@@ -588,45 +587,37 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
             </Select>
           </div>
 
-          {/* Logistics: how the order travels and how it's paid for. The
-              payment-method select joined this grid when the statuses moved up
-              (its old grid dissolved), refilling the third column the currency
-              select vacated — the order's currency now comes from the global
-              settings default (an edit keeps the order's own stored currency;
-              there is still no conversion). */}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-            <Select
-              label={t('form.deliveryMethod')}
-              value={fields.deliveryMethod}
-              onChange={(e) =>
-                form.setFields({
-                  deliveryMethod: asEnum(DELIVERY_METHOD_VALUES, e.target.value, fields.deliveryMethod),
-                })
-              }
-            >
-              <SelectOptions options={deliveryMethodOptions(tOrder)} />
-            </Select>
+          {/* Logistics: how the order travels and how it's paid for. The two
+              method fields are CHIP RADIOGROUPS instead of selects (owner
+              decision — every option visible, one tap to pick; the typed enum
+              fields and their canonical option order are unchanged, chips are
+              presentation only). Each group takes its own full-width row so
+              the delivery pills can wrap freely on a phone; the price input
+              sits between them, capped at a money-input width — a full-width
+              number field among pill rows would read as another section. The
+              order's currency comes from the global settings default (an edit
+              keeps the order's own stored currency; there is no conversion). */}
+          <ChipRadioGroup
+            label={t('form.deliveryMethod')}
+            value={fields.deliveryMethod}
+            options={deliveryMethodOptions(tOrder)}
+            onChange={(deliveryMethod) => form.setFields({ deliveryMethod })}
+          />
 
-            <Input
-              className="w-full"
-              numeric="decimal"
-              label={t('form.deliveryPrice')}
-              value={fields.deliveryPrice}
-              onChange={(e) => form.setFields({ deliveryPrice: e.target.value })}
-            />
+          <Input
+            className="w-full sm:max-w-xs"
+            numeric="decimal"
+            label={t('form.deliveryPrice')}
+            value={fields.deliveryPrice}
+            onChange={(e) => form.setFields({ deliveryPrice: e.target.value })}
+          />
 
-            <Select
-              label={t('form.paymentMethod')}
-              value={fields.paymentMethod}
-              onChange={(e) =>
-                form.setFields({
-                  paymentMethod: asEnum(PAYMENT_METHOD_VALUES, e.target.value, fields.paymentMethod),
-                })
-              }
-            >
-              <SelectOptions options={paymentMethodOptions(tOrder)} />
-            </Select>
-          </div>
+          <ChipRadioGroup
+            label={t('form.paymentMethod')}
+            value={fields.paymentMethod}
+            options={paymentMethodOptions(tOrder)}
+            onChange={(paymentMethod) => form.setFields({ paymentMethod })}
+          />
 
           {/* Marketplace source — a plain full-width checkbox row, deliberately
               NOT a fourth cell in the 3-column select grid above (which would
