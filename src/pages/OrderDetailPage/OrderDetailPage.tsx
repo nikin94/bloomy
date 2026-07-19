@@ -23,6 +23,7 @@ import {
   orderStatusOptions,
 } from '@/lib/orderLabels'
 import { asEnum } from '@/utils/asEnum'
+import { SCREEN_PADDING, SCREEN_GUTTER_X } from '@/styles/screenStyles'
 import { useOwnerId } from '@/hooks/useOwnerId'
 import { useHeaderTitle } from '@/context/headerTitleContext'
 import Spinner from '@/components/Spinner/Spinner'
@@ -165,7 +166,7 @@ const OrderDetailPage = () => {
       {isDeleted && (
         <div
           role="status"
-          className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-danger-bg px-6 py-3"
+          className={`flex flex-wrap items-center justify-between gap-3 border-b border-border bg-danger-bg ${SCREEN_GUTTER_X} py-3`}
         >
           <span className="text-sm font-medium text-danger">{t('detail.deletedBanner')}</span>
           <Button variant="primary" size="sm" onClick={handleRestore}>
@@ -174,11 +175,13 @@ const OrderDetailPage = () => {
         </div>
       )}
 
-      {/* max-md:pt-1.5 (6px, was p-4's 16px): matches the mobile bar's own
-          py-1.5 bottom padding, so the gap between the bar and the first
-          content row (client + the action stack, which begin at the same
-          level) reads as one even rhythm continuing down from the burger. */}
-      <div className="overflow-auto p-4 max-md:pt-1.5 md:p-6">
+      {/* SCREEN_PADDING: the shared p-2/md:p-4 gutter every screen carries (see
+          screenStyles). max-md:pt-1.5 (6px) still overrides the top on a phone:
+          it matches the mobile bar's own py-1.5 bottom padding, so the gap
+          between the bar and the first content row (client + the action stack,
+          which begin at the same level) reads as one even rhythm continuing
+          down from the burger. */}
+      <div className={`overflow-auto ${SCREEN_PADDING} max-md:pt-1.5`}>
       {loading && <Spinner />}
       {error && <p className="text-danger">{error.message || t('detail.loadError')}</p>}
       {!loading && !error && !order && <p className="text-text">{t('detail.notFound')}</p>}
@@ -209,17 +212,13 @@ const OrderDetailPage = () => {
           {/* First content row (owner layout experiment): the CLIENT on the
               left — name (a link to their page) with the phone right under it,
               no "Клиент"/"Телефон" labels (both are self-evident here) — and
-              the actions as a VERTICAL icon stack pinned to the right edge,
-              visually continuing down from the bar's burger button: the same
-              40px boxes (size="icon" + size-6 glyphs) and the same gap-2 the
-              bar uses. max-md:-mr-2 compensates the content padding (p-4)
-              down to the bar's inset (px-2) so the stack sits exactly under
-              the burger; from md up there is no bar, the stack just keeps the
-              content's right edge. aria-label + title carry each button's full
-              name (no visible text at any width now), so screen readers — and
-              a desktop hover — still see "Редактировать"/"Повторить"/"Удалить".
-              A trashed order is read-only (Restore lives in the banner), so
-              the stack hides entirely. */}
+              the actions as a VERTICAL stack pinned to the right edge,
+              visually continuing down from the bar's burger button: on a phone
+              the same 40px boxes (size="icon" + size-6 glyphs) and the same
+              gap-2 the bar uses, sitting exactly under the burger now that the
+              shared screen gutter (p-2) equals the bar's inset (px-2). A
+              trashed order is read-only (Restore lives in the banner), so the
+              stack hides entirely. */}
           <section className="flex items-start justify-between gap-4">
             <div className="flex min-w-0 flex-col gap-0.5">
               {customer ? (
@@ -243,16 +242,31 @@ const OrderDetailPage = () => {
                 {order.address || '—'}
               </span>
             </div>
+            {/* On a phone the rail is icon-only 40px squares (the same boxes as
+                the bar's burger — the p-2 gutter now equals the bar's px-2, so
+                no margin compensation is needed for them to line up). From md
+                up each button ALSO shows its label text beside the icon
+                (owner request): wider targets read better with the mouse, and
+                the desktop has the width to spare. items-stretch (flex-col
+                default) sizes all three to the widest label, so the rail keeps
+                one straight left edge; md:justify-start left-aligns the
+                icon+label pairs within that shared width. aria-label stays on
+                every width — it IS the accessible name (stable for screen
+                readers and the tests), the md+ text is presentation. */}
             {!isDeleted && (
-              <div className="flex shrink-0 flex-col gap-2 max-md:-mr-2">
+              <div className="flex shrink-0 flex-col gap-2">
                 <Button
                   variant="primary"
                   size="icon"
                   onClick={() => navigate(`/orders/${order.id}/edit`)}
                   aria-label={t('detail.edit')}
                   title={t('detail.edit')}
+                  className="md:justify-start md:gap-2 md:px-3"
                 >
                   <PencilIcon className="size-6" />
+                  <span aria-hidden="true" className="max-md:hidden">
+                    {t('detail.edit')}
+                  </span>
                 </Button>
                 {/* Repeat: open the create form seeded from this order's
                     contents (customer + plants + logistics), as a fresh order.
@@ -264,8 +278,12 @@ const OrderDetailPage = () => {
                   onClick={() => setConfirmingRepeat(true)}
                   aria-label={t('detail.repeat')}
                   title={t('detail.repeat')}
+                  className="md:justify-start md:gap-2 md:px-3"
                 >
                   <RepeatIcon className="size-6" />
+                  <span aria-hidden="true" className="max-md:hidden">
+                    {t('detail.repeat')}
+                  </span>
                 </Button>
                 <Button
                   variant="danger"
@@ -273,8 +291,12 @@ const OrderDetailPage = () => {
                   onClick={() => setConfirmingDelete(true)}
                   aria-label={t('detail.delete')}
                   title={t('detail.delete')}
+                  className="md:justify-start md:gap-2 md:px-3"
                 >
                   <TrashIcon className="size-6" />
+                  <span aria-hidden="true" className="max-md:hidden">
+                    {t('detail.delete')}
+                  </span>
                 </Button>
               </div>
             )}

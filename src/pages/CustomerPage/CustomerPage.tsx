@@ -22,6 +22,7 @@ import {
 } from '@/types/order'
 import { buildOrderColumns } from '@/components/DataTable/orderColumns'
 import { applyCustomerEdits } from '@/types/customer'
+import { SCREEN_PADDING } from '@/styles/screenStyles'
 
 // How many "frequent plants" to surface in the summary.
 const TOP_PLANTS = 3
@@ -111,7 +112,7 @@ const CustomerPage = () => {
 
   return (
     <>
-      <div className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
+      <div className={`min-h-0 flex-1 overflow-auto ${SCREEN_PADDING}`}>
         {loading && <Spinner />}
         {error && (
           <p role="alert" className="text-danger">
