@@ -8,7 +8,6 @@ import { useCustomer } from '@/queries/customers'
 import { formatDate, formatMoney } from '@/utils/format'
 import {
   getSubtotalMinor,
-  getTotalMinor,
   plantsByValueDesc,
   resolveCompletedAt,
   formatOrderNumber,
@@ -23,6 +22,7 @@ import {
   orderStatusOptions,
 } from '@/lib/orderLabels'
 import { asEnum } from '@/utils/asEnum'
+import { SCREEN_PADDING, SCREEN_GUTTER_X } from '@/styles/screenStyles'
 import { useOwnerId } from '@/hooks/useOwnerId'
 import { useHeaderTitle } from '@/context/headerTitleContext'
 import Spinner from '@/components/Spinner/Spinner'
@@ -34,7 +34,6 @@ import PencilIcon from '@/components/icons/PencilIcon'
 import RepeatIcon from '@/components/icons/RepeatIcon'
 import TrashIcon from '@/components/icons/TrashIcon'
 import InlineStatusField from './InlineStatusField'
-import Total from './Total'
 import type { Order } from '@/types/order'
 
 const OrderDetailPage = () => {
@@ -165,7 +164,7 @@ const OrderDetailPage = () => {
       {isDeleted && (
         <div
           role="status"
-          className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-danger-bg px-6 py-3"
+          className={`flex flex-wrap items-center justify-between gap-3 border-b border-border bg-danger-bg ${SCREEN_GUTTER_X} py-3`}
         >
           <span className="text-sm font-medium text-danger">{t('detail.deletedBanner')}</span>
           <Button variant="primary" size="sm" onClick={handleRestore}>
@@ -174,11 +173,13 @@ const OrderDetailPage = () => {
         </div>
       )}
 
-      {/* max-md:pt-1.5 (6px, was p-4's 16px): matches the mobile bar's own
-          py-1.5 bottom padding, so the gap between the bar and the first
-          content row (client + the action stack, which begin at the same
-          level) reads as one even rhythm continuing down from the burger. */}
-      <div className="overflow-auto p-4 max-md:pt-1.5 md:p-6">
+      {/* SCREEN_PADDING: the shared p-2/md:p-4 gutter every screen carries (see
+          screenStyles). max-md:pt-1.5 (6px) still overrides the top on a phone:
+          it matches the mobile bar's own py-1.5 bottom padding, so the gap
+          between the bar and the first content row (client + the action stack,
+          which begin at the same level) reads as one even rhythm continuing
+          down from the burger. */}
+      <div className={`overflow-auto ${SCREEN_PADDING} max-md:pt-1.5`}>
       {loading && <Spinner />}
       {error && <p className="text-danger">{error.message || t('detail.loadError')}</p>}
       {!loading && !error && !order && <p className="text-text">{t('detail.notFound')}</p>}
@@ -209,17 +210,13 @@ const OrderDetailPage = () => {
           {/* First content row (owner layout experiment): the CLIENT on the
               left — name (a link to their page) with the phone right under it,
               no "Клиент"/"Телефон" labels (both are self-evident here) — and
-              the actions as a VERTICAL icon stack pinned to the right edge,
-              visually continuing down from the bar's burger button: the same
-              40px boxes (size="icon" + size-6 glyphs) and the same gap-2 the
-              bar uses. max-md:-mr-2 compensates the content padding (p-4)
-              down to the bar's inset (px-2) so the stack sits exactly under
-              the burger; from md up there is no bar, the stack just keeps the
-              content's right edge. aria-label + title carry each button's full
-              name (no visible text at any width now), so screen readers — and
-              a desktop hover — still see "Редактировать"/"Повторить"/"Удалить".
-              A trashed order is read-only (Restore lives in the banner), so
-              the stack hides entirely. */}
+              the actions as a VERTICAL stack pinned to the right edge,
+              visually continuing down from the bar's burger button: on a phone
+              the same 40px boxes (size="icon" + size-6 glyphs) and the same
+              gap-2 the bar uses, sitting exactly under the burger now that the
+              shared screen gutter (p-2) equals the bar's inset (px-2). A
+              trashed order is read-only (Restore lives in the banner), so the
+              stack hides entirely. */}
           <section className="flex items-start justify-between gap-4">
             <div className="flex min-w-0 flex-col gap-0.5">
               {customer ? (
@@ -243,16 +240,31 @@ const OrderDetailPage = () => {
                 {order.address || '—'}
               </span>
             </div>
+            {/* On a phone the rail is icon-only 40px squares (the same boxes as
+                the bar's burger — the p-2 gutter now equals the bar's px-2, so
+                no margin compensation is needed for them to line up). From md
+                up each button ALSO shows its label text beside the icon
+                (owner request): wider targets read better with the mouse, and
+                the desktop has the width to spare. items-stretch (flex-col
+                default) sizes all three to the widest label, so the rail keeps
+                one straight left edge; md:justify-start left-aligns the
+                icon+label pairs within that shared width. aria-label stays on
+                every width — it IS the accessible name (stable for screen
+                readers and the tests), the md+ text is presentation. */}
             {!isDeleted && (
-              <div className="flex shrink-0 flex-col gap-2 max-md:-mr-2">
+              <div className="flex shrink-0 flex-col gap-2">
                 <Button
                   variant="primary"
                   size="icon"
                   onClick={() => navigate(`/orders/${order.id}/edit`)}
                   aria-label={t('detail.edit')}
                   title={t('detail.edit')}
+                  className="md:justify-start md:gap-2 md:px-3"
                 >
                   <PencilIcon className="size-6" />
+                  <span aria-hidden="true" className="max-md:hidden">
+                    {t('detail.edit')}
+                  </span>
                 </Button>
                 {/* Repeat: open the create form seeded from this order's
                     contents (customer + plants + logistics), as a fresh order.
@@ -264,8 +276,12 @@ const OrderDetailPage = () => {
                   onClick={() => setConfirmingRepeat(true)}
                   aria-label={t('detail.repeat')}
                   title={t('detail.repeat')}
+                  className="md:justify-start md:gap-2 md:px-3"
                 >
                   <RepeatIcon className="size-6" />
+                  <span aria-hidden="true" className="max-md:hidden">
+                    {t('detail.repeat')}
+                  </span>
                 </Button>
                 <Button
                   variant="danger"
@@ -273,8 +289,12 @@ const OrderDetailPage = () => {
                   onClick={() => setConfirmingDelete(true)}
                   aria-label={t('detail.delete')}
                   title={t('detail.delete')}
+                  className="md:justify-start md:gap-2 md:px-3"
                 >
                   <TrashIcon className="size-6" />
+                  <span aria-hidden="true" className="max-md:hidden">
+                    {t('detail.delete')}
+                  </span>
                 </Button>
               </div>
             )}
@@ -282,8 +302,7 @@ const OrderDetailPage = () => {
 
           {/* Section divider before the plant list. A separate flex child of
               the gap-6 column, so the parent gap gives it the SAME 24px above
-              and below (the page's one divider rhythm — matching the details
-              divider further down and the form's section dividers). */}
+              and below (the page's divider rhythm). */}
           <span aria-hidden="true" className="h-px w-full bg-border" />
 
           {/* Itemized plant list. A 5-column table can't fit a 320px phone, so
@@ -292,15 +311,12 @@ const OrderDetailPage = () => {
               table shows. Both read from the same value-sorted list. */}
           <section className="flex flex-col gap-2">
             {/* leading-none: the title is a divider CONTACT — text-lg's default
-                28px line box would add ~5px of its own leading under the divider,
-                so the visible gap read ~29px where the client section's sharp
-                button edge above the divider reads exactly 24px (the page's
-                divider rhythm). Dropping the leading puts the glyphs themselves
-                at the 24px mark. */}
+                line box would add ~5px of its own leading under the divider,
+                breaking the 24px rhythm the sharp button edge above it keeps. */}
             <h2 className="m-0 text-lg font-semibold leading-none text-heading">{t('detail.plantsTitle')}</h2>
             <ul className="m-0 flex list-none flex-col p-0 sm:hidden">
               {plantsByValueDesc(order.plants).map((item, index) => (
-                <li key={index} className="flex flex-col gap-1 border-b border-border py-2">
+                <li key={index} className="flex flex-col gap-1 border-b border-border py-2 last:border-b-0">
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="min-w-0 break-words text-heading">
                       {index + 1}. {item.name}
@@ -327,7 +343,7 @@ const OrderDetailPage = () => {
               </thead>
               <tbody>
                 {plantsByValueDesc(order.plants).map((item, index) => (
-                  <tr key={index} className="border-b border-border">
+                  <tr key={index} className="border-b border-border last:border-b-0">
                     <td className="py-2 pr-3 text-right text-text tabular-nums">{index + 1}</td>
                     <td className="py-2 pr-3 text-heading">{item.name}</td>
                     <td className="py-2 px-3 text-right text-text tabular-nums">{item.quantity}</td>
@@ -352,30 +368,41 @@ const OrderDetailPage = () => {
               </p>
             ))}
 
-            {/* Money breakdown — INSIDE the plants section (owner request), so
-                the section's gap-2 puts it right under the last plant row
-                instead of a full section gap away: the totals belong to the
-                list they sum. Full width on a phone (labels left, amounts
-                right) so it lines up with the plant cards; shrink-wrapped to
-                the right from `sm` up. */}
-            <div className="flex w-full flex-col gap-1 text-[0.8333rem] sm:w-auto sm:self-end">
-              <Total label={t('detail.subtotal')} value={getSubtotalMinor(order)} currency={order.currency} />
-              <Total label={t('detail.delivery')} value={order.deliveryPriceMinor} currency={order.currency} />
-              {/* leading-none: the Итого line is the contact ABOVE the details
-                  divider — its inherited line box would add ~4px of leading below
-                  the glyphs, pushing the visible gap past the 24px rhythm. pt-3
-                  (not pt-2) compensates the same removal on the row's own top
-                  border, keeping the money block's internal hairline at the 8px
-                  its neighbours above it read. */}
-              <div className="mt-1 flex justify-between gap-8 border-t border-border pt-3 font-semibold leading-none text-heading">
-                <span>{t('detail.total')}</span>
-                <span className="tabular-nums">{formatMoney(getTotalMinor(order), order.currency)}</span>
-              </div>
+            {/* Money summary — the SAME presentation the order card and the
+                form footer settled on (#175/#185): the headline is the bold
+                PLANTS-ONLY sum, with the delivery cost in small type directly
+                under it — rendered only when one was entered, so a free
+                delivery doesn't print a noisy "+ delivery 0". Replaces the
+                old three-line subtotal/delivery/Итого breakdown (owner
+                request): one row instead of three, no internal hairline.
+                Full width on a phone (label left, money right) so it lines
+                up with the plant cards; shrink-wrapped right from `sm` up.
+                Sized like the plant rows themselves (owner request): base
+                below `sm` where the cards read base, the table's 0.8333rem
+                from `sm` up — bold either way. leading-none on the label +
+                sum: they are the contact ABOVE the details divider, so their
+                line boxes must not pad the 24px rhythm (the smaller delivery
+                note below keeps its own leading — it's not the contact when
+                present, and it only shows for a paid delivery). */}
+            <div className="flex w-full items-baseline justify-between gap-8 text-[0.8333rem] max-sm:text-base sm:w-auto sm:gap-12 sm:self-end">
+              <span className="font-semibold leading-none text-heading">{t('detail.subtotal')}</span>
+              <span className="flex flex-col items-end">
+                <span className="font-semibold leading-none text-heading tabular-nums">
+                  {formatMoney(getSubtotalMinor(order), order.currency)}
+                </span>
+                {order.deliveryPriceMinor > 0 && (
+                  <span className="whitespace-nowrap text-xs text-text">
+                    {t('form.totalDelivery', {
+                      amount: formatMoney(order.deliveryPriceMinor, order.currency),
+                    })}
+                  </span>
+                )}
+              </span>
             </div>
           </section>
 
-          {/* Section divider before the remaining details — same standalone
-              flex child as the one above the plant list, so the column's gap-6
+          {/* Section divider after the money summary — same standalone flex
+              child as the one above the plant list, so the column's gap-6
               gives it the identical 24px above and below. */}
           <span aria-hidden="true" className="h-px w-full bg-border" />
 
@@ -384,9 +411,8 @@ const OrderDetailPage = () => {
               form; the rest is read-only and changed via "Редактировать".
               -mt-3 compensates what sits between the divider and the first
               row's GLYPHS: the DetailRow's own py-2 top padding (8px) plus the
-              label's text-base half-leading (~4px), so the visible text sits at
-              the same 24px the Итого glyphs keep on the divider's other side
-              (the owner's equal-spacing rule for every divider on this page). */}
+              label's half-leading (~4px), so the visible text keeps the same
+              24px the money line holds on the divider's other side. */}
           <section className="-mt-3 flex flex-col">
             <DetailRow label={t('detail.deliveryMethod')} value={deliveryMethodLabel(tOrder, order.deliveryMethod)} />
             <DetailRow label={t('detail.paymentMethod')} value={paymentMethodLabel(tOrder, order.paymentMethod)} />

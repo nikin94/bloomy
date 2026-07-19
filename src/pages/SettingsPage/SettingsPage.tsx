@@ -23,6 +23,7 @@ import ThemeToggle from '@/components/Settings/ThemeToggle'
 import FontSizeSlider from '@/components/Settings/FontSizeSlider'
 import LogoutIcon from '@/components/icons/LogoutIcon'
 import { isAdmin } from '@/lib/admin'
+import { SCREEN_PADDING } from '@/styles/screenStyles'
 
 // Settings screen — just the CONTENT of the active section (the section nav
 // lives in the sidebar; the active section travels in the URL as `?section=`).
@@ -127,7 +128,7 @@ const SettingsPage = () => {
     // Content-only settings screen — the section nav lives in the sidebar now.
     // One scrolling column; with autosave there is no footer, so the content
     // simply flows from the top.
-    <div className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
+    <div className={`min-h-0 flex-1 overflow-auto ${SCREEN_PADDING}`}>
       <div className={`flex flex-col gap-6 ${wide ? '' : 'max-w-2xl'}`}>
         {/* Visually-hidden page heading: the screen shows no visible title (the
             section nav lives in the sidebar), so a screen reader landing here via a

@@ -107,9 +107,7 @@
     "price": "Price",
     "lineTotal": "Total",
     "gift": "Gift",
-    "subtotal": "Plants total",
-    "delivery": "Delivery",
-    "total": "Total"
+    "subtotal": "Plants total"
   },
   "photos": {
     "title": "Photos",

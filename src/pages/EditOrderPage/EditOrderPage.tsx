@@ -7,6 +7,7 @@ import { useOrder, useOrderCache } from '@/queries/orders'
 import { useCustomerCache } from '@/queries/customers'
 import { useOwnerId } from '@/hooks/useOwnerId'
 import { formatOrderNumber } from '@/types/order'
+import { SCREEN_PADDING } from '@/styles/screenStyles'
 
 // Edit-order screen: loads the order, then hands it to the shared OrderForm
 // prefilled. The form is mounted only once the order is loaded (it reads
@@ -31,7 +32,7 @@ const EditOrderPage = () => {
 
   if (orderQuery.error || !order) {
     return (
-      <div className="p-6">
+      <div className={SCREEN_PADDING}>
         <p className="text-text">{orderQuery.error?.message || t('detail.notFound')}</p>
       </div>
     )

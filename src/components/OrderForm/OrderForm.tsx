@@ -44,6 +44,7 @@ import type { CustomerMode } from './CustomerPicker'
 import { newOrderId } from '@/firebase/orders'
 import { deleteOrderPhoto, uploadOrderPhoto } from '@/firebase/photos'
 import { reportError } from '@/observability/reportError'
+import { SCREEN_PADDING, SCREEN_GUTTER_X } from '@/styles/screenStyles'
 import type { NewOrder } from '@/firebase/orders'
 import type { Order } from '@/types/order'
 import type { NewCustomer } from '@/types/customer'
@@ -371,10 +372,11 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   return (
     <>
     <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-        {/* Scrollable body — the footer below stays pinned. */}
-        {/* Half the horizontal padding on a phone (p-6 → px-3): the narrow
-            screen needs the width for the inputs more than for gutters. */}
-        <div className="flex-1 overflow-auto p-6 max-sm:px-3">
+        {/* Scrollable body — the footer below stays pinned. SCREEN_PADDING is
+            the shared p-2/md:p-4 screen gutter (see screenStyles): the narrow
+            screen gets the width for the inputs, and the form's edge lines up
+            with every other screen's. */}
+        <div className={`flex-1 overflow-auto ${SCREEN_PADDING}`}>
           {/* Full-width form (the sidebar freed the horizontal space); the
               method/status selects already lay out in 3-column grids that spread
               across it. */}
@@ -629,7 +631,9 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
 
         {/* Pinned footer: the running total and actions stay visible while the
             plant list grows, so the user never has to scroll to see the total. */}
-        <div className="border-t border-border bg-bg px-6 py-4 max-sm:px-3">
+        {/* Horizontal padding = the shared screen gutter, so the footer's
+            buttons align with the body's inputs above on every width. */}
+        <div className={`border-t border-border bg-bg ${SCREEN_GUTTER_X} py-3`}>
           <div className="flex w-full flex-col gap-3">
             {error && (
               <p role="alert" className="m-0 text-danger">

@@ -128,6 +128,28 @@ describe('OrderDetailPage', () => {
     expect(screen.getByText(/2 ×/)).toBeInTheDocument()
   })
 
+  it('sums the plants in one bold line with the delivery note under it (no Итого row)', async () => {
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    // The card/form money presentation: the headline is the PLANTS-ONLY sum…
+    // (The plants-only sum also appears as the single row's line total in the
+    // table, so the amount is asserted via the summary row's own container.)
+    const summaryLabel = screen.getByText('Сумма растений')
+    expect(summaryLabel.parentElement).toHaveTextContent('299,80 ₽')
+    // …with the delivery cost in small type under it (fixture: 30000 minor).
+    expect(screen.getByText('+ доставка 300,00 ₽')).toBeInTheDocument()
+    // The old three-line breakdown (Итого + full total) is gone.
+    expect(screen.queryByText('Итого')).not.toBeInTheDocument()
+    expect(screen.queryByText('599,80 ₽')).not.toBeInTheDocument()
+  })
+
+  it('omits the delivery note when delivery is free', async () => {
+    fetchOrder.mockResolvedValue(order({ deliveryPriceMinor: 0 }))
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    expect(screen.queryByText(/\+ доставка/)).not.toBeInTheDocument()
+  })
+
   it('shows the gift under the plant list, without price columns', async () => {
     fetchOrder.mockResolvedValue(
       order({ gifts: [{ name: 'Суккулент', quantity: 1, unitPriceMinor: 0 }] }),

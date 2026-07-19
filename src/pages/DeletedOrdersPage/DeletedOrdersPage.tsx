@@ -13,6 +13,7 @@ import { useRequiredOwnerId } from '@/hooks/useOwnerId'
 import { useHeaderActions } from '@/context/headerActionsContext'
 import { filterOrders, isOrderFilterActive, EMPTY_ORDER_FILTER } from '@/types/order'
 import type { OrderFilter } from '@/types/order'
+import { SCREEN_GUTTER_X } from '@/styles/screenStyles'
 import { buildOrderColumns } from '@/components/DataTable/orderColumns'
 import type { OrderSort } from '@/components/DataTable/orderColumns'
 import { buildCustomerNameResolver } from '@/types/customer'
@@ -106,7 +107,7 @@ const DeletedOrdersPage = () => {
       {orders.length > 0 && (
         <div
           role="status"
-          className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-danger-bg px-6 py-2"
+          className={`flex flex-wrap items-center justify-between gap-3 border-b border-border bg-danger-bg ${SCREEN_GUTTER_X} py-2`}
         >
           <span className="text-sm font-medium text-danger">{t('trash.banner')}</span>
           <Button variant="danger" size="sm" onClick={() => setConfirmingEmpty(true)}>

@@ -109,9 +109,7 @@
     "price": "Цена",
     "lineTotal": "Сумма",
     "gift": "Подарок",
-    "subtotal": "Сумма растений",
-    "delivery": "Доставка",
-    "total": "Итого"
+    "subtotal": "Сумма растений"
   },
   "photos": {
     "title": "Фото",

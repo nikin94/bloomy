@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import LegendItem from './LegendItem'
 import Select from '@/components/Select/Select'
 import { FIELD_BASE, FIELD_NORMAL, FOCUS_RING } from '@/styles/fieldStyles'
+import { SCREEN_PADDING } from '@/styles/screenStyles'
 import { cn } from '@/lib/cn'
 import { useOrdersSuspense } from '@/queries/orders'
 import { useRequiredOwnerId } from '@/hooks/useOwnerId'
@@ -89,7 +90,7 @@ const StatsPage = () => {
   }
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
+    <div className={`min-h-0 flex-1 overflow-auto ${SCREEN_PADDING}`}>
       {/* Full-width (the sidebar freed the horizontal space): the KPI cards flow
           into an auto-fill grid that fills the width, the status bar and the
           month chart stretch to it. No centred max-width column with empty gutters. */}
