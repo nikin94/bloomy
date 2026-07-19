@@ -41,10 +41,22 @@ export const useCustomers = (ownerId: string | undefined) =>
     enabled: ownerId !== undefined,
   })
 
-// A single customer by id (e.g. the live name on the order page). Kept null when
-// the customer was deleted — a dangling customerId must not crash the page. This
-// stays a plain useQuery (NOT suspense): `null` is a legitimate non-loading state
-// (the "customer not found" branch), which a suspense query cannot express.
+// SUSPENDING single-customer read (the order detail page, the customer page),
+// on the SAME cache key as useCustomer. Suspending keeps the loading UX one
+// continuous route-level spinner (see useOrderSuspense for the full argument).
+// `null` data is a legitimate resolved state — deleted/foreign/dangling id →
+// the caller's "not found" branch; a missing id (an order that itself resolved
+// null) folds into the queryFn as an immediate null, since suspense queries
+// have no `enabled` gate. A fetch failure throws to the route error boundary.
+export const useCustomerSuspense = (id: string | undefined) =>
+  useSuspenseQuery({
+    queryKey: queryKeys.customer(id),
+    queryFn: () => (id === undefined ? null : fetchCustomer(id)),
+  })
+
+// NON-suspending single customer by id — for the order form's seeded-customer
+// resolve (useCustomerOptions), where a failed/absent read is deliberately
+// non-fatal: the form must stay usable and just drop the dangling selection.
 export const useCustomer = (id: string | undefined) =>
   useQuery({
     queryKey: queryKeys.customer(id),

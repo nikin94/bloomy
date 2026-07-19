@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { patchOrder, softDeleteOrder, restoreOrder } from '@/firebase/orders'
 import type { OrderPatch } from '@/firebase/orders'
-import { useOrder, useOrderCache } from '@/queries/orders'
-import { useCustomer } from '@/queries/customers'
+import { useOrderSuspense, useOrderCache } from '@/queries/orders'
+import { useCustomerSuspense } from '@/queries/customers'
 import { formatDate, formatMoney } from '@/utils/format'
 import {
   getSubtotalMinor,
@@ -23,9 +23,8 @@ import {
 } from '@/lib/orderLabels'
 import { asEnum } from '@/utils/asEnum'
 import { SCREEN_PADDING, SCREEN_GUTTER_X } from '@/styles/screenStyles'
-import { useOwnerId } from '@/hooks/useOwnerId'
+import { useRequiredOwnerId } from '@/hooks/useOwnerId'
 import { useHeaderTitle } from '@/context/headerTitleContext'
-import Spinner from '@/components/Spinner/Spinner'
 import Button from '@/components/Button/Button'
 import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
 import OrderPhotos from '@/components/OrderPhotos/OrderPhotos'
@@ -43,20 +42,21 @@ const OrderDetailPage = () => {
   const { t: tOrder } = useTranslation('order')
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const ownerId = useOwnerId()
+  const ownerId = useRequiredOwnerId()
   // Order (incl. a trashed one, opened read-only) + its customer from the shared
   // query cache. `includeDeleted` so a stale trash link opens the deleted banner +
-  // Restore instead of dead-ending. The customer query enables once the order
-  // resolves its customerId; it stays null when the customer was deleted (a
-  // dangling customerId must not crash the page).
-  const orderQuery = useOrder(id, ownerId, { includeDeleted: true })
-  const order = orderQuery.data ?? null
-  const customerQuery = useCustomer(order?.customerId)
-  const customer = customerQuery.data ?? null
+  // Restore instead of dead-ending. Both reads SUSPEND to the route-level
+  // <Suspense> (AppLayout) — the same boundary that holds while this page's lazy
+  // chunk loads — so the first visit shows ONE continuous spinner instead of the
+  // chunk fallback handing off to a page-local Spinner that restarted the ring
+  // (the double-loader the owner flagged). The reads are sequential by nature
+  // (the customer id comes from the order), and the fallback stays mounted
+  // across both suspensions; a load FAILURE throws to the route error boundary
+  // (the shared inline retry), matching the list pages. The customer resolves
+  // null when deleted — a dangling customerId must not crash the page.
+  const order = useOrderSuspense(id, ownerId, { includeDeleted: true }).data
+  const customer = useCustomerSuspense(order?.customerId).data ?? null
   const orderCache = useOrderCache()
-  // Loading until the order resolves and — for a found order — its customer too.
-  const loading = orderQuery.isLoading || (order !== null && customerQuery.isLoading)
-  const error = orderQuery.error ?? customerQuery.error
   // Delete is confirmed in a modal (destructive, so not a one-click action).
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   // Repeat is confirmed too (owner request): it jumps into a prefilled create
@@ -181,16 +181,12 @@ const OrderDetailPage = () => {
           which begin at the same level) reads as one even rhythm continuing
           down from the burger. */}
       <div className={`overflow-auto ${SCREEN_PADDING} max-md:pt-1.5`}>
-      {loading && <Spinner />}
-      {error && <p className="text-danger">{error.message || t('detail.loadError')}</p>}
-      {!loading && !error && !order && <p className="text-text">{t('detail.notFound')}</p>}
+      {!order && <p className="text-text">{t('detail.notFound')}</p>}
 
-      {/* Gate the body on `!loading`, not just `order`: the customer is fetched
-          after the order (loading stays true until both resolve via .finally),
-          so rendering on `order` alone would paint the body with customer=null
-          and then shift when the phone row appears. Showing it only once
-          loading is done makes the whole block appear at once, no jump. */}
-      {!loading && order && (
+      {/* No loading gate needed any more: the suspense reads above resolve the
+          order AND its customer before this ever renders, so the body appears
+          at once — no customer-row jump, no page-local spinner. */}
+      {order && (
         <div className="mx-auto flex max-w-2xl flex-col gap-6">
           {/* Number + date — DESKTOP only: on a phone they moved into the top
               bar (see the useHeaderTitle publish above), so repeating them here

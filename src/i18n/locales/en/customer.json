@@ -20,7 +20,6 @@
   },
   "page": {
     "notFound": "Customer not found",
-    "loadError": "Couldn't load the customer",
     "edit": "Edit",
     "totalOrders": "Total orders",
     "revenue": "Revenue (paid)",

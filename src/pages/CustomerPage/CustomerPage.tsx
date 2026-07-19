@@ -3,14 +3,13 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import DataTable from '@/components/DataTable/DataTable'
-import Spinner from '@/components/Spinner/Spinner'
 import Button from '@/components/Button/Button'
 import CustomerEditModal from '@/components/CustomerEditModal/CustomerEditModal'
 import DetailRow from '@/components/DetailRow/DetailRow'
 import PencilIcon from '@/components/icons/PencilIcon'
 import { updateCustomer } from '@/firebase/customers'
 import type { CustomerEdits } from '@/firebase/customers'
-import { useCustomer, useCustomerCache } from '@/queries/customers'
+import { useCustomerSuspense, useCustomerCache } from '@/queries/customers'
 import { useOrdersSuspense } from '@/queries/orders'
 import { useRequiredOwnerId } from '@/hooks/useOwnerId'
 import { formatDate, formatMoney } from '@/utils/format'
@@ -47,13 +46,14 @@ const CustomerPage = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const ownerId = useRequiredOwnerId()
-  // The owner's orders SUSPEND (owner-gated, non-nullable) to the route-level
-  // Spinner (AppLayout) until resolved, throwing a load failure to the route error
-  // boundary there. The customer stays a plain useQuery: `null` is a legitimate
-  // non-loading state (foreign/deleted → "not found"), which suspense can't express,
-  // so its loading/error/not-found still render inline here. Defense-in-depth: a
-  // foreign customer is treated as not found, mirroring fetchOrder's owner re-check.
-  const customerQuery = useCustomer(id)
+  // The orders AND the customer SUSPEND (to the route-level Spinner in AppLayout,
+  // throwing a load failure to the route error boundary there) — so the lazy
+  // chunk and both data reads hold ONE continuous spinner instead of the chunk
+  // fallback handing off to a page-local Spinner that restarted the ring. The
+  // customer resolves null for a deleted/unknown id — the "not found" branch, a
+  // legitimate non-loading state. Defense-in-depth: a foreign customer is treated
+  // as not found, mirroring fetchOrder's owner re-check.
+  const customerQuery = useCustomerSuspense(id)
   const { data: allOrders } = useOrdersSuspense(ownerId)
   const customerCache = useCustomerCache()
   const customer =
@@ -65,9 +65,6 @@ const CustomerPage = () => {
     () => allOrders.filter((o) => o.customerId === id),
     [allOrders, id],
   )
-  // Only the customer read remains a gate here (orders suspend above).
-  const loading = customerQuery.isLoading
-  const error = customerQuery.error
   // Edit happens in the shared dialog (same as the Customers list), so the page
   // doesn't duplicate the customer form.
   const [editing, setEditing] = useState(false)
@@ -113,15 +110,9 @@ const CustomerPage = () => {
   return (
     <>
       <div className={`min-h-0 flex-1 overflow-auto ${SCREEN_PADDING}`}>
-        {loading && <Spinner />}
-        {error && (
-          <p role="alert" className="text-danger">
-            {error.message || t('page.loadError')}
-          </p>
-        )}
-        {!loading && !error && !customer && <p className="text-text">{t('page.notFound')}</p>}
+        {!customer && <p className="text-text">{t('page.notFound')}</p>}
 
-        {!loading && customer && (
+        {customer && (
           <div className="flex flex-col gap-6">
             {/* Summary — kept in a readable, centred column. The orders table
                 below breaks out of this width to span the full page. */}

@@ -82,7 +82,6 @@
   "detail": {
     "deletedBanner": "This order is deleted and in the trash.",
     "notFound": "Order not found",
-    "loadError": "Couldn't load the order",
     "title": "Order #{{number}}",
     "unsynced": "not synced",
     "edit": "Edit",
