@@ -540,7 +540,21 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               detail page's row order): the payment/order status — and the
               prepaid amount tied to them — sit right under the list, before
               the logistics below. */}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          {/* Statuses row. The prepaid input lives INSIDE this grid, between
+              the two status selects (owner order: payment status → prepaid
+              amount → order status): on desktop it appears as the row's third
+              item — the grid widens to 3 columns only while it's visible, so
+              without a prepayment the two selects keep their half-width pair —
+              and on a phone the single column simply stacks it under the
+              payment status. Its visibility gate is unchanged (status
+              'prepaid' only); the VALUE still survives a status switch (see
+              useOrderFormState), and payload.ts stores it independently of the
+              status, so prepaid → paid keeps the payment history. */}
+          <div
+            className={`grid grid-cols-1 gap-5 ${
+              fields.paymentStatus === 'prepaid' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
+            }`}
+          >
             <Select
               label={t('form.paymentStatus')}
               value={fields.paymentStatus}
@@ -553,6 +567,16 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               <SelectOptions options={paymentStatusOptions(tOrder)} />
             </Select>
 
+            {fields.paymentStatus === 'prepaid' && (
+              <Input
+                className="w-full"
+                numeric="decimal"
+                label={t('form.prepaidAmount')}
+                value={fields.prepaidAmount}
+                onChange={(e) => form.setFields({ prepaidAmount: e.target.value })}
+              />
+            )}
+
             <Select
               label={t('form.status')}
               value={fields.status}
@@ -563,24 +587,6 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               <SelectOptions options={orderStatusOptions(tOrder)} />
             </Select>
           </div>
-
-          {/* Prepaid amount — shown only while the payment status is
-              "Предоплата" (the one state where a partial payment exists to
-              record). A separate conditional row, not a grid cell, for the
-              same rhythm reason as the checkbox below. The VALUE survives
-              a status switch (see useOrderFormState) — hiding the input never
-              wipes what was typed — and payload.ts stores it independently of
-              the status, so prepaid → paid keeps the payment history.
-              sm:max-w-xs: a money input needn't span the full form width. */}
-          {fields.paymentStatus === 'prepaid' && (
-            <Input
-              className="w-full sm:max-w-xs"
-              numeric="decimal"
-              label={t('form.prepaidAmount')}
-              value={fields.prepaidAmount}
-              onChange={(e) => form.setFields({ prepaidAmount: e.target.value })}
-            />
-          )}
 
           {/* Logistics: how the order travels and how it's paid for. The
               payment-method select joined this grid when the statuses moved up
