@@ -21,16 +21,18 @@ const ChipRadioGroup = <V extends string>({
   value,
   options,
   onChange,
+  className,
 }: {
   label: string
   value: V
   // Canonical option order, value + localized label (the orderLabels helpers).
   options: { value: V; label: string }[]
   onChange: (next: V) => void
+  className?: string
 }) => {
   const name = useId()
   return (
-    <fieldset className="flex min-w-0 flex-col border-0 p-0">
+    <fieldset className={cn('flex min-w-0 flex-col border-0 p-0', className)}>
       <legend className="mb-1.5 p-0 text-sm text-text">{label}</legend>
       <div className="flex flex-wrap gap-1.5">
         {options.map((option) => (

@@ -546,21 +546,31 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               detail page's row order): the payment/order status — and the
               prepaid amount tied to them — sit right under the list, before
               the logistics below. */}
-          {/* Statuses row. The prepaid input lives INSIDE this grid, between
-              the two status selects (owner order: payment status → prepaid
-              amount → order status): on desktop it appears as the row's third
-              item — the grid widens to 3 columns only while it's visible, so
-              without a prepayment the two selects keep their half-width pair —
-              and on a phone the single column simply stacks it under the
-              payment status. Its visibility gate is unchanged (status
-              'prepaid' only); the VALUE still survives a status switch (see
-              useOrderFormState), and payload.ts stores it independently of the
-              status, so prepaid → paid keeps the payment history. */}
+          {/* Statuses row (owner order: order status → payment status →
+              prepaid amount — the prepaid input stays NEXT TO the payment
+              status it belongs to): on desktop the prepaid input appears as
+              the row's third item — the grid widens to 3 columns only while
+              it's visible, so without a prepayment the two selects keep their
+              half-width pair — and on a phone the single column simply stacks
+              it under the payment status. Its visibility gate is unchanged
+              (status 'prepaid' only); the VALUE still survives a status switch
+              (see useOrderFormState), and payload.ts stores it independently
+              of the status, so prepaid → paid keeps the payment history. */}
           <div
             className={`grid grid-cols-1 gap-5 ${
               fields.paymentStatus === 'prepaid' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
             }`}
           >
+            <Select
+              label={t('form.status')}
+              value={fields.status}
+              onChange={(e) =>
+                form.setFields({ status: asEnum(ORDER_STATUS_VALUES, e.target.value, fields.status) })
+              }
+            >
+              <SelectOptions options={orderStatusOptions(tOrder)} />
+            </Select>
+
             <Select
               label={t('form.paymentStatus')}
               value={fields.paymentStatus}
@@ -582,16 +592,6 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                 onChange={(e) => form.setFields({ prepaidAmount: e.target.value })}
               />
             )}
-
-            <Select
-              label={t('form.status')}
-              value={fields.status}
-              onChange={(e) =>
-                form.setFields({ status: asEnum(ORDER_STATUS_VALUES, e.target.value, fields.status) })
-              }
-            >
-              <SelectOptions options={orderStatusOptions(tOrder)} />
-            </Select>
           </div>
 
           {/* Logistics: how the order travels and how it's paid for. Payment
@@ -602,7 +602,15 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               their canonical option order are unchanged either way. The
               order's currency comes from the global settings default (an edit
               keeps the order's own stored currency; there is no conversion). */}
+          {/* -mt-2: evens the VISUAL gap above the group. The inputs/selects
+              around it carry floating label pills that OVERHANG ~8px above
+              their border (absolute, translate-y-1/2), so their visible gap
+              to the element above is the column's 20px minus that overhang.
+              The chip group's legend sits in normal flow — no overhang — so
+              without the pull-up its row reads noticeably more spaced than
+              every other one (owner report). */}
           <ChipRadioGroup
+            className="-mt-2"
             label={t('form.paymentMethod')}
             value={fields.paymentMethod}
             options={paymentMethodOptions(tOrder)}
