@@ -105,6 +105,14 @@ export const STORED_ORDER_SCHEMA = z.object({
   // valid without a migration (widening is safe; narrowing is not).
   gifts: z.array(ORDER_ITEM_SCHEMA).optional(),
   paymentStatus: PAYMENT_STATUS_SCHEMA,
+  // What the customer has ALREADY paid, in minor units of the order's currency —
+  // entered with the 'prepaid' payment status, so the page can show "paid X /
+  // Y remaining" (the remainder is DERIVED from the total, never stored — the
+  // same no-stale-snapshot rule as subtotal/total). Kept when the status later
+  // moves to 'paid' (a history of how the money arrived), so it is not tied to
+  // the status by the schema. Optional: pre-existing documents — and orders
+  // without a prepayment — stay valid with no migration (widening is safe).
+  prepaidAmountMinor: z.number().int().nonnegative().optional(),
   status: ORDER_STATUS_SCHEMA,
   // Marketplace the order came in from (today: Avito). Absent = a direct order —
   // see ORDER_SOURCE_SCHEMA for why this is an optional enum, not a boolean.

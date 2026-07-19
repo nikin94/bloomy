@@ -176,8 +176,12 @@ describe('NewOrderPage', () => {
     const picker = await screen.findByRole('combobox', { name: 'Существующий клиент' })
     expect(picker).toHaveValue('c1')
     expect(screen.getByDisplayValue('Роза')).toBeInTheDocument()
-    // …the order's own currency carries over (no conversion), not the RUB default…
-    expect(screen.getByRole('combobox', { name: 'Валюта' })).toHaveValue('USD')
+    // …the order's own currency carries over (no conversion), not the RUB
+    // default — there is no currency control on the form any more (it lives in
+    // the global settings), so assert via the rendered money: the totals show
+    // in dollars (2 × 150,00 $ = 300,00 $ in the plants block and the footer).
+    expect(screen.getAllByText(/300,00\s\$/).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('combobox', { name: 'Валюта' })).not.toBeInTheDocument()
     // …but the per-instance state starts pristine, not cloned from the source.
     expect(screen.getByRole('combobox', { name: 'Статус оплаты' })).toHaveValue('pending')
     expect(screen.getByRole('combobox', { name: 'Статус заказа' })).toHaveValue('processing')
@@ -327,14 +331,15 @@ describe('NewOrderPage', () => {
     await user.type(screen.getByLabelText('Название'), 'Роза')
     await user.type(screen.getByLabelText('Цена'), '100')
 
-    // With no delivery price entered, only the plants figure shows.
-    expect(screen.getByText(/100,00/)).toBeInTheDocument()
+    // With no delivery price entered, only the plants figure shows — twice by
+    // design: the plants block's "Сумма растений" row AND the footer headline.
+    expect(screen.getAllByText(/100,00/)).toHaveLength(2)
     expect(screen.queryByText(/\+ доставка/)).not.toBeInTheDocument()
 
     await user.type(screen.getByLabelText('Стоимость доставки'), '50')
     // The headline stays plants-only (100 ₽, NOT 150 ₽ with delivery folded in);
     // delivery rides beside it as a small "+ доставка 50,00 ₽" note.
-    expect(screen.getByText(/100,00/)).toBeInTheDocument()
+    expect(screen.getAllByText(/100,00/)).toHaveLength(2)
     expect(screen.queryByText(/150,00/)).not.toBeInTheDocument()
     expect(screen.getByText(/\+ доставка 50,00/)).toBeInTheDocument()
   })

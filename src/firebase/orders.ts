@@ -165,7 +165,14 @@ export async function reconcileOrderNumbers(ownerId: string): Promise<boolean> {
 // files that were just deleted from Storage.
 // `source` rides the same mechanism: unchecking "Заказ с Авито" on an edit
 // omits the field, which must delete the stored value, not leave it lingering.
-const CLEARABLE_ORDER_FIELDS = ['comment', 'completedAt', 'gifts', 'photos', 'source'] as const
+const CLEARABLE_ORDER_FIELDS = [
+  'comment',
+  'completedAt',
+  'gifts',
+  'photos',
+  'source',
+  'prepaidAmountMinor',
+] as const
 
 // Field-level equality for the diff below. The order's fields are primitives or
 // small arrays of plain objects built with a stable key order (plants/gifts/photos),

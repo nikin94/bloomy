@@ -6,14 +6,12 @@ import { useSettings } from '@/context/settingsContext'
 import { formatMoney } from '@/utils/format'
 import {
   resolveCompletedAt,
-  CURRENCIES,
   DELIVERY_METHOD_VALUES,
   PAYMENT_METHOD_VALUES,
   PAYMENT_STATUS_VALUES,
   ORDER_STATUS_VALUES,
 } from '@/types/order'
 import {
-  currencyOptions,
   deliveryMethodOptions,
   paymentMethodOptions,
   paymentStatusOptions,
@@ -199,6 +197,18 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // in useOrderFormState). A CONFIRMED cancel is the explicit "discard my
   // input" — drop the stored draft too, so the next create form starts blank.
   const handleCancel = () => (form.isDirty ? setConfirmingCancel(true) : onCancel())
+
+  // What the footer HEADLINES (owner request): with an active prepayment the
+  // money already in hand leads, and the small notes carry what's left to
+  // collect plus the delivery cost. The remainder is measured against the
+  // PLANTS sum only — delivery is never folded into any displayed total, it
+  // always stays its own "+ доставка" note (owner rule). Without a prepayment
+  // the headline stays the plants-only subtotal, as before. Gated like the
+  // prepaid input itself (status + non-zero amount), so leaving the prepaid
+  // status never shows a stale prepaid sum.
+  const prepaidActive = fields.paymentStatus === 'prepaid' && form.prepaidMinor > 0
+  const remainderMinor = Math.max(0, form.subtotalMinor - form.prepaidMinor)
+
   const handleConfirmedCancel = () => {
     draftHandle.clear()
     onCancel()
@@ -473,40 +483,117 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                 From `sm` up the buttons keep their natural width on the left.
                 aria-label pins the accessible name to the FULL label on every
                 width, so screen readers (and the tests) see one stable name. */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={form.addItem}
-                disabled={!form.canAddItem}
-                aria-label={t('form.addPlant')}
-                className="whitespace-nowrap max-sm:flex-1"
-              >
-                {fields.giftName === null ? (
-                  <>
-                    <span className="sm:hidden">{t('form.addPlantShort')}</span>
-                    <span className="max-sm:hidden">{t('form.addPlant')}</span>
-                  </>
-                ) : (
-                  t('form.addPlant')
-                )}
-              </Button>
-              {fields.giftName === null && (
+            {/* Add-buttons + the positions total in ONE flex container:
+                column-REVERSE on a phone, so the total line renders ABOVE the
+                buttons while staying after them in the DOM (tab order keeps
+                the actionable buttons first); a single row from `sm` up —
+                buttons on the left, the total pushed to the right edge. */}
+            <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-center sm:gap-2">
+              <div className="flex items-center gap-2">
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={form.addGift}
-                  aria-label={t('form.addGift')}
+                  onClick={form.addItem}
+                  disabled={!form.canAddItem}
+                  aria-label={t('form.addPlant')}
                   className="whitespace-nowrap max-sm:flex-1"
                 >
-                  <span className="sm:hidden">{t('form.addGiftShort')}</span>
-                  <span className="max-sm:hidden">{t('form.addGift')}</span>
+                  {fields.giftName === null ? (
+                    <>
+                      <span className="sm:hidden">{t('form.addPlantShort')}</span>
+                      <span className="max-sm:hidden">{t('form.addPlant')}</span>
+                    </>
+                  ) : (
+                    t('form.addPlant')
+                  )}
                 </Button>
-              )}
+                {fields.giftName === null && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={form.addGift}
+                    aria-label={t('form.addGift')}
+                    className="whitespace-nowrap max-sm:flex-1"
+                  >
+                    <span className="sm:hidden">{t('form.addGiftShort')}</span>
+                    <span className="max-sm:hidden">{t('form.addGift')}</span>
+                  </Button>
+                )}
+              </div>
+              {/* Positions total, labelled "Сумма растений" on every width
+                  (owner request — it names WHAT is summed, where "Итого"
+                  read like the order total). On a phone: its own full-width
+                  line (above the buttons, via the column-reverse) — label on
+                  the left, the sum on the right, lining up with the item
+                  rows. From `sm` up it joins the buttons' row, right-aligned. */}
+              <div className="flex items-baseline justify-between gap-8 sm:ml-auto sm:justify-end sm:gap-3">
+                <span className="text-sm text-text">{t('detail.subtotal')}</span>
+                <span className="font-semibold text-heading tabular-nums">
+                  {formatMoney(form.subtotalMinor, fields.currency)}
+                </span>
+              </div>
             </div>
           </fieldset>
           <span aria-hidden="true" className="h-px w-full bg-border" />
 
+          {/* Statuses FIRST after the plants (owner request, mirroring the
+              detail page's row order): the payment/order status — and the
+              prepaid amount tied to them — sit right under the list, before
+              the logistics below. */}
+          {/* Statuses row. The prepaid input lives INSIDE this grid, between
+              the two status selects (owner order: payment status → prepaid
+              amount → order status): on desktop it appears as the row's third
+              item — the grid widens to 3 columns only while it's visible, so
+              without a prepayment the two selects keep their half-width pair —
+              and on a phone the single column simply stacks it under the
+              payment status. Its visibility gate is unchanged (status
+              'prepaid' only); the VALUE still survives a status switch (see
+              useOrderFormState), and payload.ts stores it independently of the
+              status, so prepaid → paid keeps the payment history. */}
+          <div
+            className={`grid grid-cols-1 gap-5 ${
+              fields.paymentStatus === 'prepaid' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
+            }`}
+          >
+            <Select
+              label={t('form.paymentStatus')}
+              value={fields.paymentStatus}
+              onChange={(e) =>
+                form.setFields({
+                  paymentStatus: asEnum(PAYMENT_STATUS_VALUES, e.target.value, fields.paymentStatus),
+                })
+              }
+            >
+              <SelectOptions options={paymentStatusOptions(tOrder)} />
+            </Select>
+
+            {fields.paymentStatus === 'prepaid' && (
+              <Input
+                className="w-full"
+                numeric="decimal"
+                label={t('form.prepaidAmount')}
+                value={fields.prepaidAmount}
+                onChange={(e) => form.setFields({ prepaidAmount: e.target.value })}
+              />
+            )}
+
+            <Select
+              label={t('form.status')}
+              value={fields.status}
+              onChange={(e) =>
+                form.setFields({ status: asEnum(ORDER_STATUS_VALUES, e.target.value, fields.status) })
+              }
+            >
+              <SelectOptions options={orderStatusOptions(tOrder)} />
+            </Select>
+          </div>
+
+          {/* Logistics: how the order travels and how it's paid for. The
+              payment-method select joined this grid when the statuses moved up
+              (its old grid dissolved), refilling the third column the currency
+              select vacated — the order's currency now comes from the global
+              settings default (an edit keeps the order's own stored currency;
+              there is still no conversion). */}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <Select
               label={t('form.deliveryMethod')}
@@ -528,20 +615,6 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               onChange={(e) => form.setFields({ deliveryPrice: e.target.value })}
             />
 
-            {/* Currency governs every amount in the order (plant prices, delivery,
-                total). Each option shows the localized name plus its symbol. */}
-            <Select
-              label={t('form.currency')}
-              value={fields.currency}
-              onChange={(e) =>
-                form.setFields({ currency: asEnum(CURRENCIES, e.target.value, fields.currency) })
-              }
-            >
-              <SelectOptions options={currencyOptions(tOrder)} />
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <Select
               label={t('form.paymentMethod')}
               value={fields.paymentMethod}
@@ -552,28 +625,6 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               }
             >
               <SelectOptions options={paymentMethodOptions(tOrder)} />
-            </Select>
-
-            <Select
-              label={t('form.paymentStatus')}
-              value={fields.paymentStatus}
-              onChange={(e) =>
-                form.setFields({
-                  paymentStatus: asEnum(PAYMENT_STATUS_VALUES, e.target.value, fields.paymentStatus),
-                })
-              }
-            >
-              <SelectOptions options={paymentStatusOptions(tOrder)} />
-            </Select>
-
-            <Select
-              label={t('form.status')}
-              value={fields.status}
-              onChange={(e) =>
-                form.setFields({ status: asEnum(ORDER_STATUS_VALUES, e.target.value, fields.status) })
-              }
-            >
-              <SelectOptions options={orderStatusOptions(tOrder)} />
             </Select>
           </div>
 
@@ -662,19 +713,34 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                   footer that overflow escapes to the page and stretches the
                   whole screen sideways. */}
               <div className="flex items-baseline gap-2 max-sm:min-w-0 max-sm:flex-col max-sm:gap-0 sm:shrink-0">
-                <span className="text-sm text-text max-sm:text-xs">{t('form.total')}</span>
-                {/* Plants-only headline; the delivery cost in small type
-                    (rendered only when a delivery price is entered) sits beside
-                    it on desktop, but drops to its OWN line under the amount on
-                    a phone — the stacked label column is narrow, so an inline
-                    note would push the buttons instead of wrapping. nowrap only
-                    from sm up: on a phone the note wraps between words when the
-                    row is tight (the amount itself holds together via the NBSP
-                    inside formatMoney) instead of forcing the row wider. */}
+                {/* The "Итого" label is DESKTOP-only (owner request): on a
+                    phone the plants block above already labels the positions
+                    sum, so the footer leads straight with the bold amount. */}
+                <span className="text-sm text-text max-sm:hidden">{t('form.total')}</span>
+                {/* The bold headline: the PREPAID amount while one is active
+                    (prepaidActive — the money already in hand leads), the
+                    plants-only subtotal otherwise. The small notes under it —
+                    "+ остаток" (what's left against the plants sum; delivery
+                    is NOT folded in) and "+ доставка" — share one type size;
+                    each renders only when non-zero, so nothing prints noise. On a phone the column
+                    stacks them under the amount; from `sm` up they sit inline
+                    beside it. nowrap only from sm up: on a phone a note wraps
+                    between words when the row is tight (the amount itself
+                    holds together via the NBSP inside formatMoney). */}
                 <span className="flex items-baseline gap-1.5 max-sm:min-w-0 max-sm:flex-col max-sm:gap-0">
                   <span className="text-lg font-semibold text-heading">
-                    {formatMoney(form.subtotalMinor, fields.currency)}
+                    {formatMoney(
+                      prepaidActive ? form.prepaidMinor : form.subtotalMinor,
+                      fields.currency,
+                    )}
                   </span>
+                  {prepaidActive && remainderMinor > 0 && (
+                    <span className="text-xs text-text sm:whitespace-nowrap">
+                      {t('form.totalRemaining', {
+                        amount: formatMoney(remainderMinor, fields.currency),
+                      })}
+                    </span>
+                  )}
                   {form.deliveryMinor > 0 && (
                     <span className="text-xs text-text sm:whitespace-nowrap">
                       {t('form.totalDelivery', {

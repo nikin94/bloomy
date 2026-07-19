@@ -17,6 +17,7 @@ const fields = (over: Partial<OrderFormFields> = {}): OrderFormFields => ({
   paymentMethod: 'cash',
   currency: 'RUB',
   paymentStatus: 'pending',
+  prepaidAmount: '',
   status: 'processing',
   source: null,
   comment: '',
@@ -104,6 +105,28 @@ describe('buildOrderPayload', () => {
     // the omission becomes deleteField via CLEARABLE_ORDER_FIELDS.
     expect(buildOrderPayload({ ...base, fields: fields({ source: 'avito' }) }).source).toBe('avito')
     expect(buildOrderPayload({ ...base, fields: fields() })).not.toHaveProperty('source')
+  })
+
+  it('stores a typed prepaid amount in minor units, independent of the status', () => {
+    // The amount survives a prepaid → paid move (payment history), so the
+    // builder must not gate it on the CURRENT status.
+    const order = buildOrderPayload({
+      ...base,
+      fields: fields({ paymentStatus: 'paid', prepaidAmount: '1500' }),
+    })
+    expect(order.prepaidAmountMinor).toBe(150000)
+  })
+
+  it('omits a blank or zero prepaid amount (updateOrder then clears it via deleteField)', () => {
+    expect(
+      buildOrderPayload({ ...base, fields: fields({ paymentStatus: 'prepaid' }) }),
+    ).not.toHaveProperty('prepaidAmountMinor')
+    expect(
+      buildOrderPayload({
+        ...base,
+        fields: fields({ paymentStatus: 'prepaid', prepaidAmount: '0' }),
+      }),
+    ).not.toHaveProperty('prepaidAmountMinor')
   })
 
   it('merges kept photos with the just-uploaded paths, kept first', () => {

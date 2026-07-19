@@ -84,6 +84,13 @@ describe('OrderDetailPage', () => {
   it('shows the order with its statuses editable inline', async () => {
     renderPage()
     expect(await screen.findByRole('heading', { name: 'Заказ №5' })).toBeInTheDocument()
+    // The statuses LEAD the details block (owner request: right under the
+    // plant list), ahead of the logistics rows like the delivery method.
+    const paymentSelect = screen.getByRole('combobox', { name: 'Статус оплаты' })
+    const deliveryLabel = screen.getByText('Способ доставки')
+    expect(
+      paymentSelect.compareDocumentPosition(deliveryLabel) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
     // The two statuses render as selects pre-set to the order's current values.
     expect(screen.getByRole('combobox', { name: 'Статус оплаты' })).toHaveValue('pending')
     expect(screen.getByRole('combobox', { name: 'Статус заказа' })).toHaveValue('processing')
@@ -182,6 +189,40 @@ describe('OrderDetailPage', () => {
     renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })
     expect(screen.queryByText('Источник')).not.toBeInTheDocument()
+  })
+
+  it('shows the prepaid amount with the derived remainder while the status is prepaid', async () => {
+    // The status select's own "Предоплата" <option> always exists, so the ROW
+    // label is the non-option match.
+    const prepaidRowLabels = () =>
+      screen.queryAllByText('Предоплата').filter((el) => el.tagName !== 'OPTION')
+
+    // The remainder is measured against the PLANTS sum only (delivery is never
+    // folded into a displayed total — owner rule, same as the form footer):
+    // 2×149,90 = 299,80 ₽; 200 ₽ prepaid → 99,80 left. The 300 ₽ delivery on
+    // the fixture must NOT push it to 399,80.
+    fetchOrder.mockResolvedValue(order({ paymentStatus: 'prepaid', prepaidAmountMinor: 20000 }))
+    const { unmount } = renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    expect(prepaidRowLabels()).toHaveLength(1)
+    expect(screen.getByText('200,00 ₽')).toBeInTheDocument()
+    expect(screen.getByText(/осталось\s*99,80 ₽/)).toBeInTheDocument()
+    expect(screen.queryByText(/399,80/)).not.toBeInTheDocument()
+    unmount()
+
+    // Once marked paid the ROW leaves the page entirely (owner request) —
+    // the stored amount survives as history, but the display is prepaid-only.
+    fetchOrder.mockResolvedValue(order({ paymentStatus: 'paid', prepaidAmountMinor: 20000 }))
+    const { unmount: unmountPaid } = renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    expect(prepaidRowLabels()).toHaveLength(0)
+    expect(screen.queryByText('200,00 ₽')).not.toBeInTheDocument()
+    unmountPaid()
+
+    fetchOrder.mockResolvedValue(order())
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    expect(prepaidRowLabels()).toHaveLength(0)
   })
 
   it('saves a status change as a partial patch (only the changed field)', async () => {
