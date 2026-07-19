@@ -292,6 +292,12 @@ const OrderDetailPage = () => {
             )}
           </section>
 
+          {/* Section divider before the plant list. A separate flex child of
+              the gap-6 column, so the parent gap gives it the SAME 24px above
+              and below (the page's one divider rhythm — matching the details
+              divider further down and the form's section dividers). */}
+          <span aria-hidden="true" className="h-px w-full bg-border" />
+
           {/* Itemized plant list. A 5-column table can't fit a 320px phone, so
               below `sm` it's broken into one stacked card per plant (name +
               line-total on top, "qty × unit price" below); from `sm` up the full
@@ -351,24 +357,36 @@ const OrderDetailPage = () => {
                 {gift.name}
               </p>
             ))}
-          </section>
 
-          {/* Money breakdown — full width on a phone (labels left, amounts right)
-              so it lines up with the plant cards; shrink-wrapped to the right from
-              `sm` up. */}
-          <section className="flex w-full flex-col gap-1 text-[0.8333rem] sm:w-auto sm:self-end">
-            <Total label={t('detail.subtotal')} value={getSubtotalMinor(order)} currency={order.currency} />
-            <Total label={t('detail.delivery')} value={order.deliveryPriceMinor} currency={order.currency} />
-            <div className="mt-1 flex justify-between gap-8 border-t border-border pt-2 font-semibold text-heading">
-              <span>{t('detail.total')}</span>
-              <span className="tabular-nums">{formatMoney(getTotalMinor(order), order.currency)}</span>
+            {/* Money breakdown — INSIDE the plants section (owner request), so
+                the section's gap-2 puts it right under the last plant row
+                instead of a full section gap away: the totals belong to the
+                list they sum. Full width on a phone (labels left, amounts
+                right) so it lines up with the plant cards; shrink-wrapped to
+                the right from `sm` up. */}
+            <div className="flex w-full flex-col gap-1 text-[0.8333rem] sm:w-auto sm:self-end">
+              <Total label={t('detail.subtotal')} value={getSubtotalMinor(order)} currency={order.currency} />
+              <Total label={t('detail.delivery')} value={order.deliveryPriceMinor} currency={order.currency} />
+              <div className="mt-1 flex justify-between gap-8 border-t border-border pt-2 font-semibold text-heading">
+                <span>{t('detail.total')}</span>
+                <span className="tabular-nums">{formatMoney(getTotalMinor(order), order.currency)}</span>
+              </div>
             </div>
           </section>
 
+          {/* Section divider before the remaining details — same standalone
+              flex child as the one above the plant list, so the column's gap-6
+              gives it the identical 24px above and below. */}
+          <span aria-hidden="true" className="h-px w-full bg-border" />
+
           {/* The remaining details. The two statuses are editable inline (the
               frequent "mark paid/done" action) without opening the full edit
-              form; the rest is read-only and changed via "Редактировать". */}
-          <section className="flex flex-col">
+              form; the rest is read-only and changed via "Редактировать".
+              -mt-2 compensates the first DetailRow's own py-2 top padding, so
+              the visible text sits the same 24px from the divider above as the
+              Итого line does on the divider's other side (the owner's
+              equal-spacing rule for every divider on this page). */}
+          <section className="-mt-2 flex flex-col">
             <DetailRow label={t('detail.deliveryMethod')} value={deliveryMethodLabel(tOrder, order.deliveryMethod)} />
             <DetailRow label={t('detail.paymentMethod')} value={paymentMethodLabel(tOrder, order.paymentMethod)} />
             {/* Marketplace source — shown only when the order carries one, so a
