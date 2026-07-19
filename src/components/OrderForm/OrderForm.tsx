@@ -28,6 +28,7 @@ import Textarea from '@/components/Textarea/Textarea'
 import PendingPhotos from '@/components/OrderPhotos/PendingPhotos'
 import SelectOptions from '@/components/SelectOptions/SelectOptions'
 import ChipRadioGroup from '@/components/ChipRadioGroup/ChipRadioGroup'
+import { STATUS_BLOCK_FIELDS } from '@/lib/statusBlockOrder'
 import PlantItemRow from './PlantItemRow'
 import GiftRow from './GiftRow'
 import CustomerPicker from './CustomerPicker'
@@ -546,51 +547,64 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               detail page's row order): the payment/order status — and the
               prepaid amount tied to them — sit right under the list, before
               the logistics below. */}
-          {/* Statuses row (owner order: order status → payment status →
-              prepaid amount — the prepaid input stays NEXT TO the payment
-              status it belongs to): on desktop the prepaid input appears as
-              the row's third item — the grid widens to 3 columns only while
-              it's visible, so without a prepayment the two selects keep their
-              half-width pair — and on a phone the single column simply stacks
-              it under the payment status. Its visibility gate is unchanged
-              (status 'prepaid' only); the VALUE still survives a status switch
-              (see useOrderFormState), and payload.ts stores it independently
-              of the status, so prepaid → paid keeps the payment history. */}
+          {/* Statuses row. The SEQUENCE comes from STATUS_BLOCK_FIELDS (the
+              shared source of truth with the order detail page — see
+              statusBlockOrder.ts): this map + the renderer record below is
+              what makes reordering a one-line change there instead of two
+              hand-synced screens. Layout: on desktop the prepaid input appears
+              as the row's third item — the grid widens to 3 columns only
+              while it's visible, so without a prepayment the two selects keep
+              their half-width pair — and on a phone the single column simply
+              stacks it under the payment status. Its visibility gate is
+              unchanged (status 'prepaid' only); the VALUE still survives a
+              status switch (see useOrderFormState), and payload.ts stores it
+              independently of the status, so prepaid → paid keeps the payment
+              history. */}
           <div
             className={`grid grid-cols-1 gap-5 ${
               fields.paymentStatus === 'prepaid' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'
             }`}
           >
-            <Select
-              label={t('form.status')}
-              value={fields.status}
-              onChange={(e) =>
-                form.setFields({ status: asEnum(ORDER_STATUS_VALUES, e.target.value, fields.status) })
-              }
-            >
-              <SelectOptions options={orderStatusOptions(tOrder)} />
-            </Select>
-
-            <Select
-              label={t('form.paymentStatus')}
-              value={fields.paymentStatus}
-              onChange={(e) =>
-                form.setFields({
-                  paymentStatus: asEnum(PAYMENT_STATUS_VALUES, e.target.value, fields.paymentStatus),
-                })
-              }
-            >
-              <SelectOptions options={paymentStatusOptions(tOrder)} />
-            </Select>
-
-            {fields.paymentStatus === 'prepaid' && (
-              <Input
-                className="w-full"
-                numeric="decimal"
-                label={t('form.prepaidAmount')}
-                value={fields.prepaidAmount}
-                onChange={(e) => form.setFields({ prepaidAmount: e.target.value })}
-              />
+            {STATUS_BLOCK_FIELDS.map((field) =>
+              ({
+                status: (
+                  <Select
+                    key="status"
+                    label={t('form.status')}
+                    value={fields.status}
+                    onChange={(e) =>
+                      form.setFields({ status: asEnum(ORDER_STATUS_VALUES, e.target.value, fields.status) })
+                    }
+                  >
+                    <SelectOptions options={orderStatusOptions(tOrder)} />
+                  </Select>
+                ),
+                paymentStatus: (
+                  <Select
+                    key="paymentStatus"
+                    label={t('form.paymentStatus')}
+                    value={fields.paymentStatus}
+                    onChange={(e) =>
+                      form.setFields({
+                        paymentStatus: asEnum(PAYMENT_STATUS_VALUES, e.target.value, fields.paymentStatus),
+                      })
+                    }
+                  >
+                    <SelectOptions options={paymentStatusOptions(tOrder)} />
+                  </Select>
+                ),
+                prepaid:
+                  fields.paymentStatus === 'prepaid' ? (
+                    <Input
+                      key="prepaid"
+                      className="w-full"
+                      numeric="decimal"
+                      label={t('form.prepaidAmount')}
+                      value={fields.prepaidAmount}
+                      onChange={(e) => form.setFields({ prepaidAmount: e.target.value })}
+                    />
+                  ) : null,
+              })[field],
             )}
           </div>
 

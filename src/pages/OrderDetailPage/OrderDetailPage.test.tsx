@@ -87,6 +87,16 @@ describe('OrderDetailPage', () => {
     // The two statuses render as selects pre-set to the order's current values.
     expect(screen.getByRole('combobox', { name: 'Статус оплаты' })).toHaveValue('pending')
     expect(screen.getByRole('combobox', { name: 'Статус заказа' })).toHaveValue('processing')
+    // Order status comes FIRST (before the payment status) — the sequence is
+    // the shared STATUS_BLOCK_FIELDS constant (statusBlockOrder.ts), the same
+    // source of truth the order form maps over, so the two screens cannot
+    // drift apart again.
+    expect(
+      screen
+        .getByRole('combobox', { name: 'Статус заказа' })
+        .compareDocumentPosition(screen.getByRole('combobox', { name: 'Статус оплаты' })) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
     // The delivery address lives in the client block (under the phone) — no
     // labelled "Адрес доставки" row anymore.
     expect(screen.getByText('Main St 1')).toBeInTheDocument()
