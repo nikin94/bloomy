@@ -16,6 +16,7 @@
   },
   "paymentStatus": {
     "pending": "Pending",
+    "prepaid": "Prepaid",
     "paid": "Paid",
     "refunded": "Refunded"
   },
@@ -88,7 +89,6 @@
     "deleteBody": "The order will move to the trash and be permanently deleted in {{days}}. You can restore it until then.",
     "customer": "Customer",
     "phone": "Phone",
-    "deliveryAddress": "Delivery address",
     "deliveryMethod": "Delivery method",
     "paymentMethod": "Payment method",
     "paymentStatus": "Payment status",

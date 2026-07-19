@@ -187,7 +187,11 @@ const OrderDetailPage = () => {
         </div>
       )}
 
-      <div className="overflow-auto p-4 md:p-6">
+      {/* max-md:pt-1.5 (6px, was p-4's 16px): matches the mobile bar's own
+          py-1.5 bottom padding, so the gap between the bar and the first
+          content row (client + the action stack, which begin at the same
+          level) reads as one even rhythm continuing down from the burger. */}
+      <div className="overflow-auto p-4 max-md:pt-1.5 md:p-6">
       {loading && <Spinner />}
       {error && <p className="text-danger">{error.message || t('detail.loadError')}</p>}
       {!loading && !error && !order && <p className="text-text">{t('detail.notFound')}</p>}
@@ -242,6 +246,15 @@ const OrderDetailPage = () => {
                 <span className="text-lg text-heading">—</span>
               )}
               {customer?.phone && <span className="text-sm text-text">{customer.phone}</span>}
+              {/* Delivery address, right under the phone (owner request): the
+                  left block reads name → phone → where to bring it, so the
+                  labelled "Адрес доставки" row below is gone — this IS the
+                  address now. mt-1 sets it slightly apart from the contact
+                  lines; break-words so a long unbroken address wraps instead
+                  of pushing into the action stack. */}
+              <span className="mt-1 min-w-0 break-words text-heading">
+                {order.address || '—'}
+              </span>
             </div>
             {!isDeleted && (
               <div className="flex shrink-0 flex-col gap-2 max-md:-mr-2">
@@ -277,13 +290,6 @@ const OrderDetailPage = () => {
                 </Button>
               </div>
             )}
-          </section>
-
-          {/* Address right after the client, then the plant list (owner order:
-              who → where → what, with the money right by the plants; the
-              logistics/status details follow below). */}
-          <section className="flex flex-col">
-            <DetailRow label={t('detail.deliveryAddress')} value={order.address || '—'} />
           </section>
 
           {/* Itemized plant list. A 5-column table can't fit a 320px phone, so

@@ -87,6 +87,10 @@ describe('OrderDetailPage', () => {
     // The two statuses render as selects pre-set to the order's current values.
     expect(screen.getByRole('combobox', { name: 'Статус оплаты' })).toHaveValue('pending')
     expect(screen.getByRole('combobox', { name: 'Статус заказа' })).toHaveValue('processing')
+    // The delivery address lives in the client block (under the phone) — no
+    // labelled "Адрес доставки" row anymore.
+    expect(screen.getByText('Main St 1')).toBeInTheDocument()
+    expect(screen.queryByText('Адрес доставки')).not.toBeInTheDocument()
   })
 
   it('publishes the order number + date into the mobile top bar (in-layout)', async () => {
@@ -275,7 +279,7 @@ describe('OrderDetailPage', () => {
       expect(screen.queryByRole('button', { name: 'Удалить' })).not.toBeInTheDocument()
       // Statuses are plain text, not editable selects; the label still resolves.
       expect(screen.queryByRole('combobox', { name: 'Статус оплаты' })).not.toBeInTheDocument()
-      expect(screen.getByText('Ожидает')).toBeInTheDocument()
+      expect(screen.getByText('Ожидается')).toBeInTheDocument()
     })
 
     it('shows existing photos read-only: no add tile, no per-thumb delete', async () => {

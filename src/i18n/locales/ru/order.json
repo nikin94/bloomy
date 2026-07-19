@@ -15,8 +15,9 @@
     "status": "Статус"
   },
   "paymentStatus": {
-    "pending": "Ожидает",
-    "paid": "Оплачен",
+    "pending": "Ожидается",
+    "prepaid": "Предоплата",
+    "paid": "Оплачено",
     "refunded": "Возврат"
   },
   "status": {
@@ -88,7 +89,6 @@
     "deleteBody": "Заказ переместится в корзину и будет навсегда удалён через {{days}}. До этого его можно восстановить.",
     "customer": "Клиент",
     "phone": "Телефон",
-    "deliveryAddress": "Адрес доставки",
     "deliveryMethod": "Способ доставки",
     "paymentMethod": "Способ оплаты",
     "paymentStatus": "Статус оплаты",

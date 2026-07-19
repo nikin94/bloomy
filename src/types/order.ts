@@ -4,7 +4,13 @@ import { z } from 'zod'
 // when reading Firestore documents) and the TypeScript types share a single
 // source of truth. We still avoid `enum` — tsconfig enables erasableSyntaxOnly,
 // which forbids it; the inferred string-literal unions are erasable.
-export const PAYMENT_STATUS_SCHEMA = z.enum(['pending', 'paid', 'refunded'])
+// 'prepaid' was ADDED after orders already existed — a safe enum widening (every
+// stored value stays valid, no migration), same as the 'avito' source. The value
+// order here IS the dropdown order (PAYMENT_STATUS_VALUES = .options), so
+// prepaid sits between pending and paid, matching the payment lifecycle. NOTE:
+// the revenue selectors count ONLY 'paid' — a prepayment is not the full
+// realized amount, so a prepaid order joins the revenue once it's marked paid.
+export const PAYMENT_STATUS_SCHEMA = z.enum(['pending', 'prepaid', 'paid', 'refunded'])
 export type PaymentStatus = z.infer<typeof PAYMENT_STATUS_SCHEMA>
 
 // The order's workflow status ("статус заказа"). Reduced to exactly three
