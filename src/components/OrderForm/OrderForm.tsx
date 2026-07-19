@@ -520,17 +520,14 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                   </Button>
                 )}
               </div>
-              {/* Positions total. On a phone: its own full-width line (above
-                  the buttons, via the column-reverse) — "Итого" on the left,
-                  the sum on the right, lining up with the item rows. From `sm`
-                  up it joins the buttons' row, right-aligned, relabelled
-                  "Сумма растений" (owner request — on the wider screen the
-                  longer label reads better beside the buttons). */}
+              {/* Positions total, labelled "Сумма растений" on every width
+                  (owner request — it names WHAT is summed, where "Итого"
+                  read like the order total). On a phone: its own full-width
+                  line (above the buttons, via the column-reverse) — label on
+                  the left, the sum on the right, lining up with the item
+                  rows. From `sm` up it joins the buttons' row, right-aligned. */}
               <div className="flex items-baseline justify-between gap-8 sm:ml-auto sm:justify-end sm:gap-3">
-                <span className="text-sm text-text">
-                  <span className="sm:hidden">{t('form.total')}</span>
-                  <span className="max-sm:hidden">{t('detail.subtotal')}</span>
-                </span>
+                <span className="text-sm text-text">{t('detail.subtotal')}</span>
                 <span className="font-semibold text-heading tabular-nums">
                   {formatMoney(form.subtotalMinor, fields.currency)}
                 </span>

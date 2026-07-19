@@ -527,14 +527,12 @@ describe('OrderForm', () => {
     renderForm({ initialOrder: order({ customerId: 'c1' }) })
     await screen.findByRole('combobox', { name: 'Существующий клиент' })
 
-    // The plants fieldset carries its own total row with the plants-only sum.
-    // The label is responsive — "Итого" on a phone (its own line above the
-    // buttons), "Сумма растений" beside the buttons from `sm` up; jsdom keeps
-    // both spans in the DOM, so both are asserted, scoped to the fieldset (the
-    // footer has its own desktop-only "Итого").
+    // The plants fieldset carries its own total row with the plants-only sum,
+    // labelled "Сумма растений" on every width (it names WHAT is summed;
+    // "Итого" lives only in the footer, desktop-only). Scoped to the fieldset.
     const plants = within(screen.getByRole('group', { name: 'Растения' }))
-    expect(plants.getByText('Итого')).toBeInTheDocument()
     expect(plants.getByText('Сумма растений')).toBeInTheDocument()
+    expect(plants.queryByText('Итого')).not.toBeInTheDocument()
     expect(plants.getByText('299,80 ₽')).toBeInTheDocument()
   })
 

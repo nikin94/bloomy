@@ -332,7 +332,7 @@ describe('NewOrderPage', () => {
     await user.type(screen.getByLabelText('Цена'), '100')
 
     // With no delivery price entered, only the plants figure shows — twice by
-    // design: the plants block's own "Итого" row AND the footer headline.
+    // design: the plants block's "Сумма растений" row AND the footer headline.
     expect(screen.getAllByText(/100,00/)).toHaveLength(2)
     expect(screen.queryByText(/\+ доставка/)).not.toBeInTheDocument()
 
