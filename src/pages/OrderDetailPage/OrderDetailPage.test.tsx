@@ -84,6 +84,13 @@ describe('OrderDetailPage', () => {
   it('shows the order with its statuses editable inline', async () => {
     renderPage()
     expect(await screen.findByRole('heading', { name: 'Заказ №5' })).toBeInTheDocument()
+    // The statuses LEAD the details block (owner request: right under the
+    // plant list), ahead of the logistics rows like the delivery method.
+    const paymentSelect = screen.getByRole('combobox', { name: 'Статус оплаты' })
+    const deliveryLabel = screen.getByText('Способ доставки')
+    expect(
+      paymentSelect.compareDocumentPosition(deliveryLabel) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
     // The two statuses render as selects pre-set to the order's current values.
     expect(screen.getByRole('combobox', { name: 'Статус оплаты' })).toHaveValue('pending')
     expect(screen.getByRole('combobox', { name: 'Статус заказа' })).toHaveValue('processing')
@@ -203,14 +210,13 @@ describe('OrderDetailPage', () => {
     expect(screen.queryByText(/399,80/)).not.toBeInTheDocument()
     unmount()
 
-    // Once marked paid the amount stays (payment history) but the remainder —
-    // now meaningless — is dropped; an order with no prepayment adds no row.
+    // Once marked paid the ROW leaves the page entirely (owner request) —
+    // the stored amount survives as history, but the display is prepaid-only.
     fetchOrder.mockResolvedValue(order({ paymentStatus: 'paid', prepaidAmountMinor: 20000 }))
     const { unmount: unmountPaid } = renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })
-    expect(prepaidRowLabels()).toHaveLength(1)
-    expect(screen.getByText('200,00 ₽')).toBeInTheDocument()
-    expect(screen.queryByText(/осталось/)).not.toBeInTheDocument()
+    expect(prepaidRowLabels()).toHaveLength(0)
+    expect(screen.queryByText('200,00 ₽')).not.toBeInTheDocument()
     unmountPaid()
 
     fetchOrder.mockResolvedValue(order())

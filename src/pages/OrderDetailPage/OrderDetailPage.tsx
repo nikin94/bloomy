@@ -414,13 +414,10 @@ const OrderDetailPage = () => {
               label's half-leading (~4px), so the visible text keeps the same
               24px the money line holds on the divider's other side. */}
           <section className="-mt-3 flex flex-col">
-            <DetailRow label={t('detail.deliveryMethod')} value={deliveryMethodLabel(tOrder, order.deliveryMethod)} />
-            <DetailRow label={t('detail.paymentMethod')} value={paymentMethodLabel(tOrder, order.paymentMethod)} />
-            {/* Marketplace source — shown only when the order carries one, so a
-                direct order (the common case, stored with no field) adds no row. */}
-            {order.source && (
-              <DetailRow label={t('detail.source')} value={tOrder(`source.${order.source}`)} />
-            )}
+            {/* The two statuses + the prepaid amount lead the details (owner
+                request: right under the plant list) — marking paid/done is the
+                frequent action here, and the prepayment is what those statuses
+                are about. The logistics rows follow below. */}
             <InlineStatusField
               label={t('detail.paymentStatus')}
               value={order.paymentStatus}
@@ -428,18 +425,17 @@ const OrderDetailPage = () => {
               onChange={(value) => saveStatus({ paymentStatus: asEnum(PAYMENT_STATUS_VALUES, value, order.paymentStatus) })}
               readOnly={isDeleted}
             />
-            {/* Prepaid amount — shown whenever the order carries one (kept as
-                history after prepaid → paid). The REMAINDER is derived live
-                (never stored) from the PLANTS sum only — delivery is never
-                folded into a displayed total (owner rule, same as the form
-                footer) — and shown only while the status is still 'prepaid'
-                and something is actually left to pay; a fully covered or
-                already-paid order reads just the amount. */}
-            {order.prepaidAmountMinor !== undefined && (
+            {/* Prepaid amount — visible ONLY while the status is 'prepaid'
+                (owner request): once the order is marked paid the row leaves
+                the page, though the stored field survives as payment history.
+                The REMAINDER is derived live (never stored) from the PLANTS
+                sum only — delivery is never folded into a displayed total
+                (owner rule, same as the form footer) — and prints only while
+                something is actually left to pay. */}
+            {order.paymentStatus === 'prepaid' && order.prepaidAmountMinor !== undefined && (
               <DetailRow
                 label={t('detail.prepaid')}
                 value={
-                  order.paymentStatus === 'prepaid' &&
                   getSubtotalMinor(order) > order.prepaidAmountMinor ? (
                     <span className="flex flex-col">
                       <span className="tabular-nums">
@@ -469,6 +465,13 @@ const OrderDetailPage = () => {
               onChange={(value) => saveStatus({ status: asEnum(ORDER_STATUS_VALUES, value, order.status) })}
               readOnly={isDeleted}
             />
+            <DetailRow label={t('detail.deliveryMethod')} value={deliveryMethodLabel(tOrder, order.deliveryMethod)} />
+            <DetailRow label={t('detail.paymentMethod')} value={paymentMethodLabel(tOrder, order.paymentMethod)} />
+            {/* Marketplace source — shown only when the order carries one, so a
+                direct order (the common case, stored with no field) adds no row. */}
+            {order.source && (
+              <DetailRow label={t('detail.source')} value={tOrder(`source.${order.source}`)} />
+            )}
             {order.completedAt && <DetailRow label={t('detail.completed')} value={formatDate(order.completedAt)} />}
             {order.comment && <DetailRow label={t('detail.comment')} value={order.comment} />}
           </section>
