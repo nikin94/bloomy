@@ -84,6 +84,7 @@ export function useOrderDraftSync(
     paymentMethod: fields.paymentMethod,
     currency: fields.currency,
     paymentStatus: fields.paymentStatus,
+    prepaidAmount: fields.prepaidAmount,
     status: fields.status,
     source: fields.source,
     comment: fields.comment,

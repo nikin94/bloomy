@@ -68,6 +68,14 @@ export function buildOrderPayload({
     // (see ORDER_SOURCE_SCHEMA), and on an edit the omission becomes deleteField
     // via CLEARABLE_ORDER_FIELDS, so unchecking really clears the stored field.
     ...(fields.source !== null ? { source: fields.source } : {}),
+    // Prepaid amount: stored whenever a positive amount is typed, INDEPENDENT
+    // of the current payment status — moving prepaid → paid keeps the history
+    // of how the money arrived (owner decision). A blank/zero input stores
+    // nothing; on an edit the omission becomes deleteField via
+    // CLEARABLE_ORDER_FIELDS, so clearing the input really clears the field.
+    ...(parseRublesToMinor(fields.prepaidAmount) > 0
+      ? { prepaidAmountMinor: parseRublesToMinor(fields.prepaidAmount) }
+      : {}),
     // The gift, when one was added and named. A blank gift row is dropped
     // silently, like empty plant rows. Free by definition: price 0, quantity 1,
     // so it never moves the totals (they read `plants` only).

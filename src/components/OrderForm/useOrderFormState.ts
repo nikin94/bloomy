@@ -40,6 +40,12 @@ export interface OrderFormFields {
   paymentMethod: PaymentMethod
   currency: Currency
   paymentStatus: PaymentStatus
+  // What the customer already paid, AS TYPED (a rubles string like the price
+  // inputs — parsed to minor units in payload.ts). Edited only while the
+  // payment status is 'prepaid' (the input hides otherwise), but the VALUE is
+  // kept across a status switch so prepaid → paid preserves the history and an
+  // accidental toggle away and back loses nothing.
+  prepaidAmount: string
   status: OrderStatus
   // Marketplace the order came in from, or null for a direct order. The form
   // edits it as the "Заказ с Авито" checkbox; null (not undefined) so the value
@@ -234,6 +240,15 @@ const createInitialState = ({ draft, source, initialOrder, defaults }: OrderForm
       // source currency, a new order starts in the user's default.
       currency: draft?.currency ?? source?.currency ?? defaults.currency,
       paymentStatus: draft?.paymentStatus ?? initialOrder?.paymentStatus ?? 'pending',
+      // Prepaid amount is PER-INSTANCE state (like the statuses/comment): an
+      // EDIT prefills it, a repeat does not — the repeated order starts with a
+      // fresh, unpaid payment lifecycle. `?? ''` covers drafts saved before
+      // this field existed (optional in the draft schema).
+      prepaidAmount:
+        draft?.prepaidAmount ??
+        (initialOrder?.prepaidAmountMinor !== undefined
+          ? formatMinorToInput(initialOrder.prepaidAmountMinor)
+          : ''),
       status: draft?.status ?? initialOrder?.status ?? 'processing',
       comment: draft?.comment ?? initialOrder?.comment ?? '',
       // The marketplace source rides the CONTENTS (edit and repeat both prefill
@@ -278,6 +293,7 @@ export function useOrderFormState(init: OrderFormInit) {
     fields.paymentMethod,
     fields.currency,
     fields.paymentStatus,
+    fields.prepaidAmount,
     fields.status,
     fields.source,
     fields.comment,

@@ -41,6 +41,10 @@ export const ORDER_DRAFT_SCHEMA = z.object({
   paymentMethod: PAYMENT_METHOD_SCHEMA,
   currency: CURRENCY_SCHEMA,
   paymentStatus: PAYMENT_STATUS_SCHEMA,
+  // Prepaid amount as typed (a rubles string, like deliveryPrice). OPTIONAL for
+  // the same reason as `source`: a draft saved before this field existed must
+  // still restore — the reader treats a missing key as ''.
+  prepaidAmount: z.string().optional(),
   // Strict three-state enum, like the stored order: a draft written back when
   // legacy status values/field names existed simply fails validation and is
   // discarded (the documented stale-draft contract) — never crashes the form.

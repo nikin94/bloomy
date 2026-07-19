@@ -577,6 +577,24 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
             </Select>
           </div>
 
+          {/* Prepaid amount — shown only while the payment status is
+              "Предоплата" (the one state where a partial payment exists to
+              record). A separate conditional row, not a fourth grid cell, for
+              the same rhythm reason as the checkbox below. The VALUE survives
+              a status switch (see useOrderFormState) — hiding the input never
+              wipes what was typed — and payload.ts stores it independently of
+              the status, so prepaid → paid keeps the payment history.
+              sm:max-w-xs: a money input needn't span the full form width. */}
+          {fields.paymentStatus === 'prepaid' && (
+            <Input
+              className="w-full sm:max-w-xs"
+              numeric="decimal"
+              label={t('form.prepaidAmount')}
+              value={fields.prepaidAmount}
+              onChange={(e) => form.setFields({ prepaidAmount: e.target.value })}
+            />
+          )}
+
           {/* Marketplace source — a plain full-width checkbox row, deliberately
               NOT a fourth cell in the 3-column select grid above (which would
               break its rhythm on desktop and orphan a lone control on phones).

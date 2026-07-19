@@ -184,6 +184,37 @@ describe('OrderDetailPage', () => {
     expect(screen.queryByText('Источник')).not.toBeInTheDocument()
   })
 
+  it('shows the prepaid amount with the derived remainder while the status is prepaid', async () => {
+    // The status select's own "Предоплата" <option> always exists, so the ROW
+    // label is the non-option match.
+    const prepaidRowLabels = () =>
+      screen.queryAllByText('Предоплата').filter((el) => el.tagName !== 'OPTION')
+
+    // Total = 2×149,90 + 300 delivery = 599,80 ₽; 200 ₽ prepaid → 399,80 left.
+    fetchOrder.mockResolvedValue(order({ paymentStatus: 'prepaid', prepaidAmountMinor: 20000 }))
+    const { unmount } = renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    expect(prepaidRowLabels()).toHaveLength(1)
+    expect(screen.getByText('200,00 ₽')).toBeInTheDocument()
+    expect(screen.getByText(/осталось\s*399,80 ₽/)).toBeInTheDocument()
+    unmount()
+
+    // Once marked paid the amount stays (payment history) but the remainder —
+    // now meaningless — is dropped; an order with no prepayment adds no row.
+    fetchOrder.mockResolvedValue(order({ paymentStatus: 'paid', prepaidAmountMinor: 20000 }))
+    const { unmount: unmountPaid } = renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    expect(prepaidRowLabels()).toHaveLength(1)
+    expect(screen.getByText('200,00 ₽')).toBeInTheDocument()
+    expect(screen.queryByText(/осталось/)).not.toBeInTheDocument()
+    unmountPaid()
+
+    fetchOrder.mockResolvedValue(order())
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    expect(prepaidRowLabels()).toHaveLength(0)
+  })
+
   it('saves a status change as a partial patch (only the changed field)', async () => {
     const user = userEvent.setup()
     renderPage()

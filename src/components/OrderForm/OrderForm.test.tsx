@@ -470,6 +470,52 @@ describe('OrderForm', () => {
     expect(onSubmit.mock.calls[0][0].source).toBe('avito')
   })
 
+  it('shows the prepaid-amount input only for the prepaid status and keeps its value across a switch', async () => {
+    const user = userEvent.setup()
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    renderForm({ initialOrder: order({ customerId: 'c1' }) })
+    await screen.findByRole('combobox', { name: 'Существующий клиент' })
+
+    // Hidden while the status is anything but "Предоплата".
+    expect(screen.queryByLabelText('Сумма предоплаты')).not.toBeInTheDocument()
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус оплаты' }), 'prepaid')
+    await user.type(screen.getByLabelText('Сумма предоплаты'), '1500')
+
+    // Switching away hides the input but must NOT wipe the typed amount: an
+    // accidental toggle (or the deliberate prepaid → paid move, which keeps
+    // the amount as payment history) loses nothing on the way back.
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус оплаты' }), 'paid')
+    expect(screen.queryByLabelText('Сумма предоплаты')).not.toBeInTheDocument()
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус оплаты' }), 'prepaid')
+    expect(screen.getByLabelText('Сумма предоплаты')).toHaveValue('1500')
+  })
+
+  it('hands the prepaid amount to onSubmit in minor units', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    renderForm({ onSubmit, initialOrder: order({ customerId: 'c1' }) })
+    await screen.findByRole('combobox', { name: 'Существующий клиент' })
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус оплаты' }), 'prepaid')
+    await user.type(screen.getByLabelText('Сумма предоплаты'), '149,90')
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0].prepaidAmountMinor).toBe(14990)
+    expect(onSubmit.mock.calls[0][0].paymentStatus).toBe('prepaid')
+  })
+
+  it('prefills the prepaid amount from an edited order', async () => {
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    renderForm({
+      initialOrder: order({ customerId: 'c1', paymentStatus: 'prepaid', prepaidAmountMinor: 150000 }),
+    })
+    await screen.findByRole('combobox', { name: 'Существующий клиент' })
+    expect(screen.getByLabelText('Сумма предоплаты')).toHaveValue('1500')
+  })
+
   it('prefills the Avito checkbox from an edited order and from a repeat seed', async () => {
     fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
     // Edit: the order's own source checks the box.

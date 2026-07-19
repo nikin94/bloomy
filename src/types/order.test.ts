@@ -406,6 +406,22 @@ describe('STORED_ORDER_SCHEMA', () => {
     expect(STORED_ORDER_SCHEMA.safeParse({ ...validDoc(), source: 'wildberries' }).success).toBe(false)
   })
 
+  it('accepts an optional prepaid amount and rejects a negative/fractional one', () => {
+    // Absent = no prepayment recorded (every pre-existing document stays
+    // valid). Integer minor units like every stored amount — a negative or
+    // fractional value is corrupt input and must fail loudly on read.
+    expect(STORED_ORDER_SCHEMA.safeParse(validDoc()).success).toBe(true)
+    expect(
+      STORED_ORDER_SCHEMA.parse({ ...validDoc(), prepaidAmountMinor: 150000 }).prepaidAmountMinor,
+    ).toBe(150000)
+    expect(
+      STORED_ORDER_SCHEMA.safeParse({ ...validDoc(), prepaidAmountMinor: -100 }).success,
+    ).toBe(false)
+    expect(
+      STORED_ORDER_SCHEMA.safeParse({ ...validDoc(), prepaidAmountMinor: 100.5 }).success,
+    ).toBe(false)
+  })
+
   it('defaults deliveryMethod to "post" on legacy documents that lack it', () => {
     const legacy: Record<string, unknown> = { ...validDoc() }
     delete legacy.deliveryMethod

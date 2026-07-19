@@ -182,6 +182,7 @@ describe('updateOrder', () => {
       gifts: { __deleted: true },
       photos: { __deleted: true },
       source: { __deleted: true },
+      prepaidAmountMinor: { __deleted: true },
     })
     expect(setDoc).not.toHaveBeenCalled()
     // No numbering transaction on edit.

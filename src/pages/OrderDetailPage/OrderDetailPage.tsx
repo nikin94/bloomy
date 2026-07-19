@@ -8,6 +8,7 @@ import { useCustomer } from '@/queries/customers'
 import { formatDate, formatMoney } from '@/utils/format'
 import {
   getSubtotalMinor,
+  getTotalMinor,
   plantsByValueDesc,
   resolveCompletedAt,
   formatOrderNumber,
@@ -428,6 +429,38 @@ const OrderDetailPage = () => {
               onChange={(value) => saveStatus({ paymentStatus: asEnum(PAYMENT_STATUS_VALUES, value, order.paymentStatus) })}
               readOnly={isDeleted}
             />
+            {/* Prepaid amount — shown whenever the order carries one (kept as
+                history after prepaid → paid). The REMAINDER is derived from the
+                live total (never stored) and shown only while the status is
+                still 'prepaid' and something is actually left to pay — a fully
+                covered or already-paid order reads just the amount. */}
+            {order.prepaidAmountMinor !== undefined && (
+              <DetailRow
+                label={t('detail.prepaid')}
+                value={
+                  order.paymentStatus === 'prepaid' &&
+                  getTotalMinor(order) > order.prepaidAmountMinor ? (
+                    <span className="flex flex-col">
+                      <span className="tabular-nums">
+                        {formatMoney(order.prepaidAmountMinor, order.currency)}
+                      </span>
+                      <span className="text-sm text-text">
+                        {t('detail.prepaidRemaining', {
+                          amount: formatMoney(
+                            getTotalMinor(order) - order.prepaidAmountMinor,
+                            order.currency,
+                          ),
+                        })}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="tabular-nums">
+                      {formatMoney(order.prepaidAmountMinor, order.currency)}
+                    </span>
+                  )
+                }
+              />
+            )}
             <InlineStatusField
               label={t('detail.status')}
               value={order.status}
