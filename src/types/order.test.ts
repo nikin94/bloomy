@@ -10,8 +10,6 @@ import {
   resolveCompletedAt,
   EMPTY_ORDER_FILTER,
   isOrderDeleted,
-  trashDaysLeft,
-  TRASH_RETENTION_DAYS,
   revenueByCurrencyMinor,
   topPlantsByQuantity,
   collectPlantNames,
@@ -467,31 +465,6 @@ describe('isOrderDeleted', () => {
 
   it('still honours the legacy isDeleted flag (no deletedAt)', () => {
     expect(isOrderDeleted(makeOrder({ isDeleted: true }))).toBe(true)
-  })
-})
-
-describe('trashDaysLeft', () => {
-  const DAY = 24 * 60 * 60 * 1000
-
-  it('returns null for an order with no deletedAt (legacy / active)', () => {
-    expect(trashDaysLeft(makeOrder(), 0)).toBeNull()
-    expect(trashDaysLeft(makeOrder({ isDeleted: true }), 0)).toBeNull()
-  })
-
-  it('counts whole days left in the retention window, rounding up', () => {
-    const deletedAt = 1_000_000
-    // Just deleted: the full window remains.
-    expect(trashDaysLeft(makeOrder({ deletedAt }), deletedAt)).toBe(TRASH_RETENTION_DAYS)
-    // A day and a half elapsed → 28.5 left → rounds up to 29.
-    expect(trashDaysLeft(makeOrder({ deletedAt }), deletedAt + 1.5 * DAY)).toBe(
-      TRASH_RETENTION_DAYS - 1,
-    )
-  })
-
-  it('floors at 0 for an expired-but-not-yet-purged order (never negative)', () => {
-    const deletedAt = 1_000_000
-    const past = deletedAt + (TRASH_RETENTION_DAYS + 5) * DAY
-    expect(trashDaysLeft(makeOrder({ deletedAt }), past)).toBe(0)
   })
 })
 

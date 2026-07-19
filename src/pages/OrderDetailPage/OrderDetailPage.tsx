@@ -13,8 +13,6 @@ import {
   resolveCompletedAt,
   formatOrderNumber,
   isOrderDeleted,
-  trashDaysLeft,
-  TRASH_RETENTION_DAYS,
   PAYMENT_STATUS_VALUES,
   ORDER_STATUS_VALUES,
 } from '@/types/order'
@@ -26,7 +24,6 @@ import {
 } from '@/lib/orderLabels'
 import { asEnum } from '@/utils/asEnum'
 import { useOwnerId } from '@/hooks/useOwnerId'
-import { useNow } from '@/hooks/useNow'
 import { useHeaderTitle } from '@/context/headerTitleContext'
 import Spinner from '@/components/Spinner/Spinner'
 import Button from '@/components/Button/Button'
@@ -60,10 +57,11 @@ const OrderDetailPage = () => {
   // Loading until the order resolves and — for a found order — its customer too.
   const loading = orderQuery.isLoading || (order !== null && customerQuery.isLoading)
   const error = orderQuery.error ?? customerQuery.error
-  // "Now" for the trash purge countdown, captured once on mount (see daysLeft).
-  const mountNow = useNow()
   // Delete is confirmed in a modal (destructive, so not a one-click action).
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  // Repeat is confirmed too (owner request): it jumps into a prefilled create
+  // form, and the confirm's body explains what carries over before the jump.
+  const [confirmingRepeat, setConfirmingRepeat] = useState(false)
 
   // Save a single status change inline, optimistically: update the local order
   // right away so the UI feels instant, then write ONLY the changed field(s)
@@ -131,12 +129,9 @@ const OrderDetailPage = () => {
 
   // A trashed order opens read-only: a fixed deleted banner with Restore, no
   // edit/delete, statuses shown as plain text. `order` is null while loading, so
-  // default to not-deleted until it resolves.
+  // default to not-deleted until it resolves. No purge countdown anymore — a
+  // trashed order stays in the trash until restored or hard-deleted there.
   const isDeleted = order ? isOrderDeleted(order) : false
-  // Whole days until this trashed order is auto-purged — null for a legacy
-  // delete with no `deletedAt` (no countdown shown for it). "Now" is captured once
-  // on mount (day-granularity; a render-time Date.now() isn't pure).
-  const daysLeft = order ? trashDaysLeft(order, mountNow) : null
 
   // MOBILE top bar names this screen with the order itself: the number on the
   // title line, the creation date right under it (owner request — it frees the
@@ -172,15 +167,7 @@ const OrderDetailPage = () => {
           role="status"
           className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-danger-bg px-6 py-3"
         >
-          <span className="text-sm font-medium text-danger">
-            {t('detail.deletedBanner')}
-            {daysLeft !== null && (
-              <>
-                {' '}
-                {t('detail.deletedCountdown', { days: t('common:days', { count: daysLeft }) })}
-              </>
-            )}
-          </span>
+          <span className="text-sm font-medium text-danger">{t('detail.deletedBanner')}</span>
           <Button variant="primary" size="sm" onClick={handleRestore}>
             {t('common:restore')}
           </Button>
@@ -269,11 +256,12 @@ const OrderDetailPage = () => {
                 </Button>
                 {/* Repeat: open the create form seeded from this order's
                     contents (customer + plants + logistics), as a fresh order.
-                    The source order rides in router state — no schema change. */}
+                    Confirmed first (see the modal below) so the jump into a
+                    prefilled form is never a surprise from a stray tap. */}
                 <Button
                   variant="secondary"
                   size="icon"
-                  onClick={() => navigate('/orders/new', { state: { repeatOrder: order } })}
+                  onClick={() => setConfirmingRepeat(true)}
                   aria-label={t('detail.repeat')}
                   title={t('detail.repeat')}
                 >
@@ -303,7 +291,13 @@ const OrderDetailPage = () => {
               line-total on top, "qty × unit price" below); from `sm` up the full
               table shows. Both read from the same value-sorted list. */}
           <section className="flex flex-col gap-2">
-            <h2 className="m-0 text-lg font-semibold text-heading">{t('detail.plantsTitle')}</h2>
+            {/* leading-none: the title is a divider CONTACT — text-lg's default
+                28px line box would add ~5px of its own leading under the divider,
+                so the visible gap read ~29px where the client section's sharp
+                button edge above the divider reads exactly 24px (the page's
+                divider rhythm). Dropping the leading puts the glyphs themselves
+                at the 24px mark. */}
+            <h2 className="m-0 text-lg font-semibold leading-none text-heading">{t('detail.plantsTitle')}</h2>
             <ul className="m-0 flex list-none flex-col p-0 sm:hidden">
               {plantsByValueDesc(order.plants).map((item, index) => (
                 <li key={index} className="flex flex-col gap-1 border-b border-border py-2">
@@ -367,7 +361,13 @@ const OrderDetailPage = () => {
             <div className="flex w-full flex-col gap-1 text-[0.8333rem] sm:w-auto sm:self-end">
               <Total label={t('detail.subtotal')} value={getSubtotalMinor(order)} currency={order.currency} />
               <Total label={t('detail.delivery')} value={order.deliveryPriceMinor} currency={order.currency} />
-              <div className="mt-1 flex justify-between gap-8 border-t border-border pt-2 font-semibold text-heading">
+              {/* leading-none: the Итого line is the contact ABOVE the details
+                  divider — its inherited line box would add ~4px of leading below
+                  the glyphs, pushing the visible gap past the 24px rhythm. pt-3
+                  (not pt-2) compensates the same removal on the row's own top
+                  border, keeping the money block's internal hairline at the 8px
+                  its neighbours above it read. */}
+              <div className="mt-1 flex justify-between gap-8 border-t border-border pt-3 font-semibold leading-none text-heading">
                 <span>{t('detail.total')}</span>
                 <span className="tabular-nums">{formatMoney(getTotalMinor(order), order.currency)}</span>
               </div>
@@ -382,11 +382,12 @@ const OrderDetailPage = () => {
           {/* The remaining details. The two statuses are editable inline (the
               frequent "mark paid/done" action) without opening the full edit
               form; the rest is read-only and changed via "Редактировать".
-              -mt-2 compensates the first DetailRow's own py-2 top padding, so
-              the visible text sits the same 24px from the divider above as the
-              Итого line does on the divider's other side (the owner's
-              equal-spacing rule for every divider on this page). */}
-          <section className="-mt-2 flex flex-col">
+              -mt-3 compensates what sits between the divider and the first
+              row's GLYPHS: the DetailRow's own py-2 top padding (8px) plus the
+              label's text-base half-leading (~4px), so the visible text sits at
+              the same 24px the Итого glyphs keep on the divider's other side
+              (the owner's equal-spacing rule for every divider on this page). */}
+          <section className="-mt-3 flex flex-col">
             <DetailRow label={t('detail.deliveryMethod')} value={deliveryMethodLabel(tOrder, order.deliveryMethod)} />
             <DetailRow label={t('detail.paymentMethod')} value={paymentMethodLabel(tOrder, order.paymentMethod)} />
             {/* Marketplace source — shown only when the order carries one, so a
@@ -422,11 +423,27 @@ const OrderDetailPage = () => {
       {confirmingDelete && order && (
         <ConfirmModal
           title={t('detail.deleteTitle', { number: formatOrderNumber(order.number) })}
-          body={t('detail.deleteBody', { days: t('common:days', { count: TRASH_RETENTION_DAYS }) })}
+          body={t('detail.deleteBody')}
           confirmLabel={t('common:delete')}
           cancelLabel={t('common:cancel')}
           onConfirm={handleDelete}
           onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
+
+      {/* Repeat confirm (owner request): a short heads-up on what the jump does —
+          a NEW prefilled order, per-instance state starts fresh — so the button
+          never teleports the user into a form unannounced. Primary (not danger):
+          nothing destructive happens, the current order is untouched. */}
+      {confirmingRepeat && order && (
+        <ConfirmModal
+          title={t('detail.repeatTitle')}
+          body={t('detail.repeatBody')}
+          confirmLabel={t('detail.repeat')}
+          cancelLabel={t('common:cancel')}
+          confirmVariant="primary"
+          onConfirm={() => navigate('/orders/new', { state: { repeatOrder: order } })}
+          onCancel={() => setConfirmingRepeat(false)}
         />
       )}
       </div>

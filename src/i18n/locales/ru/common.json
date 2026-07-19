@@ -13,10 +13,6 @@
   "search": "Поиск",
   "searchClear": "Очистить и закрыть поиск",
   "moreSuggestions": "Продолжите ввод — ещё {{count}}",
-  "days_one": "{{count}} день",
-  "days_few": "{{count}} дня",
-  "days_many": "{{count}} дней",
-  "days_other": "{{count}} дня",
   "sync": {
     "syncing": "Синхронизация…",
     "offline": "Не в сети",

@@ -14,6 +14,7 @@ import {
 import type { Language, ThemeMode } from '@/types/settings'
 import type { Currency, DeliveryMethod, PaymentMethod } from '@/types/order'
 import i18n, { LANGUAGE_CACHE_KEY } from '@/i18n/config'
+import { reportError } from '@/observability/reportError'
 import { SettingsContext } from './settingsContext'
 import type { SettingsDraft } from './settingsContext'
 
@@ -131,28 +132,18 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     applyLanguage(language)
   }, [applies, ownerId, language])
 
-  // Live-preview a value on the document without persisting (slider/toggle/select).
-  // Stable identity (empty deps): they only call module-level document writers, so
-  // the context value below keeps the same reference across renders.
-  const previewFontScale = useCallback((scale: number) => applyFontScale(scale), [])
-  const previewTheme = useCallback((next: ThemeMode) => applyTheme(next), [])
-  const previewLanguage = useCallback((next: Language) => applyLanguage(next), [])
-
-  // Persist to Firebase, then commit as the applied values. Throwing surfaces
-  // the error to the dialog; the live preview already reflects the attempt.
-  // Keyed on ownerId so it only re-creates when the signed-in user changes.
+  // Commit the values as applied IMMEDIATELY (the document-mirroring effects
+  // above re-theme/re-scale/re-language the app in the same render pass), then
+  // persist in the background. Fire-and-forget like every other mutation in the
+  // app: the settings page saves on each field change (no Save button anymore),
+  // so a save must never block the control — and it must work OFFLINE, where an
+  // awaited setDoc would hang until reconnect. A genuine failure (e.g. an online
+  // permission-denied) has no caller to surface it, so it is routed to
+  // reportError (Sentry). Keyed on ownerId so it only re-creates on user change.
   const saveSettings = useCallback(
-    async (next: SettingsDraft) => {
+    (next: SettingsDraft) => {
       if (!ownerId) return
       const scale = clampFontScale(next.fontScale)
-      await persistSettings(ownerId, {
-        fontScale: scale,
-        theme: next.theme,
-        language: next.language,
-        defaultDeliveryMethod: next.defaultDeliveryMethod,
-        defaultPaymentMethod: next.defaultPaymentMethod,
-        defaultCurrency: next.defaultCurrency,
-      })
       setLoaded({
         ownerId,
         scale,
@@ -162,6 +153,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         defaultPaymentMethod: next.defaultPaymentMethod,
         defaultCurrency: next.defaultCurrency,
       })
+      void persistSettings(ownerId, {
+        fontScale: scale,
+        theme: next.theme,
+        language: next.language,
+        defaultDeliveryMethod: next.defaultDeliveryMethod,
+        defaultPaymentMethod: next.defaultPaymentMethod,
+        defaultCurrency: next.defaultCurrency,
+      }).catch((err) => reportError(err, 'saveSettings'))
     },
     [ownerId],
   )
@@ -178,9 +177,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       defaultDeliveryMethod,
       defaultPaymentMethod,
       defaultCurrency,
-      previewFontScale,
-      previewTheme,
-      previewLanguage,
       saveSettings,
     }),
     [
@@ -190,9 +186,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       defaultDeliveryMethod,
       defaultPaymentMethod,
       defaultCurrency,
-      previewFontScale,
-      previewTheme,
-      previewLanguage,
       saveSettings,
     ],
   )

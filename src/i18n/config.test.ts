@@ -38,16 +38,14 @@ describe('i18n', () => {
 
   // 1→день, 2-4→дня, 5-20→дней, then it repeats by the last digit(s).
   it.each([
-    [1, '1 день'],
-    [2, '2 дня'],
-    [4, '4 дня'],
-    [5, '5 дней'],
-    [11, '11 дней'],
-    [21, '21 день'],
-    [22, '22 дня'],
-    [25, '25 дней'],
-  ])('pluralises %i days the Russian way', (count, expected) => {
-    expect(i18n.t('common:days', { count })).toBe(expected)
+    [1, '1 заказ будет удалён'],
+    [2, '2 заказа будут удалены'],
+    [5, '5 заказов будут удалены'],
+    [21, '21 заказ будет удалён'],
+    [22, '22 заказа будут удалены'],
+    [25, '25 заказов будут удалены'],
+  ])('pluralises %i trashed orders the Russian way', (count, expected) => {
+    expect(i18n.t('order:trash.emptyTrashBody', { count })).toContain(expected)
   })
 
   // fallbackLng is the Russian default, so a key present in ru but missing in en
@@ -68,8 +66,8 @@ describe('i18n', () => {
     await i18n.changeLanguage('en')
     try {
       expect(i18n.t('nav:orders')).toBe('Orders')
-      expect(i18n.t('common:days', { count: 1 })).toBe('1 day')
-      expect(i18n.t('common:days', { count: 5 })).toBe('5 days')
+      expect(i18n.t('order:trash.emptyTrashBody', { count: 1 })).toContain('1 order will be')
+      expect(i18n.t('order:trash.emptyTrashBody', { count: 5 })).toContain('5 orders will be')
       // Order-domain labels (table headers + status/method values) switch too.
       expect(i18n.t('order:columns.customer')).toBe('Customer')
       expect(i18n.t('order:paymentStatus.paid')).toBe('Paid')

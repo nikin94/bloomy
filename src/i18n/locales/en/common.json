@@ -13,8 +13,6 @@
   "search": "Search",
   "searchClear": "Clear and close search",
   "moreSuggestions": "Keep typing — {{count}} more",
-  "days_one": "{{count}} day",
-  "days_other": "{{count}} days",
   "sync": {
     "syncing": "Syncing…",
     "offline": "Offline",

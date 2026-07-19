@@ -17,7 +17,7 @@ vi.mock('firebase/firestore', () => ({
   Timestamp: { fromMillis: vi.fn((ms: number) => ({ __ts: ms })) },
 }))
 
-import { writeBatch, Timestamp, getDocs, setDoc } from 'firebase/firestore'
+import { writeBatch, getDocs, setDoc } from 'firebase/firestore'
 import { buildSeedCustomers, buildSeedOrders, seedMockData, wipeOwnerData, SEED_ORDER_COUNT } from './seed'
 import { STORED_CUSTOMER_SCHEMA } from '@/types/customer'
 import { STORED_ORDER_SCHEMA, CURRENCIES } from '@/types/order'
@@ -103,7 +103,7 @@ describe('buildSeedOrders', () => {
 })
 
 describe('seedMockData', () => {
-  it('stamps purgeAt on trashed orders and reports the trashed count by deletedAt', async () => {
+  it('writes no purge timestamp and reports the trashed count by deletedAt', async () => {
     // Capture every payload the write batch receives, so we inspect the exact
     // documents seedMockData writes to Firestore (not just the builder output).
     const writes: Record<string, unknown>[] = []
@@ -126,12 +126,10 @@ describe('seedMockData', () => {
     const active = orders.filter((d) => d.deletedAt === undefined)
 
     expect(trashed.length).toBe(result.trashed)
-    // Every trashed order carries purgeAt (the Timestamp the server-side TTL keys
-    // on); active orders never do — so seeded trash auto-purges like real trash.
-    expect(trashed.every((d) => 'purgeAt' in d)).toBe(true)
-    expect(active.some((d) => 'purgeAt' in d)).toBe(false)
-    // purgeAt is derived via Timestamp.fromMillis (= deletedAt + retention window).
-    expect(Timestamp.fromMillis).toHaveBeenCalled()
+    // The auto-purge is gone: NO seeded document carries the retired purgeAt —
+    // seeded trash sits in the trash indefinitely, like real trash.
+    expect(orders.some((d) => 'purgeAt' in d)).toBe(false)
+    expect(active.length + trashed.length).toBe(orders.length)
   })
 })
 
