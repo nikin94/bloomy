@@ -321,6 +321,9 @@ export function useOrderFormState(init: OrderFormInit) {
     0,
   )
   const deliveryMinor = parseRublesToMinor(fields.deliveryPrice)
+  // The typed prepaid amount as minor units, for the footer's live preview —
+  // the same parse the payload applies, so what the footer shows IS what saves.
+  const prepaidMinor = parseRublesToMinor(fields.prepaidAmount)
 
   return {
     fields,
@@ -332,6 +335,7 @@ export function useOrderFormState(init: OrderFormInit) {
     canAddItem,
     subtotalMinor,
     deliveryMinor,
+    prepaidMinor,
     setFields: (patch: Partial<OrderFormFields>) => dispatch({ type: 'set', patch }),
     updateItem: (index: number, patch: Partial<ItemInput>) =>
       dispatch({ type: 'updateItem', index, patch }),

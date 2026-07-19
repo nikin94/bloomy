@@ -491,6 +491,29 @@ describe('OrderForm', () => {
     expect(screen.getByLabelText('Сумма предоплаты')).toHaveValue('1500')
   })
 
+  it('shows the prepaid amount in the footer total block while the status is prepaid', async () => {
+    const user = userEvent.setup()
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    renderForm({ initialOrder: order({ customerId: 'c1' }) })
+    await screen.findByRole('combobox', { name: 'Существующий клиент' })
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус оплаты' }), 'prepaid')
+    await user.type(screen.getByLabelText('Сумма предоплаты'), '1500')
+
+    // The footer gains a labelled prepaid pair next to "Итого"; the amount is
+    // styled as a headline (bold), same as the plants sum. Asserted via the
+    // (unique) amount — the plain-text label also matches the status select's
+    // "Предоплата" <option>, so it can't anchor the query itself.
+    const amount = screen.getByText('1 500,00 ₽')
+    expect(amount).toHaveClass('font-semibold')
+    expect(amount.parentElement).toHaveTextContent('Предоплата')
+
+    // Leaving the prepaid status hides the footer line (the typed value is
+    // kept in state, but a non-prepaid total must not show a prepaid sum).
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Статус оплаты' }), 'paid')
+    expect(screen.queryByText('1 500,00 ₽')).not.toBeInTheDocument()
+  })
+
   it('hands the prepaid amount to onSubmit in minor units', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
     const user = userEvent.setup()

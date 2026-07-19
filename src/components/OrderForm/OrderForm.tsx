@@ -701,6 +701,22 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                     </span>
                   )}
                 </span>
+                {/* Prepaid amount in the total block, PRIMARY (owner request):
+                    the same small-label + bold-amount pair as "Итого" itself,
+                    not a small note like the delivery line — the money already
+                    in hand is headline information. Mirrors the input's own
+                    visibility gate (status prepaid + a non-zero amount), so
+                    the footer never shows a stale sum after the status left
+                    prepaid, even though the typed value is kept in state. On a
+                    phone the stacked label column drops it to its own line. */}
+                {fields.paymentStatus === 'prepaid' && form.prepaidMinor > 0 && (
+                  <span className="flex items-baseline gap-1.5 sm:whitespace-nowrap">
+                    <span className="text-sm text-text max-sm:text-xs">{t('detail.prepaid')}</span>
+                    <span className="text-lg font-semibold text-heading">
+                      {formatMoney(form.prepaidMinor, fields.currency)}
+                    </span>
+                  </span>
+                )}
               </div>
               <Button
                 variant="secondary"
