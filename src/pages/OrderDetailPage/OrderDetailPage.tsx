@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { patchOrder, softDeleteOrder, restoreOrder } from '@/firebase/orders'
@@ -27,6 +27,7 @@ import {
 import { asEnum } from '@/utils/asEnum'
 import { useOwnerId } from '@/hooks/useOwnerId'
 import { useNow } from '@/hooks/useNow'
+import { useHeaderTitle } from '@/context/headerTitleContext'
 import Spinner from '@/components/Spinner/Spinner'
 import Button from '@/components/Button/Button'
 import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
@@ -137,6 +138,31 @@ const OrderDetailPage = () => {
   // on mount (day-granularity; a render-time Date.now() isn't pure).
   const daysLeft = order ? trashDaysLeft(order, mountNow) : null
 
+  // MOBILE top bar names this screen with the order itself: the number on the
+  // title line, the creation date right under it (owner request — it frees the
+  // content's first row for the client + actions). Published through the layout's
+  // title slot (see headerTitleContext); null until the order loads keeps the bar
+  // quiet instead of flashing a placeholder. Memoised per the slot's contract.
+  // Desktop is untouched — the bar is md:hidden, the in-content heading remains.
+  const headerTitle = useMemo(
+    () =>
+      order ? (
+        <div className="flex min-w-0 flex-col">
+          <h1 className="m-0 min-w-0 truncate text-lg font-semibold leading-tight text-heading">
+            {t('detail.title', { number: formatOrderNumber(order.number) })}
+            {order.number === null && (
+              <span className="ml-2 text-xs font-normal text-text">{t('detail.unsynced')}</span>
+            )}
+          </h1>
+          <span className="mt-0.5 text-xs leading-tight text-text">
+            {formatDate(order.dateCreated)}
+          </span>
+        </div>
+      ) : null,
+    [order, t],
+  )
+  useHeaderTitle(headerTitle)
+
   return (
     <>
       {/* Deleted banner — pinned above the scrolling body so it stays visible
@@ -173,113 +199,91 @@ const OrderDetailPage = () => {
           loading is done makes the whole block appear at once, no jump. */}
       {!loading && order && (
         <div className="mx-auto flex max-w-2xl flex-col gap-6">
-          <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-            {/* Title + date share a line: the date sits right after the number and
-                wraps to its own line ONLY when there isn't room (a long number on a
-                narrow phone). items-baseline drops the small date onto the h1's
-                baseline instead of centring it against the tall heading. */}
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <h1 className="m-0 text-2xl font-semibold text-heading">
-                {t('detail.title', { number: formatOrderNumber(order.number) })}
-                {order.number === null && (
-                  <span className="ml-2 align-middle text-sm font-normal text-text">
-                    {t('detail.unsynced')}
-                  </span>
-                )}
-              </h1>
-              <span className="text-sm text-text">{formatDate(order.dateCreated)}</span>
+          {/* Number + date — DESKTOP only: on a phone they moved into the top
+              bar (see the useHeaderTitle publish above), so repeating them here
+              would name the screen twice. items-baseline drops the small date
+              onto the h1's baseline instead of centring it against the heading. */}
+          <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1 max-md:hidden">
+            <h1 className="m-0 text-2xl font-semibold text-heading">
+              {t('detail.title', { number: formatOrderNumber(order.number) })}
+              {order.number === null && (
+                <span className="ml-2 align-middle text-sm font-normal text-text">
+                  {t('detail.unsynced')}
+                </span>
+              )}
+            </h1>
+            <span className="text-sm text-text">{formatDate(order.dateCreated)}</span>
+          </header>
+
+          {/* First content row (owner layout experiment): the CLIENT on the
+              left — name (a link to their page) with the phone right under it,
+              no "Клиент"/"Телефон" labels (both are self-evident here) — and
+              the actions as a VERTICAL icon stack pinned to the right edge,
+              visually continuing down from the bar's burger button: the same
+              40px boxes (size="icon" + size-6 glyphs) and the same gap-2 the
+              bar uses. max-md:-mr-2 compensates the content padding (p-4)
+              down to the bar's inset (px-2) so the stack sits exactly under
+              the burger; from md up there is no bar, the stack just keeps the
+              content's right edge. aria-label + title carry each button's full
+              name (no visible text at any width now), so screen readers — and
+              a desktop hover — still see "Редактировать"/"Повторить"/"Удалить".
+              A trashed order is read-only (Restore lives in the banner), so
+              the stack hides entirely. */}
+          <section className="flex items-start justify-between gap-4">
+            <div className="flex min-w-0 flex-col gap-0.5">
+              {customer ? (
+                <Link
+                  to={`/customers/${customer.id}`}
+                  className="min-w-0 break-words text-lg font-medium text-primary no-underline hover:underline"
+                >
+                  {customer.name}
+                </Link>
+              ) : (
+                <span className="text-lg text-heading">—</span>
+              )}
+              {customer?.phone && <span className="text-sm text-text">{customer.phone}</span>}
             </div>
-            {/* A trashed order is read-only — Restore lives in the banner, so
-                edit/delete are hidden here until it's restored. One row on every
-                width: on a phone the three buttons split the full width in equal
-                thirds with ICONS in place of the labels (three stacked full-width
-                buttons ate half the screen); from sm up the text labels return
-                and the row collapses to its natural inline width. aria-label
-                keeps the accessible name at the full text on every width, so
-                screen readers (and the tests) see one stable name. */}
             {!isDeleted && (
-              <div className="flex w-full items-center gap-3 sm:w-auto sm:flex-wrap">
+              <div className="flex shrink-0 flex-col gap-2 max-md:-mr-2">
                 <Button
                   variant="primary"
-                  size="sm"
+                  size="icon"
                   onClick={() => navigate(`/orders/${order.id}/edit`)}
                   aria-label={t('detail.edit')}
-                  className="flex-1 sm:flex-none"
+                  title={t('detail.edit')}
                 >
-                  <PencilIcon className="size-5 sm:hidden" />
-                  <span className="max-sm:hidden">{t('detail.edit')}</span>
+                  <PencilIcon className="size-6" />
                 </Button>
                 {/* Repeat: open the create form seeded from this order's
                     contents (customer + plants + logistics), as a fresh order.
                     The source order rides in router state — no schema change. */}
                 <Button
                   variant="secondary"
-                  size="sm"
+                  size="icon"
                   onClick={() => navigate('/orders/new', { state: { repeatOrder: order } })}
                   aria-label={t('detail.repeat')}
-                  className="flex-1 sm:flex-none"
+                  title={t('detail.repeat')}
                 >
-                  <RepeatIcon className="size-5 sm:hidden" />
-                  <span className="max-sm:hidden">{t('detail.repeat')}</span>
+                  <RepeatIcon className="size-6" />
                 </Button>
                 <Button
                   variant="danger"
-                  size="sm"
+                  size="icon"
                   onClick={() => setConfirmingDelete(true)}
                   aria-label={t('detail.delete')}
-                  className="flex-1 sm:flex-none"
+                  title={t('detail.delete')}
                 >
-                  <TrashIcon className="size-5 sm:hidden" />
-                  <span className="max-sm:hidden">{t('detail.delete')}</span>
+                  <TrashIcon className="size-6" />
                 </Button>
               </div>
             )}
-          </header>
+          </section>
 
-          {/* General info. The two statuses are editable inline (the frequent
-              "mark paid/shipped" action) without opening the full edit form;
-              the rest is read-only and changed via "Редактировать". */}
+          {/* Address right after the client, then the plant list (owner order:
+              who → where → what, with the money right by the plants; the
+              logistics/status details follow below). */}
           <section className="flex flex-col">
-            <DetailRow
-              label={t('detail.customer')}
-              value={
-                customer ? (
-                  <Link
-                    to={`/customers/${customer.id}`}
-                    className="text-primary no-underline hover:underline"
-                  >
-                    {customer.name}
-                  </Link>
-                ) : (
-                  '—'
-                )
-              }
-            />
-            {customer?.phone && <DetailRow label={t('detail.phone')} value={customer.phone} />}
             <DetailRow label={t('detail.deliveryAddress')} value={order.address || '—'} />
-            <DetailRow label={t('detail.deliveryMethod')} value={deliveryMethodLabel(tOrder, order.deliveryMethod)} />
-            <DetailRow label={t('detail.paymentMethod')} value={paymentMethodLabel(tOrder, order.paymentMethod)} />
-            {/* Marketplace source — shown only when the order carries one, so a
-                direct order (the common case, stored with no field) adds no row. */}
-            {order.source && (
-              <DetailRow label={t('detail.source')} value={tOrder(`source.${order.source}`)} />
-            )}
-            <InlineStatusField
-              label={t('detail.paymentStatus')}
-              value={order.paymentStatus}
-              options={paymentStatusOptions(tOrder)}
-              onChange={(value) => saveStatus({ paymentStatus: asEnum(PAYMENT_STATUS_VALUES, value, order.paymentStatus) })}
-              readOnly={isDeleted}
-            />
-            <InlineStatusField
-              label={t('detail.status')}
-              value={order.status}
-              options={orderStatusOptions(tOrder)}
-              onChange={(value) => saveStatus({ status: asEnum(ORDER_STATUS_VALUES, value, order.status) })}
-              readOnly={isDeleted}
-            />
-            {order.completedAt && <DetailRow label={t('detail.completed')} value={formatDate(order.completedAt)} />}
-            {order.comment && <DetailRow label={t('detail.comment')} value={order.comment} />}
           </section>
 
           {/* Itemized plant list. A 5-column table can't fit a 320px phone, so
@@ -353,6 +357,35 @@ const OrderDetailPage = () => {
               <span>{t('detail.total')}</span>
               <span className="tabular-nums">{formatMoney(getTotalMinor(order), order.currency)}</span>
             </div>
+          </section>
+
+          {/* The remaining details. The two statuses are editable inline (the
+              frequent "mark paid/done" action) without opening the full edit
+              form; the rest is read-only and changed via "Редактировать". */}
+          <section className="flex flex-col">
+            <DetailRow label={t('detail.deliveryMethod')} value={deliveryMethodLabel(tOrder, order.deliveryMethod)} />
+            <DetailRow label={t('detail.paymentMethod')} value={paymentMethodLabel(tOrder, order.paymentMethod)} />
+            {/* Marketplace source — shown only when the order carries one, so a
+                direct order (the common case, stored with no field) adds no row. */}
+            {order.source && (
+              <DetailRow label={t('detail.source')} value={tOrder(`source.${order.source}`)} />
+            )}
+            <InlineStatusField
+              label={t('detail.paymentStatus')}
+              value={order.paymentStatus}
+              options={paymentStatusOptions(tOrder)}
+              onChange={(value) => saveStatus({ paymentStatus: asEnum(PAYMENT_STATUS_VALUES, value, order.paymentStatus) })}
+              readOnly={isDeleted}
+            />
+            <InlineStatusField
+              label={t('detail.status')}
+              value={order.status}
+              options={orderStatusOptions(tOrder)}
+              onChange={(value) => saveStatus({ status: asEnum(ORDER_STATUS_VALUES, value, order.status) })}
+              readOnly={isDeleted}
+            />
+            {order.completedAt && <DetailRow label={t('detail.completed')} value={formatDate(order.completedAt)} />}
+            {order.comment && <DetailRow label={t('detail.comment')} value={order.comment} />}
           </section>
 
           {/* Order photos — VIEW-ONLY here: adding/removing photos lives on the

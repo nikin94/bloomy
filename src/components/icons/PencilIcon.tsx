@@ -1,7 +1,8 @@
 // The shared pencil (edit) glyph — a single source of truth for the edit icon
-// used by the customers list rows, the customer page header (mobile), and the
-// order detail page's customer row (all rendered the identical SVG inline
-// before). Decorative (`aria-hidden`): the surrounding control carries the
+// (customers list rows, the customer page header, the order page's action
+// stack). A PLAIN pencil (owner request): the earlier pencil-over-document
+// variant read as "edit a file", and the framing square just added noise at
+// icon sizes. Decorative (`aria-hidden`): the surrounding control carries the
 // accessible name/label. `className` defaults to `size-5` (the size the call
 // sites used) and is overridable so a caller can size it differently.
 const PencilIcon = ({ className = 'size-5' }: { className?: string }) => (
@@ -15,8 +16,7 @@ const PencilIcon = ({ className = 'size-5' }: { className?: string }) => (
     strokeLinejoin="round"
     className={className}
   >
-    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
   </svg>
 )
 
