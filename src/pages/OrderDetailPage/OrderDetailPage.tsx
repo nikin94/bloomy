@@ -252,10 +252,15 @@ const OrderDetailPage = () => {
                     {tOrder(`source.${order.source}`)}
                   </Chip>
                 )}
-                <Chip srLabel={t('detail.paymentMethod')}>
+                {/* Category emojis (owner request, the gift line's 🎁 pattern):
+                    with the text labels dropped, the marker says which FIELD a
+                    chip came from — 💰 how it's paid, 🚚 how it ships. One
+                    emoji per category (not per value), so «Наличные»/«Карта»
+                    share 💰 and every delivery method shares 🚚. */}
+                <Chip srLabel={t('detail.paymentMethod')} emoji="💰">
                   {paymentMethodLabel(tOrder, order.paymentMethod)}
                 </Chip>
-                <Chip srLabel={t('detail.deliveryMethod')}>
+                <Chip srLabel={t('detail.deliveryMethod')} emoji="🚚">
                   {deliveryMethodLabel(tOrder, order.deliveryMethod)}
                 </Chip>
               </div>
