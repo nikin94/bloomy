@@ -25,6 +25,7 @@ import { asEnum } from '@/utils/asEnum'
 import { SCREEN_PADDING, SCREEN_GUTTER_X } from '@/styles/screenStyles'
 import { useRequiredOwnerId } from '@/hooks/useOwnerId'
 import { useHeaderTitle } from '@/context/headerTitleContext'
+import { STATUS_BLOCK_FIELDS } from '@/lib/statusBlockOrder'
 import Button from '@/components/Button/Button'
 import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
 import OrderPhotos from '@/components/OrderPhotos/OrderPhotos'
@@ -157,6 +158,72 @@ const OrderDetailPage = () => {
     [order, t],
   )
   useHeaderTitle(headerTitle)
+
+  // The status-block rows, built as PLAIN JSX here (closures over saveStatus
+  // are created in the component's own render scope, where the compiler can
+  // see they are event handlers) and only ORDERED by the shared
+  // STATUS_BLOCK_FIELDS map in the JSX below — creating them inside the map
+  // callback trips the react-compiler purity check on saveStatus's Date.now().
+  // Null until the order resolves (the not-found branch renders no block).
+  const statusBlock = order
+    ? {
+        status: (
+          <InlineStatusField
+            key="status"
+            label={t('detail.status')}
+            value={order.status}
+            options={orderStatusOptions(tOrder)}
+            onChange={(value) => saveStatus({ status: asEnum(ORDER_STATUS_VALUES, value, order.status) })}
+            readOnly={isDeleted}
+          />
+        ),
+        paymentStatus: (
+          <InlineStatusField
+            key="paymentStatus"
+            label={t('detail.paymentStatus')}
+            value={order.paymentStatus}
+            options={paymentStatusOptions(tOrder)}
+            onChange={(value) => saveStatus({ paymentStatus: asEnum(PAYMENT_STATUS_VALUES, value, order.paymentStatus) })}
+            readOnly={isDeleted}
+          />
+        ),
+        // Prepaid amount — visible ONLY while the status is 'prepaid' (owner
+        // request): once the order is marked paid the row leaves the page,
+        // though the stored field survives as payment history. The REMAINDER
+        // is derived live (never stored) from the PLANTS sum only — delivery
+        // is never folded into a displayed total (owner rule, same as the
+        // form footer) — and prints only while something is actually left to
+        // pay.
+        prepaid:
+          order.paymentStatus === 'prepaid' && order.prepaidAmountMinor !== undefined ? (
+            <DetailRow
+              key="prepaid"
+              label={t('detail.prepaid')}
+              value={
+                getSubtotalMinor(order) > order.prepaidAmountMinor ? (
+                  <span className="flex flex-col">
+                    <span className="tabular-nums">
+                      {formatMoney(order.prepaidAmountMinor, order.currency)}
+                    </span>
+                    <span className="text-sm text-text">
+                      {t('detail.prepaidRemaining', {
+                        amount: formatMoney(
+                          getSubtotalMinor(order) - order.prepaidAmountMinor,
+                          order.currency,
+                        ),
+                      })}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="tabular-nums">
+                    {formatMoney(order.prepaidAmountMinor, order.currency)}
+                  </span>
+                )
+              }
+            />
+          ) : null,
+      }
+    : null
 
   return (
     <>
@@ -435,57 +502,14 @@ const OrderDetailPage = () => {
               label's half-leading (~4px), so the visible text keeps the same
               24px the money line holds on the divider's other side. */}
           <section className="-mt-3 flex flex-col">
-            {/* The two statuses + the prepaid amount lead the details (owner
+            {/* The statuses + the prepaid amount lead the details (owner
                 request: right under the plant list) — marking paid/done is the
                 frequent action here, and the prepayment is what those statuses
-                are about. The logistics rows follow below. */}
-            <InlineStatusField
-              label={t('detail.paymentStatus')}
-              value={order.paymentStatus}
-              options={paymentStatusOptions(tOrder)}
-              onChange={(value) => saveStatus({ paymentStatus: asEnum(PAYMENT_STATUS_VALUES, value, order.paymentStatus) })}
-              readOnly={isDeleted}
-            />
-            {/* Prepaid amount — visible ONLY while the status is 'prepaid'
-                (owner request): once the order is marked paid the row leaves
-                the page, though the stored field survives as payment history.
-                The REMAINDER is derived live (never stored) from the PLANTS
-                sum only — delivery is never folded into a displayed total
-                (owner rule, same as the form footer) — and prints only while
-                something is actually left to pay. */}
-            {order.paymentStatus === 'prepaid' && order.prepaidAmountMinor !== undefined && (
-              <DetailRow
-                label={t('detail.prepaid')}
-                value={
-                  getSubtotalMinor(order) > order.prepaidAmountMinor ? (
-                    <span className="flex flex-col">
-                      <span className="tabular-nums">
-                        {formatMoney(order.prepaidAmountMinor, order.currency)}
-                      </span>
-                      <span className="text-sm text-text">
-                        {t('detail.prepaidRemaining', {
-                          amount: formatMoney(
-                            getSubtotalMinor(order) - order.prepaidAmountMinor,
-                            order.currency,
-                          ),
-                        })}
-                      </span>
-                    </span>
-                  ) : (
-                    <span className="tabular-nums">
-                      {formatMoney(order.prepaidAmountMinor, order.currency)}
-                    </span>
-                  )
-                }
-              />
-            )}
-            <InlineStatusField
-              label={t('detail.status')}
-              value={order.status}
-              options={orderStatusOptions(tOrder)}
-              onChange={(value) => saveStatus({ status: asEnum(ORDER_STATUS_VALUES, value, order.status) })}
-              readOnly={isDeleted}
-            />
+                are about. Their SEQUENCE comes from STATUS_BLOCK_FIELDS, the
+                shared source of truth with the order form (see
+                statusBlockOrder.ts) — the two screens hand-synced this order
+                before and drifted twice. The logistics rows follow below. */}
+            {STATUS_BLOCK_FIELDS.map((field) => statusBlock?.[field])}
             {/* The logistics (source / payment / delivery method) moved out of
                 this block into the chips under the address — see the client
                 section above. Only the remaining per-order facts stay here. */}
