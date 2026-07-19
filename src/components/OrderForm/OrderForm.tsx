@@ -384,8 +384,14 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
         {/* Scrollable body — the footer below stays pinned. SCREEN_PADDING is
             the shared p-2/md:p-4 screen gutter (see screenStyles): the narrow
             screen gets the width for the inputs, and the form's edge lines up
-            with every other screen's. */}
-        <div className={`flex-1 overflow-auto ${SCREEN_PADDING}`}>
+            with every other screen's. `relative` makes this scroller the
+            containing block for any sr-only (position: absolute) descendant —
+            the draft-notice live region, the plants legend — so their 1px
+            boxes live in the scroller's coordinate space (and scroll with the
+            content) instead of resolving against the DOCUMENT, where a deep
+            static offset stretches the page with phantom scroll space (the
+            chip-radio bug — see ChipRadioGroup, fixed at its label too). */}
+        <div className={`relative flex-1 overflow-auto ${SCREEN_PADDING}`}>
           {/* Full-width form (the sidebar freed the horizontal space); the
               method/status selects already lay out in 3-column grids that spread
               across it. */}

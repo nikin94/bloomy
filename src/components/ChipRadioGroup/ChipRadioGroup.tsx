@@ -37,7 +37,15 @@ const ChipRadioGroup = <V extends string>({
           <label
             key={option.value}
             className={cn(
-              'cursor-pointer whitespace-nowrap rounded-md border px-3 py-1.5 text-sm transition-colors',
+              // `relative` is LOAD-BEARING: the radio below is hidden with
+              // `sr-only` (position: absolute), so the label must be its
+              // containing block. Without one the radio positions against the
+              // DOCUMENT at its unscrolled static offset — deep in the form's
+              // scroll body that lands ~1.5 viewports down, stretching the
+              // page with phantom scroll space, and clicking a pill focuses
+              // the radio and scroll-jumps the page to it. (CustomerPicker's
+              // labels carry `relative` for the same reason.)
+              'relative cursor-pointer whitespace-nowrap rounded-md border px-3 py-1.5 text-sm transition-colors',
               'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary',
               option.value === value
                 ? 'border-primary bg-primary font-medium text-white'
