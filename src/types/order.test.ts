@@ -322,8 +322,11 @@ describe('currencyOptions', () => {
 describe('status/method option + label helpers', () => {
   it('builds value→label options resolved from the order namespace', () => {
     expect(paymentStatusOptions(t)).toEqual([
-      { value: 'pending', label: 'Ожидает' },
-      { value: 'paid', label: 'Оплачен' },
+      { value: 'pending', label: 'Ожидается' },
+      // prepaid sits between pending and paid — the enum order IS the dropdown
+      // order, and it matches the payment lifecycle.
+      { value: 'prepaid', label: 'Предоплата' },
+      { value: 'paid', label: 'Оплачено' },
       { value: 'refunded', label: 'Возврат' },
     ])
     expect(paymentMethodOptions(t).map((o) => o.label)).toEqual(['Наличные', 'Карта', 'Перевод'])
@@ -335,7 +338,7 @@ describe('status/method option + label helpers', () => {
     expect(columns.find((c) => c.id === 'paymentStatus')?.header).toBe('Оплата')
     // The payment-status cell renders the translated label, not the raw value.
     const payColumn = columns.find((c) => c.id === 'paymentStatus')
-    expect(payColumn?.format?.(makeOrder({ paymentStatus: 'paid' }))).toBe('Оплачен')
+    expect(payColumn?.format?.(makeOrder({ paymentStatus: 'paid' }))).toBe('Оплачено')
   })
 })
 
@@ -375,6 +378,15 @@ describe('STORED_ORDER_SCHEMA', () => {
     delete renamed.status
     renamed.shipmentStatus = 'delivered'
     expect(STORED_ORDER_SCHEMA.safeParse(renamed).success).toBe(false)
+  })
+
+  it('accepts every payment status, including the added prepaid', () => {
+    // 'prepaid' widened the enum after orders already existed — every value
+    // must parse so no stored document (old or new) is rejected.
+    for (const paymentStatus of ['pending', 'prepaid', 'paid', 'refunded']) {
+      const parsed = STORED_ORDER_SCHEMA.parse({ ...validDoc(), paymentStatus })
+      expect(parsed.paymentStatus).toBe(paymentStatus)
+    }
   })
 
   it('keeps the three current statuses as-is and rejects an unknown one', () => {

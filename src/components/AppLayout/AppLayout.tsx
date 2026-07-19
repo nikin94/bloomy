@@ -5,6 +5,7 @@ import Sidebar from '@/components/Sidebar/Sidebar'
 import Spinner from '@/components/Spinner/Spinner'
 import RouteErrorBoundary from '@/components/RouteErrorBoundary/RouteErrorBoundary'
 import { HeaderActionsContext } from '@/context/headerActionsContext'
+import { HeaderTitleContext } from '@/context/headerTitleContext'
 
 // App shell for every signed-in screen: the global navigation once, beside the
 // routed page. Rendered as a layout route (inside ProtectedRoute, around the page
@@ -25,6 +26,10 @@ import { HeaderActionsContext } from '@/context/headerActionsContext'
 // unaware of the slot.
 const AppLayout = () => {
   const [actions, setActions] = useState<ReactNode>(null)
+  // Mobile-bar title slot (see headerTitleContext): an inner page can name the
+  // bar with its own data (the order number + date) where the route-derived
+  // title is null. Owned here for the same reason as `actions`.
+  const [title, setTitle] = useState<ReactNode>(null)
   // Mirror of the sidebar's mobile-drawer open state, reported up via
   // onDrawerOpenChange. While the drawer overlays the content, the page content is
   // marked `inert` so keyboard/screen-reader users can't reach what's visually
@@ -36,8 +41,9 @@ const AppLayout = () => {
   const { pathname } = useLocation()
   return (
     <HeaderActionsContext.Provider value={setActions}>
+    <HeaderTitleContext.Provider value={setTitle}>
       <div className="flex h-full flex-col md:flex-row">
-        <Sidebar actions={actions} onDrawerOpenChange={setDrawerOpen} />
+        <Sidebar actions={actions} title={title} onDrawerOpenChange={setDrawerOpen} />
         {/* bg-bg/75: a translucent theme-bg scrim under the CONTENT column.
             Since the immersion pass thinned the global photo veil (the greenery
             now carries the screen — see --greenhouse-veil), THIS layer is what
@@ -57,6 +63,7 @@ const AppLayout = () => {
           </RouteErrorBoundary>
         </div>
       </div>
+    </HeaderTitleContext.Provider>
     </HeaderActionsContext.Provider>
   )
 }

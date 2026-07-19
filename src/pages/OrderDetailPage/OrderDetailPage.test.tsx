@@ -33,6 +33,9 @@ vi.mock('../../firebase/photos', () => ({
   uploadOrderPhoto: vi.fn(() => Promise.resolve('orders/owner-1/o1/new.jpg')),
   deleteOrderPhoto: vi.fn(() => Promise.resolve()),
 }))
+// Sidebar (mounted by the in-layout test below) reaches signOutUser through the
+// drawer's settings cluster; stub it so the real Firebase SDK stays out.
+vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
 vi.mock('react-router-dom', async (importOriginal) => ({
   ...(await importOriginal<typeof import('react-router-dom')>()),
   useParams: () => ({ id: 'o1' }),
@@ -41,6 +44,7 @@ vi.mock('react-router-dom', async (importOriginal) => ({
 
 // Imported after the mocks above are registered.
 import OrderDetailPage from './OrderDetailPage'
+import { renderPageInLayout } from '@/test/renderPageInLayout'
 
 const USER = { uid: 'owner-1', displayName: 'Tester', email: 't@example.com' } as User
 
@@ -83,6 +87,23 @@ describe('OrderDetailPage', () => {
     // The two statuses render as selects pre-set to the order's current values.
     expect(screen.getByRole('combobox', { name: 'Статус оплаты' })).toHaveValue('pending')
     expect(screen.getByRole('combobox', { name: 'Статус заказа' })).toHaveValue('processing')
+    // The delivery address lives in the client block (under the phone) — no
+    // labelled "Адрес доставки" row anymore.
+    expect(screen.getByText('Main St 1')).toBeInTheDocument()
+    expect(screen.queryByText('Адрес доставки')).not.toBeInTheDocument()
+  })
+
+  it('publishes the order number + date into the mobile top bar (in-layout)', async () => {
+    // Mounted inside AppLayout: the page pushes its number/date node through the
+    // header-title slot, so the bar names the screen. TWO headings for the order
+    // end up in the tree — the bar's (phones) and the content's (desktop) — and
+    // CSS alone decides which is visible; jsdom keeps both, so assert the pair.
+    renderPageInLayout(<OrderDetailPage />)
+    await waitFor(() =>
+      expect(screen.getAllByRole('heading', { name: /Заказ №5/ })).toHaveLength(2),
+    )
+    // The creation date rides along in both spots (bar subtitle + content header).
+    expect(screen.getAllByText('01.01.1970')).toHaveLength(2)
   })
 
   it('numbers each plant row and shows the quantity as a plain number', async () => {
@@ -258,7 +279,7 @@ describe('OrderDetailPage', () => {
       expect(screen.queryByRole('button', { name: 'Удалить' })).not.toBeInTheDocument()
       // Statuses are plain text, not editable selects; the label still resolves.
       expect(screen.queryByRole('combobox', { name: 'Статус оплаты' })).not.toBeInTheDocument()
-      expect(screen.getByText('Ожидает')).toBeInTheDocument()
+      expect(screen.getByText('Ожидается')).toBeInTheDocument()
     })
 
     it('shows existing photos read-only: no add tile, no per-thumb delete', async () => {

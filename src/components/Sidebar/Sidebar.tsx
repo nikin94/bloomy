@@ -142,12 +142,17 @@ const sectionLinkClass = (selected: boolean) =>
 // stays unaware of what a page contributes.
 const Sidebar = ({
   actions,
+  // Page-published mobile-bar title (see headerTitleContext): an inner page —
+  // whose route-derived title is null — can name the bar with its own data
+  // (e.g. the order number + date). Takes precedence over the derived title.
+  title,
   // Reports the mobile-drawer open state up to AppLayout, which marks the page
   // content `inert` while the drawer overlays it. Optional so the Sidebar renders
   // standalone (its own tests) without a host.
   onDrawerOpenChange,
 }: {
   actions?: ReactNode
+  title?: ReactNode
   onDrawerOpenChange?: (open: boolean) => void
 }) => {
   const { t } = useTranslation('nav')
@@ -464,9 +469,12 @@ const Sidebar = ({
               <BackIcon />
             </Button>
           )}
-          {pageTitle && (
+          {/* A page-published title (inner pages: order number + date) wins over
+              the route-derived one; the page owns its markup, this spot only
+              constrains it to the available width (min-w-0 + the parent flex). */}
+          {title ?? (pageTitle && (
             <h1 className="m-0 min-w-0 truncate text-lg font-semibold text-heading">{pageTitle}</h1>
-          )}
+          ))}
         </div>
         {actions && !isDesktop && (
           <div className="flex min-w-0 items-center justify-end gap-2 has-[.js-search-open]:flex-1">
