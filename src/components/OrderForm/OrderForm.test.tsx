@@ -73,9 +73,6 @@ const settings = (): SettingsState => ({
   defaultDeliveryMethod: 'post',
   defaultPaymentMethod: 'cash',
   defaultCurrency: 'RUB',
-  previewFontScale: vi.fn(),
-  previewTheme: vi.fn(),
-  previewLanguage: vi.fn(),
   saveSettings: vi.fn(),
 })
 

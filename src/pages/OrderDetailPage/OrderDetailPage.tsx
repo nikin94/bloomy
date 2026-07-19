@@ -13,8 +13,6 @@ import {
   resolveCompletedAt,
   formatOrderNumber,
   isOrderDeleted,
-  trashDaysLeft,
-  TRASH_RETENTION_DAYS,
   PAYMENT_STATUS_VALUES,
   ORDER_STATUS_VALUES,
 } from '@/types/order'
@@ -26,7 +24,6 @@ import {
 } from '@/lib/orderLabels'
 import { asEnum } from '@/utils/asEnum'
 import { useOwnerId } from '@/hooks/useOwnerId'
-import { useNow } from '@/hooks/useNow'
 import { useHeaderTitle } from '@/context/headerTitleContext'
 import Spinner from '@/components/Spinner/Spinner'
 import Button from '@/components/Button/Button'
@@ -60,10 +57,11 @@ const OrderDetailPage = () => {
   // Loading until the order resolves and — for a found order — its customer too.
   const loading = orderQuery.isLoading || (order !== null && customerQuery.isLoading)
   const error = orderQuery.error ?? customerQuery.error
-  // "Now" for the trash purge countdown, captured once on mount (see daysLeft).
-  const mountNow = useNow()
   // Delete is confirmed in a modal (destructive, so not a one-click action).
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  // Repeat is confirmed too (owner request): it jumps into a prefilled create
+  // form, and the confirm's body explains what carries over before the jump.
+  const [confirmingRepeat, setConfirmingRepeat] = useState(false)
 
   // Save a single status change inline, optimistically: update the local order
   // right away so the UI feels instant, then write ONLY the changed field(s)
@@ -131,12 +129,9 @@ const OrderDetailPage = () => {
 
   // A trashed order opens read-only: a fixed deleted banner with Restore, no
   // edit/delete, statuses shown as plain text. `order` is null while loading, so
-  // default to not-deleted until it resolves.
+  // default to not-deleted until it resolves. No purge countdown anymore — a
+  // trashed order stays in the trash until restored or hard-deleted there.
   const isDeleted = order ? isOrderDeleted(order) : false
-  // Whole days until this trashed order is auto-purged — null for a legacy
-  // delete with no `deletedAt` (no countdown shown for it). "Now" is captured once
-  // on mount (day-granularity; a render-time Date.now() isn't pure).
-  const daysLeft = order ? trashDaysLeft(order, mountNow) : null
 
   // MOBILE top bar names this screen with the order itself: the number on the
   // title line, the creation date right under it (owner request — it frees the
@@ -172,15 +167,7 @@ const OrderDetailPage = () => {
           role="status"
           className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-danger-bg px-6 py-3"
         >
-          <span className="text-sm font-medium text-danger">
-            {t('detail.deletedBanner')}
-            {daysLeft !== null && (
-              <>
-                {' '}
-                {t('detail.deletedCountdown', { days: t('common:days', { count: daysLeft }) })}
-              </>
-            )}
-          </span>
+          <span className="text-sm font-medium text-danger">{t('detail.deletedBanner')}</span>
           <Button variant="primary" size="sm" onClick={handleRestore}>
             {t('common:restore')}
           </Button>
@@ -269,11 +256,12 @@ const OrderDetailPage = () => {
                 </Button>
                 {/* Repeat: open the create form seeded from this order's
                     contents (customer + plants + logistics), as a fresh order.
-                    The source order rides in router state — no schema change. */}
+                    Confirmed first (see the modal below) so the jump into a
+                    prefilled form is never a surprise from a stray tap. */}
                 <Button
                   variant="secondary"
                   size="icon"
-                  onClick={() => navigate('/orders/new', { state: { repeatOrder: order } })}
+                  onClick={() => setConfirmingRepeat(true)}
                   aria-label={t('detail.repeat')}
                   title={t('detail.repeat')}
                 >
@@ -422,11 +410,27 @@ const OrderDetailPage = () => {
       {confirmingDelete && order && (
         <ConfirmModal
           title={t('detail.deleteTitle', { number: formatOrderNumber(order.number) })}
-          body={t('detail.deleteBody', { days: t('common:days', { count: TRASH_RETENTION_DAYS }) })}
+          body={t('detail.deleteBody')}
           confirmLabel={t('common:delete')}
           cancelLabel={t('common:cancel')}
           onConfirm={handleDelete}
           onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
+
+      {/* Repeat confirm (owner request): a short heads-up on what the jump does —
+          a NEW prefilled order, per-instance state starts fresh — so the button
+          never teleports the user into a form unannounced. Primary (not danger):
+          nothing destructive happens, the current order is untouched. */}
+      {confirmingRepeat && order && (
+        <ConfirmModal
+          title={t('detail.repeatTitle')}
+          body={t('detail.repeatBody')}
+          confirmLabel={t('detail.repeat')}
+          cancelLabel={t('common:cancel')}
+          confirmVariant="primary"
+          onConfirm={() => navigate('/orders/new', { state: { repeatOrder: order } })}
+          onCancel={() => setConfirmingRepeat(false)}
         />
       )}
       </div>

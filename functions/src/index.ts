@@ -14,13 +14,14 @@ const orderPhotoPrefix = (ownerId: string, orderId: string): string =>
 
 // When an order document is deleted, sweep its photo folder from Cloud Storage.
 //
-// This is the ONE piece of Stage 2 that needs a server: the Firestore TTL policy
-// (set on the `orders` collection over the `purgeAt` field) hard-deletes a trashed
-// order's DOCUMENT ~24h after it expires, but TTL never touches Cloud Storage — so
-// without this the order's photos would linger forever as orphans. A TTL deletion
-// DOES fire `onDocumentDeleted`, so this trigger catches both the automatic purge
-// and any other hard delete (e.g. the admin reset tool), and deletes every object
-// under `orders/{ownerId}/{orderId}/`.
+// This is the one piece that needs a server: a document delete never touches
+// Cloud Storage, so without this an order's photos would linger forever as
+// orphans. Every hard delete fires `onDocumentDeleted` — the trash page's
+// "empty trash" (hardDeleteOrders) and the admin reset tool — and this trigger
+// deletes every object under `orders/{ownerId}/{orderId}/`. (The Firestore TTL
+// policy over `purgeAt` that used to auto-purge the trash was removed by owner
+// decision — trashed orders now stay until deleted by hand — but this function
+// stays: it is what makes any hard delete photo-clean.)
 //
 // The deleted document's data is still available on the event, so `ownerId` is read
 // from it (the path only carries `orderId`). Deleting a non-existent/empty prefix is

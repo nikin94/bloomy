@@ -7,12 +7,12 @@ import {
   query,
   runTransaction,
   setDoc,
-  Timestamp,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore'
 import { db } from './client'
-import { STORED_ORDER_SCHEMA, TRASH_RETENTION_DAYS, isOrderDeleted } from '@/types/order'
+import { STORED_ORDER_SCHEMA, isOrderDeleted } from '@/types/order'
 import type { Order, OrderStatus, PaymentStatus } from '@/types/order'
 import { reportError } from '@/observability/reportError'
 
@@ -253,29 +253,47 @@ export function patchOrder(id: string, patch: OrderPatch): void {
 
 // Soft-delete an order: move it to the trash without removing the document. The
 // per-owner number counter is left untouched — kept docs mean numbering can never
-// collide, and the hidden order stays recoverable (one restore away). Stamps:
-//   • `deletedAt` (ms) — the canonical "in trash" signal + the purge-countdown seed;
-//   • `purgeAt` (Firestore Timestamp) — deletedAt + retention; the field a TTL
-//     policy watches to auto-delete the document once the window lapses.
-// `Timestamp.fromMillis` is a pure client value (no server round-trip), so this
-// stays offline-safe. A partial `updateDoc` (not setDoc) leaves every other field
-// intact; owner-scoped Firestore rules already permit it (ownerId is unchanged).
-// Fire-and-forget so it works offline; a failed write is reported to Sentry.
+// collide, and the hidden order stays recoverable (one restore away). Stamps only
+// `deletedAt` (ms) — the canonical "in trash" signal. Trashed orders stay in the
+// trash INDEFINITELY (owner decision: the old 30-day TTL auto-purge is gone);
+// they leave it only via Restore or the trash page's explicit "empty trash"
+// hard delete (see hardDeleteOrders). A partial `updateDoc` (not setDoc) leaves
+// every other field intact; owner-scoped Firestore rules already permit it
+// (ownerId is unchanged). Fire-and-forget so it works offline; a failed write is
+// reported to Sentry.
 export function softDeleteOrder(id: string): void {
-  const now = Date.now()
-  const purgeAt = Timestamp.fromMillis(now + TRASH_RETENTION_DAYS * 24 * 60 * 60 * 1000)
-  void updateDoc(doc(db, ORDERS_COLLECTION, id), { deletedAt: now, purgeAt }).catch((err) =>
+  void updateDoc(doc(db, ORDERS_COLLECTION, id), { deletedAt: Date.now() }).catch((err) =>
     reportError(err, 'softDeleteOrder'),
   )
 }
 
+// PERMANENTLY delete orders (the trash page's "empty trash"): removes the
+// documents themselves — no soft-delete flag, no way back. Photo files are NOT
+// touched here: the cleanupOrderPhotos cloud function fires on every document
+// delete and sweeps `orders/{ownerId}/{orderId}/` from Storage server-side (the
+// same path the admin reset relies on). Deletes are batched under Firestore's
+// 500-writes-per-batch cap; each batch commit is fire-and-forget so emptying the
+// trash never blocks the UI and works offline (queued deletes flush on
+// reconnect). A failed commit is reported to Sentry.
+export function hardDeleteOrders(ids: string[]): void {
+  const BATCH_LIMIT = 400 // headroom under Firestore's hard 500-writes cap
+  for (let i = 0; i < ids.length; i += BATCH_LIMIT) {
+    const batch = writeBatch(db)
+    for (const id of ids.slice(i, i + BATCH_LIMIT)) {
+      batch.delete(doc(db, ORDERS_COLLECTION, id))
+    }
+    void batch.commit().catch((err) => reportError(err, 'hardDeleteOrders'))
+  }
+}
+
 // Restore a soft-deleted order: REMOVE every trash field (rather than store a
 // "false") so a restored order returns to its pristine, never-deleted shape — an
-// active order carries none of these. Clears the new `deletedAt`/`purgeAt` AND the
-// legacy `isDeleted` flag, so an order trashed before the switch restores cleanly
-// too. A partial update leaves every other field intact; owner-scoped Firestore
-// rules already permit it. Fire-and-forget so it works offline; a failed write is
-// reported to Sentry.
+// active order carries none of these. Clears `deletedAt`, the legacy `isDeleted`
+// flag AND `purgeAt` (the retired TTL timestamp the old auto-purge wrote —
+// documents trashed before the purge was removed still carry it, so restoring is
+// also the lazy cleanup). A partial update leaves every other field intact;
+// owner-scoped Firestore rules already permit it. Fire-and-forget so it works
+// offline; a failed write is reported to Sentry.
 export function restoreOrder(id: string): void {
   void updateDoc(doc(db, ORDERS_COLLECTION, id), {
     deletedAt: deleteField(),

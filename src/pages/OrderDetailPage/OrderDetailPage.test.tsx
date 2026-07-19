@@ -211,15 +211,30 @@ describe('OrderDetailPage', () => {
     expect(screen.queryByText('Завершён')).not.toBeInTheDocument()
   })
 
-  it('repeats the order: opens the create form seeded with this order in router state', async () => {
+  it('repeats the order only after an explaining confirm', async () => {
     const user = userEvent.setup()
     renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })
 
     await user.click(screen.getByRole('button', { name: 'Повторить' }))
 
-    // Navigates to the create route, carrying the source order as a clone seed
-    // (no schema change) — OrderForm prefills the fresh order from it.
+    // A confirm explains what the jump does BEFORE anything happens: no
+    // navigation yet, and the body spells out what carries over vs starts fresh.
+    const dialog = await screen.findByRole('dialog', { name: 'Повторить заказ?' })
+    expect(within(dialog).getByText(/клиент, растения, адрес/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/не переносятся/)).toBeInTheDocument()
+    expect(navigate).not.toHaveBeenCalled()
+
+    // Cancelling closes the dialog and stays put.
+    await user.click(within(dialog).getByRole('button', { name: 'Отмена' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(navigate).not.toHaveBeenCalled()
+
+    // Confirming navigates to the create route, carrying the source order as a
+    // clone seed (no schema change) — OrderForm prefills the fresh order from it.
+    await user.click(screen.getByRole('button', { name: 'Повторить' }))
+    const dialog2 = await screen.findByRole('dialog', { name: 'Повторить заказ?' })
+    await user.click(within(dialog2).getByRole('button', { name: 'Повторить' }))
     expect(navigate).toHaveBeenCalledWith('/orders/new', {
       state: { repeatOrder: expect.objectContaining({ id: 'o1' }) },
     })
@@ -306,25 +321,27 @@ describe('OrderDetailPage', () => {
       expect(navigate).toHaveBeenCalledWith('/orders/deleted')
     })
 
-    it('shows the auto-purge countdown in the banner when deletedAt is set', async () => {
-      // Just deleted → the full 30-day window remains in the countdown.
+    it('shows no purge countdown in the banner — the trash keeps orders until emptied', async () => {
       fetchOrder.mockResolvedValue(order({ deletedAt: Date.now() }))
       renderPage()
       await screen.findByRole('heading', { name: 'Заказ №5' })
 
-      expect(
-        screen.getByText(/Будет навсегда удалён через 30 дней/),
-      ).toBeInTheDocument()
+      expect(screen.getByText('Этот заказ удалён и находится в корзине.')).toBeInTheDocument()
+      expect(screen.queryByText(/Будет навсегда удалён/)).not.toBeInTheDocument()
     })
   })
 
-  it('warns about the 30-day auto-deletion in the delete-confirm dialog', async () => {
+  it('explains the trash (no auto-deletion) in the delete-confirm dialog', async () => {
     const user = userEvent.setup()
     renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })
 
     await user.click(screen.getByRole('button', { name: 'Удалить' }))
     const dialog = await screen.findByRole('dialog', { name: 'Удалить заказ №5?' })
-    expect(within(dialog).getByText(/удалён через 30 дней/)).toBeInTheDocument()
+    // The 30-day auto-purge is gone: the copy promises the trash, not a deadline.
+    expect(
+      within(dialog).getByText(/можно восстановить или удалить окончательно/),
+    ).toBeInTheDocument()
+    expect(within(dialog).queryByText(/30 дней/)).not.toBeInTheDocument()
   })
 })

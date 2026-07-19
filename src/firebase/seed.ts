@@ -1,6 +1,5 @@
-import { collection, doc, getDocs, query, setDoc, Timestamp, where, writeBatch } from 'firebase/firestore'
+import { collection, doc, getDocs, query, setDoc, where, writeBatch } from 'firebase/firestore'
 import { db } from './client'
-import { TRASH_RETENTION_DAYS } from '@/types/order'
 import type { NewCustomer } from '@/types/customer'
 import type { Currency, DeliveryMethod, Order, OrderItem, PaymentMethod } from '@/types/order'
 
@@ -178,24 +177,10 @@ export function buildSeedOrders(
       ...(i % 4 === 0 ? { comment: `Тестовый комментарий №${i + 1}` } : {}),
       ...(isTerminal ? { completedAt: Math.min(now, dateCreated + 3 * DAY_MS) } : {}),
       // ~1 in 6 lands in the trash so the "Trash" page has content. Stamped with
-      // a staggered `deletedAt` (the canonical trash signal) so the seeded trash
-      // shows a varied auto-purge countdown — elapsed 0..23 days → 30..7 days left.
+      // a staggered `deletedAt` (the canonical trash signal) for varied dates.
       ...(i % 6 === 5 ? { deletedAt: now - (i % 24) * DAY_MS } : {}),
     }
   })
-}
-
-// The Firestore write payload for a seeded order. A TRASHED order (has
-// `deletedAt`) additionally carries `purgeAt` — the Firestore Timestamp the real
-// softDeleteOrder writes and the server-side TTL policy keys on (deletedAt + the
-// retention window). Stamping it here makes seeded trash auto-purge-eligible
-// exactly like a hand-deleted order, instead of lingering forever. Kept OUT of the
-// pure builder because purgeAt is a Timestamp, not part of the Order schema (which
-// strips it on read); the builder stays schema-shaped and unit-testable.
-function seedOrderPayload(order: Omit<Order, 'id'>): Record<string, unknown> {
-  if (order.deletedAt === undefined) return order
-  const purgeAt = Timestamp.fromMillis(order.deletedAt + TRASH_RETENTION_DAYS * DAY_MS)
-  return { ...order, purgeAt }
 }
 
 // Commit writes in batches under Firestore's 500-op limit (headroom at 400).
@@ -272,7 +257,7 @@ export async function seedMockData(
   await commitInBatches([
     ...customers.map((c, i) => (batch: ReturnType<typeof writeBatch>) => batch.set(customerRefs[i], c)),
     ...orders.map(
-      (o, i) => (batch: ReturnType<typeof writeBatch>) => batch.set(orderRefs[i], seedOrderPayload(o)),
+      (o, i) => (batch: ReturnType<typeof writeBatch>) => batch.set(orderRefs[i], o),
     ),
   ])
 

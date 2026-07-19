@@ -11,10 +11,12 @@ import { order as baseOrder, customer } from '@/test/factories'
 // lives) — not Firestore.
 const fetchDeletedOrders = vi.fn()
 const fetchCustomers = vi.fn()
+const hardDeleteOrders = vi.fn()
 const navigate = vi.fn()
 
 vi.mock('../../firebase/orders', () => ({
   fetchDeletedOrders: (...args: unknown[]) => fetchDeletedOrders(...args),
+  hardDeleteOrders: (...args: unknown[]) => hardDeleteOrders(...args),
 }))
 vi.mock('../../firebase/customers', () => ({
   fetchCustomers: (...args: unknown[]) => fetchCustomers(...args),
@@ -71,16 +73,49 @@ describe('DeletedOrdersPage', () => {
     expect(fetchDeletedOrders).toHaveBeenCalledWith('owner-1')
   })
 
-  it('shows a per-order auto-purge countdown column', async () => {
-    // Just deleted → the full 30-day retention window remains.
+  it('shows no auto-purge countdown column — the trash keeps orders until emptied', async () => {
     fetchDeletedOrders.mockResolvedValue([
       order({ id: 'o1', number: 5, customerId: 'c1', deletedAt: Date.now() }),
     ])
     renderPage()
     await screen.findByTestId('orders-table')
 
-    expect(table().getByText('Удаление')).toBeInTheDocument() // the column header
-    expect(table().getByText('30 дней')).toBeInTheDocument() // days left in the window
+    expect(table().queryByText('Удаление')).not.toBeInTheDocument()
+    expect(table().queryByText(/дней|дня|день/)).not.toBeInTheDocument()
+  })
+
+  it('empties the trash only after confirming: hard-deletes every trashed order', async () => {
+    const user = userEvent.setup()
+    fetchDeletedOrders.mockResolvedValue([
+      order({ id: 'o1', number: 5, customerId: 'c1', deletedAt: Date.now() }),
+      order({ id: 'o2', number: 6, customerId: 'c1', deletedAt: Date.now() }),
+    ])
+    renderPage()
+    await screen.findByTestId('orders-table')
+
+    await user.click(screen.getByRole('button', { name: 'Очистить корзину' }))
+
+    // The confirm spells out the count and the finality; nothing deleted yet.
+    const dialog = await screen.findByRole('dialog', { name: 'Очистить корзину?' })
+    expect(within(dialog).getByText(/2 заказа будут удалены безвозвратно/)).toBeInTheDocument()
+    expect(hardDeleteOrders).not.toHaveBeenCalled()
+
+    // Cancelling keeps the trash intact.
+    await user.click(within(dialog).getByRole('button', { name: 'Отмена' }))
+    expect(hardDeleteOrders).not.toHaveBeenCalled()
+
+    // Confirming deletes EVERY trashed order (the full trash, not a filtered view).
+    await user.click(screen.getByRole('button', { name: 'Очистить корзину' }))
+    const dialog2 = await screen.findByRole('dialog', { name: 'Очистить корзину?' })
+    await user.click(within(dialog2).getByRole('button', { name: 'Удалить всё' }))
+    expect(hardDeleteOrders).toHaveBeenCalledWith(['o1', 'o2'])
+  })
+
+  it('shows no empty-trash button when the trash is empty', async () => {
+    fetchDeletedOrders.mockResolvedValue([])
+    renderPage()
+    expect(await screen.findByText('Корзина пуста')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Очистить корзину' })).not.toBeInTheDocument()
   })
 
   it('shows a fixed "these are deleted" banner when the trash has orders', async () => {

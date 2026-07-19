@@ -68,9 +68,6 @@ const settingsState = (over: Partial<SettingsState> = {}): SettingsState => ({
   defaultDeliveryMethod: 'post',
   defaultPaymentMethod: 'cash',
   defaultCurrency: 'RUB',
-  previewFontScale: vi.fn(),
-  previewTheme: vi.fn(),
-  previewLanguage: vi.fn(),
   saveSettings: vi.fn(),
   ...over,
 })

@@ -13,6 +13,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore'
 import {
   createOrder,
@@ -21,6 +22,7 @@ import {
   fetchOrders,
   patchOrder,
   reconcileOrderNumbers,
+  hardDeleteOrders,
   restoreOrder,
   softDeleteOrder,
   updateOrder,
@@ -43,6 +45,7 @@ vi.mock('firebase/firestore', () => ({
   Timestamp: { fromMillis: vi.fn((ms: number) => ({ __ts: ms })) },
   updateDoc: vi.fn(),
   where: vi.fn(() => ({})),
+  writeBatch: vi.fn(),
 }))
 
 // A valid stored order document (everything Firestore holds, minus the doc id).
@@ -405,7 +408,7 @@ describe('restoreOrder', () => {
 })
 
 describe('softDeleteOrder', () => {
-  it('stamps deletedAt + a purgeAt timestamp (retention window) without removing the document', async () => {
+  it('stamps only deletedAt — no purge timestamp, the trash keeps orders indefinitely', async () => {
     vi.mocked(doc).mockReturnValue({ ref: 'order-ref' } as never)
 
     await softDeleteOrder('o1')
@@ -417,11 +420,40 @@ describe('softDeleteOrder', () => {
       unknown,
       Record<string, unknown>,
     ]
-    // deletedAt is "now" (ms); purgeAt is exactly 30 days later, as a Timestamp.
+    // deletedAt is "now" (ms); the retired auto-purge's purgeAt is never written.
     expect(typeof writes.deletedAt).toBe('number')
-    const deletedAt = writes.deletedAt as number
-    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000
-    expect(writes.purgeAt).toEqual({ __ts: deletedAt + THIRTY_DAYS })
-    expect(writes).not.toHaveProperty('isDeleted')
+    expect(Object.keys(writes)).toEqual(['deletedAt'])
+  })
+})
+
+describe('hardDeleteOrders', () => {
+  it('permanently deletes the given documents in one batch', async () => {
+    const batch = { delete: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) }
+    vi.mocked(writeBatch).mockReturnValue(batch as unknown as ReturnType<typeof writeBatch>)
+
+    hardDeleteOrders(['o1', 'o2'])
+
+    expect(batch.delete).toHaveBeenCalledTimes(2)
+    expect(batch.commit).toHaveBeenCalledTimes(1)
+    // Real deletes, not soft-delete updates.
+    expect(updateDoc).not.toHaveBeenCalled()
+  })
+
+  it('chunks the deletes under the 500-writes batch cap for a large trash', async () => {
+    // 401 trashed orders → one full 400-delete chunk plus a 1-delete remainder.
+    const batches: { delete: ReturnType<typeof vi.fn>; commit: ReturnType<typeof vi.fn> }[] = []
+    vi.mocked(writeBatch).mockImplementation(() => {
+      const batch = { delete: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) }
+      batches.push(batch)
+      return batch as unknown as ReturnType<typeof writeBatch>
+    })
+
+    hardDeleteOrders(Array.from({ length: 401 }, (_, i) => `o${i}`))
+
+    expect(batches).toHaveLength(2)
+    expect(batches[0].delete).toHaveBeenCalledTimes(400)
+    expect(batches[1].delete).toHaveBeenCalledTimes(1)
+    expect(batches[0].commit).toHaveBeenCalledTimes(1)
+    expect(batches[1].commit).toHaveBeenCalledTimes(1)
   })
 })
