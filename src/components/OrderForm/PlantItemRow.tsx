@@ -39,7 +39,11 @@ const PlantItemRow = ({
   onRemove: () => void
 }) => {
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+    // gap-3.5 (not gap-2) between the two lines on a phone: the qty/price
+    // floating labels sit ON TOP of their inputs' borders, poking ~8px up into
+    // the gap — with gap-2 the pills visually touched the name input. From
+    // `sm` up everything is one line, so the plain gap-2 returns.
+    <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:gap-2">
       <div className="flex min-w-0 items-center gap-2 sm:flex-[4]">
         <span aria-hidden="true" className="w-5 shrink-0 text-right text-sm text-text">
           {position}.

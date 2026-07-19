@@ -199,6 +199,16 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
   // in useOrderFormState). A CONFIRMED cancel is the explicit "discard my
   // input" — drop the stored draft too, so the next create form starts blank.
   const handleCancel = () => (form.isDirty ? setConfirmingCancel(true) : onCancel())
+
+  // What the footer HEADLINES (owner request): with an active prepayment the
+  // money already in hand leads, and the small notes carry what's left to
+  // collect (against the full plants+delivery total) plus the delivery cost.
+  // Without one the headline stays the plants-only subtotal, as before. Gated
+  // like the prepaid input itself (status + non-zero amount), so leaving the
+  // prepaid status never shows a stale prepaid sum.
+  const prepaidActive = fields.paymentStatus === 'prepaid' && form.prepaidMinor > 0
+  const remainderMinor = Math.max(0, form.subtotalMinor + form.deliveryMinor - form.prepaidMinor)
+
   const handleConfirmedCancel = () => {
     draftHandle.clear()
     onCancel()
@@ -504,6 +514,18 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                 </Button>
               )}
             </div>
+            {/* Running total of the priced positions, at the bottom of the
+                plants block (owner request): the sum lives with the list it
+                sums, mirroring the detail page's money summary — full width on
+                a phone (label left, sum right, lining up with the rows),
+                shrink-wrapped right from `sm` up. The footer keeps its own
+                total line (prepaid-first there — see the footer). */}
+            <div className="flex w-full items-baseline justify-between gap-8 sm:w-auto sm:gap-3 sm:self-end">
+              <span className="text-sm text-text">{t('form.total')}</span>
+              <span className="font-semibold text-heading tabular-nums">
+                {formatMoney(form.subtotalMinor, fields.currency)}
+              </span>
+            </div>
           </fieldset>
           <span aria-hidden="true" className="h-px w-full bg-border" />
 
@@ -680,19 +702,34 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                   footer that overflow escapes to the page and stretches the
                   whole screen sideways. */}
               <div className="flex items-baseline gap-2 max-sm:min-w-0 max-sm:flex-col max-sm:gap-0 sm:shrink-0">
-                <span className="text-sm text-text max-sm:text-xs">{t('form.total')}</span>
-                {/* Plants-only headline; the delivery cost in small type
-                    (rendered only when a delivery price is entered) sits beside
-                    it on desktop, but drops to its OWN line under the amount on
-                    a phone — the stacked label column is narrow, so an inline
-                    note would push the buttons instead of wrapping. nowrap only
-                    from sm up: on a phone the note wraps between words when the
-                    row is tight (the amount itself holds together via the NBSP
-                    inside formatMoney) instead of forcing the row wider. */}
+                {/* The "Итого" label is DESKTOP-only (owner request): on a
+                    phone the plants block above already labels the positions
+                    sum, so the footer leads straight with the bold amount. */}
+                <span className="text-sm text-text max-sm:hidden">{t('form.total')}</span>
+                {/* The bold headline: the PREPAID amount while one is active
+                    (prepaidActive — the money already in hand leads), the
+                    plants-only subtotal otherwise. The small notes under it —
+                    "+ остаток" (what's left against plants+delivery) and
+                    "+ доставка" — share one type size; each renders only when
+                    non-zero, so nothing prints noise. On a phone the column
+                    stacks them under the amount; from `sm` up they sit inline
+                    beside it. nowrap only from sm up: on a phone a note wraps
+                    between words when the row is tight (the amount itself
+                    holds together via the NBSP inside formatMoney). */}
                 <span className="flex items-baseline gap-1.5 max-sm:min-w-0 max-sm:flex-col max-sm:gap-0">
                   <span className="text-lg font-semibold text-heading">
-                    {formatMoney(form.subtotalMinor, fields.currency)}
+                    {formatMoney(
+                      prepaidActive ? form.prepaidMinor : form.subtotalMinor,
+                      fields.currency,
+                    )}
                   </span>
+                  {prepaidActive && remainderMinor > 0 && (
+                    <span className="text-xs text-text sm:whitespace-nowrap">
+                      {t('form.totalRemaining', {
+                        amount: formatMoney(remainderMinor, fields.currency),
+                      })}
+                    </span>
+                  )}
                   {form.deliveryMinor > 0 && (
                     <span className="text-xs text-text sm:whitespace-nowrap">
                       {t('form.totalDelivery', {
@@ -701,22 +738,6 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
                     </span>
                   )}
                 </span>
-                {/* Prepaid amount in the total block, PRIMARY (owner request):
-                    the same small-label + bold-amount pair as "Итого" itself,
-                    not a small note like the delivery line — the money already
-                    in hand is headline information. Mirrors the input's own
-                    visibility gate (status prepaid + a non-zero amount), so
-                    the footer never shows a stale sum after the status left
-                    prepaid, even though the typed value is kept in state. On a
-                    phone the stacked label column drops it to its own line. */}
-                {fields.paymentStatus === 'prepaid' && form.prepaidMinor > 0 && (
-                  <span className="flex items-baseline gap-1.5 sm:whitespace-nowrap">
-                    <span className="text-sm text-text max-sm:text-xs">{t('detail.prepaid')}</span>
-                    <span className="text-lg font-semibold text-heading">
-                      {formatMoney(form.prepaidMinor, fields.currency)}
-                    </span>
-                  </span>
-                )}
               </div>
               <Button
                 variant="secondary"

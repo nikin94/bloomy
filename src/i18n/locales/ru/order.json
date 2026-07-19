@@ -171,6 +171,7 @@
     "comment": "Комментарий",
     "total": "Итого",
     "totalDelivery": "+ доставка {{amount}}",
+    "totalRemaining": "+ остаток {{amount}}",
     "errors": {
       "session": "Сессия истекла — войдите снова",
       "selectCustomer": "Выберите клиента",

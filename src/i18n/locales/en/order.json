@@ -169,6 +169,7 @@
     "comment": "Comment",
     "total": "Total",
     "totalDelivery": "+ delivery {{amount}}",
+    "totalRemaining": "+ remaining {{amount}}",
     "errors": {
       "session": "Session expired — sign in again",
       "selectCustomer": "Select a customer",

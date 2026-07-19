@@ -491,27 +491,40 @@ describe('OrderForm', () => {
     expect(screen.getByLabelText('Сумма предоплаты')).toHaveValue('1500')
   })
 
-  it('shows the prepaid amount in the footer total block while the status is prepaid', async () => {
+  it('headlines the prepaid amount in the footer with the remainder note while prepaid', async () => {
     const user = userEvent.setup()
     fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
     renderForm({ initialOrder: order({ customerId: 'c1' }) })
     await screen.findByRole('combobox', { name: 'Существующий клиент' })
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Статус оплаты' }), 'prepaid')
-    await user.type(screen.getByLabelText('Сумма предоплаты'), '1500')
+    await user.type(screen.getByLabelText('Сумма предоплаты'), '100')
 
-    // The footer gains a labelled prepaid pair next to "Итого"; the amount is
-    // styled as a headline (bold), same as the plants sum. Asserted via the
-    // (unique) amount — the plain-text label also matches the status select's
-    // "Предоплата" <option>, so it can't anchor the query itself.
-    const amount = screen.getByText('1 500,00 ₽')
+    // The prepaid amount IS the footer's bold headline (it replaces the
+    // subtotal, no labelled pair), and the small remainder note carries what's
+    // left against the plants+delivery total: 299,80 − 100 = 199,80.
+    const amount = screen.getByText('100,00 ₽')
     expect(amount).toHaveClass('font-semibold')
-    expect(amount.parentElement).toHaveTextContent('Предоплата')
+    expect(screen.getByText('+ остаток 199,80 ₽')).toBeInTheDocument()
 
-    // Leaving the prepaid status hides the footer line (the typed value is
-    // kept in state, but a non-prepaid total must not show a prepaid sum).
+    // Leaving the prepaid status restores the subtotal headline (the typed
+    // value is kept in state, but a non-prepaid total must not show it).
     await user.selectOptions(screen.getByRole('combobox', { name: 'Статус оплаты' }), 'paid')
-    expect(screen.queryByText('1 500,00 ₽')).not.toBeInTheDocument()
+    expect(screen.queryByText('100,00 ₽')).not.toBeInTheDocument()
+    expect(screen.queryByText(/остаток/)).not.toBeInTheDocument()
+  })
+
+  it('shows the positions total at the bottom of the plants block', async () => {
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    renderForm({ initialOrder: order({ customerId: 'c1' }) })
+    await screen.findByRole('combobox', { name: 'Существующий клиент' })
+
+    // The plants fieldset carries its own "Итого" row with the plants-only sum
+    // (the footer's copy of the label is desktop-only; jsdom keeps both in the
+    // DOM, so the query scopes to the fieldset).
+    const plants = within(screen.getByRole('group', { name: 'Растения' }))
+    expect(plants.getByText('Итого')).toBeInTheDocument()
+    expect(plants.getByText('299,80 ₽')).toBeInTheDocument()
   })
 
   it('hands the prepaid amount to onSubmit in minor units', async () => {

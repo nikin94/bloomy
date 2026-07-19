@@ -327,14 +327,15 @@ describe('NewOrderPage', () => {
     await user.type(screen.getByLabelText('Название'), 'Роза')
     await user.type(screen.getByLabelText('Цена'), '100')
 
-    // With no delivery price entered, only the plants figure shows.
-    expect(screen.getByText(/100,00/)).toBeInTheDocument()
+    // With no delivery price entered, only the plants figure shows — twice by
+    // design: the plants block's own "Итого" row AND the footer headline.
+    expect(screen.getAllByText(/100,00/)).toHaveLength(2)
     expect(screen.queryByText(/\+ доставка/)).not.toBeInTheDocument()
 
     await user.type(screen.getByLabelText('Стоимость доставки'), '50')
     // The headline stays plants-only (100 ₽, NOT 150 ₽ with delivery folded in);
     // delivery rides beside it as a small "+ доставка 50,00 ₽" note.
-    expect(screen.getByText(/100,00/)).toBeInTheDocument()
+    expect(screen.getAllByText(/100,00/)).toHaveLength(2)
     expect(screen.queryByText(/150,00/)).not.toBeInTheDocument()
     expect(screen.getByText(/\+ доставка 50,00/)).toBeInTheDocument()
   })
