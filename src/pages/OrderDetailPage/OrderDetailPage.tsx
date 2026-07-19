@@ -291,7 +291,13 @@ const OrderDetailPage = () => {
               line-total on top, "qty × unit price" below); from `sm` up the full
               table shows. Both read from the same value-sorted list. */}
           <section className="flex flex-col gap-2">
-            <h2 className="m-0 text-lg font-semibold text-heading">{t('detail.plantsTitle')}</h2>
+            {/* leading-none: the title is a divider CONTACT — text-lg's default
+                28px line box would add ~5px of its own leading under the divider,
+                so the visible gap read ~29px where the client section's sharp
+                button edge above the divider reads exactly 24px (the page's
+                divider rhythm). Dropping the leading puts the glyphs themselves
+                at the 24px mark. */}
+            <h2 className="m-0 text-lg font-semibold leading-none text-heading">{t('detail.plantsTitle')}</h2>
             <ul className="m-0 flex list-none flex-col p-0 sm:hidden">
               {plantsByValueDesc(order.plants).map((item, index) => (
                 <li key={index} className="flex flex-col gap-1 border-b border-border py-2">
@@ -355,7 +361,13 @@ const OrderDetailPage = () => {
             <div className="flex w-full flex-col gap-1 text-[0.8333rem] sm:w-auto sm:self-end">
               <Total label={t('detail.subtotal')} value={getSubtotalMinor(order)} currency={order.currency} />
               <Total label={t('detail.delivery')} value={order.deliveryPriceMinor} currency={order.currency} />
-              <div className="mt-1 flex justify-between gap-8 border-t border-border pt-2 font-semibold text-heading">
+              {/* leading-none: the Итого line is the contact ABOVE the details
+                  divider — its inherited line box would add ~4px of leading below
+                  the glyphs, pushing the visible gap past the 24px rhythm. pt-3
+                  (not pt-2) compensates the same removal on the row's own top
+                  border, keeping the money block's internal hairline at the 8px
+                  its neighbours above it read. */}
+              <div className="mt-1 flex justify-between gap-8 border-t border-border pt-3 font-semibold leading-none text-heading">
                 <span>{t('detail.total')}</span>
                 <span className="tabular-nums">{formatMoney(getTotalMinor(order), order.currency)}</span>
               </div>
@@ -370,11 +382,12 @@ const OrderDetailPage = () => {
           {/* The remaining details. The two statuses are editable inline (the
               frequent "mark paid/done" action) without opening the full edit
               form; the rest is read-only and changed via "Редактировать".
-              -mt-2 compensates the first DetailRow's own py-2 top padding, so
-              the visible text sits the same 24px from the divider above as the
-              Итого line does on the divider's other side (the owner's
-              equal-spacing rule for every divider on this page). */}
-          <section className="-mt-2 flex flex-col">
+              -mt-3 compensates what sits between the divider and the first
+              row's GLYPHS: the DetailRow's own py-2 top padding (8px) plus the
+              label's text-base half-leading (~4px), so the visible text sits at
+              the same 24px the Итого glyphs keep on the divider's other side
+              (the owner's equal-spacing rule for every divider on this page). */}
+          <section className="-mt-3 flex flex-col">
             <DetailRow label={t('detail.deliveryMethod')} value={deliveryMethodLabel(tOrder, order.deliveryMethod)} />
             <DetailRow label={t('detail.paymentMethod')} value={paymentMethodLabel(tOrder, order.paymentMethod)} />
             {/* Marketplace source — shown only when the order carries one, so a
