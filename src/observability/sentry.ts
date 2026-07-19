@@ -14,8 +14,9 @@ import { APP_VERSION } from '@/version'
 // ordinary sessions, while `replaysOnErrorSampleRate: 1` keeps a rolling buffer
 // and only PERSISTS a replay when an error fires — so a crash report carries the
 // clip leading up to it, with no recording (or quota cost) for healthy sessions.
-// Privacy defaults are conservative: all text is masked and all media blocked, so
-// order/customer data never leaves the device inside a replay.
+// Privacy is SELECTIVE (see deferReplay): inputs and the marked customer-PII
+// display sites are masked and all media blocked, while the static UI chrome
+// stays readable so a replay is actually debuggable.
 //
 // Replay is the bulk of the SDK's weight (~44 kB gzip, the rrweb recorder, on top
 // of the ~28 kB core). It is NOT attached here — it is loaded LAZILY on idle by
@@ -58,7 +59,28 @@ export async function deferReplay(): Promise<void> {
   if (!client) return
   try {
     const { replayIntegration } = await import('@sentry/replay')
-    client.addIntegration(replayIntegration({ maskAllText: true, blockAllMedia: true }))
+    // Masking model (owner request 2026-07-19): SELECTIVE, not blanket.
+    // `maskAllText: true` starred out every text node — buttons, i18n labels,
+    // headings — which made replays useless for debugging while protecting
+    // nothing extra (the static chrome contains no data). Instead:
+    //   • maskAllInputs — everything the user TYPES stays masked (the SDK
+    //     default, set explicitly so this contract is visible here);
+    //   • displayed customer PII (names / phones / addresses / notes) is
+    //     marked `data-sentry-mask` at its render sites — Sentry's built-in
+    //     mask selector, no extra config: the orders/customers table cells and
+    //     cards (via the column `masked` flag), the order page's client block,
+    //     and the customer page's contact fields;
+    //   • maskAttributes adds aria-label: the customers list bakes the name
+    //     into row/card aria-labels, which text masking alone doesn't cover;
+    //   • blockAllMedia keeps order photos out, as before.
+    client.addIntegration(
+      replayIntegration({
+        maskAllText: false,
+        maskAllInputs: true,
+        maskAttributes: ['placeholder', 'title', 'aria-label'],
+        blockAllMedia: true,
+      }),
+    )
   } catch {
     // Replay couldn't load (offline first visit, chunk fetch failed) — error
     // capture still works without it; retry isn't worth the complexity.

@@ -39,6 +39,12 @@ interface OrderColumnBase {
   // the wrappable columns (customer, address, the plant list) give up width and
   // reflow, while the short fixed columns (№, date, total, statuses) keep theirs.
   wrap?: boolean
+  // When true, this column's cell content is customer PII (a name, an address)
+  // and both layouts stamp it `data-sentry-mask` — Sentry Replay's built-in
+  // mask selector — so it stays starred out in replays while the rest of the
+  // row (statuses, sums, dates) remains readable. See observability/sentry.ts
+  // for the whole masking model.
+  masked?: boolean
 }
 
 // A column backed by a raw Order field (default String() rendering).
@@ -115,6 +121,7 @@ export function buildOrderColumns(
       format: (o) => getCustomerName(o.customerId),
       sortValue: (o) => getCustomerName(o.customerId),
       wrap: true,
+      masked: true,
     },
     {
       id: 'address',
@@ -122,6 +129,7 @@ export function buildOrderColumns(
       field: 'address',
       sortValue: (o) => o.address,
       wrap: true,
+      masked: true,
     },
     // One plant per line (joined by newlines, which the table/card renders as
     // stacked rows), most valuable line first; the quantity shows as ×N only

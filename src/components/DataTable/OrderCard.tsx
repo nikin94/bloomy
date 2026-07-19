@@ -66,8 +66,16 @@ const OrderCard = ({
         <span className="shrink-0 text-sm text-text">{dateText}</span>
       </div>
 
-      <CardField label={label('customer')} value={value('customer')} />
-      <CardField label={label('address')} value={value('address')} />
+      <CardField
+        label={label('customer')}
+        value={value('customer')}
+        masked={columnById.get('customer')?.masked}
+      />
+      <CardField
+        label={label('address')}
+        value={value('address')}
+        masked={columnById.get('address')?.masked}
+      />
 
       {/* Plants: each line its own bordered block, not one joined string. */}
       <div className="flex flex-col gap-1">

@@ -76,6 +76,24 @@ beforeEach(() => {
 })
 
 describe('OrdersPage filtering', () => {
+  it('marks the customer/address cells for Sentry replay masking, the rest not', async () => {
+    renderPage()
+    await screen.findByTestId('orders-table')
+
+    // The PII columns carry Sentry Replay's built-in mask selector (via the
+    // column `masked` flag), so replays star them out while statuses/sums stay
+    // readable. Both cells of the first row: name + address.
+    expect(table().getByText('Анна').closest('td')).toHaveAttribute('data-sentry-mask')
+    expect(table().getAllByText('ул. Пушкина, 1')[0].closest('td')).toHaveAttribute(
+      'data-sentry-mask',
+    )
+    // A non-PII cell (the order status) is NOT masked.
+    expect(table().getAllByText('В работе')[0].closest('td')).not.toHaveAttribute(
+      'data-sentry-mask',
+    )
+  })
+
+
   it('narrows the list to orders matching the search query (by customer name)', async () => {
     const user = userEvent.setup()
     renderPage()

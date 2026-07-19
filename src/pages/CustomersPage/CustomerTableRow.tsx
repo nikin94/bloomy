@@ -26,6 +26,10 @@ const CustomerTableRow = ({
   <tr
     role="link"
     tabIndex={0}
+    // Every cell here is customer PII (name/phone/address/note), so the whole
+    // row is masked in Sentry replays; the aria-label bakes the name in too,
+    // which maskAttributes covers (see observability/sentry.ts).
+    data-sentry-mask
     aria-label={t('openAria', { name: customer.name })}
     onClick={() => onOpen(customer)}
     onKeyDown={(e) => {
