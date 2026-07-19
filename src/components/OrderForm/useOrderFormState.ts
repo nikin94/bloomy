@@ -70,6 +70,15 @@ interface OrderFormState {
   // fetch-driven switch to "existing" (applied via `set`, not `selectMode`)
   // must not slide.
   animateModeSlider: boolean
+  // The delivery address the form held when the slider flipped to "new" (which
+  // clears it for the fresh customer). Flipping BACK to "existing" restores
+  // this — the selection is unchanged, so the address the user had (the edited
+  // order's, or their own typing) must come back verbatim; re-prefilling from
+  // the customer card would swap it for the customer's DEFAULT address (often
+  // absent → the address silently vanished, the reported bug). null = nothing
+  // stashed; cleared when consumed or when a different customer is picked
+  // (then the pick's own prefill is the right value, not this stale stash).
+  stashedAddress: string | null
 }
 
 type OrderFormAction =
@@ -141,27 +150,41 @@ const reducer = (state: OrderFormState, action: OrderFormAction): OrderFormState
     case 'selectCustomer':
       // Reset prefilled fields, then fill from the newly picked customer —
       // always resetting first means a previous customer's data can't linger
-      // when the new pick (or the placeholder, id === '') lacks it.
+      // when the new pick (or the placeholder, id === '') lacks it. A real
+      // pick also invalidates the mode-switch stash: the address kept for the
+      // PREVIOUS selection must not overwrite this customer's prefill later.
       return {
         ...state,
+        stashedAddress: null,
         fields: {
           ...fields,
           selectedCustomerId: action.id,
           ...customerPrefill(action.customer),
         },
       }
-    case 'selectMode':
-      // "new" starts a fresh customer → clear prefilled fields; "existing"
-      // re-syncs the form with the still-selected customer.
+    case 'selectMode': {
+      // "new" starts a fresh customer → clear prefilled fields, remembering
+      // the address so a round-trip restores it; "existing" brings back the
+      // stashed address when one exists (the selection didn't change — the
+      // user just peeked at the other mode) and only falls back to the
+      // customer-card prefill when there is nothing to restore (e.g. the form
+      // STARTED in "new", so no stash was ever taken).
+      const toNew = action.mode === 'new'
       return {
         ...state,
         animateModeSlider: true,
+        stashedAddress: toNew ? fields.address : null,
         fields: {
           ...fields,
           customerMode: action.mode,
-          ...customerPrefill(action.mode === 'new' ? undefined : action.customer),
+          ...(toNew
+            ? customerPrefill(undefined)
+            : state.stashedAddress !== null
+              ? { address: state.stashedAddress }
+              : customerPrefill(action.customer)),
         },
       }
+    }
   }
 }
 
@@ -226,6 +249,7 @@ const createInitialState = ({ draft, source, initialOrder, defaults }: OrderForm
     focusItemId: null,
     focusGift: false,
     animateModeSlider: false,
+    stashedAddress: null,
   }
 }
 

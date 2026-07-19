@@ -401,6 +401,27 @@ describe('OrderForm', () => {
     expect(screen.getByLabelText('Название')).toHaveValue('Фиалка')
   })
 
+  it('restores the delivery address on a new→existing mode round-trip (edit form)', async () => {
+    const user = userEvent.setup()
+    // The customer CARD deliberately has no address — the address lives only on
+    // the edited order. Re-prefilling from the card on the way back would blank
+    // the input (the reported bug); the round-trip must restore the stash.
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    renderForm({ initialOrder: order({ customerId: 'c1' }) })
+    await screen.findByRole('combobox', { name: 'Существующий клиент' })
+    expect(screen.getByLabelText('Адрес доставки')).toHaveValue('ул. Пушкина, 1')
+
+    // Flip to "new": the address clears for the fresh customer (correct)…
+    await user.click(screen.getByRole('radio', { name: 'Новый' }))
+    expect(screen.getByLabelText('Адрес доставки')).toHaveValue('')
+
+    // …and flipping straight back restores exactly what the input held, with
+    // the selection untouched.
+    await user.click(screen.getByRole('radio', { name: 'Существующий' }))
+    expect(screen.getByLabelText('Адрес доставки')).toHaveValue('ул. Пушкина, 1')
+    expect(screen.getByRole('combobox', { name: 'Существующий клиент' })).toHaveValue('c1')
+  })
+
   it('hands a built order to onSubmit when a prefilled (valid) form is saved', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
     const user = userEvent.setup()
