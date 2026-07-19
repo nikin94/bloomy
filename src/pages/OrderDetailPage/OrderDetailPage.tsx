@@ -8,7 +8,6 @@ import { useCustomer } from '@/queries/customers'
 import { formatDate, formatMoney } from '@/utils/format'
 import {
   getSubtotalMinor,
-  getTotalMinor,
   plantsByValueDesc,
   resolveCompletedAt,
   formatOrderNumber,
@@ -35,7 +34,6 @@ import PencilIcon from '@/components/icons/PencilIcon'
 import RepeatIcon from '@/components/icons/RepeatIcon'
 import TrashIcon from '@/components/icons/TrashIcon'
 import InlineStatusField from './InlineStatusField'
-import Total from './Total'
 import type { Order } from '@/types/order'
 
 const OrderDetailPage = () => {
@@ -302,24 +300,14 @@ const OrderDetailPage = () => {
             )}
           </section>
 
-          {/* Section divider before the plant list. A separate flex child of
-              the gap-6 column, so the parent gap gives it the SAME 24px above
-              and below (the page's one divider rhythm — matching the details
-              divider further down and the form's section dividers). */}
-          <span aria-hidden="true" className="h-px w-full bg-border" />
-
           {/* Itemized plant list. A 5-column table can't fit a 320px phone, so
               below `sm` it's broken into one stacked card per plant (name +
               line-total on top, "qty × unit price" below); from `sm` up the full
-              table shows. Both read from the same value-sorted list. */}
+              table shows. Both read from the same value-sorted list. No section
+              dividers around this block (owner request): the column's gap-6 is
+              the only separation, matching the rest of the page. */}
           <section className="flex flex-col gap-2">
-            {/* leading-none: the title is a divider CONTACT — text-lg's default
-                28px line box would add ~5px of its own leading under the divider,
-                so the visible gap read ~29px where the client section's sharp
-                button edge above the divider reads exactly 24px (the page's
-                divider rhythm). Dropping the leading puts the glyphs themselves
-                at the 24px mark. */}
-            <h2 className="m-0 text-lg font-semibold leading-none text-heading">{t('detail.plantsTitle')}</h2>
+            <h2 className="m-0 text-lg font-semibold text-heading">{t('detail.plantsTitle')}</h2>
             <ul className="m-0 flex list-none flex-col p-0 sm:hidden">
               {plantsByValueDesc(order.plants).map((item, index) => (
                 <li key={index} className="flex flex-col gap-1 border-b border-border py-2">
@@ -374,42 +362,39 @@ const OrderDetailPage = () => {
               </p>
             ))}
 
-            {/* Money breakdown — INSIDE the plants section (owner request), so
-                the section's gap-2 puts it right under the last plant row
-                instead of a full section gap away: the totals belong to the
-                list they sum. Full width on a phone (labels left, amounts
-                right) so it lines up with the plant cards; shrink-wrapped to
-                the right from `sm` up. */}
-            <div className="flex w-full flex-col gap-1 text-[0.8333rem] sm:w-auto sm:self-end">
-              <Total label={t('detail.subtotal')} value={getSubtotalMinor(order)} currency={order.currency} />
-              <Total label={t('detail.delivery')} value={order.deliveryPriceMinor} currency={order.currency} />
-              {/* leading-none: the Итого line is the contact ABOVE the details
-                  divider — its inherited line box would add ~4px of leading below
-                  the glyphs, pushing the visible gap past the 24px rhythm. pt-3
-                  (not pt-2) compensates the same removal on the row's own top
-                  border, keeping the money block's internal hairline at the 8px
-                  its neighbours above it read. */}
-              <div className="mt-1 flex justify-between gap-8 border-t border-border pt-3 font-semibold leading-none text-heading">
-                <span>{t('detail.total')}</span>
-                <span className="tabular-nums">{formatMoney(getTotalMinor(order), order.currency)}</span>
-              </div>
+            {/* Money summary — the SAME presentation the order card and the
+                form footer settled on (#175/#185): the headline is the bold
+                PLANTS-ONLY sum, with the delivery cost in small type directly
+                under it — rendered only when one was entered, so a free
+                delivery doesn't print a noisy "+ delivery 0". Replaces the
+                old three-line subtotal/delivery/Итого breakdown (owner
+                request): one row instead of three, no internal hairline.
+                Full width on a phone (label left, money right) so it lines
+                up with the plant cards; shrink-wrapped right from `sm` up. */}
+            <div className="flex w-full items-baseline justify-between gap-8 text-[0.8333rem] sm:w-auto sm:gap-12 sm:self-end">
+              <span className="font-semibold text-heading">{t('detail.subtotal')}</span>
+              <span className="flex flex-col items-end">
+                <span className="font-semibold text-heading tabular-nums">
+                  {formatMoney(getSubtotalMinor(order), order.currency)}
+                </span>
+                {order.deliveryPriceMinor > 0 && (
+                  <span className="whitespace-nowrap text-xs text-text">
+                    {t('form.totalDelivery', {
+                      amount: formatMoney(order.deliveryPriceMinor, order.currency),
+                    })}
+                  </span>
+                )}
+              </span>
             </div>
           </section>
-
-          {/* Section divider before the remaining details — same standalone
-              flex child as the one above the plant list, so the column's gap-6
-              gives it the identical 24px above and below. */}
-          <span aria-hidden="true" className="h-px w-full bg-border" />
 
           {/* The remaining details. The two statuses are editable inline (the
               frequent "mark paid/done" action) without opening the full edit
               form; the rest is read-only and changed via "Редактировать".
-              -mt-3 compensates what sits between the divider and the first
-              row's GLYPHS: the DetailRow's own py-2 top padding (8px) plus the
-              label's text-base half-leading (~4px), so the visible text sits at
-              the same 24px the Итого glyphs keep on the divider's other side
-              (the owner's equal-spacing rule for every divider on this page). */}
-          <section className="-mt-3 flex flex-col">
+              -mt-2 folds the first DetailRow's own py-2 top padding into the
+              column's gap-6, so the section starts at the same 24px every
+              other section gets. */}
+          <section className="-mt-2 flex flex-col">
             <DetailRow label={t('detail.deliveryMethod')} value={deliveryMethodLabel(tOrder, order.deliveryMethod)} />
             <DetailRow label={t('detail.paymentMethod')} value={paymentMethodLabel(tOrder, order.paymentMethod)} />
             {/* Marketplace source — shown only when the order carries one, so a
