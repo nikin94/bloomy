@@ -300,17 +300,23 @@ const OrderDetailPage = () => {
             )}
           </section>
 
+          {/* Section divider before the plant list. A separate flex child of
+              the gap-6 column, so the parent gap gives it the SAME 24px above
+              and below (the page's divider rhythm). */}
+          <span aria-hidden="true" className="h-px w-full bg-border" />
+
           {/* Itemized plant list. A 5-column table can't fit a 320px phone, so
               below `sm` it's broken into one stacked card per plant (name +
               line-total on top, "qty × unit price" below); from `sm` up the full
-              table shows. Both read from the same value-sorted list. No section
-              dividers around this block (owner request): the column's gap-6 is
-              the only separation, matching the rest of the page. */}
+              table shows. Both read from the same value-sorted list. */}
           <section className="flex flex-col gap-2">
-            <h2 className="m-0 text-lg font-semibold text-heading">{t('detail.plantsTitle')}</h2>
+            {/* leading-none: the title is a divider CONTACT — text-lg's default
+                line box would add ~5px of its own leading under the divider,
+                breaking the 24px rhythm the sharp button edge above it keeps. */}
+            <h2 className="m-0 text-lg font-semibold leading-none text-heading">{t('detail.plantsTitle')}</h2>
             <ul className="m-0 flex list-none flex-col p-0 sm:hidden">
               {plantsByValueDesc(order.plants).map((item, index) => (
-                <li key={index} className="flex flex-col gap-1 border-b border-border py-2">
+                <li key={index} className="flex flex-col gap-1 border-b border-border py-2 last:border-b-0">
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="min-w-0 break-words text-heading">
                       {index + 1}. {item.name}
@@ -337,7 +343,7 @@ const OrderDetailPage = () => {
               </thead>
               <tbody>
                 {plantsByValueDesc(order.plants).map((item, index) => (
-                  <tr key={index} className="border-b border-border">
+                  <tr key={index} className="border-b border-border last:border-b-0">
                     <td className="py-2 pr-3 text-right text-text tabular-nums">{index + 1}</td>
                     <td className="py-2 pr-3 text-heading">{item.name}</td>
                     <td className="py-2 px-3 text-right text-text tabular-nums">{item.quantity}</td>
@@ -370,11 +376,18 @@ const OrderDetailPage = () => {
                 old three-line subtotal/delivery/Итого breakdown (owner
                 request): one row instead of three, no internal hairline.
                 Full width on a phone (label left, money right) so it lines
-                up with the plant cards; shrink-wrapped right from `sm` up. */}
-            <div className="flex w-full items-baseline justify-between gap-8 text-[0.8333rem] sm:w-auto sm:gap-12 sm:self-end">
-              <span className="font-semibold text-heading">{t('detail.subtotal')}</span>
+                up with the plant cards; shrink-wrapped right from `sm` up.
+                Sized like the plant rows themselves (owner request): base
+                below `sm` where the cards read base, the table's 0.8333rem
+                from `sm` up — bold either way. leading-none on the label +
+                sum: they are the contact ABOVE the details divider, so their
+                line boxes must not pad the 24px rhythm (the smaller delivery
+                note below keeps its own leading — it's not the contact when
+                present, and it only shows for a paid delivery). */}
+            <div className="flex w-full items-baseline justify-between gap-8 text-[0.8333rem] max-sm:text-base sm:w-auto sm:gap-12 sm:self-end">
+              <span className="font-semibold leading-none text-heading">{t('detail.subtotal')}</span>
               <span className="flex flex-col items-end">
-                <span className="font-semibold text-heading tabular-nums">
+                <span className="font-semibold leading-none text-heading tabular-nums">
                   {formatMoney(getSubtotalMinor(order), order.currency)}
                 </span>
                 {order.deliveryPriceMinor > 0 && (
@@ -388,13 +401,19 @@ const OrderDetailPage = () => {
             </div>
           </section>
 
+          {/* Section divider after the money summary — same standalone flex
+              child as the one above the plant list, so the column's gap-6
+              gives it the identical 24px above and below. */}
+          <span aria-hidden="true" className="h-px w-full bg-border" />
+
           {/* The remaining details. The two statuses are editable inline (the
               frequent "mark paid/done" action) without opening the full edit
               form; the rest is read-only and changed via "Редактировать".
-              -mt-2 folds the first DetailRow's own py-2 top padding into the
-              column's gap-6, so the section starts at the same 24px every
-              other section gets. */}
-          <section className="-mt-2 flex flex-col">
+              -mt-3 compensates what sits between the divider and the first
+              row's GLYPHS: the DetailRow's own py-2 top padding (8px) plus the
+              label's half-leading (~4px), so the visible text keeps the same
+              24px the money line holds on the divider's other side. */}
+          <section className="-mt-3 flex flex-col">
             <DetailRow label={t('detail.deliveryMethod')} value={deliveryMethodLabel(tOrder, order.deliveryMethod)} />
             <DetailRow label={t('detail.paymentMethod')} value={paymentMethodLabel(tOrder, order.paymentMethod)} />
             {/* Marketplace source — shown only when the order carries one, so a
