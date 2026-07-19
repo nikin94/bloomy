@@ -176,8 +176,12 @@ describe('NewOrderPage', () => {
     const picker = await screen.findByRole('combobox', { name: 'Существующий клиент' })
     expect(picker).toHaveValue('c1')
     expect(screen.getByDisplayValue('Роза')).toBeInTheDocument()
-    // …the order's own currency carries over (no conversion), not the RUB default…
-    expect(screen.getByRole('combobox', { name: 'Валюта' })).toHaveValue('USD')
+    // …the order's own currency carries over (no conversion), not the RUB
+    // default — there is no currency control on the form any more (it lives in
+    // the global settings), so assert via the rendered money: the totals show
+    // in dollars (2 × 150,00 $ = 300,00 $ in the plants block and the footer).
+    expect(screen.getAllByText(/300,00\s\$/).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('combobox', { name: 'Валюта' })).not.toBeInTheDocument()
     // …but the per-instance state starts pristine, not cloned from the source.
     expect(screen.getByRole('combobox', { name: 'Статус оплаты' })).toHaveValue('pending')
     expect(screen.getByRole('combobox', { name: 'Статус заказа' })).toHaveValue('processing')

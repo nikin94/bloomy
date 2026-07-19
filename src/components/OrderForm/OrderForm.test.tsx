@@ -502,10 +502,18 @@ describe('OrderForm', () => {
 
     // The prepaid amount IS the footer's bold headline (it replaces the
     // subtotal, no labelled pair), and the small remainder note carries what's
-    // left against the plants+delivery total: 299,80 − 100 = 199,80.
+    // left against the PLANTS sum: 299,80 − 100 = 199,80.
     const amount = screen.getByText('100,00 ₽')
     expect(amount).toHaveClass('font-semibold')
     expect(screen.getByText('+ остаток 199,80 ₽')).toBeInTheDocument()
+
+    // Delivery must NOT fold into the remainder (owner rule): entering a
+    // delivery price adds its own "+ доставка" note and leaves the remainder
+    // untouched (still plants − prepaid, not 249,80).
+    await user.type(screen.getByLabelText('Стоимость доставки'), '50')
+    expect(screen.getByText('+ остаток 199,80 ₽')).toBeInTheDocument()
+    expect(screen.queryByText(/249,80/)).not.toBeInTheDocument()
+    expect(screen.getByText('+ доставка 50,00 ₽')).toBeInTheDocument()
 
     // Leaving the prepaid status restores the subtotal headline (the typed
     // value is kept in state, but a non-prepaid total must not show it).
@@ -519,11 +527,14 @@ describe('OrderForm', () => {
     renderForm({ initialOrder: order({ customerId: 'c1' }) })
     await screen.findByRole('combobox', { name: 'Существующий клиент' })
 
-    // The plants fieldset carries its own "Итого" row with the plants-only sum
-    // (the footer's copy of the label is desktop-only; jsdom keeps both in the
-    // DOM, so the query scopes to the fieldset).
+    // The plants fieldset carries its own total row with the plants-only sum.
+    // The label is responsive — "Итого" on a phone (its own line above the
+    // buttons), "Сумма растений" beside the buttons from `sm` up; jsdom keeps
+    // both spans in the DOM, so both are asserted, scoped to the fieldset (the
+    // footer has its own desktop-only "Итого").
     const plants = within(screen.getByRole('group', { name: 'Растения' }))
     expect(plants.getByText('Итого')).toBeInTheDocument()
+    expect(plants.getByText('Сумма растений')).toBeInTheDocument()
     expect(plants.getByText('299,80 ₽')).toBeInTheDocument()
   })
 

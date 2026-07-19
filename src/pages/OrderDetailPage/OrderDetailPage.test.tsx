@@ -190,13 +190,17 @@ describe('OrderDetailPage', () => {
     const prepaidRowLabels = () =>
       screen.queryAllByText('Предоплата').filter((el) => el.tagName !== 'OPTION')
 
-    // Total = 2×149,90 + 300 delivery = 599,80 ₽; 200 ₽ prepaid → 399,80 left.
+    // The remainder is measured against the PLANTS sum only (delivery is never
+    // folded into a displayed total — owner rule, same as the form footer):
+    // 2×149,90 = 299,80 ₽; 200 ₽ prepaid → 99,80 left. The 300 ₽ delivery on
+    // the fixture must NOT push it to 399,80.
     fetchOrder.mockResolvedValue(order({ paymentStatus: 'prepaid', prepaidAmountMinor: 20000 }))
     const { unmount } = renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })
     expect(prepaidRowLabels()).toHaveLength(1)
     expect(screen.getByText('200,00 ₽')).toBeInTheDocument()
-    expect(screen.getByText(/осталось\s*399,80 ₽/)).toBeInTheDocument()
+    expect(screen.getByText(/осталось\s*99,80 ₽/)).toBeInTheDocument()
+    expect(screen.queryByText(/399,80/)).not.toBeInTheDocument()
     unmount()
 
     // Once marked paid the amount stays (payment history) but the remainder —
