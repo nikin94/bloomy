@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createCustomer } from '@/firebase/customers'
 import { useOwnerId } from '@/hooks/useOwnerId'
 import { useSettings } from '@/context/settingsContext'
+import { cn } from '@/lib/cn'
 import { formatMoney } from '@/utils/format'
 import {
   resolveCompletedAt,
@@ -49,8 +51,13 @@ import type { Order } from '@/types/order'
 import type { NewCustomer } from '@/types/customer'
 
 interface OrderFormProps {
-  // Screen heading, e.g. "New order" / "Edit order".
-  heading: string
+  // Screen heading, e.g. "New order" — or a richer node (the edit page passes
+  // the order number with a small mode word beside it).
+  heading: ReactNode
+  // Extra classes for the heading's h1 — e.g. `max-md:hidden` when the page
+  // publishes the same title into the mobile top bar (see headerTitleContext)
+  // and the in-content copy should show on desktop only.
+  headingClassName?: string
   // When editing, the existing order to prefill every field from. Omitted when
   // creating (the form starts blank). Read once on mount — the caller must load
   // the order before rendering the form, not swap this prop in later.
@@ -96,7 +103,7 @@ interface OrderFormProps {
 // What REMAINS here is the orchestration only: validation order, the submit
 // flow (customer creation → deferred photo upload with rollback → onSubmit →
 // staged-removal cleanup → draft clear) and the markup.
-const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFormProps) => {
+const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, onCancel }: OrderFormProps) => {
   const { t } = useTranslation(['order', 'common'])
   // Order-bound t for the option helpers (typed TFunction<'order'>).
   const { t: tOrder } = useTranslation('order')
@@ -398,7 +405,9 @@ const OrderForm = ({ heading, initialOrder, seed, onSubmit, onCancel }: OrderFor
               method/status selects already lay out in 3-column grids that spread
               across it. */}
           <div className="flex w-full flex-col gap-5">
-            <h1 className="m-0 text-[1.2222rem] font-semibold text-heading">{heading}</h1>
+            <h1 className={cn('m-0 text-[1.2222rem] font-semibold text-heading', headingClassName)}>
+              {heading}
+            </h1>
 
           {/* Restored-draft notice. Photos never make it into the draft (File
               objects don't serialize to localStorage), so a user who attached

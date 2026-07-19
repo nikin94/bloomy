@@ -52,6 +52,10 @@ const OrderTableRow = ({
       return (
         <td
           key={cell.id}
+          // Customer-PII columns stay masked in Sentry replays (the built-in
+          // mask selector); the rest of the row remains readable. See the
+          // column `masked` flag in orderColumns.
+          data-sentry-mask={column?.masked || undefined}
           className={cn(TABLE_CELL_BASE, fit, 'text-text', column?.width)}
         >
           {flexRender(cell.column.columnDef.cell, cell.getContext())}

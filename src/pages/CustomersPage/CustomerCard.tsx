@@ -24,6 +24,10 @@ const CustomerCard = ({
     <div
       role="link"
       tabIndex={0}
+      // The whole block is customer PII (name/phone/address/note) → masked in
+      // Sentry replays; the name-bearing aria-label is covered by
+      // maskAttributes (see observability/sentry.ts).
+      data-sentry-mask
       aria-label={t('openAria', { name: customer.name })}
       onClick={() => onOpen(customer)}
       onKeyDown={(e) => {

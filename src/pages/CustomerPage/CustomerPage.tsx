@@ -123,7 +123,13 @@ const CustomerPage = () => {
                   icon (shrink-0 → never wraps, always flush right even beside a
                   multi-line name); from sm up it's the full text button. */}
               <header className="flex items-start justify-between gap-3">
-                <h1 className="m-0 min-w-0 break-words text-2xl font-semibold text-heading">
+                {/* data-sentry-mask: the name + contact fields below are the
+                    customer's PII, kept starred out in Sentry replays while the
+                    labels/stats stay readable (see observability/sentry.ts). */}
+                <h1
+                  data-sentry-mask
+                  className="m-0 min-w-0 break-words text-2xl font-semibold text-heading"
+                >
                   {customer.name}
                 </h1>
                 <Button
@@ -149,9 +155,24 @@ const CustomerPage = () => {
               {/* Contact details — only the fields the customer actually has. */}
               {(customer.phone || customer.address || customer.note) && (
                 <section className="flex flex-col">
-                  {customer.phone && <Field label={t('form.phone')} value={customer.phone} />}
-                  {customer.address && <Field label={t('form.address')} value={customer.address} />}
-                  {customer.note && <Field label={t('form.note')} value={customer.note} />}
+                  {customer.phone && (
+                    <Field
+                      label={t('form.phone')}
+                      value={<span data-sentry-mask>{customer.phone}</span>}
+                    />
+                  )}
+                  {customer.address && (
+                    <Field
+                      label={t('form.address')}
+                      value={<span data-sentry-mask>{customer.address}</span>}
+                    />
+                  )}
+                  {customer.note && (
+                    <Field
+                      label={t('form.note')}
+                      value={<span data-sentry-mask>{customer.note}</span>}
+                    />
+                  )}
                 </section>
               )}
 

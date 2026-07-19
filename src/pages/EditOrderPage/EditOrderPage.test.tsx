@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { User } from 'firebase/auth'
 import { QueryWrapper } from '@/test/queryWrapper'
+import { renderPageInLayout } from '@/test/renderPageInLayout'
 import { queryKeys } from '@/queries/keys'
 import { AuthContext } from '@/context/authContext'
 import type { Order } from '@/types/order'
@@ -91,10 +92,12 @@ describe('EditOrderPage', () => {
   it('prefills the shared form from the loaded order', async () => {
     renderPage()
 
-    // Heading carries the order number; the form is prefilled with the stored
-    // plant, price (minor → input string), delivery price, and customer.
+    // Heading carries the order number with the small "Редактирование" mode
+    // word beside it (the wordy "Редактирование заказа №5" title is gone);
+    // the form is prefilled with the stored plant, price (minor → input
+    // string), delivery price, and customer.
     expect(
-      await screen.findByRole('heading', { name: 'Редактирование заказа №5' }),
+      await screen.findByRole('heading', { name: /Заказ №5/ }),
     ).toBeInTheDocument()
     expect(screen.getByDisplayValue('Роза')).toBeInTheDocument()
     expect(screen.getByDisplayValue('149,90')).toBeInTheDocument()
@@ -104,10 +107,26 @@ describe('EditOrderPage', () => {
     expect(screen.getByRole('combobox', { name: 'Существующий клиент' })).toHaveValue('c1')
   })
 
+  it('publishes the order number + the mode word into the mobile top bar (in-layout)', async () => {
+    // Mounted inside AppLayout: the page pushes its number node through the
+    // header-title slot, like the order page — but the small line under the
+    // number says "Редактирование" instead of the creation date. TWO headings
+    // end up in the tree — the bar's (phones) and the content's (desktop,
+    // max-md:hidden) — and CSS alone decides which is visible; jsdom keeps
+    // both, so assert the pair.
+    renderPageInLayout(<EditOrderPage />)
+    await waitFor(() =>
+      expect(screen.getAllByRole('heading', { name: /Заказ №5/ })).toHaveLength(2),
+    )
+    // The mode word rides in both spots (bar subtitle + beside the content
+    // heading); the date appears in neither.
+    expect(screen.getAllByText('Редактирование')).toHaveLength(2)
+  })
+
   it('saves via updateOrder preserving id, number and date, then returns to the order', async () => {
     const user = userEvent.setup()
     renderPage()
-    await screen.findByRole('heading', { name: 'Редактирование заказа №5' })
+    await screen.findByRole('heading', { name: /Заказ №5/ })
 
     // Change a status and save.
     await user.selectOptions(screen.getByRole('combobox', { name: 'Статус заказа' }), 'delivered')

@@ -283,9 +283,14 @@ const OrderDetailPage = () => {
               stack hides entirely. */}
           <section className="flex items-start justify-between gap-4">
             <div className="flex min-w-0 flex-col gap-0.5">
+              {/* data-sentry-mask on the PII lines (name / phone / address):
+                  Sentry Replay's built-in mask selector keeps them starred out
+                  in replays while the chips and the rest of the page stay
+                  readable — see observability/sentry.ts for the model. */}
               {customer ? (
                 <Link
                   to={`/customers/${customer.id}`}
+                  data-sentry-mask
                   className="min-w-0 break-words text-lg font-medium text-primary no-underline hover:underline"
                 >
                   {customer.name}
@@ -293,14 +298,18 @@ const OrderDetailPage = () => {
               ) : (
                 <span className="text-lg text-heading">—</span>
               )}
-              {customer?.phone && <span className="text-sm text-text">{customer.phone}</span>}
+              {customer?.phone && (
+                <span data-sentry-mask className="text-sm text-text">
+                  {customer.phone}
+                </span>
+              )}
               {/* Delivery address, right under the phone (owner request): the
                   left block reads name → phone → where to bring it, so the
                   labelled "Адрес доставки" row below is gone — this IS the
                   address now. mt-1 sets it slightly apart from the contact
                   lines; break-words so a long unbroken address wraps instead
                   of pushing into the action stack. */}
-              <span className="mt-1 min-w-0 break-words text-heading">
+              <span data-sentry-mask className="mt-1 min-w-0 break-words text-heading">
                 {order.address || '—'}
               </span>
               {/* Enum badges under the address (owner request): the marketplace
@@ -514,7 +523,14 @@ const OrderDetailPage = () => {
                 this block into the chips under the address — see the client
                 section above. Only the remaining per-order facts stay here. */}
             {order.completedAt && <DetailRow label={t('detail.completed')} value={formatDate(order.completedAt)} />}
-            {order.comment && <DetailRow label={t('detail.comment')} value={order.comment} />}
+            {/* The comment is free text the user typed (it can carry names or
+                phones), so its VALUE is masked in replays — the label isn't. */}
+            {order.comment && (
+              <DetailRow
+                label={t('detail.comment')}
+                value={<span data-sentry-mask>{order.comment}</span>}
+              />
+            )}
           </section>
 
           {/* Order photos — VIEW-ONLY here: adding/removing photos lives on the

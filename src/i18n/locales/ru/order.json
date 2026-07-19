@@ -129,7 +129,7 @@
   },
   "form": {
     "newHeading": "Новый заказ",
-    "editHeading": "Редактирование заказа №{{number}}",
+    "editing": "Редактирование",
     "customer": "Клиент",
     "customerType": "Тип клиента",
     "existing": "Существующий",

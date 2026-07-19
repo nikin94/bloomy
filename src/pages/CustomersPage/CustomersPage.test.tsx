@@ -64,6 +64,10 @@ describe('CustomersPage', () => {
     // can open the customer page; the edit/delete icons stay separate buttons.
     const link = table().getByRole('link', { name: 'Открыть клиента Анна' })
     expect(link).toHaveAttribute('tabindex', '0')
+    // The whole row is customer PII, so it carries Sentry Replay's mask marker
+    // (replays star out its text; the name-bearing aria-label is masked via
+    // maskAttributes — see observability/sentry.ts).
+    expect(link).toHaveAttribute('data-sentry-mask')
   })
 
   it('shows the full customer details (phone, address, note) in the list', async () => {

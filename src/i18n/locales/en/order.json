@@ -127,7 +127,7 @@
   },
   "form": {
     "newHeading": "New order",
-    "editHeading": "Edit order #{{number}}",
+    "editing": "Editing",
     "customer": "Customer",
     "customerType": "Customer type",
     "existing": "Existing",
