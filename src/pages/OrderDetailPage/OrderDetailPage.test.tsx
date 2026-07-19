@@ -84,13 +84,6 @@ describe('OrderDetailPage', () => {
   it('shows the order with its statuses editable inline', async () => {
     renderPage()
     expect(await screen.findByRole('heading', { name: 'Заказ №5' })).toBeInTheDocument()
-    // The statuses LEAD the details block (owner request: right under the
-    // plant list), ahead of the logistics rows like the delivery method.
-    const paymentSelect = screen.getByRole('combobox', { name: 'Статус оплаты' })
-    const deliveryLabel = screen.getByText('Способ доставки')
-    expect(
-      paymentSelect.compareDocumentPosition(deliveryLabel) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
     // The two statuses render as selects pre-set to the order's current values.
     expect(screen.getByRole('combobox', { name: 'Статус оплаты' })).toHaveValue('pending')
     expect(screen.getByRole('combobox', { name: 'Статус заказа' })).toHaveValue('processing')
@@ -175,20 +168,35 @@ describe('OrderDetailPage', () => {
     expect(screen.queryByText(/Подарок:/)).not.toBeInTheDocument()
   })
 
-  it('shows the marketplace source row only for a marked order', async () => {
-    // An Avito order gets an "Источник: Авито" detail row…
+  it('shows the payment and delivery methods as chips under the address', async () => {
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+
+    // The logistics left the labelled details rows for the chip row in the
+    // client block: quiet outlined pills with the enum labels, each carrying
+    // an sr-only field name so a listener still hears what the value means.
+    const chips = within(screen.getByTestId('order-chips'))
+    expect(chips.getByText('Наличные')).toBeInTheDocument()
+    expect(chips.getByText('Почта')).toBeInTheDocument()
+    expect(chips.getByText('Способ оплаты:')).toHaveClass('sr-only')
+    // No duplicated labelled rows below — the chips ARE the display now.
+    expect(screen.queryAllByText('Наличные')).toHaveLength(1)
+  })
+
+  it('shows the marketplace source as an accented chip only for a marked order', async () => {
+    // An Avito order leads the chip row with an accent-colored "Авито" pill…
     fetchOrder.mockResolvedValue(order({ source: 'avito' }))
     const { unmount } = renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })
-    expect(screen.getByText('Источник')).toBeInTheDocument()
-    expect(screen.getByText('Авито')).toBeInTheDocument()
+    const avito = within(screen.getByTestId('order-chips')).getByText('Авито')
+    expect(avito).toHaveClass('bg-primary')
     unmount()
 
-    // …while a direct order (no stored field) adds no row at all.
+    // …while a direct order (no stored field) shows no source chip at all.
     fetchOrder.mockResolvedValue(order())
     renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })
-    expect(screen.queryByText('Источник')).not.toBeInTheDocument()
+    expect(screen.queryByText('Авито')).not.toBeInTheDocument()
   })
 
   it('shows the prepaid amount with the derived remainder while the status is prepaid', async () => {

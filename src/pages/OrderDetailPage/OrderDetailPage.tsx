@@ -30,6 +30,7 @@ import Button from '@/components/Button/Button'
 import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
 import OrderPhotos from '@/components/OrderPhotos/OrderPhotos'
 import DetailRow from '@/components/DetailRow/DetailRow'
+import Chip from '@/components/Chip/Chip'
 import PencilIcon from '@/components/icons/PencilIcon'
 import RepeatIcon from '@/components/icons/RepeatIcon'
 import TrashIcon from '@/components/icons/TrashIcon'
@@ -239,6 +240,30 @@ const OrderDetailPage = () => {
               <span className="mt-1 min-w-0 break-words text-heading">
                 {order.address || '—'}
               </span>
+              {/* Enum badges under the address (owner request): the marketplace
+                  source first — the one marker worth an accent color — then the
+                  payment and delivery methods as quiet chips. These REPLACE the
+                  labelled logistics rows that used to sit in the details block
+                  (same info shown twice would be noise); each chip carries an
+                  sr-only field name, so nothing is lost to screen readers. */}
+              <div data-testid="order-chips" className="mt-2 flex flex-wrap items-center gap-1.5">
+                {order.source && (
+                  <Chip accent srLabel={t('detail.source')}>
+                    {tOrder(`source.${order.source}`)}
+                  </Chip>
+                )}
+                {/* Category emojis (owner request, the gift line's 🎁 pattern):
+                    with the text labels dropped, the marker says which FIELD a
+                    chip came from — 💰 how it's paid, 🚚 how it ships. One
+                    emoji per category (not per value), so «Наличные»/«Карта»
+                    share 💰 and every delivery method shares 🚚. */}
+                <Chip srLabel={t('detail.paymentMethod')} emoji="💰">
+                  {paymentMethodLabel(tOrder, order.paymentMethod)}
+                </Chip>
+                <Chip srLabel={t('detail.deliveryMethod')} emoji="🚚">
+                  {deliveryMethodLabel(tOrder, order.deliveryMethod)}
+                </Chip>
+              </div>
             </div>
             {/* On a phone the rail is icon-only 40px squares (the same boxes as
                 the bar's burger — the p-2 gutter now equals the bar's px-2, so
@@ -465,13 +490,9 @@ const OrderDetailPage = () => {
               onChange={(value) => saveStatus({ status: asEnum(ORDER_STATUS_VALUES, value, order.status) })}
               readOnly={isDeleted}
             />
-            <DetailRow label={t('detail.deliveryMethod')} value={deliveryMethodLabel(tOrder, order.deliveryMethod)} />
-            <DetailRow label={t('detail.paymentMethod')} value={paymentMethodLabel(tOrder, order.paymentMethod)} />
-            {/* Marketplace source — shown only when the order carries one, so a
-                direct order (the common case, stored with no field) adds no row. */}
-            {order.source && (
-              <DetailRow label={t('detail.source')} value={tOrder(`source.${order.source}`)} />
-            )}
+            {/* The logistics (source / payment / delivery method) moved out of
+                this block into the chips under the address — see the client
+                section above. Only the remaining per-order facts stay here. */}
             {order.completedAt && <DetailRow label={t('detail.completed')} value={formatDate(order.completedAt)} />}
             {order.comment && <DetailRow label={t('detail.comment')} value={order.comment} />}
           </section>
