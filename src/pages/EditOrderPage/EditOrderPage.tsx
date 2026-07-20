@@ -72,7 +72,9 @@ const EditOrderPage = () => {
           <span className="ml-2 text-sm font-normal text-text">{t('form.editing')}</span>
         </>
       }
-      headingClassName="max-md:hidden"
+      // text-2xl overrides the form's default heading size (cn/twMerge) so the
+      // desktop title matches the order page's h1 exactly.
+      headingClassName="max-md:hidden text-2xl"
       initialOrder={order}
       onCancel={() => navigate(`/orders/${order.id}`)}
       onSubmit={async (fields) => {
