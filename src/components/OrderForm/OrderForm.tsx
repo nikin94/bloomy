@@ -401,10 +401,11 @@ const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, on
             static offset stretches the page with phantom scroll space (the
             chip-radio bug — see ChipRadioGroup, fixed at its label too). */}
         <div className={`relative flex-1 overflow-auto ${SCREEN_PADDING}`}>
-          {/* Full-width form (the sidebar freed the horizontal space); the
-              method/status selects already lay out in 3-column grids that spread
-              across it. */}
-          <div className="flex w-full flex-col gap-5">
+          {/* Content capped at max-w-2xl and centred — the SAME readable
+              column the order detail page uses (owner request: the edit
+              screen's width matches the view screen's), so switching between
+              viewing and editing an order doesn't reflow the content width. */}
+          <div className="mx-auto flex w-full max-w-2xl flex-col gap-5">
             <h1 className={cn('m-0 text-[1.2222rem] font-semibold text-heading', headingClassName)}>
               {heading}
             </h1>
@@ -717,9 +718,12 @@ const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, on
         {/* Pinned footer: the running total and actions stay visible while the
             plant list grows, so the user never has to scroll to see the total. */}
         {/* Horizontal padding = the shared screen gutter, so the footer's
-            buttons align with the body's inputs above on every width. */}
+            buttons align with the body's inputs above on every width. The
+            inner content carries the SAME max-w-2xl cap as the body above —
+            the full-width bar (border/background) stays edge-to-edge, but the
+            total and buttons line up with the capped inputs, not the screen. */}
         <div className={`border-t border-border bg-bg ${SCREEN_GUTTER_X} py-3`}>
-          <div className="flex w-full flex-col gap-3">
+          <div className="mx-auto flex w-full max-w-2xl flex-col gap-3">
             {error && (
               <p role="alert" className="m-0 text-danger">
                 {error}
