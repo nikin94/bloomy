@@ -10,7 +10,8 @@ import type { AuthState } from '@/context/authContext'
 // the real SDK. We test the routing/Suspense wiring, not the pages' internals.
 vi.mock('./firebase/orders', () => ({
   fetchOrders: vi.fn().mockResolvedValue([]),
-  reconcileOrderNumbers: vi.fn().mockResolvedValue(false),
+  reconcileOrderNumbers: vi.fn().mockResolvedValue({ numbered: false, remaining: false }),
+  waitForOrderWritesFlush: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock('./firebase/customers', () => ({ fetchCustomers: vi.fn().mockResolvedValue([]) }))
 vi.mock('./firebase/auth', () => ({ signInWithGoogle: vi.fn(), signOutUser: vi.fn() }))

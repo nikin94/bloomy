@@ -10,11 +10,13 @@ import { order as baseOrder, customer as baseCustomer } from '@/test/factories'
 // SDK. We test the filter behaviour (search + status) over an in-memory list.
 const fetchOrders = vi.fn()
 const reconcileOrderNumbers = vi.fn()
+const waitForOrderWritesFlush = vi.fn()
 const fetchCustomers = vi.fn()
 
 vi.mock('../../firebase/orders', () => ({
   fetchOrders: (...a: unknown[]) => fetchOrders(...a),
   reconcileOrderNumbers: (...a: unknown[]) => reconcileOrderNumbers(...a),
+  waitForOrderWritesFlush: (...a: unknown[]) => waitForOrderWritesFlush(...a),
 }))
 vi.mock('../../firebase/customers', () => ({ fetchCustomers: (...a: unknown[]) => fetchCustomers(...a) }))
 // Sidebar imports signOutUser from here; stub it so firebase stays untouched.
@@ -64,7 +66,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
   // No offline orders to number by default — the page reconciles before fetching.
-  reconcileOrderNumbers.mockResolvedValue(false)
+  reconcileOrderNumbers.mockResolvedValue({ numbered: false, remaining: false })
+  waitForOrderWritesFlush.mockResolvedValue(undefined)
   fetchCustomers.mockResolvedValue([
     customer({ id: 'c-anna', name: 'Анна' }),
     customer({ id: 'c-boris', name: 'Борис' }),
@@ -295,7 +298,7 @@ describe('OrdersPage offline numbering', () => {
 
   it('fills in the № live when connectivity returns, without a reload', async () => {
     // An order created offline has no number yet — the table shows "—".
-    reconcileOrderNumbers.mockResolvedValue(false)
+    reconcileOrderNumbers.mockResolvedValue({ numbered: false, remaining: false })
     fetchOrders.mockResolvedValue([order({ id: 'o1', number: null, customerId: 'c-anna' })])
 
     renderPage()
@@ -304,12 +307,38 @@ describe('OrdersPage offline numbering', () => {
 
     // Reconnecting numbers the order and the background reload returns the real
     // №, so the cell updates in place — no manual page reload.
-    reconcileOrderNumbers.mockResolvedValue(true)
+    reconcileOrderNumbers.mockResolvedValue({ numbered: true, remaining: false })
     fetchOrders.mockResolvedValue([order({ id: 'o1', number: 7, customerId: 'c-anna' })])
     window.dispatchEvent(new Event('online'))
 
     await within(tbl).findByText('7')
     expect(within(tbl).queryByText('—')).not.toBeInTheDocument()
+  })
+
+  it('retries numbering when the queued writes flush, without an online event', async () => {
+    // The production stall: Firestore is blocked while the OS network stays
+    // "up", so the `online` event NEVER fires — the first reconcile pass fails
+    // mid-numbering (remaining: true) and the retry must key off the offline
+    // write queue flushing (the actual connectivity window) instead.
+    let flush!: () => void
+    waitForOrderWritesFlush.mockReturnValue(new Promise<void>((resolve) => { flush = resolve }))
+    reconcileOrderNumbers.mockResolvedValue({ numbered: false, remaining: true })
+    fetchOrders.mockResolvedValue([order({ id: 'o1', number: null, customerId: 'c-anna' })])
+
+    renderPage()
+    const tbl = await screen.findByTestId('orders-table')
+    expect(within(tbl).getByText('—')).toBeInTheDocument()
+
+    // The queue reaches the server → the flush promise resolves → the SECOND
+    // pass runs at exactly that moment and numbers the order; the invalidated
+    // list refetch shows the real № in place.
+    reconcileOrderNumbers.mockResolvedValue({ numbered: true, remaining: false })
+    fetchOrders.mockResolvedValue([order({ id: 'o1', number: 15, customerId: 'c-anna' })])
+    flush()
+
+    await within(tbl).findByText('15')
+    expect(within(tbl).queryByText('—')).not.toBeInTheDocument()
+    expect(reconcileOrderNumbers).toHaveBeenCalledTimes(2)
   })
 
   it('seeds the date filter from navigation state (a clicked month on the stats tab)', async () => {

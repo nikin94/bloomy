@@ -1,6 +1,13 @@
 import { useEffect } from 'react'
 import { useQuery, useSuspenseQuery, useQueryClient } from '@tanstack/react-query'
-import { fetchOrders, fetchDeletedOrders, fetchOrder, reconcileOrderNumbers } from '@/firebase/orders'
+import {
+  fetchOrders,
+  fetchDeletedOrders,
+  fetchOrder,
+  reconcileOrderNumbers,
+  waitForOrderWritesFlush,
+} from '@/firebase/orders'
+import type { ReconcileResult } from '@/firebase/orders'
 import type { Order } from '@/types/order'
 import { queryKeys } from './keys'
 
@@ -110,30 +117,55 @@ export const useOrderCache = () => {
 // hand-rolled load()+reconcile() dual-fetch AND fixes its race — invalidation makes
 // TanStack run a single refetch that always supersedes any in-flight one, so a
 // stale snapshot can no longer clobber the freshly-numbered data.
+//
+// RETRY: a failed pass (remaining: true — Firestore unreachable mid-numbering)
+// re-arms on waitForOrderWritesFlush, which resolves exactly when the queued
+// local writes reach the server, i.e. when connectivity actually returns. The
+// `online` event alone is NOT enough — when only Firestore is blocked
+// (antivirus SSL inspection) the OS network stays "up" and the event never
+// fires; that gap is precisely how orders sat at number:null for days while
+// their create writes slipped through brief connectivity windows the reconcile
+// never saw. A few passes per trigger, not an unbounded loop: each genuine
+// retry corresponds to a real queue flush, and the cap keeps a pathological
+// "remaining but nothing queued" state (flush resolves immediately) from
+// spinning hot.
 export const useReconcileOrderNumbers = (ownerId: string | undefined) => {
   const queryClient = useQueryClient()
   useEffect(() => {
     if (!ownerId) return
     let active = true
-    const run = () =>
-      reconcileOrderNumbers(ownerId)
-        .then((numbered) => {
-          if (active && numbered) {
-            // Both lists: the reconcile scan has no deleted filter, so an order
-            // created offline and then trashed gets numbered too — without this
-            // the trash would keep showing "—" until its stale window lapses.
-            void queryClient.invalidateQueries({ queryKey: queryKeys.orders(ownerId) })
-            void queryClient.invalidateQueries({ queryKey: queryKeys.deletedOrders(ownerId) })
-          }
-        })
-        .catch(() => {
-          // Offline / Firebase unreachable: leave the list as-is, retry on reconnect.
-        })
-    run()
-    window.addEventListener('online', run)
+    const run = async () => {
+      for (let pass = 0; active && pass < 3; pass++) {
+        let outcome: ReconcileResult
+        try {
+          outcome = await reconcileOrderNumbers(ownerId)
+        } catch {
+          // The listing itself failed (offline, no cache) — leave the list
+          // as-is and retry on the next trigger.
+          return
+        }
+        if (!active) return
+        if (outcome.numbered) {
+          // Both lists: the reconcile scan has no deleted filter, so an order
+          // created offline and then trashed gets numbered too — without this
+          // the trash would keep showing "—" until its stale window lapses.
+          void queryClient.invalidateQueries({ queryKey: queryKeys.orders(ownerId) })
+          void queryClient.invalidateQueries({ queryKey: queryKeys.deletedOrders(ownerId) })
+        }
+        if (!outcome.remaining) return
+        try {
+          await waitForOrderWritesFlush()
+        } catch {
+          return
+        }
+      }
+    }
+    const trigger = () => void run()
+    trigger()
+    window.addEventListener('online', trigger)
     return () => {
       active = false
-      window.removeEventListener('online', run)
+      window.removeEventListener('online', trigger)
     }
   }, [ownerId, queryClient])
 }

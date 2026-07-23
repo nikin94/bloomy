@@ -75,8 +75,8 @@ describe('reconcileOrderNumbers (emulator)', () => {
     const id3 = await createOrder({ ...makeOrder(owner), dateCreated: 3000 })
     await waitForPendingWrites(db)
 
-    const numbered = await reconcileOrderNumbers(owner)
-    expect(numbered).toBe(true)
+    const result = await reconcileOrderNumbers(owner)
+    expect(result).toEqual({ numbered: true, remaining: false })
 
     const byId = new Map((await fetchOrders(owner)).map((o) => [o.id, o.number]))
     expect(byId.get(id1)).toBe(1)
@@ -100,10 +100,10 @@ describe('reconcileOrderNumbers (emulator)', () => {
     await createOrder(makeOrder(owner))
     await waitForPendingWrites(db)
 
-    expect(await reconcileOrderNumbers(owner)).toBe(true)
+    expect(await reconcileOrderNumbers(owner)).toEqual({ numbered: true, remaining: false })
     const first = (await fetchOrders(owner)).map((o) => o.number).sort()
     // Nothing left unnumbered, so the second pass assigns nobody.
-    expect(await reconcileOrderNumbers(owner)).toBe(false)
+    expect(await reconcileOrderNumbers(owner)).toEqual({ numbered: false, remaining: false })
     const second = (await fetchOrders(owner)).map((o) => o.number).sort()
     expect(second).toEqual(first)
   })

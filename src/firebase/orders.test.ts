@@ -29,8 +29,12 @@ import {
 } from './orders'
 import type { NewOrder } from './orders'
 import type { Order } from '@/types/order'
+import { reportError } from '@/observability/reportError'
 
 vi.mock('./client', () => ({ db: {} }))
+// The Sentry sink is mocked so the reconcile failure-report test can assert on
+// it (the real one is a no-op in tests, but an assertion needs the spy).
+vi.mock('@/observability/reportError', () => ({ reportError: vi.fn() }))
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn(() => ({})),
   deleteField: vi.fn(() => ({ __deleted: true })),
@@ -40,6 +44,7 @@ vi.mock('firebase/firestore', () => ({
   query: vi.fn(() => ({})),
   runTransaction: vi.fn(),
   setDoc: vi.fn(),
+  waitForPendingWrites: vi.fn(),
   // Timestamp.fromMillis is a pure client value; stub it to a tagged object so a
   // test can assert the purge timestamp without pulling in the real SDK.
   Timestamp: { fromMillis: vi.fn((ms: number) => ({ __ts: ms })) },
@@ -143,22 +148,81 @@ describe('reconcileOrderNumbers', () => {
     const assigned: number[] = []
     fakeCounterTransactions(assigned)
 
-    const numbered = await reconcileOrderNumbers('owner-1')
+    const result = await reconcileOrderNumbers('owner-1')
 
-    expect(numbered).toBe(true)
+    expect(result).toEqual({ numbered: true, remaining: false })
     // Two transactions (one per unnumbered order), assigning 1 then 2 — the
     // already-numbered 'c' is filtered out and never enters a transaction.
     expect(runTransaction).toHaveBeenCalledTimes(2)
     expect(assigned).toEqual([1, 2])
   })
 
-  it('returns false and runs no transaction when every order is already numbered', async () => {
+  it('reports nothing done and runs no transaction when every order is already numbered', async () => {
     vi.mocked(getDocs).mockResolvedValue(snapshotOf([{ id: 'a', data: storedOrder({ number: 1 }) }]))
 
-    const numbered = await reconcileOrderNumbers('owner-1')
+    const result = await reconcileOrderNumbers('owner-1')
 
-    expect(numbered).toBe(false)
+    expect(result).toEqual({ numbered: false, remaining: false })
     expect(runTransaction).not.toHaveBeenCalled()
+  })
+
+  it('does not claim success when the transaction skipped (already numbered elsewhere)', async () => {
+    // The listing sees number:null, but by transaction time another device has
+    // numbered the order — the tx must skip AND the pass must not report
+    // `numbered` (the old boolean did, causing pointless list refetches).
+    vi.mocked(getDocs).mockResolvedValue(
+      snapshotOf([{ id: 'a', data: storedOrder({ number: null, dateCreated: 1000 }) }]),
+    )
+    vi.mocked(runTransaction).mockImplementation(async (_db, fn) => {
+      const tx = {
+        get: vi.fn(async () => ({ exists: () => true, data: () => ({ number: 5 }) })),
+        set: vi.fn(),
+        update: vi.fn(),
+      }
+      // @ts-expect-error — minimal fake tx
+      return fn(tx)
+    })
+
+    const result = await reconcileOrderNumbers('owner-1')
+
+    expect(result).toEqual({ numbered: false, remaining: false })
+  })
+
+  it('stops on a failed transaction, flags the remainder and reports to Sentry when online', async () => {
+    // Two unnumbered orders; the FIRST transaction fails (Firestore unreachable
+    // while the browser thinks it's online — the invisible antivirus case).
+    // The pass must stop, flag `remaining` for the flush-keyed retry, and
+    // report the error — the old silent catch hid this exact stall for days.
+    vi.mocked(getDocs).mockResolvedValue(
+      snapshotOf([
+        { id: 'a', data: storedOrder({ number: null, dateCreated: 1000 }) },
+        { id: 'b', data: storedOrder({ number: null, dateCreated: 2000 }) },
+      ]),
+    )
+    const failure = new Error('firestore unavailable')
+    vi.mocked(runTransaction).mockRejectedValue(failure)
+
+    const result = await reconcileOrderNumbers('owner-1')
+
+    expect(result).toEqual({ numbered: false, remaining: true })
+    // One attempt, then stop — the second order would fail the same way.
+    expect(runTransaction).toHaveBeenCalledTimes(1)
+    // jsdom's navigator.onLine defaults to true, so the report fires.
+    expect(reportError).toHaveBeenCalledWith(failure, 'reconcileOrderNumbers')
+  })
+
+  it('stays quiet in Sentry when the browser is genuinely offline', async () => {
+    vi.mocked(getDocs).mockResolvedValue(
+      snapshotOf([{ id: 'a', data: storedOrder({ number: null, dateCreated: 1000 }) }]),
+    )
+    vi.mocked(runTransaction).mockRejectedValue(new Error('offline'))
+    const onLine = vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false)
+
+    const result = await reconcileOrderNumbers('owner-1')
+
+    expect(result).toEqual({ numbered: false, remaining: true })
+    expect(reportError).not.toHaveBeenCalled()
+    onLine.mockRestore()
   })
 })
 
