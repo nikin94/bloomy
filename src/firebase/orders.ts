@@ -8,6 +8,7 @@ import {
   runTransaction,
   setDoc,
   updateDoc,
+  waitForPendingWrites,
   where,
   writeBatch,
 } from 'firebase/firestore'
@@ -113,6 +114,15 @@ export function createOrder(order: NewOrder, id?: string): string {
 // storage path before the order document is written (see createOrder's `id`).
 export const newOrderId = (): string => doc(collection(db, ORDERS_COLLECTION)).id
 
+// What one reconcile pass achieved: `numbered` — at least one order got its
+// real number (the caller refetches the lists); `remaining` — unnumbered orders
+// were left behind because a transaction failed (Firestore unreachable), so the
+// caller should re-arm a retry instead of assuming the pass finished the job.
+export interface ReconcileResult {
+  numbered: boolean
+  remaining: boolean
+}
+
 // Assign real per-owner numbers to any of the owner's orders still created
 // offline (number === null). Runs online (it uses transactions). For each
 // unnumbered order, in creation order, a transaction reads the owner's counter,
@@ -121,40 +131,65 @@ export const newOrderId = (): string => doc(collection(db, ORDERS_COLLECTION)).i
 // re-reads the order inside itself and skips if another device already numbered
 // it, so reconciling twice is safe and idempotent.
 //
-// Returns true if it numbered at least one order (the caller can then refetch).
-// Best-effort: if a transaction fails (offline / Firebase unreachable), it stops
-// and leaves the rest unnumbered for the next online reconcile — never throws.
-export async function reconcileOrderNumbers(ownerId: string): Promise<boolean> {
+// Best-effort: if a transaction fails (Firestore unreachable), it stops and
+// reports `remaining: true` so the caller can retry once connectivity is truly
+// back (see waitForOrderWritesFlush) — but it never throws past the getDocs.
+//
+// The failure is REPORTED when the browser believes it is online: that is the
+// invisible case — the network is "up" but Firestore specifically is blocked
+// (antivirus SSL inspection), so the `online` event never fires and, before
+// this report, the numbering could silently stall for days (orders №15+ stuck
+// at null while their create writes did reach the server through brief
+// connectivity windows). A plain offline browser stays quiet — that path is
+// routine and would only burn the Sentry quota.
+export async function reconcileOrderNumbers(ownerId: string): Promise<ReconcileResult> {
   const q = query(collection(db, ORDERS_COLLECTION), where('ownerId', '==', ownerId))
   const snapshot = await getDocs(q)
   const unnumbered = snapshot.docs
     .filter((d) => d.data().number === null)
     .sort((a, b) => ((a.data().dateCreated as number) ?? 0) - ((b.data().dateCreated as number) ?? 0))
 
-  let numberedAny = false
+  let numbered = false
   const counterRef = doc(db, COUNTERS_COLLECTION, ownerId)
   for (const docSnap of unnumbered) {
     const orderRef = doc(db, ORDERS_COLLECTION, docSnap.id)
     try {
-      await runTransaction(db, async (tx) => {
+      // The transaction reports whether it actually stamped a number: a skip
+      // (doc gone / already numbered elsewhere) must not claim success — the
+      // old boolean did, triggering pointless list refetches.
+      const stamped = await runTransaction(db, async (tx) => {
         const orderSnap = await tx.get(orderRef)
         // Gone, or already numbered by another device since we listed — skip.
-        if (!orderSnap.exists() || orderSnap.data()?.number !== null) return
+        if (!orderSnap.exists() || orderSnap.data()?.number !== null) return false
         const counterSnap = await tx.get(counterRef)
         const lastNumber = (counterSnap.data()?.lastOrderNumber as number | undefined) ?? 0
         const nextNumber = lastNumber + 1
         tx.set(counterRef, { lastOrderNumber: nextNumber }, { merge: true })
         tx.update(orderRef, { number: nextNumber })
+        return true
       })
-      numberedAny = true
-    } catch {
-      // Offline / Firebase blocked: the remaining orders would fail the same
-      // way, so stop and try again on the next online load.
-      break
+      if (stamped) numbered = true
+    } catch (err) {
+      // Firebase unreachable: the remaining orders would fail the same way, so
+      // stop this pass. Report ONLY when the browser thinks it's online (see
+      // the function comment) — a genuinely offline device stays quiet.
+      if (typeof navigator === 'undefined' || navigator.onLine) {
+        reportError(err, 'reconcileOrderNumbers')
+      }
+      return { numbered, remaining: true }
     }
   }
-  return numberedAny
+  return { numbered, remaining: false }
 }
+
+// Resolves once every write queued in the local offline cache has been
+// acknowledged by the server. This is the ONE signal that fires exactly when
+// connectivity to Firestore actually returns after a create was queued: the
+// browser `online` event never fires when only Firestore is blocked (the
+// network itself stays "up"), so the numbering retry keys off this instead —
+// the moment the queued create lands is the moment its numbering transaction
+// can finally run. Resolves immediately when the queue is already empty.
+export const waitForOrderWritesFlush = (): Promise<void> => waitForPendingWrites(db)
 
 // Optional order fields that can be CLEARED by an edit. The edit form omits a
 // field it has no value for (an empty comment, a non-completed order), so on a
