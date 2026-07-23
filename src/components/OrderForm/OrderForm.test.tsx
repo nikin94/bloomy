@@ -692,6 +692,13 @@ describe('OrderForm draft (create only, localStorage)', () => {
     await user.clear(screen.getByLabelText('Название'))
     expect(localStorage.getItem(DRAFT_KEY)).toBeNull()
     expect(screen.queryByText(/Восстановлен черновик/)).not.toBeInTheDocument()
+
+    // …and it must not RESURRECT when a new plant name is typed: that starts a
+    // fresh autosaved draft, and "восстановлен черновик" would describe the
+    // wrong one (the restored draft is gone for good).
+    await user.type(screen.getByLabelText('Название'), 'Кактус')
+    expect(localStorage.getItem(DRAFT_KEY)).not.toBeNull()
+    expect(screen.queryByText(/Восстановлен черновик/)).not.toBeInTheDocument()
   })
 
   it('persists a draft once a plant is named, but not for stray typing without one', async () => {

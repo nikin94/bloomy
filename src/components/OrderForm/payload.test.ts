@@ -89,6 +89,15 @@ describe('buildOrderPayload', () => {
     expect(order).not.toHaveProperty('photos')
   })
 
+  it('omits gifts when no gift row was ever added (giftName: null)', () => {
+    // null ("no gift row") and '' ("row added, name blank") are DISTINCT states
+    // in the form model that the payload folds into the same omission via
+    // `giftName?.trim() ?? ''`. Asserting null separately keeps a refactor
+    // that splits the two branches from silently changing the null path.
+    const order = buildOrderPayload({ ...base, fields: fields({ giftName: null }) })
+    expect(order).not.toHaveProperty('gifts')
+  })
+
   it('carries a named gift (free: quantity 1, price 0), trimmed comment and completedAt', () => {
     const order = buildOrderPayload({
       ...base,

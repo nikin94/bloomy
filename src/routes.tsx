@@ -89,9 +89,11 @@ const RootLayout = () => {
 // The app's route tree, exported so App builds the browser router from it and
 // tests build a memory router from the SAME config (createMemoryRouter) instead
 // of re-declaring the routes. A data router (createBrowserRouter) — rather than
-// the declarative <BrowserRouter> — is what lets the settings page arm useBlocker
-// to prompt on an in-app leave with unsaved changes; the tree itself is unchanged
-// from the old <Routes> version.
+// the declarative <BrowserRouter> — was originally adopted for the settings
+// page's useBlocker leave-guard; settings autosave (#193) removed that guard,
+// and the data router remains as the current API (useBlocker stays available
+// to any future screen). The tree itself is unchanged from the old <Routes>
+// version.
 export const routes: RouteObject[] = [
   {
     element: <RootLayout />,

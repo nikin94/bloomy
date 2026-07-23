@@ -68,6 +68,14 @@ export function useOrderDraftSync(
   // actually announce it; content present at first paint is skipped.
   const [noticeRevealed, setNoticeRevealed] = useState(false)
 
+  // Once the plant list empties, the RESTORED draft is gone for good (the
+  // autosave below deletes it) — so the reveal is retired permanently, not just
+  // hidden: typing a new plant name after that starts a FRESH autosaved draft,
+  // and "восстановлен черновик" would describe the wrong one. Adjust-state-
+  // during-render (guarded, runs once); safe because the reveal effect is keyed
+  // on [formReady, draft] — both stable after mount — so nothing re-arms it.
+  if (noticeRevealed && !hasNamedPlant) setNoticeRevealed(false)
+
   // Serialised in render (same technique as the dirtiness snapshot) so the
   // autosave effect re-runs only when the draft CONTENTS change, not on every
   // render. Row ids are stripped — they are React keys, re-assigned on restore.
