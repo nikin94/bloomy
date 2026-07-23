@@ -58,6 +58,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   fetchDeletedOrders.mockResolvedValue([])
   fetchCustomers.mockResolvedValue([customer()])
+  // The page observes the delete promise now (visible error on rejection).
+  hardDeleteOrders.mockResolvedValue(undefined)
 })
 
 describe('DeletedOrdersPage', () => {
@@ -109,6 +111,25 @@ describe('DeletedOrdersPage', () => {
     const dialog2 = await screen.findByRole('dialog', { name: 'Очистить корзину?' })
     await user.click(within(dialog2).getByRole('button', { name: 'Удалить всё' }))
     expect(hardDeleteOrders).toHaveBeenCalledWith(['o1', 'o2'])
+  })
+
+  it('surfaces a visible error when the empty-trash batch is rejected', async () => {
+    // The app's one irreversible action must not fail silently: a rejected
+    // commit (permission/quota) shows an alert and the list re-syncs, instead
+    // of a lying empty screen with the failure known only to Sentry.
+    const user = userEvent.setup()
+    fetchDeletedOrders.mockResolvedValue([
+      order({ id: 'o1', number: 5, customerId: 'c1', deletedAt: Date.now() }),
+    ])
+    hardDeleteOrders.mockRejectedValue(new Error('permission-denied'))
+    renderPage()
+    await screen.findByTestId('orders-table')
+
+    await user.click(screen.getByRole('button', { name: 'Очистить корзину' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Очистить корзину?' })
+    await user.click(within(dialog).getByRole('button', { name: 'Удалить всё' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось очистить корзину')
   })
 
   it('shows no empty-trash button when the trash is empty', async () => {

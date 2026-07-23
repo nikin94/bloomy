@@ -5,6 +5,28 @@ import Button from '@/components/Button/Button'
 import CloseIcon from '@/components/icons/CloseIcon'
 import { cn } from '@/lib/cn'
 
+// Shared body scroll lock, ref-counted across every mounted Modal instance so
+// nested dialogs can open and close in ANY order. The page's own overflow value
+// is captured exactly once (on the 0→1 lock) and written back only when the
+// last dialog unlocks.
+let bodyScrollLocks = 0
+let bodyOverflowBeforeLock = ''
+
+const lockBodyScroll = () => {
+  if (bodyScrollLocks === 0) {
+    bodyOverflowBeforeLock = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+  }
+  bodyScrollLocks += 1
+}
+
+const unlockBodyScroll = () => {
+  bodyScrollLocks -= 1
+  if (bodyScrollLocks === 0) {
+    document.body.style.overflow = bodyOverflowBeforeLock
+  }
+}
+
 interface ModalProps {
   // Heading shown in the dialog header and used as its accessible name.
   title: string
@@ -52,15 +74,19 @@ const Modal = ({
   }, [onClose])
 
   // Body scroll lock: while a dialog is up, the page behind it must not scroll
-  // (a tall dialog's inner body scrolls instead — see the min-h-0 wrapper). The
-  // previous overflow value is restored, not blanked, so nesting/unmount order
-  // can't strand the page unscrollable. Runs once — the caller mounts on open.
+  // (a tall dialog's inner body scrolls instead — see the min-h-0 wrapper).
+  // REF-COUNTED via the module-level counter, not a per-instance closure over
+  // the previous value: with per-instance capture a non-LIFO unmount order
+  // (outer dialog A unmounts while inner B is still up — e.g. one success
+  // handler closing both) restored the page's overflow under a live dialog,
+  // and B's later cleanup then wrote back the 'hidden' it had captured —
+  // stranding the page unscrollable with no dialog left. The counter locks on
+  // 0→1 (capturing the page's own overflow once) and restores that value only
+  // on the LAST unlock, so any open/close order settles correctly. Runs once —
+  // the caller mounts on open.
   useEffect(() => {
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previous
-    }
+    lockBodyScroll()
+    return unlockBodyScroll
   }, [])
 
   // Focus trap: move focus into the dialog on open, keep Tab/Shift+Tab cycling

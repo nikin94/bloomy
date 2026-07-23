@@ -7,6 +7,7 @@ import OrderFilterControl from '@/components/OrderFilterControl/OrderFilterContr
 import Button from '@/components/Button/Button'
 import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
 import { hardDeleteOrders } from '@/firebase/orders'
+import { reportError } from '@/observability/reportError'
 import { useDeletedOrdersSuspense, useOrderCache } from '@/queries/orders'
 import { useCustomersSuspense } from '@/queries/customers'
 import { useRequiredOwnerId } from '@/hooks/useOwnerId'
@@ -47,6 +48,10 @@ const DeletedOrdersPage = () => {
   // "Empty trash" is confirmed in a modal — it PERMANENTLY deletes every trashed
   // order (no auto-purge exists anymore; this is the one way out besides Restore).
   const [confirmingEmpty, setConfirmingEmpty] = useState(false)
+  // Set when the empty-trash batch REJECTED (permission/quota — not offline,
+  // where the promise just waits): the user was promised an irreversible
+  // delete, so a failure must be said out loud, not only logged to Sentry.
+  const [emptyTrashError, setEmptyTrashError] = useState(false)
   const orderCache = useOrderCache()
 
   // Memoised so their identity is stable across renders: `columns` now feeds the
@@ -58,13 +63,29 @@ const DeletedOrdersPage = () => {
   const columns = useMemo(() => buildOrderColumns(getCustomerName, tOrder), [getCustomerName, tOrder])
 
   // Permanently delete EVERY trashed order (the full trash, not the filtered
-  // view — "empty trash" means empty). Fire-and-forget batched deletes (see
-  // hardDeleteOrders); photos are swept server-side by the cleanupOrderPhotos
-  // function on each document delete. Invalidate every order cache so the trash
-  // list refetches empty and a cached detail entry of a deleted order drops.
+  // view — "empty trash" means empty). Photos are swept server-side by the
+  // cleanupOrderPhotos function on each document delete.
+  //
+  // Still non-blocking (offline-safe: the deletes queue and flush on
+  // reconnect), but no longer silent OR racy:
+  //  • the trash cache is emptied by a direct WRITE (clearDeletedOrders), not
+  //    an invalidation — a refetch racing the batch ack could re-read the rows
+  //    from the server and flash the "deleted" orders back;
+  //  • the commit promise is observed: this is the app's one irreversible
+  //    action, so a rejection (permission, quota) surfaces as a visible error
+  //    AND re-invalidates, bringing the surviving rows back instead of leaving
+  //    a lying empty screen. Success invalidates the rest of the caches (any
+  //    cached detail entry of a deleted order drops).
   const handleEmptyTrash = () => {
+    setEmptyTrashError(false)
+    orderCache.clearDeletedOrders(ownerId)
     hardDeleteOrders(orders.map((o) => o.id))
-    orderCache.invalidateAll()
+      .then(() => orderCache.invalidateAll())
+      .catch((err) => {
+        reportError(err, 'hardDeleteOrders')
+        setEmptyTrashError(true)
+        orderCache.invalidateAll()
+      })
     setConfirmingEmpty(false)
   }
 
@@ -114,6 +135,12 @@ const DeletedOrdersPage = () => {
             {t('trash.emptyTrash')}
           </Button>
         </div>
+      )}
+
+      {emptyTrashError && (
+        <p role="alert" className={`m-0 border-b border-border bg-danger-bg ${SCREEN_GUTTER_X} py-2 text-sm text-danger`}>
+          {t('trash.emptyTrashError')}
+        </p>
       )}
 
       <DataTable

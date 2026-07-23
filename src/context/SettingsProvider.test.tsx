@@ -12,6 +12,12 @@ vi.mock('../firebase/settings', () => ({
   fetchSettings: (...args: unknown[]) => fetchSettings(...args),
   saveSettings: (...args: unknown[]) => saveSettings(...args),
 }))
+// The autosave path is fire-and-forget (no saveError alert anymore), so a
+// rejection's ONLY observable outcome is the Sentry report — mock it to assert.
+const reportError = vi.fn()
+vi.mock('../observability/reportError', () => ({
+  reportError: (...args: unknown[]) => reportError(...args),
+}))
 
 // Imported after the mock above is registered.
 import { SettingsProvider } from './SettingsProvider'
@@ -181,6 +187,25 @@ describe('SettingsProvider', () => {
     expect(cssScale()).toBe('1.25')
     expect(dataTheme()).toBe('light')
     expect(htmlLang()).toBe('en')
+  })
+
+  it('routes a rejected background save to Sentry, keeping the applied values', async () => {
+    // The fire-and-forget autosave has no visible error path by design (the
+    // optimistic values stay applied; offline just queues). A GENUINE rejection
+    // (online permission-denied) must therefore reach Sentry — otherwise a
+    // permanently failing save would be invisible everywhere.
+    const user = userEvent.setup()
+    saveSettings.mockRejectedValue(new Error('permission-denied'))
+    renderProvider()
+    await screen.findByText('scale:1')
+
+    await user.click(screen.getByRole('button', { name: 'save' }))
+
+    await waitFor(() =>
+      expect(reportError).toHaveBeenCalledWith(expect.any(Error), 'saveSettings'),
+    )
+    // The optimistic commit is not rolled back — the UI keeps what was applied.
+    await screen.findByText('scale:1.25')
   })
 
   it('falls back to the defaults when signed out and never fetches', async () => {

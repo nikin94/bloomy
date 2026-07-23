@@ -321,15 +321,23 @@ export function softDeleteOrder(id: string): void {
 // 500-writes-per-batch cap; each batch commit is fire-and-forget so emptying the
 // trash never blocks the UI and works offline (queued deletes flush on
 // reconnect). A failed commit is reported to Sentry.
-export function hardDeleteOrders(ids: string[]): void {
+// Returns a promise over ALL the batch commits, and — unlike the other
+// fire-and-forget writes — does NOT swallow a rejection: this is the app's one
+// irreversible action ("нельзя отменить" in the confirm copy), so the CALLER
+// must see a failure and tell the user, not just Sentry. The caller stays
+// non-blocking (optimistic UI + .catch), so offline behaviour is unchanged:
+// the deletes queue locally and the promise settles on reconnect.
+export function hardDeleteOrders(ids: string[]): Promise<void> {
   const BATCH_LIMIT = 400 // headroom under Firestore's hard 500-writes cap
+  const commits: Promise<void>[] = []
   for (let i = 0; i < ids.length; i += BATCH_LIMIT) {
     const batch = writeBatch(db)
     for (const id of ids.slice(i, i + BATCH_LIMIT)) {
       batch.delete(doc(db, ORDERS_COLLECTION, id))
     }
-    void batch.commit().catch((err) => reportError(err, 'hardDeleteOrders'))
+    commits.push(batch.commit())
   }
+  return Promise.all(commits).then(() => undefined)
 }
 
 // Restore a soft-deleted order: REMOVE every trash field (rather than store a

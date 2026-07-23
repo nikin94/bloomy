@@ -7,6 +7,7 @@ import {
   PAYMENT_METHOD_SCHEMA,
   PAYMENT_STATUS_SCHEMA,
 } from '@/types/order'
+import { reportError } from '@/observability/reportError'
 
 // Local draft of the CREATE order form (see OrderForm). Written to localStorage —
 // deliberately NOT Firestore: the draft is device-local scratch state, half-typed
@@ -93,5 +94,22 @@ export const clearOrderDraft = (ownerId: string): void => {
     localStorage.removeItem(draftKey(ownerId))
   } catch {
     // Same best-effort contract as saveOrderDraft.
+  }
+}
+
+// Sign-out hygiene: drop EVERY account's draft on this device, not just the
+// current user's. A draft holds typed customer PII (name/phone/address) in
+// plaintext localStorage; another account's leftover draft is the same leak,
+// and sign-out is the one moment we can sweep it without knowing that uid.
+// The version-less prefix is deliberate — a v2 draft would be PII all the same.
+// Unlike the per-draft helpers this failure IS reported (not swallowed): the
+// call exists purely for PII hygiene, so a silent no-op (private mode, storage
+// denied) would defeat its point invisibly.
+export const clearAllOrderDrafts = (): void => {
+  try {
+    const mine = Object.keys(localStorage).filter((k) => k.startsWith('bloomy:order-draft:'))
+    for (const key of mine) localStorage.removeItem(key)
+  } catch (err) {
+    reportError(err, 'clearAllOrderDrafts')
   }
 }

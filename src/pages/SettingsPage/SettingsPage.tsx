@@ -5,7 +5,7 @@ import { useAuth } from '@/context/authContext'
 import { useSettings } from '@/context/settingsContext'
 import type { SettingsDraft } from '@/context/settingsContext'
 import { signOutUser } from '@/firebase/auth'
-import { clearOrderDraft } from '@/components/OrderForm/draft'
+import { clearAllOrderDrafts } from '@/components/OrderForm/draft'
 import { LANGUAGES } from '@/types/settings'
 import type { ThemeMode } from '@/types/settings'
 import { currencyOptions, deliveryMethodOptions, paymentMethodOptions } from '@/lib/orderLabels'
@@ -57,16 +57,23 @@ const SettingsPage = () => {
   // slide the thumb out from under the pointer) — this local state is what moves
   // the thumb in the meantime; the drag's release (onPreview) commits + saves.
   const [fontDraft, setFontDraft] = useState(fontScale)
+  // Whether the slider thumb is currently held down (reported by the slider).
+  // State, not a ref: it gates a render-time sync below, and reading a ref
+  // during render is exactly what the purity rules forbid.
+  const [fontDragging, setFontDragging] = useState(false)
   // Re-sync the thumb whenever the SAVED scale changes from outside a drag —
   // above all when the user's settings resolve from Firestore after this page
   // already mounted (fontDraft seeded from the default would otherwise leave the
   // thumb stranded at 1). Adjust-state-during-render (the pattern React
-  // recommends over an effect), keyed on the saved value: during a drag
-  // fontScale doesn't move, so the held thumb is never yanked.
+  // recommends over an effect), keyed on the saved value. The dragging guard
+  // covers the one way fontScale CAN move mid-drag — a first session where the
+  // Firestore settings resolve while the thumb is held: the change is swallowed
+  // (syncedScale still advances) and the held thumb is never yanked; the user's
+  // release commits their own choice, which rightly wins over the loaded value.
   const [syncedScale, setSyncedScale] = useState(fontScale)
   if (fontScale !== syncedScale) {
     setSyncedScale(fontScale)
-    setFontDraft(fontScale)
+    if (!fontDragging) setFontDraft(fontScale)
   }
 
   const [error, setError] = useState<string | null>(null)
@@ -107,12 +114,13 @@ const SettingsPage = () => {
     // navigates away via the auth change anyway).
     setError(null)
     try {
-      // Drop the order-form draft BEFORE signing out: it holds typed customer
+      // Drop order-form drafts BEFORE signing out: a draft holds typed customer
       // PII (name/phone/address) in plaintext localStorage and would otherwise
-      // linger on the device indefinitely after logout. Cleared first (while
-      // the uid is still known); a failed sign-out leaves the session live, and
-      // losing a draft in that edge is an acceptable trade for never leaking one.
-      if (user) clearOrderDraft(user.uid)
+      // linger on the device indefinitely after logout. ALL accounts' drafts are
+      // swept, not just the current uid's — a previous account's leftover is the
+      // same leak. A failed sign-out leaves the session live, and losing a draft
+      // in that edge is an acceptable trade for never leaking one.
+      clearAllOrderDrafts()
       await signOutUser()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('settings:signOutError'))
@@ -156,6 +164,7 @@ const SettingsPage = () => {
                   drag is a single save, not one per notch. */}
               <FontSizeSlider
                 value={fontDraft}
+                onDraggingChange={setFontDragging}
                 onDraftChange={setFontDraft}
                 onPreview={(next) => commit({ fontScale: next })}
               />

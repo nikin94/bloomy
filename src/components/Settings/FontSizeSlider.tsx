@@ -40,10 +40,16 @@ const FontSizeSlider = ({
   value,
   onDraftChange,
   onPreview,
+  onDraggingChange,
 }: {
   value: number
   onDraftChange: (next: number) => void
   onPreview: (next: number) => void
+  // Mirrors the internal draggingRef up to the caller, so the page can hold
+  // off re-syncing the draft from a saved value that changes MID-drag (the
+  // first-session case: Firestore settings resolve while the thumb is held —
+  // without the guard the sync would yank the thumb out from under the pointer).
+  onDraggingChange?: (dragging: boolean) => void
 }) => {
   const { t } = useTranslation('settings')
   const draggingRef = useRef(false)
@@ -55,6 +61,7 @@ const FontSizeSlider = ({
   }
   const handlePointerDown = () => {
     draggingRef.current = true
+    onDraggingChange?.(true)
   }
   // Drag ended (pointer up, or capture lost when released off-element): apply the
   // final scale in one reflow. Read the value off the DOM so we don't depend on
@@ -62,6 +69,7 @@ const FontSizeSlider = ({
   const handleDragEnd = (e: React.PointerEvent<HTMLInputElement>) => {
     if (!draggingRef.current) return
     draggingRef.current = false
+    onDraggingChange?.(false)
     onPreview(Number(e.currentTarget.value))
   }
 
