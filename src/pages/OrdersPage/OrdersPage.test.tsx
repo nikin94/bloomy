@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderPageInLayout } from '@/test/renderPageInLayout'
 import type { Order } from '@/types/order'
@@ -10,13 +10,13 @@ import { order as baseOrder, customer as baseCustomer } from '@/test/factories'
 // SDK. We test the filter behaviour (search + status) over an in-memory list.
 const fetchOrders = vi.fn()
 const reconcileOrderNumbers = vi.fn()
-const waitForOrderWritesFlush = vi.fn()
+const waitForWriteQueueFlush = vi.fn()
 const fetchCustomers = vi.fn()
 
 vi.mock('../../firebase/orders', () => ({
   fetchOrders: (...a: unknown[]) => fetchOrders(...a),
   reconcileOrderNumbers: (...a: unknown[]) => reconcileOrderNumbers(...a),
-  waitForOrderWritesFlush: (...a: unknown[]) => waitForOrderWritesFlush(...a),
+  waitForWriteQueueFlush: (...a: unknown[]) => waitForWriteQueueFlush(...a),
 }))
 vi.mock('../../firebase/customers', () => ({ fetchCustomers: (...a: unknown[]) => fetchCustomers(...a) }))
 // Sidebar imports signOutUser from here; stub it so firebase stays untouched.
@@ -67,7 +67,7 @@ beforeEach(() => {
   localStorage.clear()
   // No offline orders to number by default — the page reconciles before fetching.
   reconcileOrderNumbers.mockResolvedValue({ numbered: false, remaining: false })
-  waitForOrderWritesFlush.mockResolvedValue(undefined)
+  waitForWriteQueueFlush.mockResolvedValue(undefined)
   fetchCustomers.mockResolvedValue([
     customer({ id: 'c-anna', name: 'Анна' }),
     customer({ id: 'c-boris', name: 'Борис' }),
@@ -321,7 +321,7 @@ describe('OrdersPage offline numbering', () => {
     // mid-numbering (remaining: true) and the retry must key off the offline
     // write queue flushing (the actual connectivity window) instead.
     let flush!: () => void
-    waitForOrderWritesFlush.mockReturnValue(new Promise<void>((resolve) => { flush = resolve }))
+    waitForWriteQueueFlush.mockReturnValue(new Promise<void>((resolve) => { flush = resolve }))
     reconcileOrderNumbers.mockResolvedValue({ numbered: false, remaining: true })
     fetchOrders.mockResolvedValue([order({ id: 'o1', number: null, customerId: 'c-anna' })])
 
@@ -339,6 +339,29 @@ describe('OrdersPage offline numbering', () => {
     await within(tbl).findByText('15')
     expect(within(tbl).queryByText('—')).not.toBeInTheDocument()
     expect(reconcileOrderNumbers).toHaveBeenCalledTimes(2)
+  })
+
+  it('collapses overlapping triggers into one run at a time (re-entrancy guard)', async () => {
+    // First pass hangs in flight; `online` events arriving meanwhile must NOT
+    // start a second interleaved pass-loop (two loops would double every pass).
+    let settleFirst!: (r: { numbered: boolean; remaining: boolean }) => void
+    reconcileOrderNumbers
+      .mockReturnValueOnce(new Promise((resolve) => { settleFirst = resolve }))
+      .mockResolvedValue({ numbered: false, remaining: false })
+    fetchOrders.mockResolvedValue([order({ id: 'o1', number: 1, customerId: 'c-anna' })])
+
+    renderPage()
+    await screen.findByTestId('orders-table')
+    expect(reconcileOrderNumbers).toHaveBeenCalledTimes(1)
+
+    window.dispatchEvent(new Event('online'))
+    window.dispatchEvent(new Event('online'))
+    expect(reconcileOrderNumbers).toHaveBeenCalledTimes(1)
+
+    // …but the trigger is not LOST either: once the in-flight run finishes,
+    // exactly one follow-up run fires for the collapsed pair of events.
+    settleFirst({ numbered: false, remaining: false })
+    await waitFor(() => expect(reconcileOrderNumbers).toHaveBeenCalledTimes(2))
   })
 
   it('seeds the date filter from navigation state (a clicked month on the stats tab)', async () => {
