@@ -77,7 +77,8 @@
     "emptyTrashTitle": "Empty the trash?",
     "emptyTrashBody_one": "{{count}} order will be permanently deleted along with its photos. This cannot be undone.",
     "emptyTrashBody_other": "{{count}} orders will be permanently deleted along with their photos. This cannot be undone.",
-    "emptyTrashConfirm": "Delete all"
+    "emptyTrashConfirm": "Delete all",
+    "emptyTrashError": "Couldn't empty the trash — the orders are still here. Please try again."
   },
   "detail": {
     "deletedBanner": "This order is deleted and in the trash.",

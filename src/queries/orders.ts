@@ -101,6 +101,15 @@ export const useOrderCache = () => {
       void queryClient.invalidateQueries({ queryKey: ['orders'] })
       void queryClient.invalidateQueries({ queryKey: ['deletedOrders'] })
     },
+    // Optimistically empty the TRASH list cache — the empty-trash action. A
+    // cache WRITE, deliberately not an invalidation: the deletes are queued
+    // fire-and-forget, so a refetch racing the batch ack could re-read the
+    // rows from the server and flash the "deleted" orders back into the list.
+    // Writing [] shows the end state at once; a genuine failure re-syncs via
+    // invalidateAll in the caller's .catch.
+    clearDeletedOrders: (ownerId: string | undefined) => {
+      queryClient.setQueryData<Order[]>(queryKeys.deletedOrders(ownerId), [])
+    },
     // Every order cache — the lists AND any cached order detail. Used on
     // create / edit / soft-delete / restore, where the row moves or is new.
     invalidateAll: () => {

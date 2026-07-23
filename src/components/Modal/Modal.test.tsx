@@ -109,4 +109,31 @@ describe('Modal body scroll lock', () => {
     expect(document.body.style.overflow).toBe('scroll')
     document.body.style.overflow = ''
   })
+
+  it('survives a non-LIFO close order across nested dialogs (ref-counted)', () => {
+    // Outer A unmounts FIRST while inner B is still up (e.g. one success
+    // handler closing both). Per-instance capture used to restore the page's
+    // overflow under the live B and then strand it 'hidden' after B's cleanup;
+    // the ref-count keeps the lock while ANY dialog lives and restores the
+    // page's own value only on the last unlock.
+    document.body.style.overflow = 'scroll'
+    const a = render(
+      <Modal title="Внешний" onClose={() => {}}>
+        <p>А</p>
+      </Modal>,
+    )
+    const b = render(
+      <Modal title="Вложенный" onClose={() => {}}>
+        <p>Б</p>
+      </Modal>,
+    )
+    expect(document.body.style.overflow).toBe('hidden')
+
+    a.unmount() // non-LIFO: the OUTER dialog goes first
+    expect(document.body.style.overflow).toBe('hidden') // B still up → still locked
+
+    b.unmount()
+    expect(document.body.style.overflow).toBe('scroll') // page's own value is back
+    document.body.style.overflow = ''
+  })
 })

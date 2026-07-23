@@ -518,7 +518,7 @@ describe('hardDeleteOrders', () => {
     const batch = { delete: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) }
     vi.mocked(writeBatch).mockReturnValue(batch as unknown as ReturnType<typeof writeBatch>)
 
-    hardDeleteOrders(['o1', 'o2'])
+    await hardDeleteOrders(['o1', 'o2'])
 
     expect(batch.delete).toHaveBeenCalledTimes(2)
     expect(batch.commit).toHaveBeenCalledTimes(1)
@@ -535,12 +535,22 @@ describe('hardDeleteOrders', () => {
       return batch as unknown as ReturnType<typeof writeBatch>
     })
 
-    hardDeleteOrders(Array.from({ length: 401 }, (_, i) => `o${i}`))
+    await hardDeleteOrders(Array.from({ length: 401 }, (_, i) => `o${i}`))
 
     expect(batches).toHaveLength(2)
     expect(batches[0].delete).toHaveBeenCalledTimes(400)
     expect(batches[1].delete).toHaveBeenCalledTimes(1)
     expect(batches[0].commit).toHaveBeenCalledTimes(1)
     expect(batches[1].commit).toHaveBeenCalledTimes(1)
+  })
+
+  it('REJECTS when a batch commit fails — the caller must see the failure', async () => {
+    // Unlike the app's fire-and-forget writes this is the one irreversible
+    // action, so a rejection surfaces to the caller (visible error + resync)
+    // instead of being swallowed into Sentry here.
+    const batch = { delete: vi.fn(), commit: vi.fn().mockRejectedValue(new Error('denied')) }
+    vi.mocked(writeBatch).mockReturnValue(batch as unknown as ReturnType<typeof writeBatch>)
+
+    await expect(hardDeleteOrders(['o1'])).rejects.toThrow('denied')
   })
 })
