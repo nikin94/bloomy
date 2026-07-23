@@ -285,6 +285,28 @@ describe('updateOrder', () => {
     })
   })
 
+  it('with a base, treats FRESH value-equal objects as unchanged (the deep-compare path)', async () => {
+    // The other tests spread the base, so nested values (plants, gifts) are
+    // SHARED references and the cheap `a === b` short-circuit hides the
+    // JSON.stringify comparison entirely. In the app the form REBUILDS the
+    // plants array from its input rows on every save — fresh objects that are
+    // only VALUE-equal to the mount-time base. If the deep compare ever broke
+    // (e.g. a key-order change in the form's literal), every save would resend
+    // the mount-time plants as "changed" and the LWW lost-update bug would
+    // silently return — so this pins the deep path with zero shared references.
+    const base = storedOrder({
+      number: 7,
+      comment: 'note',
+      gifts: [{ name: 'Суккулент', quantity: 1, unitPriceMinor: 0 }],
+    }) as Omit<Order, 'id'>
+    const next = structuredClone(base)
+
+    await updateOrder('o1', next, base)
+
+    // Nothing changed by value → nothing written, nothing deleted.
+    expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {})
+  })
+
   it('with a base, clears a field only when the order actually had it', async () => {
     const base = storedOrder({ number: 7, comment: 'note', completedAt: 1700 }) as Omit<Order, 'id'>
     // The edit drops the comment and completedAt (cleared in the form) and

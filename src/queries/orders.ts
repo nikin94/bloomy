@@ -5,7 +5,7 @@ import {
   fetchDeletedOrders,
   fetchOrder,
   reconcileOrderNumbers,
-  waitForOrderWritesFlush,
+  waitForWriteQueueFlush,
 } from '@/firebase/orders'
 import type { ReconcileResult } from '@/firebase/orders'
 import type { Order } from '@/types/order'
@@ -118,45 +118,77 @@ export const useOrderCache = () => {
 // TanStack run a single refetch that always supersedes any in-flight one, so a
 // stale snapshot can no longer clobber the freshly-numbered data.
 //
+// Floor delay before the SECOND and later retry passes. The first retry rides
+// the queue flush alone — in the real stall the flush IS the connectivity
+// window, and waiting past it would miss it. But the flush resolves
+// immediately when the queue is already empty (and it is a GLOBAL queue — a
+// settings write can drain it before the order create lands, see
+// waitForWriteQueueFlush), so without a floor the remaining passes would burn
+// back-to-back within milliseconds while Firestore is still unreachable.
+const RECONCILE_RETRY_FLOOR_MS = 30_000
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
 // RETRY: a failed pass (remaining: true — Firestore unreachable mid-numbering)
-// re-arms on waitForOrderWritesFlush, which resolves exactly when the queued
-// local writes reach the server, i.e. when connectivity actually returns. The
+// re-arms on waitForWriteQueueFlush, which resolves when the queued local
+// writes reach the server, i.e. when connectivity actually returns. The
 // `online` event alone is NOT enough — when only Firestore is blocked
 // (antivirus SSL inspection) the OS network stays "up" and the event never
 // fires; that gap is precisely how orders sat at number:null for days while
 // their create writes slipped through brief connectivity windows the reconcile
-// never saw. A few passes per trigger, not an unbounded loop: each genuine
-// retry corresponds to a real queue flush, and the cap keeps a pathological
-// "remaining but nothing queued" state (flush resolves immediately) from
-// spinning hot.
+// never saw. A few passes per trigger, not an unbounded loop; passes after the
+// first retry additionally wait out RECONCILE_RETRY_FLOOR_MS, so an
+// instantly-resolving flush cannot spin the bounded loop hot.
 export const useReconcileOrderNumbers = (ownerId: string | undefined) => {
   const queryClient = useQueryClient()
   useEffect(() => {
     if (!ownerId) return
     let active = true
+    // Re-entrancy: `running` collapses overlapping triggers (an `online` event
+    // firing while a run is mid-flight must not start a SECOND interleaved
+    // loop — two loops share nothing and would double every pass); `rerun`
+    // remembers that a trigger arrived mid-run so the signal isn't lost — the
+    // finished run starts one fresh pass-loop in its place.
+    let running = false
+    let rerun = false
     const run = async () => {
-      for (let pass = 0; active && pass < 3; pass++) {
-        let outcome: ReconcileResult
-        try {
-          outcome = await reconcileOrderNumbers(ownerId)
-        } catch {
-          // The listing itself failed (offline, no cache) — leave the list
-          // as-is and retry on the next trigger.
-          return
+      if (running) {
+        rerun = true
+        return
+      }
+      running = true
+      try {
+        for (let pass = 0; active && pass < 3; pass++) {
+          let outcome: ReconcileResult
+          try {
+            outcome = await reconcileOrderNumbers(ownerId)
+          } catch {
+            // The listing itself failed (offline, no cache) — leave the list
+            // as-is and retry on the next trigger.
+            return
+          }
+          if (!active) return
+          if (outcome.numbered) {
+            // Both lists: the reconcile scan has no deleted filter, so an order
+            // created offline and then trashed gets numbered too — without this
+            // the trash would keep showing "—" until its stale window lapses.
+            void queryClient.invalidateQueries({ queryKey: queryKeys.orders(ownerId) })
+            void queryClient.invalidateQueries({ queryKey: queryKeys.deletedOrders(ownerId) })
+          }
+          if (!outcome.remaining) return
+          try {
+            await waitForWriteQueueFlush()
+          } catch {
+            return
+          }
+          // First retry (pass 0 → 1) goes immediately — the flush was the
+          // connectivity window. Later ones wait out the floor; see above.
+          if (pass >= 1) await sleep(RECONCILE_RETRY_FLOOR_MS)
         }
-        if (!active) return
-        if (outcome.numbered) {
-          // Both lists: the reconcile scan has no deleted filter, so an order
-          // created offline and then trashed gets numbered too — without this
-          // the trash would keep showing "—" until its stale window lapses.
-          void queryClient.invalidateQueries({ queryKey: queryKeys.orders(ownerId) })
-          void queryClient.invalidateQueries({ queryKey: queryKeys.deletedOrders(ownerId) })
-        }
-        if (!outcome.remaining) return
-        try {
-          await waitForOrderWritesFlush()
-        } catch {
-          return
+      } finally {
+        running = false
+        if (rerun && active) {
+          rerun = false
+          void run()
         }
       }
     }

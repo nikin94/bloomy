@@ -133,7 +133,7 @@ export interface ReconcileResult {
 //
 // Best-effort: if a transaction fails (Firestore unreachable), it stops and
 // reports `remaining: true` so the caller can retry once connectivity is truly
-// back (see waitForOrderWritesFlush) — but it never throws past the getDocs.
+// back (see waitForWriteQueueFlush) — but it never throws past the getDocs.
 //
 // The failure is REPORTED when the browser believes it is online: that is the
 // invisible case — the network is "up" but Firestore specifically is blocked
@@ -183,13 +183,17 @@ export async function reconcileOrderNumbers(ownerId: string): Promise<ReconcileR
 }
 
 // Resolves once every write queued in the local offline cache has been
-// acknowledged by the server. This is the ONE signal that fires exactly when
-// connectivity to Firestore actually returns after a create was queued: the
+// acknowledged by the server. GLOBAL semantics, on purpose: this is the whole
+// Firestore write queue — settings and customer writes drain it too, so a
+// resolve does NOT prove an order write specifically landed. That is fine for
+// what it is used as: a CONNECTIVITY signal, not an order-level ack — the
 // browser `online` event never fires when only Firestore is blocked (the
-// network itself stays "up"), so the numbering retry keys off this instead —
-// the moment the queued create lands is the moment its numbering transaction
-// can finally run. Resolves immediately when the queue is already empty.
-export const waitForOrderWritesFlush = (): Promise<void> => waitForPendingWrites(db)
+// network itself stays "up"), so the numbering retry keys off this instead;
+// a premature resolve just runs one extra reconcile pass, which reports
+// remaining and re-arms. Resolves immediately when the queue is already empty
+// (see the retry floor in useReconcileOrderNumbers, which keeps that case from
+// spinning the bounded retry loop hot).
+export const waitForWriteQueueFlush = (): Promise<void> => waitForPendingWrites(db)
 
 // Optional order fields that can be CLEARED by an edit. The edit form omits a
 // field it has no value for (an empty comment, a non-completed order), so on a
