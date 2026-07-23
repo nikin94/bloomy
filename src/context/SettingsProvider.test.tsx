@@ -92,28 +92,34 @@ describe('SettingsProvider', () => {
     renderProvider()
     await waitFor(() => expect(fetchSettings).toHaveBeenCalledWith('owner-1'))
     await screen.findByText('scale:1.25')
-    expect(cssScale()).toBe('1.25')
+    // The document apply lives in a PASSIVE EFFECT, while findByText resolves on
+    // the render COMMIT (its MutationObserver sees the probe text before the
+    // effect flushes) — asserting the attribute synchronously here is a race,
+    // and exactly the flake that kept tripping this suite (theme twice locally,
+    // language once in CI). Every document-side-effect assert below therefore
+    // waits for the effect instead of racing it.
+    await waitFor(() => expect(cssScale()).toBe('1.25'))
   })
 
   it('loads the saved theme and applies it to the document + cache', async () => {
     fetchSettings.mockResolvedValue({ theme: 'light' })
     renderProvider()
     await screen.findByText('theme:light')
-    expect(dataTheme()).toBe('light')
+    await waitFor(() => expect(dataTheme()).toBe('light'))
     expect(localStorage.getItem('bloomy-theme')).toBe('light')
   })
 
   it('defaults to the dark theme when none is saved', async () => {
     renderProvider()
     await screen.findByText('theme:dark')
-    expect(dataTheme()).toBe('dark')
+    await waitFor(() => expect(dataTheme()).toBe('dark'))
   })
 
   it('loads the saved language and applies it to <html lang> + cache', async () => {
     fetchSettings.mockResolvedValue({ language: 'en' })
     renderProvider()
     await screen.findByText('lang:en')
-    expect(htmlLang()).toBe('en')
+    await waitFor(() => expect(htmlLang()).toBe('en'))
     expect(localStorage.getItem('bloomy-lang')).toBe('en')
   })
 
@@ -184,9 +190,11 @@ describe('SettingsProvider', () => {
     await screen.findByText('delivery:cdek')
     await screen.findByText('payment:card')
     await screen.findByText('currency:EUR')
-    expect(cssScale()).toBe('1.25')
-    expect(dataTheme()).toBe('light')
-    expect(htmlLang()).toBe('en')
+    await waitFor(() => {
+      expect(cssScale()).toBe('1.25')
+      expect(dataTheme()).toBe('light')
+      expect(htmlLang()).toBe('en')
+    })
   })
 
   it('routes a rejected background save to Sentry, keeping the applied values', async () => {
@@ -213,8 +221,10 @@ describe('SettingsProvider', () => {
     await screen.findByText('scale:1')
     await screen.findByText('theme:dark')
     expect(fetchSettings).not.toHaveBeenCalled()
-    expect(cssScale()).toBe('1')
-    expect(dataTheme()).toBe('dark')
+    await waitFor(() => {
+      expect(cssScale()).toBe('1')
+      expect(dataTheme()).toBe('dark')
+    })
   })
 
   it('hands consumers the same context value across an unrelated re-render (memoised)', async () => {
