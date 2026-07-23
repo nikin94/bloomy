@@ -452,6 +452,28 @@ const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, on
             onChange={(e) => form.setFields({ address: e.target.value })}
           />
 
+          {/* Marketplace source — right under the address (owner request): the
+              checkbox completes the client block ("who / where / from which
+              channel") before the divider, mirroring the detail page where the
+              Avito chip sits under the address. Checked ⇢ source: 'avito',
+              unchecked ⇢ null (stored as an absent field — see payload.ts). The
+              label wraps the input, so the whole text is tappable — a
+              comfortable target on a phone without extra layout.
+              `accent-primary` keeps the native checkbox on-theme. `-my-2.5`
+              tightens the row against the column's gap-5 (a one-line checkbox
+              doesn't need a full field's breathing room above and below); the
+              kept `py-1` stays INSIDE the label, so the tap target doesn't
+              shrink with the visual gap. */}
+          <label className="-my-2.5 flex w-fit cursor-pointer items-center gap-2 py-1 text-sm text-text">
+            <input
+              type="checkbox"
+              checked={fields.source === 'avito'}
+              onChange={(e) => form.setFields({ source: e.target.checked ? 'avito' : null })}
+              className="size-4 accent-primary"
+            />
+            {t('form.sourceAvito')}
+          </label>
+
           {/* The plant list is set off by a divider above and below instead of a
               text heading. The legend is kept sr-only so the group still has an
               accessible name. min-w-0 defeats the fieldset UA `min-inline-size:
@@ -662,27 +684,6 @@ const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, on
               onChange={(e) => form.setFields({ deliveryPrice: e.target.value })}
             />
           </div>
-
-          {/* Marketplace source — a plain full-width checkbox row, deliberately
-              NOT a fourth cell in the 3-column select grid above (which would
-              break its rhythm on desktop and orphan a lone control on phones).
-              Checked ⇢ source: 'avito', unchecked ⇢ null (stored as an absent
-              field — see payload.ts). The label wraps the input, so the whole
-              text is tappable — a comfortable target on a phone without extra
-              layout. `accent-primary` keeps the native checkbox on-theme.
-              `-my-2.5` tightens the row against the column's gap-5 (a one-line
-              checkbox doesn't need a full field's breathing room above and
-              below); the kept `py-1` stays INSIDE the label, so the tap target
-              doesn't shrink with the visual gap. */}
-          <label className="-my-2.5 flex w-fit cursor-pointer items-center gap-2 py-1 text-sm text-text">
-            <input
-              type="checkbox"
-              checked={fields.source === 'avito'}
-              onChange={(e) => form.setFields({ source: e.target.checked ? 'avito' : null })}
-              className="size-4 accent-primary"
-            />
-            {t('form.sourceAvito')}
-          </label>
 
           <Textarea
             className="min-h-20 w-full"

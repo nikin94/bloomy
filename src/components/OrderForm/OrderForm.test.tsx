@@ -588,6 +588,25 @@ describe('OrderForm', () => {
     expect(screen.getByLabelText('Сумма предоплаты')).toHaveValue('1500')
   })
 
+  it('puts the Avito checkbox in the client block, right after the address', async () => {
+    fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
+    renderForm({ initialOrder: order({ customerId: 'c1' }) })
+    await screen.findByRole('combobox', { name: 'Существующий клиент' })
+
+    // DOM order (owner request): address → Avito checkbox → the plants block,
+    // so the checkbox completes the client section instead of trailing the
+    // logistics near the bottom of the form.
+    const address = screen.getByLabelText('Адрес доставки')
+    const checkbox = screen.getByRole('checkbox', { name: 'Заказ с Авито' })
+    const plantName = screen.getByLabelText('Название')
+    expect(
+      address.compareDocumentPosition(checkbox) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(
+      checkbox.compareDocumentPosition(plantName) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
   it('prefills the Avito checkbox from an edited order and from a repeat seed', async () => {
     fetchCustomers.mockResolvedValue([customer({ id: 'c1', name: 'Анна' })])
     // Edit: the order's own source checks the box.
