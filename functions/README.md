@@ -3,23 +3,31 @@
 A single Cloud Function, **`cleanupOrderPhotos`**, that deletes an order's photo
 folder from Cloud Storage when its Firestore document is deleted.
 
-This is the server half of the **trash auto-purge** feature (backlog #4). The
-client half (`deletedAt` / `purgeAt` + the "удалится через N дней" countdown)
-shipped in PR #109. Here:
+Firestore deletes documents only — nothing server-side ever touches Cloud
+Storage. So this function listens for `onDocumentDeleted('orders/{orderId}')`
+and sweeps the order's photos at `orders/{ownerId}/{orderId}/`, keeping zero
+orphaned blobs. It fires for **any** hard delete of an order document:
 
-- A **Firestore TTL policy** on the `orders` collection, keyed on the `purgeAt`
-  field, hard-deletes a trashed order's **document** ~24h after it expires
-  (30 days after it was moved to the trash).
-- TTL deletes documents only — it never touches Cloud Storage. So this function
-  listens for `onDocumentDeleted('orders/{orderId}')` and sweeps the order's
-  photos at `orders/{ownerId}/{orderId}/`, keeping zero orphaned blobs.
+- the trash page's **"Очистить корзину"** (batched hard deletes — the one way an
+  order permanently leaves the app since PR #193 made the trash manual-only);
+- the **admin reset** tool.
 
-The trigger also fires for any other hard delete (e.g. the admin reset tool), so
-those clean up their photos too. An order that never had photos is a no-op.
+An order that never had photos is a no-op.
+
+> **History — do NOT re-create a TTL policy.** This function originally shipped
+> as the server half of a trash auto-purge (PR #109): a Firestore TTL policy on
+> `orders.purgeAt` hard-deleted trashed documents ~30 days after deletion, and
+> this function swept their photos. PR #193 removed the auto-purge (owner
+> decision: emptying the trash is a deliberate action, never a background one),
+> and the TTL policy was deleted server-side on 2026-07-19. A `purgeAt` field
+> lingering on an old trashed document is inert and must stay that way — with
+> no policy, nothing reads it. The function itself is purge-mechanism-agnostic
+> (it keys off document deletion, not off who deleted it), so it survived the
+> feature change unchanged.
 
 > **Migration note (#6):** if/when the backend moves off Google (PocketBase),
-> this function and the TTL policy are thrown away and replaced by the new
-> backend's own retention mechanism. Keep it minimal.
+> this function is thrown away and replaced by the new backend's own cleanup.
+> Keep it minimal.
 
 ---
 
@@ -42,26 +50,3 @@ firebase deploy --only functions
 ```
 
 (`predeploy` compiles `functions/src` → `functions/lib` automatically.)
-
-## Enable the TTL policy (OWNER-ONLY, one time)
-
-The function only removes photos; the **document** purge is done by Firestore's
-native TTL. Turn it on once, either in the console or via gcloud:
-
-- **Console:** Firestore → your database → **Time-to-live (TTL)** → *Create
-  policy* → collection group `orders`, timestamp field `purgeAt`.
-- **gcloud:**
-  ```bash
-  gcloud firestore fields ttls update purgeAt \
-    --collection-group=orders --enable-ttl --project=bloomy-b69df
-  ```
-
-Documents whose `purgeAt` is in the past become eligible and are deleted within
-~24h. Orders written by PR #109 already carry `purgeAt`, so no backfill is needed.
-
-> **Clock-skew note (reviewer, PR #109):** `purgeAt` is stamped with the client's
-> `Date.now()` at soft-delete time, so a skewed client clock shifts the purge
-> moment. On a **30-day** window this is immaterial (even an hour's skew is
-> ~0.14%), so it is accepted rather than corrected with an extra always-firing
-> trigger. If exact server-authoritative timing is ever needed, add a write
-> trigger that re-stamps `purgeAt` from the event time.

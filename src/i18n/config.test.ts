@@ -1,7 +1,9 @@
 // Exercises the i18n engine directly — the part most likely to surprise: Russian
-// has four plural forms (one/few/many/other → день/дня/дней), which i18next picks
-// via Intl.PluralRules from the `days_one/_few/_many/_other` keys. This locks that
-// in and proves a language switch swaps both translations and plural rules.
+// has four plural forms (one/few/many/other → заказ/заказа/заказов), which
+// i18next picks via Intl.PluralRules from `_one/_few/_many/_other` key suffixes
+// (e.g. the trash confirm's `emptyTrashBody_*`, the stats tab's `orders_*`).
+// This locks that in and proves a language switch swaps both translations and
+// plural rules.
 import { describe, it, expect } from 'vitest'
 import i18n, { resources } from './config'
 
@@ -36,7 +38,7 @@ describe('i18n', () => {
     expect(i18n.t('common:save')).toBe('Сохранить')
   })
 
-  // 1→день, 2-4→дня, 5-20→дней, then it repeats by the last digit(s).
+  // 1→заказ, 2-4→заказа, 5-20→заказов, then it repeats by the last digit(s).
   it.each([
     [1, '1 заказ будет удалён'],
     [2, '2 заказа будут удалены'],
