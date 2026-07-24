@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SearchControl from '@/components/SearchControl/SearchControl'
+import EmptyState from '@/components/EmptyState/EmptyState'
 import CustomerEditModal from '@/components/CustomerEditModal/CustomerEditModal'
 import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
 import { softDeleteCustomer, updateCustomer } from '@/firebase/customers'
@@ -98,9 +99,7 @@ const CustomersPage = () => {
     <>
       <div className="min-h-0 flex-1 overflow-auto">
         {visibleCustomers.length === 0 ? (
-          <p className="px-4 py-8 text-center text-text">
-            {searchActive ? t('common:nothingFound') : t('list.empty')}
-          </p>
+          <EmptyState>{searchActive ? t('common:nothingFound') : t('list.empty')}</EmptyState>
         ) : (
           <>
             {/* Desktop: a full-width table matching the orders/trash lists. */}

@@ -14,6 +14,7 @@ import type { OrderColumn, OrderSort } from '@/components/DataTable/orderColumns
 import SortChevron from '@/components/icons/SortChevron'
 import { FOCUS_RING_INSET } from '@/styles/fieldStyles'
 import { cn } from '@/lib/cn'
+import EmptyState from '@/components/EmptyState/EmptyState'
 import { cellValue } from './rowHelpers'
 import OrderTableRow from './OrderTableRow'
 import OrderCard from './OrderCard'
@@ -215,7 +216,7 @@ const DataTable = ({
   if (rows.length === 0) {
     return (
       <div className="min-h-0 flex-1 overflow-auto">
-        <p className="px-4 py-8 text-center text-text">{emptyMessage ?? t('nothingFound')}</p>
+        <EmptyState>{emptyMessage ?? t('nothingFound')}</EmptyState>
       </div>
     )
   }

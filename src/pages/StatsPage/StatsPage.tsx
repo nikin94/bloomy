@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import LegendItem from './LegendItem'
 import Select from '@/components/Select/Select'
+import EmptyState from '@/components/EmptyState/EmptyState'
 import { FIELD_BASE, FIELD_NORMAL, FOCUS_RING } from '@/styles/fieldStyles'
 import { SCREEN_PADDING } from '@/styles/screenStyles'
 import { cn } from '@/lib/cn'
@@ -91,24 +92,28 @@ const StatsPage = () => {
 
   return (
     <div className={`min-h-0 flex-1 overflow-auto ${SCREEN_PADDING}`}>
-      {/* Full-width (the sidebar freed the horizontal space): the KPI cards flow
-          into an auto-fill grid that fills the width, the status bar and the
-          month chart stretch to it. No centred max-width column with empty gutters. */}
-      <div className="flex w-full flex-col gap-6">
-        <header className="flex flex-wrap items-center justify-between gap-3 max-md:justify-end">
-          {/* On a phone the page title lives in the top bar (the sidebar's mobile
-              bar), so it's hidden here to avoid showing it twice; the period
-              selector stays. On desktop (no top bar) the heading shows in place. */}
-          <h1 className="m-0 text-2xl font-semibold text-heading max-md:hidden">{t('title')}</h1>
+      {orders.length === 0 ? (
+        // No orders yet: only the centred empty message — no title and no period
+        // selector, since there is nothing to name or scope (on desktop the title
+        // would otherwise sit alone above the message). Matches every other
+        // screen's empty state — see EmptyState.
+        <EmptyState>{t('empty')}</EmptyState>
+      ) : (
+        // Full-width (the sidebar freed the horizontal space): the KPI cards flow
+        // into an auto-fill grid that fills the width; the status bar and month
+        // chart stretch to it. No centred max-width column with empty gutters.
+        <div className="flex w-full flex-col gap-6">
+          <header className="flex flex-wrap items-center justify-between gap-3 max-md:justify-end">
+            {/* On a phone the page title lives in the top bar (the sidebar's mobile
+                bar), so it's hidden here to avoid showing it twice; the period
+                selector stays. On desktop (no top bar) the heading shows in place. */}
+            <h1 className="m-0 text-2xl font-semibold text-heading max-md:hidden">{t('title')}</h1>
 
-          {/* Period selector — a dropdown of presets plus a "custom range"
-              option (native <select> = the expected mobile control, and it
-              scales to more presets without crowding the header). Hidden when
-              there is no data to scope. */}
-          {orders.length > 0 && (
-            // Below 425px the preset picker stretches to the full screen width
-            // (a comfortable tap target on the narrowest phones) instead of the
-            // fixed 224px it keeps from there up.
+            {/* Period selector — a dropdown of presets plus a "custom range"
+                option (native <select> = the expected mobile control, and it
+                scales to more presets without crowding the header). Below 425px
+                it stretches to the full screen width (a comfortable tap target
+                on the narrowest phones) instead of the fixed 224px from there up. */}
             <div className="w-48 shrink-0 max-[424px]:w-full">
               <Select
                 aria-label={t('period.aria')}
@@ -122,8 +127,7 @@ const StatsPage = () => {
                 ))}
               </Select>
             </div>
-          )}
-        </header>
+          </header>
 
         {/* Custom range: two native date fields, shown only for the custom
             preset. `max`/`min` cross-link them so the range can never be
@@ -133,7 +137,7 @@ const StatsPage = () => {
             <Input>) on purpose: a native date input always paints a browser
             format hint, so `:placeholder-shown` never matches and a floating
             label would never settle down — keep them plain. */}
-        {orders.length > 0 && preset === 'custom' && (
+        {preset === 'custom' && (
           <div className="flex flex-wrap items-end gap-4">
             {/* Below 425px each field spans the full width (stacked) so the
                 native date pickers stay comfortably tappable on the narrowest
@@ -163,9 +167,6 @@ const StatsPage = () => {
           </div>
         )}
 
-        {orders.length === 0 ? (
-          <p className="m-0 text-text">{t('empty')}</p>
-        ) : (
           <>
             {/* KPI cards: order count + per-currency money. The emphasised
                 bottom line is the NET plant revenue (the number the operator
@@ -352,8 +353,8 @@ const StatsPage = () => {
               </div>
             </section>
           </>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }
