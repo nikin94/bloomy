@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { patchOrder, softDeleteOrder, restoreOrder } from '@/firebase/orders'
@@ -24,7 +24,7 @@ import {
 import { asEnum } from '@/utils/asEnum'
 import { SCREEN_PADDING, SCREEN_GUTTER_X } from '@/styles/screenStyles'
 import { useRequiredOwnerId } from '@/hooks/useOwnerId'
-import { useHeaderTitle } from '@/context/headerTitleContext'
+import { usePageHeaderTitle } from '@/hooks/usePageHeaderTitle'
 import { STATUS_BLOCK_FIELDS } from '@/lib/statusBlockOrder'
 import Button from '@/components/Button/Button'
 import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
@@ -136,28 +136,13 @@ const OrderDetailPage = () => {
 
   // MOBILE top bar names this screen with the order itself: the number on the
   // title line, the creation date right under it (owner request — it frees the
-  // content's first row for the client + actions). Published through the layout's
-  // title slot (see headerTitleContext); null until the order loads keeps the bar
-  // quiet instead of flashing a placeholder. Memoised per the slot's contract.
-  // Desktop is untouched — the bar is md:hidden, the in-content heading remains.
-  const headerTitle = useMemo(
-    () =>
-      order ? (
-        <div className="flex min-w-0 flex-col">
-          <h1 className="m-0 min-w-0 truncate text-lg font-semibold leading-tight text-heading">
-            {t('detail.title', { number: formatOrderNumber(order.number) })}
-            {order.number === null && (
-              <span className="ml-2 text-xs font-normal text-text">{t('detail.unsynced')}</span>
-            )}
-          </h1>
-          <span className="mt-0.5 text-xs leading-tight text-text">
-            {formatDate(order.dateCreated)}
-          </span>
-        </div>
-      ) : null,
-    [order, t],
-  )
-  useHeaderTitle(headerTitle)
+  // content's first row for the client + actions). Null until the order loads
+  // keeps the bar quiet instead of flashing a placeholder. Desktop is untouched
+  // — the bar is md:hidden, the in-content heading remains.
+  usePageHeaderTitle(order ? t('detail.title', { number: formatOrderNumber(order.number) }) : null, {
+    subtitle: order ? formatDate(order.dateCreated) : undefined,
+    titleNote: order?.number === null ? t('detail.unsynced') : undefined,
+  })
 
   // The status-block rows, built as PLAIN JSX here (closures over saveStatus
   // are created in the component's own render scope, where the compiler can

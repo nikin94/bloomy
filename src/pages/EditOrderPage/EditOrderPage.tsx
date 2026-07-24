@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import OrderForm from '@/components/OrderForm/OrderForm'
@@ -6,7 +5,7 @@ import { updateOrder } from '@/firebase/orders'
 import { useOrderSuspense, useOrderCache } from '@/queries/orders'
 import { useCustomerCache } from '@/queries/customers'
 import { useRequiredOwnerId } from '@/hooks/useOwnerId'
-import { useHeaderTitle } from '@/context/headerTitleContext'
+import { usePageHeaderTitle } from '@/hooks/usePageHeaderTitle'
 import { formatOrderNumber } from '@/types/order'
 import { SCREEN_PADDING } from '@/styles/screenStyles'
 
@@ -35,22 +34,12 @@ const EditOrderPage = () => {
   // number on the title line — with the small line under it saying
   // "Редактирование" instead of the creation date (owner request; the date
   // belongs to the view screen, the mode word belongs here). Published through
-  // the layout's title slot (see headerTitleContext); memoised per the slot's
-  // contract; null (no order) keeps the bar quiet. Must run BEFORE the
-  // not-found early return — hooks are unconditional.
-  const headerTitle = useMemo(
-    () =>
-      order ? (
-        <div className="flex min-w-0 flex-col">
-          <h1 className="m-0 min-w-0 truncate text-lg font-semibold leading-tight text-heading">
-            {t('detail.title', { number: formatOrderNumber(order.number) })}
-          </h1>
-          <span className="mt-0.5 text-xs leading-tight text-text">{t('form.editing')}</span>
-        </div>
-      ) : null,
-    [order, t],
-  )
-  useHeaderTitle(headerTitle)
+  // the shared bar-title hook (usePageHeaderTitle owns the node + its memo);
+  // null (no order) keeps the bar quiet. Must run BEFORE the not-found early
+  // return — hooks are unconditional.
+  usePageHeaderTitle(order ? t('detail.title', { number: formatOrderNumber(order.number) }) : null, {
+    subtitle: order ? t('form.editing') : undefined,
+  })
 
   if (!order) {
     return (

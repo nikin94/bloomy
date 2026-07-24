@@ -33,7 +33,6 @@
   "form": {
     "name": "Customer name",
     "phone": "Phone",
-    "phoneHint": "+7 900 000-00-00",
     "address": "Address",
     "note": "Customer note",
     "saveError": "Couldn't save the customer"

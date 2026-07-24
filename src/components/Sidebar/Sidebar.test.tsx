@@ -319,4 +319,11 @@ describe('Sidebar (mobile back button)', () => {
     renderSidebar('/orders')
     expect(screen.queryByRole('button', { name: 'Назад' })).not.toBeInTheDocument()
   })
+
+  it('shows no back control on the create-order form (its Cancel button is the way out)', () => {
+    // /orders/new is an inner page but carries its own Cancel button in the
+    // pinned footer, so the bar back arrow would be a redundant second exit.
+    renderSidebar('/orders/new')
+    expect(screen.queryByRole('button', { name: 'Назад' })).not.toBeInTheDocument()
+  })
 })

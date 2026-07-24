@@ -12,6 +12,7 @@ import type { CustomerEdits } from '@/firebase/customers'
 import { useCustomerSuspense, useCustomerCache } from '@/queries/customers'
 import { useOrdersSuspense } from '@/queries/orders'
 import { useRequiredOwnerId } from '@/hooks/useOwnerId'
+import { usePageHeaderTitle } from '@/hooks/usePageHeaderTitle'
 import { formatDate, formatMoney } from '@/utils/format'
 import {
   revenueByCurrencyMinor,
@@ -69,6 +70,12 @@ const CustomerPage = () => {
   // doesn't duplicate the customer form.
   const [editing, setEditing] = useState(false)
 
+  // MOBILE top bar names this screen with the customer, like the order pages;
+  // the in-content h1 hides on phones (max-md:hidden below). masked: the name
+  // is PII — starred out in Sentry replays here too, matching the content h1's
+  // own data-sentry-mask. Null (not found) keeps the bar quiet.
+  usePageHeaderTitle(customer?.name ?? null, { masked: true })
+
   // Persist an edit, then optimistically mirror it onto the single-customer cache
   // (what this page reads) so the page updates live, and invalidate the LIST caches
   // (address book + orders-page name resolution) — not the single cache, which we
@@ -122,13 +129,18 @@ const CustomerPage = () => {
                   drops to its own line. On a phone the control is a compact pencil
                   icon (shrink-0 → never wraps, always flush right even beside a
                   multi-line name); from sm up it's the full text button. */}
-              <header className="flex items-start justify-between gap-3">
+              {/* max-md:justify-end: on a phone the name lives in the top bar
+                  (usePageHeaderTitle above) and the h1 hides, so the edit
+                  control alone keeps its right-edge spot instead of drifting
+                  left with justify-between's single child. */}
+              <header className="flex items-start justify-between gap-3 max-md:justify-end">
                 {/* data-sentry-mask: the name + contact fields below are the
                     customer's PII, kept starred out in Sentry replays while the
-                    labels/stats stay readable (see observability/sentry.ts). */}
+                    labels/stats stay readable (see observability/sentry.ts).
+                    DESKTOP-only — the phone reads the name from the top bar. */}
                 <h1
                   data-sentry-mask
-                  className="m-0 min-w-0 break-words text-2xl font-semibold text-heading"
+                  className="m-0 min-w-0 break-words text-2xl font-semibold text-heading max-md:hidden"
                 >
                   {customer.name}
                 </h1>

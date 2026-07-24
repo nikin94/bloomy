@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
 import { QueryWrapper } from '@/test/queryWrapper'
+import { renderPageInLayout } from '@/test/renderPageInLayout'
 import { AuthContext } from '@/context/authContext'
 import { SettingsContext } from '@/context/settingsContext'
 import type { SettingsState } from '@/context/settingsContext'
@@ -104,6 +105,22 @@ describe('NewOrderPage', () => {
     // The form is gated on the customer fetch; the name input appears after it.
     expect(await screen.findByLabelText('Имя клиента')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Новый заказ' })).toBeInTheDocument()
+  })
+
+  it('publishes "Новый заказ" into the mobile top bar (in-layout)', async () => {
+    // Mounted inside AppLayout: the page names the bar via the shared
+    // usePageHeaderTitle hook, like the order/edit pages. TWO headings end up
+    // in the tree — the bar's (phones) and the form's own (desktop,
+    // max-md:hidden) — and CSS alone decides which is visible; jsdom keeps
+    // both, so assert the pair.
+    renderPageInLayout(
+      <SettingsContext.Provider value={settingsState()}>
+        <NewOrderPage />
+      </SettingsContext.Provider>,
+    )
+    await waitFor(() =>
+      expect(screen.getAllByRole('heading', { name: 'Новый заказ' })).toHaveLength(2),
+    )
   })
 
   it('suggests the distinct plant names from prior orders and fills the field on pick', async () => {

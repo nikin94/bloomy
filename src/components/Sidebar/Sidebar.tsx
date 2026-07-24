@@ -201,9 +201,13 @@ const Sidebar = ({
     () => ({ collapsed, expand: expandSidebar, collapse: collapseSidebar }),
     [collapsed, expandSidebar, collapseSidebar],
   )
-  // Inner pages (order/customer detail, the create/edit form) get a mobile "up"
+  // Inner pages (order/customer detail, the edit form) get a mobile "up"
   // control; the top-level nav destinations are the top screen, so they don't.
-  const showBack = !TOP_LEVEL_PATHS.includes(location.pathname)
+  // The create form (/orders/new) is the exception: it already carries its own
+  // Cancel button in the pinned footer, so a bar back arrow would be a redundant
+  // second way out — suppressed there.
+  const showBack =
+    !TOP_LEVEL_PATHS.includes(location.pathname) && location.pathname !== '/orders/new'
 
   // The settings sections + the active one (from the URL `?section=`). The nav here
   // and the settings page read the same param, so the highlight always matches the
