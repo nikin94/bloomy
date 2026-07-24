@@ -5,6 +5,7 @@ import { createOrder } from '@/firebase/orders'
 import { useOrderCache } from '@/queries/orders'
 import { useCustomerCache } from '@/queries/customers'
 import { useConsumeNavState } from '@/hooks/useConsumeNavState'
+import { usePageHeaderTitle } from '@/hooks/usePageHeaderTitle'
 import type { Order } from '@/types/order'
 
 // Create-order screen: a thin wrapper over the shared OrderForm. The form owns
@@ -16,6 +17,11 @@ const NewOrderPage = () => {
   const orderCache = useOrderCache()
   const customerCache = useCustomerCache()
 
+  // MOBILE top bar names this screen ("Новый заказ"), like every other inner
+  // page; the form's own heading below hides on phones (headingClassName) so
+  // the screen is never named twice.
+  usePageHeaderTitle(t('form.newHeading'))
+
   // "Repeat" (repeat order) navigates here with the source order in history
   // state; OrderForm seeds a fresh create form from its contents. Consumed once
   // (then stripped from history), so a refresh or back-nav starts a blank order.
@@ -24,6 +30,10 @@ const NewOrderPage = () => {
   return (
     <OrderForm
       heading={t('form.newHeading')}
+      // Desktop-only (the mobile bar above carries the title), sized to match
+      // the order/edit pages' h1 so all three order screens share one heading
+      // typography.
+      headingClassName="max-md:hidden text-2xl"
       seed={seed}
       onCancel={() => navigate('/orders')}
       onSubmit={async (order, orderId) => {

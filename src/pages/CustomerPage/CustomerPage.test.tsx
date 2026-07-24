@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from 'firebase/auth'
 import { QueryWrapper } from '@/test/queryWrapper'
+import { renderPageInLayout } from '@/test/renderPageInLayout'
 import { AuthContext } from '@/context/authContext'
 import type { Order } from '@/types/order'
 import { formatDate } from '@/utils/format'
@@ -81,6 +82,19 @@ describe('CustomerPage', () => {
     expect(screen.getByText('+7 900 111-22-33')).toBeInTheDocument()
     expect(screen.getByText('ул. Лесная, 8')).toBeInTheDocument()
     expect(screen.getByText('любит кактусы')).toBeInTheDocument()
+  })
+
+  it('publishes the masked customer name into the mobile top bar (in-layout)', async () => {
+    // Mounted inside AppLayout: the page names the bar via the shared
+    // usePageHeaderTitle hook. TWO headings with the name end up in the tree —
+    // the bar's (phones) and the content's (desktop, max-md:hidden) — CSS
+    // decides which shows; jsdom keeps both. BOTH carry data-sentry-mask: the
+    // name is PII wherever it renders.
+    renderPageInLayout(<CustomerPage />)
+    await waitFor(() => expect(screen.getAllByRole('heading', { name: 'Анна' })).toHaveLength(2))
+    for (const heading of screen.getAllByRole('heading', { name: 'Анна' })) {
+      expect(heading).toHaveAttribute('data-sentry-mask')
+    }
   })
 
   it('derives order count, paid revenue per currency, and frequent plants', async () => {
