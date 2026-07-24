@@ -125,10 +125,10 @@ const CustomerPicker = ({
         </Select>
       )
     ) : (
-      // gap-5 matches the form column's own gap, so the three client inputs
-      // (name → phone → address, the address living OUTSIDE this fieldset in
-      // the form column) read as one evenly-spaced stack.
-      <div className="flex flex-col gap-5">
+      // gap-4 between the name and phone; the address (OUTSIDE this fieldset,
+      // in the form column) is pulled to the same 16px gap by a -mt-1 there, so
+      // name → phone → address read as one evenly-spaced 16px stack.
+      <div className="flex flex-col gap-4">
         <Input
           className="w-full"
           label={t('form.customerName')}

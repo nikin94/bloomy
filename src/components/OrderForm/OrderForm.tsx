@@ -445,8 +445,13 @@ const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, on
             onChangeNewPhone={(value) => form.setFields({ newPhone: value })}
           />
 
+          {/* -mt-1 trims the form column's gap-5 (20px) above the address down
+              to the 16px gap the CustomerPicker uses between name and phone, so
+              name → phone → address read as one evenly-spaced stack (owner
+              request). Applies in both customer modes — the existing-customer
+              select sits the same 16px above the address. */}
           <Input
-            className="w-full"
+            className="-mt-1 w-full"
             label={t('form.deliveryAddress')}
             value={fields.address}
             onChange={(e) => form.setFields({ address: e.target.value })}
@@ -480,12 +485,14 @@ const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, on
               min-content`, which otherwise stops the element from shrinking to its
               flex parent and lets a tight row overflow to the right. */}
           <span aria-hidden="true" className="h-px w-full bg-border" />
-          {/* Wider gap between item BLOCKS on a phone (gap-4) than between the
-              two input lines inside one block (the row's own gap-2): the floating
-              labels eat most of the space between inputs, so without the extra
-              separation plant 1 / plant 2 / the gift read as one solid column.
-              From `sm` up each item is a single line, so gap-2 suffices. */}
-          <fieldset className="flex min-w-0 flex-col gap-4 border-0 p-0 sm:gap-2">
+          {/* gap-4 between item BLOCKS on EVERY width: the floating labels eat
+              most of the space between inputs, so without the extra separation
+              plant 1 / plant 2 / the gift read as one solid column. Desktop used
+              to tighten to gap-2 (each item is a single line there), but the
+              rows read cramped — owner asked for the phone's roomier gap on
+              desktop too. Distinct from the row's own gap-2 between the two
+              input lines inside one plant block. */}
+          <fieldset className="flex min-w-0 flex-col gap-4 border-0 p-0">
             <legend className="sr-only">{t('form.plants')}</legend>
             {fields.items.map((item, index) => (
               <PlantItemRow
@@ -522,12 +529,12 @@ const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, on
                 From `sm` up the buttons keep their natural width on the left.
                 aria-label pins the accessible name to the FULL label on every
                 width, so screen readers (and the tests) see one stable name. */}
-            {/* Add-buttons + the positions total in ONE flex container:
-                column-REVERSE on a phone, so the total line renders ABOVE the
-                buttons while staying after them in the DOM (tab order keeps
-                the actionable buttons first); a single row from `sm` up —
-                buttons on the left, the total pushed to the right edge. */}
-            <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-center sm:gap-2">
+            {/* Add-buttons + the positions total in ONE flex container: a
+                plain column on a phone, so the add buttons render ABOVE the
+                total line (owner request — the actionable buttons lead, the
+                total closes the block); a single row from `sm` up — buttons on
+                the left, the total pushed to the right edge. */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-2">
               <div className="flex items-center gap-2">
                 <Button
                   variant="secondary"
@@ -562,9 +569,9 @@ const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, on
               {/* Positions total, labelled "Сумма растений" on every width
                   (owner request — it names WHAT is summed, where "Итого"
                   read like the order total). On a phone: its own full-width
-                  line (above the buttons, via the column-reverse) — label on
-                  the left, the sum on the right, lining up with the item
-                  rows. From `sm` up it joins the buttons' row, right-aligned. */}
+                  line below the buttons — label on the left, the sum on the
+                  right, lining up with the item rows. From `sm` up it joins
+                  the buttons' row, right-aligned. */}
               <div className="flex items-baseline justify-between gap-8 sm:ml-auto sm:justify-end sm:gap-3">
                 <span className="text-sm text-text">{t('detail.subtotal')}</span>
                 <span className="font-semibold text-heading tabular-nums">
