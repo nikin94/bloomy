@@ -125,7 +125,10 @@ const CustomerPicker = ({
         </Select>
       )
     ) : (
-      <div className="flex flex-col gap-3">
+      // gap-5 matches the form column's own gap, so the three client inputs
+      // (name → phone → address, the address living OUTSIDE this fieldset in
+      // the form column) read as one evenly-spaced stack.
+      <div className="flex flex-col gap-5">
         <Input
           className="w-full"
           label={t('form.customerName')}
@@ -135,7 +138,6 @@ const CustomerPicker = ({
         <Input
           className="w-full"
           label={t('form.phone')}
-          hint={t('form.phoneHint')}
           value={newPhone}
           onChange={(e) => onChangeNewPhone(e.target.value)}
         />
