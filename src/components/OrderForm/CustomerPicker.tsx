@@ -66,10 +66,17 @@ const CustomerPicker = ({
             : 'left-1 w-[calc(60%-0.3rem)]'
         }`}
       />
+      {/* When there are no saved customers the segment is disabled: keep the
+          default cursor and skip the hover highlight so the dead control shows
+          no interaction affordance at all. */}
       <label
-        className={`relative z-10 flex min-w-0 cursor-pointer items-center justify-center rounded-full px-2 py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary ${
-          mode === 'existing' ? 'text-white' : 'text-text hover:text-heading'
-        } ${customers.length === 0 ? 'cursor-not-allowed opacity-50' : ''}`}
+        className={`relative z-10 flex min-w-0 items-center justify-center rounded-full px-2 py-1.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-primary ${
+          customers.length === 0
+            ? 'cursor-default select-none text-text opacity-50'
+            : mode === 'existing'
+              ? 'cursor-pointer text-white'
+              : 'cursor-pointer text-text hover:text-heading'
+        }`}
       >
         <input
           type="radio"
