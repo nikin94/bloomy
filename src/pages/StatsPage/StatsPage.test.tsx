@@ -74,6 +74,9 @@ describe('StatsPage', () => {
     expect(await screen.findByText('Пока нет заказов для статистики')).toBeInTheDocument()
     // No period selector when there's nothing to scope.
     expect(screen.queryByRole('combobox', { name: 'Период статистики' })).not.toBeInTheDocument()
+    // The empty state is JUST the centred message — the desktop title is dropped
+    // (on a phone it never rendered in-content; the mobile bar names the screen).
+    expect(screen.queryByRole('heading', { name: 'Статистика' })).not.toBeInTheDocument()
   })
 
   it('renders KPIs, the status breakdown, and the monthly chart for the current period', async () => {

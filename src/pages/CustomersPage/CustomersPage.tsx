@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import SearchControl from '@/components/SearchControl/SearchControl'
+import EmptyState from '@/components/EmptyState/EmptyState'
 import CustomerEditModal from '@/components/CustomerEditModal/CustomerEditModal'
 import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
 import { softDeleteCustomer, updateCustomer } from '@/firebase/customers'
@@ -74,10 +75,16 @@ const CustomersPage = () => {
   const searchActive = query.trim() !== ''
 
   // Search lives in the global header; published via the action slot (memoised so
-  // its identity only changes with the query — see useHeaderActions).
+  // its identity only changes with the query — see useHeaderActions). Hidden when
+  // the address book is empty: there is nothing to search, so the loupe would be
+  // dead chrome. Gated on the RAW book (`customers`), not the filtered view — a
+  // query matching nothing keeps the control so it can be cleared.
   const headerActions = useMemo(
-    () => <SearchControl value={query} onChange={setQuery} label={t('list.search')} />,
-    [query, t],
+    () =>
+      customers.length === 0 ? null : (
+        <SearchControl value={query} onChange={setQuery} label={t('list.search')} />
+      ),
+    [query, t, customers.length],
   )
   useHeaderActions(headerActions)
 
@@ -92,9 +99,7 @@ const CustomersPage = () => {
     <>
       <div className="min-h-0 flex-1 overflow-auto">
         {visibleCustomers.length === 0 ? (
-          <p className="px-4 py-8 text-center text-text">
-            {searchActive ? t('common:nothingFound') : t('list.empty')}
-          </p>
+          <EmptyState>{searchActive ? t('common:nothingFound') : t('list.empty')}</EmptyState>
         ) : (
           <>
             {/* Desktop: a full-width table matching the orders/trash lists. */}

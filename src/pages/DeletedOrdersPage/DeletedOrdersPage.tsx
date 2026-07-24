@@ -96,24 +96,28 @@ const DeletedOrdersPage = () => {
 
   // Search + filter live in the global header; published via the action slot
   // (memoised so identity only changes with the state — see useHeaderActions).
+  // Hidden when the trash is empty: nothing to search or filter (gated on the
+  // RAW trash list, not the filtered view — a filter hiding every row keeps its
+  // controls so it can be cleared), mirroring the empty-trash banner's gate.
   const headerActions = useMemo(
-    () => (
-      <>
-        <SearchControl
-          value={filter.query}
-          onChange={(query) => setFilter((f) => ({ ...f, query }))}
-          label={t('trash.search')}
-        />
-        <OrderFilterControl
-          orders={orders}
-          filter={filter}
-          onChange={setFilter}
-          columns={columns}
-          sort={sort}
-          onSortChange={setSort}
-        />
-      </>
-    ),
+    () =>
+      orders.length === 0 ? null : (
+        <>
+          <SearchControl
+            value={filter.query}
+            onChange={(query) => setFilter((f) => ({ ...f, query }))}
+            label={t('trash.search')}
+          />
+          <OrderFilterControl
+            orders={orders}
+            filter={filter}
+            onChange={setFilter}
+            columns={columns}
+            sort={sort}
+            onSortChange={setSort}
+          />
+        </>
+      ),
     [filter, orders, t, columns, sort],
   )
   useHeaderActions(headerActions)

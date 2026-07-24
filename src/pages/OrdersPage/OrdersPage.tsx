@@ -73,24 +73,29 @@ const OrdersPage = () => {
   // expanding loupe; the funnel opens the shared status/currency/price dialog.
   // Published into the global header via the action slot; memoised so its
   // identity only changes with the state it depends on (see useHeaderActions).
+  // Hidden entirely when the owner has NO orders at all: there's nothing to
+  // search or filter, so the controls would be dead chrome. Gated on the RAW
+  // list (`orders`), not the filtered view — a filter that hides every row must
+  // keep its controls so the user can clear it.
   const headerActions = useMemo(
-    () => (
-      <>
-        <SearchControl
-          value={filter.query}
-          onChange={(query) => setFilter((f) => ({ ...f, query }))}
-          label={t('list.search')}
-        />
-        <OrderFilterControl
-          orders={orders}
-          filter={filter}
-          onChange={setFilter}
-          columns={columns}
-          sort={sort}
-          onSortChange={setSort}
-        />
-      </>
-    ),
+    () =>
+      orders.length === 0 ? null : (
+        <>
+          <SearchControl
+            value={filter.query}
+            onChange={(query) => setFilter((f) => ({ ...f, query }))}
+            label={t('list.search')}
+          />
+          <OrderFilterControl
+            orders={orders}
+            filter={filter}
+            onChange={setFilter}
+            columns={columns}
+            sort={sort}
+            onSortChange={setSort}
+          />
+        </>
+      ),
     [filter, orders, t, columns, sort],
   )
   useHeaderActions(headerActions)
