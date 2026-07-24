@@ -88,6 +88,9 @@ describe('CustomersPage', () => {
     fetchCustomers.mockResolvedValue([])
     renderPage()
     expect(await screen.findByText('Клиентов пока нет')).toBeInTheDocument()
+    // With no customers there is nothing to search, so the header loupe is gone.
+    const header = within(screen.getByTestId('sidebar-desktop'))
+    expect(header.queryByRole('button', { name: 'Поиск' })).not.toBeInTheDocument()
   })
 
   it('soft-deletes a customer after confirming and drops it from the list', async () => {

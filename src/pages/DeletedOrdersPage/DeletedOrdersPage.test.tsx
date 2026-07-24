@@ -152,6 +152,9 @@ describe('DeletedOrdersPage', () => {
     expect(await screen.findByText('Корзина пуста')).toBeInTheDocument()
     // No deleted orders → the page-label banner is not shown.
     expect(screen.queryByText(/Корзина — эти заказы удалены/)).not.toBeInTheDocument()
+    // …and the header search/filter controls are gone too (nothing to search).
+    expect(header().queryByRole('button', { name: 'Поиск' })).not.toBeInTheDocument()
+    expect(header().queryByRole('button', { name: 'Фильтры' })).not.toBeInTheDocument()
   })
 
   it('opens the order detail page when a trash row is clicked', async () => {

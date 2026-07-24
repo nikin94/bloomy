@@ -97,6 +97,16 @@ describe('OrdersPage filtering', () => {
   })
 
 
+  it('hides the search + filter controls when the owner has no orders', async () => {
+    fetchOrders.mockResolvedValue([])
+    renderPage()
+    // The empty-state message renders (no table); with nothing to search or
+    // filter, the header carries neither the search loupe nor the funnel.
+    expect(await screen.findByText('Заказов пока нет')).toBeInTheDocument()
+    expect(header().queryByRole('button', { name: 'Поиск' })).not.toBeInTheDocument()
+    expect(header().queryByRole('button', { name: 'Фильтры' })).not.toBeInTheDocument()
+  })
+
   it('narrows the list to orders matching the search query (by customer name)', async () => {
     const user = userEvent.setup()
     renderPage()

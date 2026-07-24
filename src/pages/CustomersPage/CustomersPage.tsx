@@ -74,10 +74,16 @@ const CustomersPage = () => {
   const searchActive = query.trim() !== ''
 
   // Search lives in the global header; published via the action slot (memoised so
-  // its identity only changes with the query — see useHeaderActions).
+  // its identity only changes with the query — see useHeaderActions). Hidden when
+  // the address book is empty: there is nothing to search, so the loupe would be
+  // dead chrome. Gated on the RAW book (`customers`), not the filtered view — a
+  // query matching nothing keeps the control so it can be cleared.
   const headerActions = useMemo(
-    () => <SearchControl value={query} onChange={setQuery} label={t('list.search')} />,
-    [query, t],
+    () =>
+      customers.length === 0 ? null : (
+        <SearchControl value={query} onChange={setQuery} label={t('list.search')} />
+      ),
+    [query, t, customers.length],
   )
   useHeaderActions(headerActions)
 
