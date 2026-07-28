@@ -109,7 +109,10 @@
     "price": "Price",
     "lineTotal": "Total",
     "gift": "Gift",
-    "subtotal": "Plants total"
+    "subtotal": "Plants total",
+    "photoWarning_one": "Order saved, but {{count}} photo didn't upload (connection) — add it via “Edit”.",
+    "photoWarning_other": "Order saved, but {{count}} photos didn't upload (connection) — add them via “Edit”.",
+    "photoWarningDismiss": "Dismiss"
   },
   "photos": {
     "title": "Photos",
@@ -123,8 +126,7 @@
     "capture": "Take a photo",
     "view": "View photo",
     "prev": "Previous photo",
-    "next": "Next photo",
-    "uploadError": "Couldn't upload some photos. An internet connection is required — try again."
+    "next": "Next photo"
   },
   "form": {
     "newHeading": "New order",

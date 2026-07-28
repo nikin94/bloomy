@@ -80,7 +80,15 @@ interface OrderFormProps {
   // `orderId` is the create form's pre-generated document id (undefined on edit):
   // photos were uploaded under it, so the caller must create the order with THIS
   // id (createOrder's `id`) to keep the photo storage path in lockstep.
-  onSubmit: (order: Omit<NewOrder, 'dateCreated'>, orderId?: string) => Promise<void>
+  // Persist the finished order (create vs update — the page decides) and navigate.
+  // `failedPhotoCount` is how many attached photos could NOT be uploaded this save
+  // (best-effort — see handleSubmit): the order is saved regardless, and the page
+  // uses it to warn the operator to re-attach the rest via edit.
+  onSubmit: (
+    order: Omit<NewOrder, 'dateCreated'>,
+    orderId?: string,
+    failedPhotoCount?: number,
+  ) => Promise<void>
   // Leave the form without saving (the caller decides where to).
   onCancel: () => void
 }
@@ -101,8 +109,8 @@ interface OrderFormProps {
 //   • payload — the pure field→document assembly (parsePlants /
 //     buildOrderPayload).
 // What REMAINS here is the orchestration only: validation order, the submit
-// flow (customer creation → deferred photo upload with rollback → onSubmit →
-// staged-removal cleanup → draft clear) and the markup.
+// flow (customer creation → best-effort photo upload → onSubmit → staged-removal
+// cleanup → draft clear) and the markup.
 const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, onCancel }: OrderFormProps) => {
   const { t } = useTranslation(['order', 'common'])
   // Order-bound t for the option helpers (typed TFunction<'order'>).
@@ -309,32 +317,30 @@ const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, on
       // original moment via the order's existing completedAt.
       const completedAt = resolveCompletedAt(fields.status, initialOrder?.completedAt, Date.now())
 
-      // Deferred photo upload: now that we're committing to save the order, upload
-      // the locally-picked files under orders/{ownerId}/{orderId}/ — on create the
-      // same pre-generated id the doc is created with below, on edit the order's
-      // own id. ALL-OR-NOTHING: if any upload fails, roll back the ones that DID
-      // land (so nothing is orphaned), surface the error and keep the user on the
-      // form to retry. Until this point nothing was uploaded, so a cancelled/
-      // abandoned form costs zero Storage writes. Uploads need a connection
-      // (Storage has no offline queue) — an offline save with new photos attached
-      // fails here; a save with no new photos still works offline.
-      let photoPaths: string[] = []
+      // Deferred photo upload, BEST-EFFORT (owner request — a failed photo must
+      // never lose the whole order): now that we're committing to save, upload the
+      // locally-picked files under orders/{ownerId}/{orderId}/ — on create the
+      // pre-generated id the doc is created with below, on edit the order's own id.
+      // A photo that fails to upload NO LONGER aborts the save (the order write is
+      // offline-safe on its own): the successful ones ride along on the order, the
+      // failures are reported + counted, and the destination page tells the
+      // operator to re-attach the rest via edit. Storage has no offline queue, so a
+      // fully-offline save simply lands the order with no new photos.
+      // (uploadOrderPhoto already force-refreshes the id token and retries once —
+      // the known field failure is a middlebox blocking the token endpoint.)
+      const photoPaths: string[] = []
+      let failedPhotoCount = 0
       if (fields.pendingFiles.length > 0) {
         const results = await Promise.allSettled(
           fields.pendingFiles.map((file) => uploadOrderPhoto(ownerId, orderId, file)),
         )
-        if (results.some((r) => r.status === 'rejected')) {
-          results.forEach((r) => {
-            if (r.status === 'rejected') reportError(r.reason, 'orderFormPhotoUpload')
-            // Best-effort rollback of any that DID upload, so a partial failure
-            // still leaves no orphan behind an order that won't be created.
-            else deleteOrderPhoto(r.value).catch((err) => reportError(err, 'orderFormPhotoRollback'))
-          })
-          setError(t('photos.uploadError'))
-          setSaving(false)
-          return
+        for (const r of results) {
+          if (r.status === 'fulfilled') photoPaths.push(r.value)
+          else {
+            failedPhotoCount += 1
+            reportError(r.reason, 'orderFormPhotoUpload')
+          }
         }
-        photoPaths = results.map((r) => (r as PromiseFulfilledResult<string>).value)
         uploadedPhotoPaths.push(...photoPaths)
       }
 
@@ -352,7 +358,7 @@ const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, on
       // The caller persists the order (create vs update) and navigates. The
       // pre-generated create id rides along so the doc lands on the same id the
       // photos were stored under (undefined/ignored on edit).
-      await onSubmit(order, isCreate ? orderId : undefined)
+      await onSubmit(order, isCreate ? orderId : undefined, failedPhotoCount)
       // The save landed — now actually delete the Storage files of the photos
       // removed in the picker (edit only; a create keeps nothing to remove).
       // Deleting only AFTER a successful save means a cancelled form or a failed

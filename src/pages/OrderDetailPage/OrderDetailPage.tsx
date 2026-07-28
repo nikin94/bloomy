@@ -25,6 +25,7 @@ import { asEnum } from '@/utils/asEnum'
 import { SCREEN_PADDING, SCREEN_GUTTER_X } from '@/styles/screenStyles'
 import { useRequiredOwnerId } from '@/hooks/useOwnerId'
 import { usePageHeaderTitle } from '@/hooks/usePageHeaderTitle'
+import { useConsumeNavState } from '@/hooks/useConsumeNavState'
 import { STATUS_BLOCK_FIELDS } from '@/lib/statusBlockOrder'
 import Button from '@/components/Button/Button'
 import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
@@ -59,6 +60,13 @@ const OrderDetailPage = () => {
   const customer = useCustomerSuspense(order?.customerId).data ?? null
   const orderCache = useOrderCache()
   // Delete is confirmed in a modal (destructive, so not a one-click action).
+  // A just-saved order with photos that FAILED to upload (create/edit best-effort
+  // path — Storage has no offline queue) arrives here carrying the failed count in
+  // router state. Consumed once (stripped from history so a refresh/back-nav can't
+  // replay it), then held in dismissable local state: the operator is told to
+  // re-attach the missing photos via "Edit", where the fix actually happens.
+  const photoWarning = useConsumeNavState<{ photoWarning?: number }>()?.photoWarning ?? 0
+  const [photoWarningShown, setPhotoWarningShown] = useState(photoWarning > 0)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   // Repeat is confirmed too (owner request): it jumps into a prefilled create
   // form, and the confirm's body explains what carries over before the jump.
@@ -222,6 +230,25 @@ const OrderDetailPage = () => {
           <span className="text-sm font-medium text-danger">{t('detail.deletedBanner')}</span>
           <Button variant="primary" size="sm" onClick={handleRestore}>
             {t('common:restore')}
+          </Button>
+        </div>
+      )}
+
+      {/* Photo-upload warning — a just-saved order whose photos didn't all
+          upload (best-effort: the order itself always saves). Pinned above the
+          body like the deleted banner, dismissable, and points at "Edit" where
+          the photos can be re-attached. role="alert" (not status): it reports a
+          partial failure the operator should act on. */}
+      {photoWarningShown && (
+        <div
+          role="alert"
+          className={`flex flex-wrap items-center justify-between gap-3 border-b border-border bg-danger-bg ${SCREEN_GUTTER_X} py-3`}
+        >
+          <span className="text-sm font-medium text-danger">
+            {t('detail.photoWarning', { count: photoWarning })}
+          </span>
+          <Button variant="secondary" size="sm" onClick={() => setPhotoWarningShown(false)}>
+            {t('detail.photoWarningDismiss')}
           </Button>
         </div>
       )}

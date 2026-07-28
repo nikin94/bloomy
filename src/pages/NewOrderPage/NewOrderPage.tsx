@@ -36,7 +36,7 @@ const NewOrderPage = () => {
       headingClassName="max-md:hidden text-2xl"
       seed={seed}
       onCancel={() => navigate('/orders')}
-      onSubmit={async (order, orderId) => {
+      onSubmit={async (order, orderId, failedPhotoCount = 0) => {
         // Stamp the creation time here; the form leaves `dateCreated` to the
         // caller so edit can preserve the original instead of overwriting it.
         // Create the doc on the form's pre-generated id so it matches the id any
@@ -44,11 +44,18 @@ const NewOrderPage = () => {
         const id = await createOrder({ ...order, dateCreated: Date.now() }, orderId)
         // The new order — and any new customer the form created — must show on the
         // lists, so invalidate the order + customer caches (they refetch on the next
-        // mount). Then go to the list (not the order page) and pass the new id so it
-        // can briefly highlight the freshly created order at the top.
+        // mount).
         orderCache.invalidateAll()
         customerCache.invalidateAll()
-        navigate('/orders', { state: { highlightId: id } })
+        // Photos are best-effort (Storage has no offline queue): if some didn't
+        // upload, land on the order's OWN page with a warning to re-attach them
+        // via edit — that's where the fix happens. Otherwise go to the list and
+        // pass the new id so it briefly highlights the freshly created row.
+        if (failedPhotoCount > 0) {
+          navigate(`/orders/${id}`, { state: { photoWarning: failedPhotoCount } })
+        } else {
+          navigate('/orders', { state: { highlightId: id } })
+        }
       }}
     />
   )

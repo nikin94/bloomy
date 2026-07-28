@@ -147,8 +147,9 @@ describe('EditOrderPage', () => {
       // write only what this edit changed (see the concurrent-edit fix).
       expect.objectContaining({ id: 'o1', status: 'processing' }),
     )
-    // Returns to the order's detail page after saving.
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/orders/o1'))
+    // Returns to the order's detail page after saving — with no photo-warning
+    // state (nothing failed), so the second arg is undefined.
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/orders/o1', undefined))
   })
 
   it('keeps a soft-deleted customer selectable when editing its order', async () => {

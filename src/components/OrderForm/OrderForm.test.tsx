@@ -194,11 +194,12 @@ describe('OrderForm', () => {
     expect(orderIdArg).toBe('pre-generated-order-id')
   })
 
-  it('rolls back a partially-uploaded set on failure, shows an error, and does not submit', async () => {
+  it('still saves the order on a partial photo failure, keeping the uploaded ones and counting the rest', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
     const user = userEvent.setup()
-    // First file uploads, second fails — the succeeded one must be rolled back so
-    // no orphan is left behind an order that never gets created.
+    // First file uploads, second fails. Best-effort (owner request): a failed
+    // photo must NEVER lose the order — the order saves with the succeeded photo,
+    // the failure is reported + counted, and the succeeded one is NOT rolled back.
     uploadOrderPhoto
       .mockResolvedValueOnce('orders/owner-1/pre-generated-order-id/a.jpg')
       .mockRejectedValueOnce(new Error('offline'))
@@ -214,10 +215,16 @@ describe('OrderForm', () => {
     ])
     await user.click(screen.getByRole('button', { name: 'Сохранить' }))
 
-    expect(await screen.findByRole('alert')).toBeInTheDocument()
-    expect(onSubmit).not.toHaveBeenCalled()
-    await waitFor(() =>
-      expect(deleteOrderPhoto).toHaveBeenCalledWith('orders/owner-1/pre-generated-order-id/a.jpg'),
+    // The order IS saved: the succeeded photo rides on the payload, and the
+    // failed-count (1) is handed to the caller so the destination page can warn.
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    const [orderArg, , failedCount] = onSubmit.mock.calls[0]
+    expect(orderArg.photos).toEqual(['orders/owner-1/pre-generated-order-id/a.jpg'])
+    expect(failedCount).toBe(1)
+    // The failure is reported, but the succeeded photo is kept (no rollback).
+    expect(reportError).toHaveBeenCalledWith(expect.any(Error), 'orderFormPhotoUpload')
+    expect(deleteOrderPhoto).not.toHaveBeenCalledWith(
+      'orders/owner-1/pre-generated-order-id/a.jpg',
     )
   })
 
@@ -242,37 +249,6 @@ describe('OrderForm', () => {
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
     await waitFor(() =>
       expect(deleteOrderPhoto).toHaveBeenCalledWith('orders/owner-1/pre-generated-order-id/p.jpg'),
-    )
-  })
-
-  it('reports and swallows a rollback failure on the partial-upload path', async () => {
-    // a.jpg uploads, b.jpg fails → the succeeded a.jpg is rolled back, but that
-    // rollback delete ALSO rejects. The failure must be swallowed (no crash) and
-    // routed to reportError — the user still sees the upload error, a.jpg stays
-    // orphaned but the flow does not blow up.
-    const onSubmit = vi.fn().mockResolvedValue(undefined)
-    const user = userEvent.setup()
-    uploadOrderPhoto
-      .mockResolvedValueOnce('orders/owner-1/pre-generated-order-id/a.jpg')
-      .mockRejectedValueOnce(new Error('offline'))
-    deleteOrderPhoto.mockRejectedValue(new Error('delete failed'))
-    const { container } = renderForm({ onSubmit })
-    await screen.findByLabelText('Имя клиента')
-    await user.type(screen.getByLabelText('Имя клиента'), 'Борис')
-    await user.type(screen.getByLabelText('Название'), 'Роза')
-    await user.type(screen.getByLabelText('Цена'), '100')
-
-    await user.upload(container.querySelector('input[type="file"]') as HTMLInputElement, [
-      new File(['a'], 'a.jpg', { type: 'image/jpeg' }),
-      new File(['b'], 'b.jpg', { type: 'image/jpeg' }),
-    ])
-    await user.click(screen.getByRole('button', { name: 'Сохранить' }))
-
-    // The upload error still surfaces; the failed rollback did not crash the flow.
-    expect(await screen.findByRole('alert')).toBeInTheDocument()
-    expect(onSubmit).not.toHaveBeenCalled()
-    await waitFor(() =>
-      expect(reportError).toHaveBeenCalledWith(expect.any(Error), 'orderFormPhotoRollback'),
     )
   })
 
