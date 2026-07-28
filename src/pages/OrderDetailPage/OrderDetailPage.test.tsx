@@ -103,6 +103,33 @@ describe('OrderDetailPage', () => {
     expect(screen.queryByText('Адрес доставки')).not.toBeInTheDocument()
   })
 
+  it('shows a dismissable photo-upload warning when arriving with the failed count in router state', async () => {
+    const user = userEvent.setup()
+    // A just-saved order whose photos didn't all upload (best-effort save) lands
+    // here carrying the failed count — the banner tells the operator to re-attach
+    // them via Edit, and dismisses on click.
+    render(
+      <QueryWrapper>
+        <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
+          <MemoryRouter initialEntries={[{ pathname: '/orders/o1', state: { photoWarning: 2 } }]}>
+            <OrderDetailPage />
+          </MemoryRouter>
+        </AuthContext.Provider>
+      </QueryWrapper>,
+    )
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    const banner = await screen.findByRole('alert')
+    expect(banner).toHaveTextContent(/2 фото не загрузил/)
+    await user.click(screen.getByRole('button', { name: 'Скрыть' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('shows no photo-upload warning on a normal visit (no router state)', async () => {
+    renderPage()
+    await screen.findByRole('heading', { name: 'Заказ №5' })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('publishes the order number + date into the mobile top bar (in-layout)', async () => {
     // Mounted inside AppLayout: the page pushes its number/date node through the
     // header-title slot, so the bar names the screen. TWO headings for the order

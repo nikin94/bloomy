@@ -1,5 +1,5 @@
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
-import { storage } from './client'
+import { auth, storage } from './client'
 import { compressImage } from '@/utils/image'
 
 // Order-photo storage layer. Photos live under
@@ -15,9 +15,20 @@ const ORDERS_PREFIX = 'orders'
 export const orderPhotoPath = (ownerId: string, orderId: string, photoId: string): string =>
   `${ORDERS_PREFIX}/${ownerId}/${orderId}/${photoId}.jpg`
 
+// How many times to try a single photo upload before giving up. Storage has no
+// offline write queue, so each upload needs a live connection AND a fresh id
+// token. In the field a middlebox (antivirus SSL inspection) can intermittently
+// block the token-refresh endpoint (securetoken.googleapis.com), failing the
+// FIRST upload with a stale/again-needed token; a forced token refresh + retry
+// clears that transient case. Bounded so a hard block gives up fast rather than
+// hanging the save.
+const MAX_UPLOAD_ATTEMPTS = 2
+
 // Compress the picked image and upload it under a fresh path; returns the stored
 // PATH (to append to order.photos), not a URL. Needs a live connection — Storage
-// has no offline write queue, so the caller surfaces a failure to the user.
+// has no offline write queue. Best-effort with a token-refresh retry (see
+// MAX_UPLOAD_ATTEMPTS); still throws if every attempt fails, and the CALLER now
+// treats that as a per-photo failure that never sinks the order save itself.
 export async function uploadOrderPhoto(
   ownerId: string,
   orderId: string,
@@ -26,8 +37,23 @@ export async function uploadOrderPhoto(
   const blob = await compressImage(file)
   const photoId = crypto.randomUUID()
   const path = orderPhotoPath(ownerId, orderId, photoId)
-  await uploadBytes(ref(storage, path), blob, { contentType: 'image/jpeg' })
-  return path
+  const storageRef = ref(storage, path)
+  let lastErr: unknown
+  for (let attempt = 1; attempt <= MAX_UPLOAD_ATTEMPTS; attempt++) {
+    try {
+      await uploadBytes(storageRef, blob, { contentType: 'image/jpeg' })
+      return path
+    } catch (err) {
+      lastErr = err
+      // Force a token refresh before the next try — the common field failure is a
+      // stale id token the SDK couldn't refresh in-band. Ignore its own failure
+      // (offline / endpoint blocked): the retry then fails too and we give up.
+      if (attempt < MAX_UPLOAD_ATTEMPTS) {
+        await auth.currentUser?.getIdToken(true).catch(() => undefined)
+      }
+    }
+  }
+  throw lastErr
 }
 
 // Resolve a stored path to a temporary download URL. Cached in-memory for the
