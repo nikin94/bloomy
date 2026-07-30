@@ -109,24 +109,7 @@
     "price": "Price",
     "lineTotal": "Total",
     "gift": "Gift",
-    "subtotal": "Plants total",
-    "photoWarning_one": "Order saved, but {{count}} photo didn't upload (connection) — add it via “Edit”.",
-    "photoWarning_other": "Order saved, but {{count}} photos didn't upload (connection) — add them via “Edit”.",
-    "photoWarningDismiss": "Dismiss"
-  },
-  "photos": {
-    "title": "Photos",
-    "open": "Open photo",
-    "alt": "Order photo",
-    "delete": "Delete photo",
-    "deleteTitle": "Delete photo?",
-    "deleteBody": "The photo will be permanently removed from the order when it is saved. Until then, leaving the form without saving keeps it.",
-    "add": "Add photo",
-    "fromGallery": "From gallery",
-    "capture": "Take a photo",
-    "view": "View photo",
-    "prev": "Previous photo",
-    "next": "Next photo"
+    "subtotal": "Plants total"
   },
   "form": {
     "newHeading": "New order",

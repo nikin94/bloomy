@@ -7,8 +7,9 @@ import { getStorage } from 'firebase-admin/storage'
 // service-account credentials (no config needed when deployed).
 initializeApp()
 
-// Storage prefix that holds an order's photos. MUST stay in lockstep with the
-// client's `orderPhotoPath` (src/firebase/photos.ts): `orders/{ownerId}/{orderId}/`.
+// Storage prefix that holds an order's photos: `orders/{ownerId}/{orderId}/`.
+// The client photo feature was removed, but this cleanup stays so a deleted
+// order still sweeps any LEGACY photos left under this prefix in Storage.
 const orderPhotoPrefix = (ownerId: string, orderId: string): string =>
   `orders/${ownerId}/${orderId}/`
 

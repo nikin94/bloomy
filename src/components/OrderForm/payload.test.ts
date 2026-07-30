@@ -21,8 +21,6 @@ const fields = (over: Partial<OrderFormFields> = {}): OrderFormFields => ({
   status: 'processing',
   source: null,
   comment: '',
-  pendingFiles: [],
-  keptPhotos: [],
   ...over,
 })
 
@@ -58,7 +56,6 @@ describe('buildOrderPayload', () => {
     ownerId: 'owner-1',
     customerId: 'c1',
     completedAt: undefined,
-    uploadedPhotoPaths: [] as string[],
   }
 
   it('assembles the required document fields from the form values', () => {
@@ -86,7 +83,6 @@ describe('buildOrderPayload', () => {
     expect(order).not.toHaveProperty('gifts')
     expect(order).not.toHaveProperty('comment')
     expect(order).not.toHaveProperty('completedAt')
-    expect(order).not.toHaveProperty('photos')
   })
 
   it('omits gifts when no gift row was ever added (giftName: null)', () => {
@@ -138,12 +134,8 @@ describe('buildOrderPayload', () => {
     ).not.toHaveProperty('prepaidAmountMinor')
   })
 
-  it('merges kept photos with the just-uploaded paths, kept first', () => {
-    const order = buildOrderPayload({
-      ...base,
-      uploadedPhotoPaths: ['orders/o/new.jpg'],
-      fields: fields({ keptPhotos: ['orders/o/kept.jpg'] }),
-    })
-    expect(order.photos).toEqual(['orders/o/kept.jpg', 'orders/o/new.jpg'])
+  it('never writes a photos field (the photo feature was removed)', () => {
+    const order = buildOrderPayload({ ...base, fields: fields() })
+    expect(order).not.toHaveProperty('photos')
   })
 })

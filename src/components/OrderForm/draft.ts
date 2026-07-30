@@ -18,8 +18,7 @@ import { reportError } from '@/observability/reportError'
 //
 // Field values are stored exactly as typed (the form's string inputs, e.g. a
 // price like "149,90"), not parsed into the Order model — restoring must put back
-// what the user SAW. Photos are absent by design: pending photos are File objects
-// (not serialisable to localStorage), so they are the one thing a restore drops.
+// what the user SAW.
 // The schema mirrors the enums of the stored order, so a draft written before an
 // enum was renamed simply fails validation and is discarded — a stale draft can
 // never crash the form.

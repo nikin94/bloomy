@@ -228,10 +228,10 @@ describe('reconcileOrderNumbers', () => {
 
 describe('updateOrder', () => {
   it('writes the supplied fields with updateDoc (per-field merge) and removes cleared optionals', async () => {
-    // No comment / completedAt / gifts / photos on the body → they must be
+    // No comment / completedAt / gifts on the body → they must be
     // deleteField()'d so a field the user cleared is actually removed, not left
-    // lingering by the merge (e.g. removing the gift row — or the last photo —
-    // on an edit really drops the field).
+    // lingering by the merge (e.g. removing the gift row on an edit really drops
+    // the field). `photos` is NOT clearable (the photo feature was removed).
     const body = storedOrder({ number: 7, paymentStatus: 'paid' }) as Omit<Order, 'id'>
 
     await updateOrder('o1', body)
@@ -244,7 +244,6 @@ describe('updateOrder', () => {
       comment: { __deleted: true },
       completedAt: { __deleted: true },
       gifts: { __deleted: true },
-      photos: { __deleted: true },
       source: { __deleted: true },
       prepaidAmountMinor: { __deleted: true },
     })
@@ -317,7 +316,7 @@ describe('updateOrder', () => {
 
     await updateOrder('o1', next as Omit<Order, 'id'>, base)
 
-    // Cleared-from-base fields become explicit deletes; gifts/photos/source were
+    // Cleared-from-base fields become explicit deletes; gifts/source were
     // never on the order, so no delete is written for them (unlike the no-base path).
     expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
       comment: { __deleted: true },

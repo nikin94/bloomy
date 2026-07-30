@@ -66,7 +66,7 @@ const EditOrderPage = () => {
       headingClassName="max-md:hidden text-2xl"
       initialOrder={order}
       onCancel={() => navigate(`/orders/${order.id}`)}
-      onSubmit={async (fields, _orderId, failedPhotoCount = 0) => {
+      onSubmit={async (fields) => {
         // Save in place (per-field merge), preserving the original id, number and
         // dateCreated; only the form-owned fields change. The mount-time `order`
         // rides along as the diff BASE: updateOrder writes only the fields this
@@ -88,13 +88,8 @@ const EditOrderPage = () => {
         )
         orderCache.invalidateAll()
         customerCache.invalidateAll()
-        // Back to the order. Photos are best-effort (Storage has no offline
-        // queue): if some didn't upload, carry a warning so the detail page tells
-        // the operator to re-attach them via edit.
-        navigate(
-          `/orders/${order.id}`,
-          failedPhotoCount > 0 ? { state: { photoWarning: failedPhotoCount } } : undefined,
-        )
+        // Back to the order.
+        navigate(`/orders/${order.id}`)
       }}
     />
   )
