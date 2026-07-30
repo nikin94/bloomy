@@ -63,8 +63,7 @@ const DeletedOrdersPage = () => {
   const columns = useMemo(() => buildOrderColumns(getCustomerName, tOrder), [getCustomerName, tOrder])
 
   // Permanently delete EVERY trashed order (the full trash, not the filtered
-  // view — "empty trash" means empty). Photos are swept server-side by the
-  // cleanupOrderPhotos function on each document delete.
+  // view — "empty trash" means empty).
   //
   // Still non-blocking (offline-safe: the deletes queue and flush on
   // reconnect), but no longer silent OR racy:

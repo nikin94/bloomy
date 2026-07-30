@@ -300,10 +300,9 @@ export function softDeleteOrder(id: string): void {
 }
 
 // PERMANENTLY delete orders (the trash page's "empty trash"): removes the
-// documents themselves — no soft-delete flag, no way back. Photo files are NOT
-// touched here: the cleanupOrderPhotos cloud function fires on every document
-// delete and sweeps `orders/{ownerId}/{orderId}/` from Storage server-side (the
-// same path the admin reset relies on). Deletes are batched under Firestore's
+// documents themselves — no soft-delete flag, no way back. There are no other
+// artefacts to clean up (the order-photo feature and its Storage bucket were
+// removed). Deletes are batched under Firestore's
 // 500-writes-per-batch cap; each batch commit is fire-and-forget so emptying the
 // trash never blocks the UI and works offline (queued deletes flush on
 // reconnect). A failed commit is reported to Sentry.

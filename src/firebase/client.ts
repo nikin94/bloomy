@@ -7,15 +7,15 @@ import {
   persistentSingleTabManager,
 } from 'firebase/firestore'
 import type { Firestore } from 'firebase/firestore'
-import { getStorage } from 'firebase/storage'
 
 // Config is read from Vite environment variables (.env, see .env.example).
 // This keeps keys out of the repository and lets us separate dev/prod projects.
+// No storageBucket: the order-photo feature and its Cloud Storage bucket were
+// removed, so the app never initialises Storage.
 const env = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
@@ -35,7 +35,6 @@ const firebaseConfig =
         apiKey: env.apiKey ?? 'test-api-key',
         authDomain: env.authDomain ?? 'demo-bloomy.firebaseapp.com',
         projectId: env.projectId ?? 'demo-bloomy',
-        storageBucket: env.storageBucket ?? 'demo-bloomy.appspot.com',
         messagingSenderId: env.messagingSenderId ?? '0',
         appId: env.appId ?? 'test-app-id',
       }
@@ -81,10 +80,3 @@ export const db: Firestore = supportsPersistence
       experimentalAutoDetectLongPolling: true,
     })
   : getFirestore(app)
-
-// Cloud Storage — holds order photos under `orders/{ownerId}/{orderId}/...`.
-// Owner-scoped by the path prefix and enforced by storage.rules (mirroring
-// firestore.rules). Unlike Firestore there is no offline queue here, so uploads
-// require a live connection; reads of already-cached images are served by the
-// browser/HTTP cache.
-export const storage = getStorage(app)

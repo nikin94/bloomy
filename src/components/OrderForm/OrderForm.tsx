@@ -129,10 +129,9 @@ const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, on
   const draftHandle = useOrderDraft(ownerId, isCreate && seed === undefined)
   const { draft } = draftHandle
 
-  // The order's document id, pre-generated for a create so the photos uploaded
-  // at submit land under orders/{ownerId}/{orderId}/ — the SAME id the doc is
-  // created with (passed to createOrder), keeping the storage path in lockstep
-  // with the cleanup function's `{orderId}` prefix. An edit already has its id.
+  // The order's document id: pre-generated for a create so the page can persist
+  // the doc on a known id (passed to createOrder) and immediately highlight the
+  // new row. An edit already has its id.
   const [createId] = useState(newOrderId)
   const orderId = initialOrder?.id ?? createId
 

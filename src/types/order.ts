@@ -145,7 +145,8 @@ export const STORED_ORDER_SCHEMA = z.object({
   // photo feature (upload + display) was REMOVED — nothing writes or reads this
   // now, but the key is kept `.optional()` so orders created while the feature
   // existed still PARSE (narrowing the schema would crash them — the `packing`
-  // lesson). The Storage files themselves are handled out-of-band by the owner.
+  // lesson). The Storage bucket that held the files was deleted by the owner, so
+  // these paths now point at nothing — they are ignored, never dereferenced.
   photos: z.array(z.string()).optional(),
 })
 
