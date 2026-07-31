@@ -27,7 +27,6 @@ import CloseIcon from '@/components/icons/CloseIcon'
 import ConfirmModal from '@/components/ConfirmModal/ConfirmModal'
 import Input from '@/components/Input/Input'
 import Textarea from '@/components/Textarea/Textarea'
-import PendingPhotos from '@/components/OrderPhotos/PendingPhotos'
 import SelectOptions from '@/components/SelectOptions/SelectOptions'
 import ChipRadioGroup from '@/components/ChipRadioGroup/ChipRadioGroup'
 import { STATUS_BLOCK_FIELDS } from '@/lib/statusBlockOrder'
@@ -43,8 +42,6 @@ import { parsePlants, buildOrderPayload } from './payload'
 import type { ItemInput } from './items'
 import type { CustomerMode } from './CustomerPicker'
 import { newOrderId } from '@/firebase/orders'
-import { deleteOrderPhoto, uploadOrderPhoto } from '@/firebase/photos'
-import { reportError } from '@/observability/reportError'
 import { SCREEN_PADDING, SCREEN_GUTTER_X } from '@/styles/screenStyles'
 import type { NewOrder } from '@/firebase/orders'
 import type { Order } from '@/types/order'
@@ -77,18 +74,10 @@ interface OrderFormProps {
   // newly created customer is already switched to the "existing" branch so a
   // retry reuses it instead of duplicating.
   //
-  // `orderId` is the create form's pre-generated document id (undefined on edit):
-  // photos were uploaded under it, so the caller must create the order with THIS
-  // id (createOrder's `id`) to keep the photo storage path in lockstep.
+  // `orderId` is the create form's pre-generated document id (undefined on edit),
+  // so the caller creates the order with THIS id (createOrder's `id`).
   // Persist the finished order (create vs update — the page decides) and navigate.
-  // `failedPhotoCount` is how many attached photos could NOT be uploaded this save
-  // (best-effort — see handleSubmit): the order is saved regardless, and the page
-  // uses it to warn the operator to re-attach the rest via edit.
-  onSubmit: (
-    order: Omit<NewOrder, 'dateCreated'>,
-    orderId?: string,
-    failedPhotoCount?: number,
-  ) => Promise<void>
+  onSubmit: (order: Omit<NewOrder, 'dateCreated'>, orderId?: string) => Promise<void>
   // Leave the form without saving (the caller decides where to).
   onCancel: () => void
 }
@@ -109,8 +98,7 @@ interface OrderFormProps {
 //   • payload — the pure field→document assembly (parsePlants /
 //     buildOrderPayload).
 // What REMAINS here is the orchestration only: validation order, the submit
-// flow (customer creation → best-effort photo upload → onSubmit → staged-removal
-// cleanup → draft clear) and the markup.
+// flow (customer creation → onSubmit → draft clear) and the markup.
 const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, onCancel }: OrderFormProps) => {
   const { t } = useTranslation(['order', 'common'])
   // Order-bound t for the option helpers (typed TFunction<'order'>).
@@ -141,10 +129,9 @@ const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, on
   const draftHandle = useOrderDraft(ownerId, isCreate && seed === undefined)
   const { draft } = draftHandle
 
-  // The order's document id, pre-generated for a create so the photos uploaded
-  // at submit land under orders/{ownerId}/{orderId}/ — the SAME id the doc is
-  // created with (passed to createOrder), keeping the storage path in lockstep
-  // with the cleanup function's `{orderId}` prefix. An edit already has its id.
+  // The order's document id: pre-generated for a create so the page can persist
+  // the doc on a known id (passed to createOrder) and immediately highlight the
+  // new row. An edit already has its id.
   const [createId] = useState(newOrderId)
   const orderId = initialOrder?.id ?? createId
 
@@ -287,11 +274,6 @@ const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, on
     }
 
     setSaving(true)
-    // Tracks photos that made it into Storage this attempt, so the catch below
-    // can roll them back if the order write itself fails (all uploads succeeded
-    // but onSubmit throws) — the doc never lands, so cloud-cleanup (#110) would
-    // never fire for these, and abandoning the form would orphan them permanently.
-    const uploadedPhotoPaths: string[] = []
     try {
       // Resolve the customer id: reuse the selected one, or create a new
       // customer first. The delivery address also seeds the new customer's
@@ -317,33 +299,6 @@ const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, on
       // original moment via the order's existing completedAt.
       const completedAt = resolveCompletedAt(fields.status, initialOrder?.completedAt, Date.now())
 
-      // Deferred photo upload, BEST-EFFORT (owner request — a failed photo must
-      // never lose the whole order): now that we're committing to save, upload the
-      // locally-picked files under orders/{ownerId}/{orderId}/ — on create the
-      // pre-generated id the doc is created with below, on edit the order's own id.
-      // A photo that fails to upload NO LONGER aborts the save (the order write is
-      // offline-safe on its own): the successful ones ride along on the order, the
-      // failures are reported + counted, and the destination page tells the
-      // operator to re-attach the rest via edit. Storage has no offline queue, so a
-      // fully-offline save simply lands the order with no new photos.
-      // (uploadOrderPhoto already force-refreshes the id token and retries once —
-      // the known field failure is a middlebox blocking the token endpoint.)
-      const photoPaths: string[] = []
-      let failedPhotoCount = 0
-      if (fields.pendingFiles.length > 0) {
-        const results = await Promise.allSettled(
-          fields.pendingFiles.map((file) => uploadOrderPhoto(ownerId, orderId, file)),
-        )
-        for (const r of results) {
-          if (r.status === 'fulfilled') photoPaths.push(r.value)
-          else {
-            failedPhotoCount += 1
-            reportError(r.reason, 'orderFormPhotoUpload')
-          }
-        }
-        uploadedPhotoPaths.push(...photoPaths)
-      }
-
       // Pure field→document assembly (see payload.ts). `dateCreated` is set by
       // the caller (Date.now() on create, the original on edit).
       const order = buildOrderPayload({
@@ -352,42 +307,22 @@ const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, on
         ownerId,
         customerId,
         completedAt,
-        uploadedPhotoPaths: photoPaths,
       })
 
       // The caller persists the order (create vs update) and navigates. The
-      // pre-generated create id rides along so the doc lands on the same id the
-      // photos were stored under (undefined/ignored on edit).
-      await onSubmit(order, isCreate ? orderId : undefined, failedPhotoCount)
-      // The save landed — now actually delete the Storage files of the photos
-      // removed in the picker (edit only; a create keeps nothing to remove).
-      // Deleting only AFTER a successful save means a cancelled form or a failed
-      // save never touches them; best-effort — a failure here only leaves an
-      // orphan blob, not a UI error.
-      const removedPhotos = (initialOrder?.photos ?? []).filter(
-        (path) => !fields.keptPhotos.includes(path),
-      )
-      removedPhotos.forEach((path) =>
-        deleteOrderPhoto(path).catch((e) => reportError(e, 'orderFormRemovePhoto')),
-      )
+      // pre-generated create id rides along (undefined/ignored on edit).
+      await onSubmit(order, isCreate ? orderId : undefined)
       // The order is saved — the draft has served its purpose. Cleared only
       // AFTER onSubmit resolves, so a failed save (the catch below) keeps the
       // draft and the input survives even a page-leave after the failure.
       draftHandle.clear()
     } catch (err: unknown) {
-      // Roll back any photos already in Storage — the order doc will never exist
-      // to trigger cloud-cleanup, so abandoning the form now would orphan them.
-      // Best-effort: a failed rollback is logged, symmetric to the partial-upload path.
-      uploadedPhotoPaths.forEach((path) =>
-        deleteOrderPhoto(path).catch((e) => reportError(e, 'orderFormSubmitPhotoRollback')),
-      )
       setError(err instanceof Error ? err.message : t('form.errors.saveFailed'))
       setSaving(false)
     }
   }
 
-  // Cancel just leaves the form — nothing to clean up. Locally-picked photos were
-  // never uploaded (deferred to submit), so abandoning them costs nothing.
+  // Cancel just leaves the form — nothing to clean up.
 
   // Wait for the customer options before painting the form, so the mode slider
   // starts in the correct position instead of snapping from "new" to "existing".
@@ -704,27 +639,6 @@ const OrderForm = ({ heading, headingClassName, initialOrder, seed, onSubmit, on
             value={fields.comment}
             onChange={(e) => form.setFields({ comment: e.target.value })}
           />
-
-          {/* Photo attachments, on create AND edit. Newly picked photos are held
-              LOCALLY and uploaded on submit (see handleSubmit), so nothing hits
-              Storage until the order is saved — no orphans if the form is
-              abandoned. On an edit the strip ALSO shows the order's saved photos
-              (the detail page is view-only): removing one is staged in
-              `keptPhotos` and applied on save — the same commit point as every
-              other change on the form. */}
-          {ownerId && (
-            <>
-              <span aria-hidden="true" className="h-px w-full bg-border" />
-              <PendingPhotos
-                files={fields.pendingFiles}
-                onChange={(files) => form.setFields({ pendingFiles: files })}
-                existing={fields.keptPhotos}
-                onRemoveExisting={(path) =>
-                  form.setFields({ keptPhotos: fields.keptPhotos.filter((p) => p !== path) })
-                }
-              />
-            </>
-          )}
 
           </div>
         </div>

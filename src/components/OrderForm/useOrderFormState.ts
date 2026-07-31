@@ -52,12 +52,6 @@ export interface OrderFormFields {
   // serialises into the draft/snapshot JSON like every other field.
   source: OrderSource | null
   comment: string
-  // Photos picked on the form, held LOCALLY (File objects) and uploaded only on
-  // submit — abandoning the form leaves no orphaned blobs.
-  pendingFiles: File[]
-  // The edited order's saved photos still kept on it (all of them at first;
-  // empty on create). Removing one in the picker only STAGES the removal here.
-  keptPhotos: string[]
 }
 
 interface OrderFormState {
@@ -256,8 +250,6 @@ const createInitialState = ({ draft, source, initialOrder, defaults }: OrderForm
       // channel again, and unchecking is one tap. `?? null` also covers a draft
       // saved before this field existed (its schema key is optional).
       source: draft ? (draft.source ?? null) : (source?.source ?? null),
-      pendingFiles: [],
-      keptPhotos: initialOrder?.photos ?? [],
     },
     // Rows are seeded with ids 0..n-1, so the counter continues from there.
     nextItemId: items.length,
@@ -280,7 +272,6 @@ export function useOrderFormState(init: OrderFormInit) {
   // then), so an edit/repeat prefill does NOT count as dirty — only the user's
   // own changes do. customerMode is deliberately excluded: the customer fetch
   // flips it to "existing" on its own (no user action) once the book resolves.
-  // pendingFiles ride as a count — File objects don't stringify meaningfully.
   const fieldsSnapshot = JSON.stringify([
     fields.items,
     fields.giftName,
@@ -297,8 +288,6 @@ export function useOrderFormState(init: OrderFormInit) {
     fields.status,
     fields.source,
     fields.comment,
-    fields.pendingFiles.length,
-    fields.keptPhotos,
   ])
   // useState initializer (not a ref): the first-render snapshot is state read
   // during render, which is legal where reading a ref in render is not.

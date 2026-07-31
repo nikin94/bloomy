@@ -26,13 +26,6 @@ vi.mock('../../firebase/orders', () => ({
 vi.mock('../../firebase/customers', () => ({
   fetchCustomer: (...args: unknown[]) => fetchCustomer(...args),
 }))
-// The photo gallery's storage layer is stubbed so the page never loads the
-// Storage SDK; getPhotoUrl never resolves here (orders under test have no photos).
-vi.mock('../../firebase/photos', () => ({
-  getPhotoUrl: vi.fn(() => new Promise(() => {})),
-  uploadOrderPhoto: vi.fn(() => Promise.resolve('orders/owner-1/o1/new.jpg')),
-  deleteOrderPhoto: vi.fn(() => Promise.resolve()),
-}))
 // Sidebar (mounted by the in-layout test below) reaches signOutUser through the
 // drawer's settings cluster; stub it so the real Firebase SDK stays out.
 vi.mock('../../firebase/auth', () => ({ signOutUser: vi.fn() }))
@@ -101,33 +94,6 @@ describe('OrderDetailPage', () => {
     // labelled "Адрес доставки" row anymore.
     expect(screen.getByText('Main St 1')).toBeInTheDocument()
     expect(screen.queryByText('Адрес доставки')).not.toBeInTheDocument()
-  })
-
-  it('shows a dismissable photo-upload warning when arriving with the failed count in router state', async () => {
-    const user = userEvent.setup()
-    // A just-saved order whose photos didn't all upload (best-effort save) lands
-    // here carrying the failed count — the banner tells the operator to re-attach
-    // them via Edit, and dismisses on click.
-    render(
-      <QueryWrapper>
-        <AuthContext.Provider value={{ user: USER, loading: false, sessionLost: false }}>
-          <MemoryRouter initialEntries={[{ pathname: '/orders/o1', state: { photoWarning: 2 } }]}>
-            <OrderDetailPage />
-          </MemoryRouter>
-        </AuthContext.Provider>
-      </QueryWrapper>,
-    )
-    await screen.findByRole('heading', { name: 'Заказ №5' })
-    const banner = await screen.findByRole('alert')
-    expect(banner).toHaveTextContent(/2 фото не загрузил/)
-    await user.click(screen.getByRole('button', { name: 'Скрыть' }))
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-  })
-
-  it('shows no photo-upload warning on a normal visit (no router state)', async () => {
-    renderPage()
-    await screen.findByRole('heading', { name: 'Заказ №5' })
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('publishes the order number + date into the mobile top bar (in-layout)', async () => {
@@ -365,23 +331,14 @@ describe('OrderDetailPage', () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/orders'))
   })
 
-  it('shows photos VIEW-ONLY: the viewer opens, but nothing adds or deletes', async () => {
+  it('never renders a photos section (the photo feature was removed)', async () => {
+    // Even a legacy order that still carries stored photo paths shows nothing —
+    // the feature is gone; the field is read tolerantly but never displayed.
     fetchOrder.mockResolvedValue(order({ photos: ['orders/owner-1/o1/a.jpg'] }))
     renderPage()
     await screen.findByRole('heading', { name: 'Заказ №5' })
-
-    // The thumbnail is openable, but the page never writes: photos are managed
-    // on the edit form now, so there is no per-thumb delete and no add tile.
-    expect(screen.getByRole('button', { name: 'Открыть фото' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Удалить фото' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Добавить фото' })).not.toBeInTheDocument()
-  })
-
-  it('omits the photos section entirely when the order has none', async () => {
-    renderPage()
-    await screen.findByRole('heading', { name: 'Заказ №5' })
-    // No empty "Фото" heading (and no add tile — the page is view-only).
     expect(screen.queryByRole('heading', { name: 'Фото' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Открыть фото' })).not.toBeInTheDocument()
   })
 
   describe('when the order is in the trash (deleted)', () => {
@@ -403,19 +360,6 @@ describe('OrderDetailPage', () => {
       // Statuses are plain text, not editable selects; the label still resolves.
       expect(screen.queryByRole('combobox', { name: 'Статус оплаты' })).not.toBeInTheDocument()
       expect(screen.getByText('Ожидается')).toBeInTheDocument()
-    })
-
-    it('shows existing photos read-only: no add tile, no per-thumb delete', async () => {
-      fetchOrder.mockResolvedValue(order({ isDeleted: true, photos: ['orders/owner-1/o1/a.jpg'] }))
-      renderPage()
-      await screen.findByRole('heading', { name: 'Заказ №5' })
-
-      // The thumbnail (its open-viewer button) is present...
-      expect(screen.getByRole('button', { name: 'Открыть фото' })).toBeInTheDocument()
-      // ...but the add tile and the per-thumb delete are gone — nothing can write
-      // to the soft-deleted doc or upload an orphan blob under its path.
-      expect(screen.queryByRole('button', { name: 'Добавить фото' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'Удалить фото' })).not.toBeInTheDocument()
     })
 
     it('restores the order and returns to the trash', async () => {

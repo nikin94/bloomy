@@ -96,10 +96,8 @@ export async function fetchOrder(
 // blocks the UI. A genuinely failed write (e.g. an online permission-denied)
 // has no caller to catch it, so it is routed to reportError (Sentry).
 //
-// `id` is optional: the create form pre-generates it (via newOrderId) so photos
-// can be uploaded under orders/{ownerId}/{id}/ BEFORE the doc exists, then passes
-// the SAME id here — keeping the photo path's orderId in lockstep with the doc id
-// (the cleanup function keys photo deletion off that segment). Omitted elsewhere,
+// `id` is optional: the create form pre-generates it (via newOrderId) so it can
+// know the order's id up front, then passes the SAME id here. Omitted elsewhere,
 // where a fresh local id is generated.
 export function createOrder(order: NewOrder, id?: string): string {
   const orderRef = id ? doc(db, ORDERS_COLLECTION, id) : doc(collection(db, ORDERS_COLLECTION))
@@ -110,8 +108,7 @@ export function createOrder(order: NewOrder, id?: string): string {
 }
 
 // A fresh, locally-generated order document id (no network). The create form
-// uses this to know an order's id up front, so photos can be uploaded under its
-// storage path before the order document is written (see createOrder's `id`).
+// uses this to know an order's id up front (see createOrder's `id`).
 export const newOrderId = (): string => doc(collection(db, ORDERS_COLLECTION)).id
 
 // What one reconcile pass achieved: `numbered` — at least one order got its
@@ -198,17 +195,17 @@ export const waitForWriteQueueFlush = (): Promise<void> => waitForPendingWrites(
 // Optional order fields that can be CLEARED by an edit. The edit form omits a
 // field it has no value for (an empty comment, a non-completed order), so on a
 // per-field merge those omissions must become explicit removals — otherwise an
-// omitted field would just linger (see updateOrder). `photos` is here because
-// the edit form now owns the photo list too: removing the last photo omits the
-// key, and the merge must drop the stored list rather than leave it pointing at
-// files that were just deleted from Storage.
+// omitted field would just linger (see updateOrder).
 // `source` rides the same mechanism: unchecking "Заказ с Авито" on an edit
 // omits the field, which must delete the stored value, not leave it lingering.
+// NOTE: `photos` is deliberately NOT here. The photo feature was removed, so the
+// form never writes a photo list — a legacy order's stored `photos` field is
+// simply left untouched (read tolerantly, never shown) rather than stripped on
+// the next unrelated edit.
 const CLEARABLE_ORDER_FIELDS = [
   'comment',
   'completedAt',
   'gifts',
-  'photos',
   'source',
   'prepaidAmountMinor',
 ] as const
@@ -232,7 +229,7 @@ const sameFieldValue = (a: unknown, b: unknown): boolean =>
 // was overwritten back, and its completedAt stamp deleteField()'d away. Diffing
 // against `base` means an untouched field is simply absent from the write, so a
 // concurrent change to it survives. A field the user CLEARED (in `base`, absent
-// now — comment, completedAt, gifts, photos) becomes an explicit `deleteField()`
+// now — comment, completedAt, gifts, source) becomes an explicit `deleteField()`
 // so clearing still clears rather than lingering.
 //
 // Without `base` (no snapshot to diff against) the legacy full-write behaviour
@@ -256,9 +253,6 @@ export function updateOrder(id: string, order: Omit<Order, 'id'>, base?: Omit<Or
     if (!prev || field in prev) writes[field] = deleteField()
   }
   void updateDoc(doc(db, ORDERS_COLLECTION, id), writes).catch((err) =>
-    // The doc id in the tag makes a failed save actionable from the logs: the
-    // form deletes/uploads Storage files around this write, so a rejected write
-    // can leave orphan blobs under orders/{ownerId}/{id}/ — the id says where.
     reportError(err, `updateOrder:${id}`),
   )
 }
@@ -275,14 +269,6 @@ export type OrderPatch = Partial<{
   paymentStatus: PaymentStatus
   status: OrderStatus
   completedAt: number | null
-  // The full new list of photo storage paths (read-modify-write on the client).
-  // KNOWN LIMIT: two tabs editing the same order's photos concurrently are
-  // last-write-wins — the loser's uploaded blob stays orphaned in Storage.
-  // Accepted for this single-user app (arrayUnion/arrayRemove would fix adds
-  // but break the user-visible display ORDER the array encodes).
-  // Written as a single field so a photo add/remove merges cleanly with a
-  // concurrent status change on another device.
-  photos: string[]
 }>
 
 // Fire-and-forget, like updateOrder — the inline toggle never blocks and works
@@ -314,10 +300,9 @@ export function softDeleteOrder(id: string): void {
 }
 
 // PERMANENTLY delete orders (the trash page's "empty trash"): removes the
-// documents themselves — no soft-delete flag, no way back. Photo files are NOT
-// touched here: the cleanupOrderPhotos cloud function fires on every document
-// delete and sweeps `orders/{ownerId}/{orderId}/` from Storage server-side (the
-// same path the admin reset relies on). Deletes are batched under Firestore's
+// documents themselves — no soft-delete flag, no way back. There are no other
+// artefacts to clean up (the order-photo feature and its Storage bucket were
+// removed). Deletes are batched under Firestore's
 // 500-writes-per-batch cap; each batch commit is fire-and-forget so emptying the
 // trash never blocks the UI and works offline (queued deletes flush on
 // reconnect). A failed commit is reported to Sentry.

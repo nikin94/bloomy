@@ -141,12 +141,12 @@ export const STORED_ORDER_SCHEMA = z.object({
   // is not read here, so the schema (which strips unknown keys) omits it, and
   // `restoreOrder` deletes it as lazy cleanup.
   isDeleted: z.boolean().optional(),
-  // Storage paths of attached order photos, in display order. Each entry is a
-  // PATH under `orders/{ownerId}/{orderId}/{photoId}.jpg` in Firebase Storage —
-  // NOT a download URL (URLs are resolved lazily and their tokens can rotate, so
-  // a stored URL would go stale). Optional and added after orders already
-  // existed, so pre-existing orders stay valid without a migration (widening the
-  // schema is safe; narrowing is not — see the `packing` lesson).
+  // LEGACY, read-only tolerance. Storage paths of attached order photos. The
+  // photo feature (upload + display) was REMOVED — nothing writes or reads this
+  // now, but the key is kept `.optional()` so orders created while the feature
+  // existed still PARSE (narrowing the schema would crash them — the `packing`
+  // lesson). The Storage bucket that held the files was deleted by the owner, so
+  // these paths now point at nothing — they are ignored, never dereferenced.
   photos: z.array(z.string()).optional(),
 })
 

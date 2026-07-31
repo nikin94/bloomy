@@ -33,7 +33,6 @@ export function buildOrderPayload({
   ownerId,
   customerId,
   completedAt,
-  uploadedPhotoPaths,
 }: {
   fields: OrderFormFields
   // Already parsed (and validated non-empty) by the submit path.
@@ -45,14 +44,9 @@ export function buildOrderPayload({
   // Derived from the chosen status via resolveCompletedAt; undefined for a
   // non-terminal status (the field is then omitted → cleared on edit).
   completedAt: number | undefined
-  // Storage paths of the photos uploaded THIS submit (empty when none).
-  uploadedPhotoPaths: string[]
 }): Omit<NewOrder, 'dateCreated'> {
   const giftName = fields.giftName?.trim() ?? ''
   const comment = fields.comment.trim()
-  // The photo list to save: the KEPT saved photos (removals staged in the
-  // picker are applied here) plus the paths just uploaded.
-  const photos = [...fields.keptPhotos, ...uploadedPhotoPaths]
   return {
     ownerId,
     customerId,
@@ -82,6 +76,5 @@ export function buildOrderPayload({
     ...(giftName !== '' ? { gifts: [{ name: giftName, quantity: 1, unitPriceMinor: 0 }] } : {}),
     ...(comment !== '' ? { comment } : {}),
     ...(completedAt !== undefined ? { completedAt } : {}),
-    ...(photos.length > 0 ? { photos } : {}),
   }
 }

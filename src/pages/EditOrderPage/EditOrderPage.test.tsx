@@ -30,13 +30,6 @@ vi.mock('../../firebase/orders', () => ({
   // OrderForm imports newOrderId (used only in create mode; unused on edit).
   newOrderId: () => 'pre-generated-order-id',
 }))
-// OrderForm imports the Storage layer (only mounts the gallery in create mode);
-// stub it so no real Firebase Storage is touched.
-vi.mock('../../firebase/photos', () => ({
-  uploadOrderPhoto: vi.fn(),
-  getPhotoUrl: vi.fn(),
-  deleteOrderPhoto: vi.fn().mockResolvedValue(undefined),
-}))
 vi.mock('../../firebase/customers', () => ({
   fetchCustomers: (...args: unknown[]) => fetchCustomers(...args),
   fetchCustomer: (...args: unknown[]) => fetchCustomer(...args),
@@ -147,9 +140,8 @@ describe('EditOrderPage', () => {
       // write only what this edit changed (see the concurrent-edit fix).
       expect.objectContaining({ id: 'o1', status: 'processing' }),
     )
-    // Returns to the order's detail page after saving — with no photo-warning
-    // state (nothing failed), so the second arg is undefined.
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/orders/o1', undefined))
+    // Returns to the order's detail page after saving.
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/orders/o1'))
   })
 
   it('keeps a soft-deleted customer selectable when editing its order', async () => {

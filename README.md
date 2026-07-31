@@ -4,9 +4,9 @@ A single-page web app for running a small potted-plant and flower shop. Sign in
 with Google, keep an address book of customers, and create orders with an
 itemized plant list, delivery method, and live order totals. The orders list is
 searchable by number or customer and filterable by payment/shipment status,
-price range and date. Orders carry photos, a soft-delete trash, and a statistics
-screen derives business metrics (revenue per currency, status breakdown, orders
-per month) entirely in memory.
+price range and date. Orders have a soft-delete trash, and a statistics screen
+derives business metrics (revenue per currency, status breakdown, orders per
+month) entirely in memory.
 
 It is an installable **PWA** that boots and runs **fully offline** (Firestore's
 offline cache plus a hand-rolled service worker), ships in **Russian and English**,
@@ -17,8 +17,7 @@ and has a **dark/light** theme. Dark is the default.
 - **React 19** + **TypeScript** + **Vite** (with the React Compiler enabled)
 - **Tailwind CSS v4** for styling
 - **React Router v7** for routing
-- **Firebase** — Firestore (data), Authentication (Google + email sign-in) and
-  Cloud Storage (order photos)
+- **Firebase** — Firestore (data) and Authentication (Google + email sign-in)
 - **TanStack Query** (server-state cache) and **TanStack Table** (the orders grid)
 - **Zod** for runtime validation of stored documents
 - **i18next** / react-i18next for localization (Russian + English)
@@ -53,7 +52,6 @@ and has a **dark/light** theme. Dark is the default.
    VITE_FIREBASE_API_KEY=
    VITE_FIREBASE_AUTH_DOMAIN=
    VITE_FIREBASE_PROJECT_ID=
-   VITE_FIREBASE_STORAGE_BUCKET=
    VITE_FIREBASE_MESSAGING_SENDER_ID=
    VITE_FIREBASE_APP_ID=
    ```
@@ -96,31 +94,16 @@ Data-layer tests come in two flavours:
   transaction stays atomic under concurrent creates. These need Java and the
   Firebase CLI; run them with `yarn test:emulator` (starts and stops the
   emulator automatically). They are excluded from the default `yarn test`.
-- **Security-rules tests** (`src/test/firestore.rules.test.ts`,
-  `src/test/storage.rules.test.ts`) — run the production `firestore.rules` and
-  `storage.rules` against the emulators via `@firebase/rules-unit-testing` to
-  prove the multi-tenant boundary (a user can only touch their own documents and
-  their own photo files). Run with `yarn test:rules` (starts both the Firestore
-  and Storage emulators).
+- **Security-rules tests** (`src/test/firestore.rules.test.ts`) — run the
+  production `firestore.rules` against the emulator via
+  `@firebase/rules-unit-testing` to prove the multi-tenant boundary (a user can
+  only touch their own documents). Run with `yarn test:rules` (starts the
+  Firestore emulator).
 
-The emulator runs from `firebase.emulator.json` (Firestore open; Storage gets
-`storage.rules` because it can't boot without one) so the multi-tenant
-data-layer tests work; the rules tests load the rules files themselves.
-Production rules live in `firestore.rules` / `storage.rules` and deploy together
-via `yarn deploy:rules`.
-
-## Order photos
-
-Orders can carry photos (e.g. a snapshot of the prepared bouquet), managed on
-the order detail page. Files are stored in Cloud Storage under
-`orders/{ownerId}/{orderId}/{photoId}.jpg`, so `storage.rules` authorizes purely
-from the path (uid == ownerId), mirroring the Firestore owner boundary. The
-order document stores the storage **paths** (`STORED_ORDER_SCHEMA.photos`), not
-download URLs — URLs are resolved lazily and cached for the session. Images are
-downscaled client-side (long edge ≤ 1600 px, JPEG) before upload to keep bytes
-small on a slow/filtered connection. Note: Cloud Storage has no offline write
-queue, so uploads need a live connection (it's Google-hosted, like Auth and
-Firestore — see the Crimea-access caveat).
+The emulator runs from `firebase.emulator.json` (Firestore open) so the
+multi-tenant data-layer tests work; the rules tests load `firestore.rules`
+themselves. Production rules live in `firestore.rules` and deploy via
+`yarn deploy:rules`.
 
 ## Deployment
 
@@ -132,11 +115,11 @@ values and the Firebase service account are provided as repository secrets.
 
 ```
 src/
-  components/     Reusable UI (AppLayout, Sidebar, Button, Input, Textarea, Select, DataTable, Modal, ConfirmModal, OrderForm, CustomerForm, CustomerEditModal, OrderPhotos, Autocomplete, RangeSlider, SearchControl, OrderFilterControl, Settings, UpdatePrompt, Spinner, ProtectedRoute)
+  components/     Reusable UI (AppLayout, Sidebar, Button, Input, Textarea, Select, DataTable, Modal, ConfirmModal, OrderForm, CustomerForm, CustomerEditModal, Autocomplete, RangeSlider, SearchControl, OrderFilterControl, EmptyState, Settings, UpdatePrompt, Spinner, ProtectedRoute)
   pages/          Route screens (Login, Orders, OrderDetail, NewOrder, EditOrder, DeletedOrders, Customers, Customer, Stats, Settings)
   context/        Auth + settings contexts and providers, plus header-actions/sidebar contexts
   queries/        TanStack Query hooks + cache writers (orders, customers, keys, queryClient)
-  firebase/       Firebase integration: setup and data access (client, auth, orders, customers, settings, photos)
+  firebase/       Firebase integration: setup and data access (client, auth, orders, customers, settings)
   i18n/           i18next config and locale bundles (ru, en)
   lib/            Small helpers/hooks (cn, useOwnerId, useNow, useMediaQuery, orderLabels, admin, service-worker registration)
   observability/  Sentry setup and error reporting
